@@ -18,7 +18,7 @@ Il progetto **MEMAI V_FALLBACK OBSIDIAN (LIMEN Vault)** è un monorepo TypeScrip
 ---
 
 ## 2. Servizi Esterni del Progetto MEMAI
-1. **GitHub:** Version control e hosting repository monorepo.
+1. **GitHub:** Version control e repository remoto monorepo: [`https://github.com/cesarenegro/vault_memai_obsi`](https://github.com/cesarenegro/vault_memai_obsi) (Branch `main` sincronizzato e pushato).
 2. **Vercel:** Deployment per l'app web Next.js (`apps/web`).
 3. **OpenAI API:** Provider AI autorizzato (`OPENAI_API_KEY`) in `@limen-vault/ai-engine` per sintesi e *Ask Knowledge AI*.
 4. **Apple Developer & Notarization:** Firma digitale e notarizzazione dell'applicazione macOS Tauri (`apps/desktop`).
