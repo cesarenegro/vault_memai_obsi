@@ -169,3 +169,27 @@ flowchart LR
 ## 🔒 7. Integrità dei Dati (SHA-256 Checksum)
 
 LIMEN Vault calcola automaticamente un checksum **SHA-256** per ciascuna nota presente nel Vault e aggiorna il manifest in `00_SYSTEM/VAULT_MANIFEST.json`. Questo assicura che il Vault sia protetto da modifiche non autorizzate o corruzione dei dati.
+
+---
+
+## 🛠️ 8. Creazione, Apertura e Validazione del Vault (Milestone M2)
+
+### A. Creazione del Vault (`createVault`)
+1. L'utente specifica un percorso locale su Mac (es. `/Users/cesare/Documents/VAULT`).
+2. Il runtime crea e popola le 15 sottocartelle obbligatorie copiandole dal modello `vault-template/` e aggiorna il manifest `00_SYSTEM/VAULT_MANIFEST.json`.
+3. **Protezione dei dati (Zero Overwrite):** Se il percorso di destinazione esiste già ed è popolato con un Vault o file di sistema, la creazione si blocca sollevando `VaultAlreadyExistsError` senza sovrascrivere alcun file.
+
+### B. Apertura del Vault (`openVault`)
+1. Aprire un Vault esegue un'ispezione strutturale in **sola lettura**.
+2. Il runtime verifica la presenza di tutte le 15 cartelle obbligatorie e la validità del manifest.
+3. **Invariante Read-Only:** L'apertura e la scansione non modificano mai alcun file o timestamp sul disco.
+
+### C. Validazione Strutturale e Protezione Percorsi (`validateVault`)
+* **Stati del Vault gestiti:**
+  - `READY`: Vault valido, integro e completo.
+  - `INCOMPLETE`: Manca una o più cartelle obbligatorie (es. `04_POSITIONING`).
+  - `INVALID`: Manifest corrotto o non conforme allo schema JSON.
+  - `NOT_ACCESSIBLE`: Percorso inesistente o privo di permessi di lettura.
+* **Sicurezza Symlink & Path Traversal:**
+  I tentativi di uscire dal Vault (`..` o percorsi assoluti esterni) e i link simbolici che puntano all'esterno del Vault sollevano l'errore di sicurezza `SecurityPathError`.
+

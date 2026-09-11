@@ -433,7 +433,7 @@ pnpm typecheck     # controllo dei tipi TypeScript su app e package
 pnpm build         # build di produzione di web, desktop e packages
 ```
 
-## Vietato
+## Vietatonon
 Pushare o dichiarare completato il lavoro quando il controllo dei tipi o il build falliscono.
 
 ## Nel resoconto
@@ -441,3 +441,6 @@ Incolla l'esito reale dei comandi eseguiti, non la tua aspettativa.
 
 # 17. CRITICAL — AFTER ANY POUSH OR IMPLEMENTATION PLAN
 aggirona con cio che e' stato fatto il file in root SESSION HANDOVER.MD , se non esiste crealo, e dai istruzioni come se dovessimo aprire una nuova chat: con i context e altre infor necessarie al coder per iniziare il lavoro con tutte le infor necessarie
+
+# 18. MUST TO - TASK LIST ARTIFACT
+sempre, sempre redarre task list dettagliata quando si crea un implemntation plan. essa deve sempre eseere visibile all utente. e deve aggirnarsi a seconda degli step svolti.

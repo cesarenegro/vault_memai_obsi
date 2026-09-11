@@ -1,4 +1,5 @@
 import path from 'path';
+import fs from 'fs';
 
 export class SecurityPathError extends Error {
   constructor(message: string) {
@@ -31,11 +32,35 @@ export function sanitizeVaultPath(vaultRoot: string, relativeTarget: string): st
   }
 
   const resolvedRoot = path.resolve(vaultRoot);
-  const resolvedTarget = path.resolve(resolvedRoot, normalizedTarget);
+  const realRoot = fs.existsSync(resolvedRoot) ? fs.realpathSync(resolvedRoot) : resolvedRoot;
+  const resolvedTarget = path.resolve(realRoot, normalizedTarget);
 
-  if (!resolvedTarget.startsWith(resolvedRoot)) {
+  if (!resolvedTarget.startsWith(realRoot)) {
     throw new SecurityPathError(`Target path "${relativeTarget}" escapes Vault root "${vaultRoot}"`);
   }
 
   return resolvedTarget;
 }
+
+/**
+ * Ensures that if a path exists and is a symlink, its real resolved target does not escape the Vault root.
+ */
+export function validateSymlinkSafety(vaultRoot: string, relativeOrAbsolutePath: string): string {
+  const resolvedRoot = path.resolve(vaultRoot);
+  const realRoot = fs.existsSync(resolvedRoot) ? fs.realpathSync(resolvedRoot) : resolvedRoot;
+
+  const targetPath = path.isAbsolute(relativeOrAbsolutePath)
+    ? relativeOrAbsolutePath
+    : path.resolve(realRoot, relativeOrAbsolutePath);
+
+  if (fs.existsSync(targetPath)) {
+    const realTarget = fs.realpathSync(targetPath);
+    if (!realTarget.startsWith(realRoot)) {
+      throw new SecurityPathError(`Symlink target "${realTarget}" escapes Vault root "${realRoot}"`);
+    }
+    return realTarget;
+  }
+
+  return targetPath;
+}
+

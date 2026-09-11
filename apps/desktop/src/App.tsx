@@ -36,20 +36,31 @@ type NavTab =
 export default function App() {
   const [currentTab, setCurrentTab] = useState<NavTab>('home');
   const [vaultLoaded, setVaultLoaded] = useState<boolean>(false);
-  const [vaultPath, setVaultPath] = useState<string | null>(null);
-  const [vaultName, setVaultName] = useState<string | null>(null);
+  const [vaultState, setVaultState] = useState<'READY' | 'INITIALIZING' | 'INVALID' | 'NO_VAULT' | 'NOT_ACCESSIBLE' | 'INCOMPLETE'>('NO_VAULT');
+  const [vaultPath, setVaultPath] = useState<string | null>('/Users/cesare/Documents/VAULT');
+  const [vaultName, setVaultName] = useState<string | null>('LIMEN Vault');
+  const [pageCount, setPageCount] = useState<number>(2);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [obsidianAvailable, setObsidianAvailable] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('clients');
 
   const handleCreateVault = () => {
-    setVaultPath('/Users/cesare/Documents/LIMEN_VAULT_LOCAL');
-    setVaultName('LIMEN Local Vault');
+    const target = vaultPath || '/Users/cesare/Documents/VAULT';
+    setVaultPath(target);
+    setVaultName('LIMEN Vault');
+    setVaultState('READY');
+    setPageCount(2);
+    setValidationErrors([]);
     setVaultLoaded(true);
   };
 
   const handleOpenExistingVault = () => {
-    setVaultPath('/Users/cesare/Documents/EXISTING_OBSIDIAN_VAULT');
-    setVaultName('Existing Obsidian Vault');
+    const target = vaultPath || '/Users/cesare/Documents/VAULT';
+    setVaultPath(target);
+    setVaultName('LIMEN Vault');
+    setVaultState('READY');
+    setPageCount(2);
+    setValidationErrors([]);
     setVaultLoaded(true);
   };
 
@@ -244,10 +255,10 @@ export default function App() {
           <>
             {/* VAULT BANNER */}
             <VaultStatusBanner
-              status="READY"
+              status={vaultState === 'READY' ? 'READY' : 'INVALID'}
               vaultName={vaultName}
               vaultPath={vaultPath}
-              pageCount={0}
+              pageCount={pageCount}
               onOpenObsidian={() => alert(`Launching Obsidian for Vault: ${vaultPath}`)}
               obsidianAvailable={obsidianAvailable}
             />

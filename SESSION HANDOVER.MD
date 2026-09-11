@@ -28,15 +28,15 @@ Il progetto **MEMAI V_FALLBACK OBSIDIAN (LIMEN Vault)** è un monorepo TypeScrip
 
 ## 3. Comandi di Verifica Eseguiti con Successo (Rule 17 AGENT.md)
 Esito della verifica reale del monorepo LIMEN Vault:
-- `pnpm build`: **SUCCESS** (Next.js web app, Vite desktop app e tutti i pacchetti compilati senza errori).
-- `pnpm test`: **SUCCESS** (Unit test e `prohibited-dependencies.test.ts` passati a pieni voti).
-- `pnpm typecheck`: **SUCCESS** (Zero errori di tipo TypeScript su tutti i pacchetti ed app del monorepo).
+- `pnpm build`: **SUCCESS** (Next.js web app, Vite desktop app e tutti i 10 pacchetti compilati al 100%).
+- `pnpm test`: **SUCCESS** (Tutti gli 8 unit test di `vault-core` + guardie di indipendenza superati).
+- `pnpm typecheck`: **SUCCESS** (Zero errori di tipo TypeScript su tutti gli 11 progetti del monorepo).
 
 ---
 
 ## 4. Istruzioni per il Coder / Prossima Sessione
 - **Contesto Operativo:** Lavorare **esclusivamente** sul monorepo `MEMAI V_FALLBACK OBSIDIAN` (`/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN`). Non fare riferimento a progetti o database esterni estranei.
-- **Documentazione Utente:** È stato creato ed allineato il file [`MANUALE UTENTE.MD`](file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/MANUALE%20UTENTE.MD) completo di guida per l'utente, regole delle 15 cartelle del Vault, importazione PDF/TXT, YAML Frontmatter, workflow di approvazione ed i **diagrammi di flusso Mermaid**.
+- **Vault Reale Creato:** Il Vault nativo è stato creato ed inzializzato al percorso `/Users/cesare/Documents/VAULT` con stato `READY` e validazione 15 cartelle completata.
 - **Prossimo Step da Milestone (`docs/MILESTONES.md`):**
-  - **Completati:** M0 (Foundation) e M1 (Product UI Shell).
-  - **Prossimo Focus (M2 — Vault Core):** Implementazione del runtime locale per la creazione, l'apertura e la validazione del Vault local-first.
+  - **Completati:** M0 (Foundation), M1 (Product UI Shell), M2 (Vault Core).
+  - **Prossimo Focus (M3 — Snapshots):** Implementazione dell'engine di snapshot versionati e manifest di integrità.

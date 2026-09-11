@@ -2,7 +2,7 @@
 
 - [x] **M0 — Foundation**: Monorepo architecture, independence guard tests, Obsidian vault template, system rules.
 - [x] **M1 — Product UI Shell**: Reusable UI design system, Desktop application shell (11 screens + First-run UX), Web landing page.
-- [ ] **M2 — Vault Core**: Local vault create/open/validate runtime.
+- [x] **M2 — Vault Core**: Local vault create/open/validate runtime.
 - [ ] **M3 — Snapshots**: Manifest + integrity + versioned local snapshots.
 - [ ] **M4 — Knowledge Compiler**: Raw sources -> persistent Wiki compiler.
 - [ ] **M5 — Local Search**: Offline full-text / frontmatter search index.
