@@ -1,0 +1,99 @@
+:root {
+  --limen-bg-app: #f8fafc;
+  --limen-bg-surface: #ffffff;
+  --limen-bg-sidebar: #f1f5f9;
+  --limen-bg-subtle: #f8fafc;
+
+  --limen-text-primary: #0f172a;
+  --limen-text-secondary: #475569;
+  --limen-text-muted: #94a3b8;
+
+  --limen-border-light: #e2e8f0;
+  --limen-border-subtle: #cbd5e1;
+
+  --limen-accent-primary: #0f172a;
+  --limen-accent-hover: #1e293b;
+  --limen-accent-subtle: #e2e8f0;
+
+  --limen-status-ready-bg: #ecfdf5;
+  --limen-status-ready-text: #047857;
+  --limen-status-ready-border: #a7f3d0;
+
+  --limen-status-warn-bg: #fffbeb;
+  --limen-status-warn-text: #b45309;
+  --limen-status-warn-border: #fde68a;
+
+  --limen-status-off-bg: #f8fafc;
+  --limen-status-off-text: #64748b;
+  --limen-status-off-border: #cbd5e1;
+
+  --limen-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --limen-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --limen-shadow-glass: 0 10px 30px -10px rgba(0, 0, 0, 0.08);
+
+  --limen-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --limen-font-mono: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, monospace;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--limen-font-sans);
+  background-color: var(--limen-bg-app);
+  color: var(--limen-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.limen-glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.limen-card {
+  background-color: var(--limen-bg-surface);
+  border: 1px solid var(--limen-border-light);
+  border-radius: 10px;
+  box-shadow: var(--limen-shadow-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.limen-card:hover {
+  border-color: var(--limen-border-subtle);
+  box-shadow: var(--limen-shadow-md);
+}
+
+.limen-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.limen-badge-ready {
+  background-color: var(--limen-status-ready-bg);
+  color: var(--limen-status-ready-text);
+  border: 1px solid var(--limen-status-ready-border);
+}
+
+.limen-badge-warn {
+  background-color: var(--limen-status-warn-bg);
+  color: var(--limen-status-warn-text);
+  border: 1px solid var(--limen-status-warn-border);
+}
+
+.limen-badge-off {
+  background-color: var(--limen-status-off-bg);
+  color: var(--limen-status-off-text);
+  border: 1px solid var(--limen-status-off-border);
+}
