@@ -7,9 +7,14 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'ai-engine clean'",
-    "test": "echo 'ai-engine tests pass'"
+    "test": "node --import tsx/esm tests/ai-engine.test.ts"
   },
   "devDependencies": {
     "typescript": "^5.7.2"
+  },
+  "type": "module",
+  "dependencies": {
+    "@limen-vault/search-engine": "workspace:*",
+    "@limen-vault/vault-core": "workspace:*"
   }
 }

@@ -1,14 +1,381 @@
-// Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod compiler;
+mod search;
+mod snapshots;
+mod vault;
+
+use snapshots::*;
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
+use tauri::Manager;
+use vault::*;
 
 #[tauri::command]
-fn get_default_vault_path() -> String {
-    format!("{}/Documents/VAULT", std::env::var("HOME").unwrap_or_default())
+async fn tunnel_start(config: limen_vault::tunnel::Config, app:tauri::AppHandle, state:tauri::State<'_,limen_vault::tunnel::TunnelState>)->Result<serde_json::Value,String>{let state=state.inner().clone();let resources=app.path().resource_dir().map_err(|e|e.to_string())?;let data=app.path().app_data_dir().map_err(|e|e.to_string())?;tauri::async_runtime::spawn_blocking(move||state.start(config,&resources,&data)).await.map_err(|e|e.to_string())?}
+#[tauri::command]
+async fn tunnel_status(state:tauri::State<'_,limen_vault::tunnel::TunnelState>)->Result<serde_json::Value,String>{let s=state.inner().clone();tauri::async_runtime::spawn_blocking(move||s.status()).await.map_err(|e|e.to_string())?}
+#[tauri::command]
+async fn tunnel_stop(state:tauri::State<'_,limen_vault::tunnel::TunnelState>)->Result<(),String>{let s=state.inner().clone();tauri::async_runtime::spawn_blocking(move||s.stop()).await.map_err(|e|e.to_string())?}
+#[tauri::command]
+async fn tunnel_save_key(key:String)->Result<(),String>{tauri::async_runtime::spawn_blocking(move||limen_vault::tunnel::save_key(&key)).await.map_err(|e|e.to_string())?}
+#[tauri::command]
+fn tunnel_config(app:tauri::AppHandle)->Result<Option<limen_vault::tunnel::Config>,String>{limen_vault::tunnel::config(&app.path().app_data_dir().map_err(|e|e.to_string())?)}
+
+#[tauri::command]
+async fn list_knowledge(vault_path:String,folder:String)->Result<Vec<serde_json::Value>,String>{tauri::async_runtime::spawn_blocking(move||limen_vault::knowledge::list(Path::new(&vault_path),&folder)).await.map_err(|e|e.to_string())?}
+
+#[tauri::command]
+async fn m7_execute(vault_path: String, request: limen_vault::proposals::Request) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || limen_vault::proposals::execute(Path::new(&vault_path), request)).await.map_err(|e|e.to_string())?
+}
+
+#[tauri::command]
+fn get_default_vault_path() -> Result<String, String> {
+    std::env::var("HOME")
+        .map(|h| {
+            Path::new(&h)
+                .join("Documents/VAULT")
+                .to_string_lossy()
+                .into()
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn create_vault(
+    target_path: String,
+    vault_name: Option<String>,
+    app_handle: tauri::AppHandle,
+) -> Result<VaultStatusResponse, String> {
+    let template = app_handle
+        .path()
+        .resource_dir()
+        .map_err(|e| e.to_string())?
+        .join("vault-template");
+    vault::create(Path::new(&target_path), vault_name, &template)
+}
+
+#[tauri::command]
+fn open_vault(target_path: String) -> OpenVaultResponse {
+    vault::open(Path::new(&target_path))
+}
+
+#[tauri::command]
+fn validate_vault(target_path: String) -> ValidationResultResponse {
+    perform_vault_validation(Path::new(&target_path))
+}
+
+#[tauri::command]
+async fn verify_vault_integrity(
+    target_path: String,
+) -> Result<VaultIntegrityReportResponse, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        snapshots::verify_manifest_integrity(Path::new(&target_path))
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn create_snapshot(
+    target_path: String,
+    note: Option<String>,
+) -> Result<SnapshotItemResponse, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        snapshots::create_snapshot(Path::new(&target_path), note)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn list_snapshots(target_path: String) -> Result<Vec<SnapshotItemResponse>, String> {
+    tauri::async_runtime::spawn_blocking(move || snapshots::list_snapshots(Path::new(&target_path)))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn list_proposals(vault_path: String) -> Result<Vec<compiler::ProposalItem>, String> {
+    tauri::async_runtime::spawn_blocking(move || compiler::list_proposals(Path::new(&vault_path)))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn list_raw_sources(vault_path: String) -> Result<Vec<compiler::RawSourceItem>, String> {
+    tauri::async_runtime::spawn_blocking(move || compiler::list_raw_sources(Path::new(&vault_path)))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn compile_source(
+    vault_path: String,
+    relative_source_path: String,
+) -> Result<compiler::CompilationItemResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        compiler::compile_source(Path::new(&vault_path), &relative_source_path)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn batch_compile_sources(
+    vault_path: String,
+) -> Result<compiler::BatchCompilerReport, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        compiler::batch_compile_sources(Path::new(&vault_path))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn index_vault_search(vault_path: String) -> Result<search::IndexStatusReport, String> {
+    tauri::async_runtime::spawn_blocking(move || search::index_vault_search(Path::new(&vault_path)))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn search_vault(
+    vault_path: String,
+    query: search::SearchQuery,
+) -> Result<Vec<search::SearchResultItem>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        search::search_vault(Path::new(&vault_path), query)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn get_search_index_status(vault_path: String) -> Result<search::IndexStatusReport, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        search::get_search_index_status(Path::new(&vault_path))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn obsidian_path() -> Option<PathBuf> {
+    let mut paths = vec![PathBuf::from("/Applications/Obsidian.app")];
+    if let Ok(home) = std::env::var("HOME") {
+        paths.push(Path::new(&home).join("Applications/Obsidian.app"));
+    }
+    if let Some(p) = paths.into_iter().find(|p| p.is_dir()) {
+        return Some(p);
+    }
+    let output = Command::new("/usr/bin/mdfind")
+        .arg("kMDItemCFBundleIdentifier == 'md.obsidian'")
+        .output()
+        .ok()?;
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(PathBuf::from)
+        .find(|p| p.extension().is_some_and(|e| e == "app") && p.is_dir())
+}
+
+#[tauri::command]
+fn check_obsidian_installed() -> bool {
+    obsidian_path().is_some()
+}
+
+#[tauri::command]
+fn open_obsidian(vault_path: String) -> Result<(), String> {
+    let app = obsidian_path().ok_or("OBSIDIAN_NOT_INSTALLED")?;
+    let path = Path::new(&vault_path)
+        .canonicalize()
+        .map_err(|e| e.to_string())?;
+    if !path.is_dir() {
+        return Err("Vault path is not a directory".into());
+    }
+    let registered = std::env::var("HOME")
+        .ok()
+        .and_then(|home| {
+            std::fs::read_to_string(
+                Path::new(&home).join("Library/Application Support/obsidian/obsidian.json"),
+            )
+            .ok()
+        })
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok())
+        .is_some_and(|registry| obsidian_registered(&registry, &path));
+    let uri = if registered {
+        format!(
+            "obsidian://open?path={}",
+            urlencoding::encode(&path.to_string_lossy())
+        )
+    } else {
+        "obsidian://choose-vault".to_string()
+    };
+    let output = Command::new("/usr/bin/open")
+        .arg("-a")
+        .arg(app)
+        .arg(uri)
+        .output()
+        .map_err(|e| e.to_string())?;
+    if output.status.success() && !registered {
+        Err(format!("OBSIDIAN_REGISTRATION_REQUIRED: In Obsidian, use Open folder as vault → Open and select {}. This is required once; then press Open in Obsidian again.", path.display()))
+    } else if output.status.success() {
+        Ok(())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).into())
+    }
+}
+
+fn obsidian_registered(registry: &serde_json::Value, target: &Path) -> bool {
+    registry
+        .get("vaults")
+        .and_then(serde_json::Value::as_object)
+        .is_some_and(|vaults| {
+            vaults
+                .values()
+                .filter_map(|v| v.get("path").and_then(serde_json::Value::as_str))
+                .any(|p| Path::new(p).canonicalize().is_ok_and(|p| p == target))
+        })
 }
 
 fn main() {
+    let args:Vec<String>=std::env::args().collect();
+    if args.get(1).is_some_and(|s|s=="--mcp-stdio") {
+        if args.len()!=3 { eprintln!("Usage: limen-vault --mcp-stdio VAULT");std::process::exit(2); }
+        if let Err(e)=limen_vault::mcp::stdio(PathBuf::from(&args[2])) {eprintln!("{e}");std::process::exit(1);}
+        return;
+    }
+
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_default_vault_path])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .manage(std::sync::Arc::new(limen_vault::ai::AiState::default()))
+        .manage(limen_vault::mcp::McpState::default())
+        .manage(limen_vault::tunnel::TunnelState::default())
+        .invoke_handler(tauri::generate_handler![
+            get_default_vault_path,
+            create_vault,
+            open_vault,
+            validate_vault,
+            check_obsidian_installed,
+            open_obsidian,
+            verify_vault_integrity,
+            create_snapshot,
+            list_snapshots,
+            list_raw_sources,
+            list_proposals,
+            m7_execute,
+            tunnel_start,tunnel_stop,tunnel_status,tunnel_save_key,tunnel_config,list_knowledge,
+            compile_source,
+            batch_compile_sources,
+            index_vault_search,
+            search_vault,
+            get_search_index_status,
+            ai_key_status,ai_save_key,ai_delete_key,ai_preview,ai_ask,ai_cancel,ai_read_source,mcp_start,mcp_stop,mcp_status
+        ])
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app,event| { if matches!(event,tauri::RunEvent::ExitRequested{..}|tauri::RunEvent::Exit) {let _=app.state::<limen_vault::tunnel::TunnelState>().stop();} });
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn obsidian_registration_matches_canonical_path() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().canonicalize().unwrap();
+        let registry = serde_json::json!({"vaults":{"test":{"path":tmp.path(),"open":true}}});
+        assert!(obsidian_registered(&registry, &path));
+        assert!(!obsidian_registered(&serde_json::json!({}), &path));
+        assert!(!obsidian_registered(&registry, &path.join("different")));
+    }
+    #[test]
+    fn test_rust_vault_validation() {
+        let temp = tempfile::tempdir().unwrap();
+        let tmp = temp.path().to_path_buf();
+
+        for folder in REQUIRED_VAULT_FOLDERS.iter() {
+            fs::create_dir_all(tmp.join(folder)).unwrap();
+        }
+
+        fs::write(tmp.join("00_SYSTEM").join("HOME.md"), "# Home").unwrap();
+        fs::write(tmp.join("00_SYSTEM").join("VAULT_RULES.md"), "# Rules").unwrap();
+        fs::write(
+            tmp.join("00_SYSTEM").join("VAULT_MANIFEST.json"),
+            r#"{"schema_version": 1, "vault_id": "test", "vault_name": "Test", "created_at": "2026-09-11T00:00:00Z", "updated_at": "2026-09-11T00:00:00Z", "files": []}"#,
+        )
+        .unwrap();
+
+        let val = perform_vault_validation(&tmp);
+        assert!(val.is_valid, "Validation errors: {:?}", val.errors);
+        assert_eq!(val.checked_folders_count, 15);
+
+        let _ = fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_rust_invalid_yaml_rejection() {
+        let temp = tempfile::tempdir().unwrap();
+        let tmp = temp.path().to_path_buf();
+
+        for folder in REQUIRED_VAULT_FOLDERS.iter() {
+            fs::create_dir_all(tmp.join(folder)).unwrap();
+        }
+
+        fs::write(tmp.join("00_SYSTEM").join("HOME.md"), "# Home").unwrap();
+        fs::write(tmp.join("00_SYSTEM").join("VAULT_RULES.md"), "# Rules").unwrap();
+        fs::write(
+            tmp.join("00_SYSTEM").join("VAULT_MANIFEST.json"),
+            r#"{"schema_version": 1, "vault_id": "test", "vault_name": "Test", "created_at": "2026-09-11T00:00:00Z", "updated_at": "2026-09-11T00:00:00Z", "files": []}"#,
+        )
+        .unwrap();
+
+        // Write file with bad YAML syntax in frontmatter
+        fs::write(
+            tmp.join("01_CLIENTS").join("bad_yaml.md"),
+            "---\ntitle: \"Unclosed string\ninvalid: [bad list\n---\n# Content",
+        )
+        .unwrap();
+
+        let val = perform_vault_validation(&tmp);
+        assert!(
+            !val.is_valid,
+            "Vault with bad YAML frontmatter must be invalid"
+        );
+        assert!(val.errors.iter().any(|e| e.contains("Invalid YAML syntax")));
+
+        let _ = fs::remove_dir_all(&tmp);
+    }
+}
+
+#[tauri::command]
+async fn ai_key_status()->Result<bool,String>{tauri::async_runtime::spawn_blocking(||limen_vault::keychain::load().map(|v|v.is_some())).await.map_err(|_|"Keychain worker failed")?}
+#[tauri::command]
+async fn ai_save_key(key:String)->Result<(),String>{tauri::async_runtime::spawn_blocking(move||limen_vault::keychain::save(&key)).await.map_err(|_|"Keychain worker failed")?}
+#[tauri::command]
+async fn ai_delete_key()->Result<(),String>{tauri::async_runtime::spawn_blocking(limen_vault::keychain::delete).await.map_err(|_|"Keychain worker failed")?}
+#[tauri::command]
+async fn ai_preview(vault_path:String,options:limen_vault::ai::Options,state:tauri::State<'_,std::sync::Arc<limen_vault::ai::AiState>>)->Result<limen_vault::ai::Preview,String>{
+ let state=state.inner().clone();tauri::async_runtime::spawn_blocking(move||state.preview(PathBuf::from(vault_path),options)).await.map_err(|_|"Context worker failed")?
+}
+#[tauri::command]
+async fn ai_ask(ticket:String,state:tauri::State<'_,std::sync::Arc<limen_vault::ai::AiState>>)->Result<serde_json::Value,String>{
+ let state=state.inner().clone();let (pending,cancel)=state.begin(&ticket)?;
+ let key=tauri::async_runtime::spawn_blocking(limen_vault::keychain::load).await.map_err(|_|"Keychain worker failed".to_string()).and_then(|r|r).and_then(|k|k.ok_or("Configure API key in Settings".into()));
+ let result=match key {Ok(key)=>limen_vault::ai::ask(pending,key,cancel).await,Err(e)=>Err(e)};
+ state.finish(&ticket);result
+}
+#[tauri::command]
+fn ai_cancel(ticket:String,state:tauri::State<'_,std::sync::Arc<limen_vault::ai::AiState>>){state.cancel(&ticket);}
+#[tauri::command]
+async fn ai_read_source(vault_path:String,document_id:String,sha256:String,include_drafts:bool)->Result<limen_vault::ai::Source,String>{
+ tauri::async_runtime::spawn_blocking(move||limen_vault::ai::read_source(Path::new(&vault_path),&document_id,&sha256,include_drafts)).await.map_err(|_|"Source worker failed")?
+}
+#[tauri::command]
+fn mcp_status(state:tauri::State<'_,limen_vault::mcp::McpState>)->serde_json::Value{state.status()}
+#[tauri::command]
+fn mcp_stop(state:tauri::State<'_,limen_vault::mcp::McpState>){state.stop();}
+#[tauri::command]
+fn mcp_start(vault_path:String,include_drafts:bool,state:tauri::State<'_,limen_vault::mcp::McpState>)->Result<limen_vault::mcp::ConnectionInfo,String>{state.start(PathBuf::from(vault_path),include_drafts)}

@@ -1,0 +1,6 @@
+12 settembre 2026 — esiti osservati nella sessione
+pnpm --filter @limen-vault/desktop test:m3-e2e: exit 0
+Native M3 E2E/parity: create, persistence across processes, TS/native cross-verification, live counts, read-only, tamper/missing/added, schema/traversal, interrupted staging, 4 concurrent creations, permissions and symlinks.
+pnpm --filter @limen-vault/desktop test:native-parity: exit 0
+Real TS/Rust parity: 10 YAML fixtures, 7 filesystem failures, missing path.
+Le righe sono un riepilogo fedele degli output della conversazione, non un log di una nuova esecuzione.

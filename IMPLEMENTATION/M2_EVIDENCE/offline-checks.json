@@ -1,0 +1,15 @@
+{
+  "checkout": {
+    "exit": 1,
+    "error": "cat: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/package.json: Operation not permitted"
+  },
+  "network": {
+    "exit": 7,
+    "error": "% Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n\n  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\n  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\ncurl: (7) Failed to connect to 127.0.0.1 port 1420 after 0 ms: Couldn't connect to server"
+  },
+  "no_node_in_path": true,
+  "zero_overwrite_hashes": true,
+  "created_folders": 15,
+  "sandbox_connect_probe": "connect=-1 errno=1 (EPERM)",
+  "vite_1420_listener": false
+}

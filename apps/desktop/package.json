@@ -9,16 +9,24 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'desktop clean'",
-    "test": "echo 'desktop tests pass'",
-    "tauri": "tauri"
+    "test": "node --import tsx/esm tests/desktop-ipc.test.ts",
+    "tauri": "tauri",
+    "test:native-parity": "node --import tsx/esm tests/native-parity.test.ts",
+    "test:m3-e2e": "node --import tsx/esm tests/m3-native-e2e.test.ts",
+    "test:m4-e2e": "node --import tsx/esm tests/m4-native-e2e.test.ts",
+    "test:m5-e2e": "node --import tsx/esm tests/m5-native-e2e.test.ts",
+    "test:m6-e2e": "node --import tsx/esm tests/m6-native-e2e.test.ts",
+    "test:m7-e2e": "node --import tsx/esm tests/m7-native-e2e.test.ts"
   },
   "dependencies": {
     "@limen-vault/ui": "workspace:*",
     "@limen-vault/vault-core": "workspace:*",
     "@limen-vault/vault-schema": "workspace:*",
+    "@tauri-apps/api": "^2.1.1",
     "lucide-react": "^0.469.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "@limen-vault/proposal-engine": "workspace:*"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.1.0",

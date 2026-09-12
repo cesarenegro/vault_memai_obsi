@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "LIMEN Vault Desktop macOS Application"
 authors = ["LIMEN"]
 edition = "2021"
+default-run = "limen-vault"
 
 [build-dependencies]
 tauri-build = { version = "2.0.0", features = [] }
@@ -12,6 +13,25 @@ tauri-build = { version = "2.0.0", features = [] }
 tauri = { version = "2.1.1", features = [] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+urlencoding = "2.1"
+serde_yaml = "0.9"
+cap-std = "4"
+libc = "0.2"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+sha2 = "0.10"
+regex = "1"
+unicode-normalization = "0.1"
+reqwest = { version = "0.13", features = ["blocking", "json"] }
+tiny_http = "0.12"
+tokio = { version = "1", features = ["time", "macros"] }
+getrandom = "0.3"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = "3"
+
+[dev-dependencies]
+tempfile = "3"
+
 
 [features]
 default = ["custom-protocol"]

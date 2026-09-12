@@ -8,12 +8,15 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'vault-core clean'",
-    "test": "node --import tsx/esm tests/vault-core.test.ts"
+    "test": "node --import tsx/esm tests/vault-core.test.ts && node --import tsx/esm tests/m2-regressions.test.ts"
   },
   "dependencies": {
-    "@limen-vault/vault-schema": "workspace:*"
+    "@limen-vault/vault-schema": "workspace:*",
+    "js-yaml": "^4.1.0",
+    "koffi": "^3.2.1"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "typescript": "^5.7.2"
   }
 }

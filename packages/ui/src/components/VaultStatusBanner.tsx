@@ -37,7 +37,7 @@ export const VaultStatusBanner: React.FC<VaultStatusBannerProps> = ({
             {vaultName || 'No Vault Loaded'}
           </div>
           <div style={{ fontSize: 12, color: 'var(--limen-text-muted)', marginTop: 2 }}>
-            {vaultPath ? vaultPath : 'Select or create a local Vault directory'} • {pageCount} Knowledge Pages
+            {vaultPath ? vaultPath : 'Select or create a local Vault directory'} • {pageCount} Markdown Files
           </div>
         </div>
       </div>

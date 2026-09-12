@@ -1,0 +1,49 @@
+{
+  "api": "real desktop response",
+  "model": "gpt-4o-mini-2024-07-18",
+  "tokensObservedInUI": 403,
+  "changedFiles": [
+    "80_AI_OUTPUTS/f62c1207b9654e76880e14ad88d1180050331785e92c4b2aa688a2f2fd893a98-r1.md",
+    "00_SYSTEM/M7_STATE.json",
+    "00_SYSTEM/.m7-lock"
+  ],
+  "rawAndExistingNotesUnchanged": true,
+  "state": {
+    "version": 2,
+    "generation": 1,
+    "items": {
+      "f62c1207b9654e76880e14ad88d1180050331785e92c4b2aa688a2f2fd893a98": {
+        "id": "f62c1207b9654e76880e14ad88d1180050331785e92c4b2aa688a2f2fd893a98",
+        "kind": "output",
+        "title": "What is the Aurora launch date and verification phrase? Cite the approved source.",
+        "category": "",
+        "workflowStatus": "pending",
+        "revisions": [
+          {
+            "revision": 1,
+            "relativePath": "80_AI_OUTPUTS/f62c1207b9654e76880e14ad88d1180050331785e92c4b2aa688a2f2fd893a98-r1.md",
+            "sha256": "bc0a2772b66d3e3865fea4259d71ccbcf5ca7975bb12a391ee4179488003e933",
+            "createdAt": "2026-09-12T15:05:17.914265+00:00"
+          }
+        ],
+        "sources": [
+          {
+            "category": "client",
+            "documentId": "doc_bcf50406ab48952e893227ab8239273205c04afcba54a606b17876e467c2a35a",
+            "relativePath": "01_CLIENTS/approved.md",
+            "sha256": "846481b490e32c1e80d0fe622307c647800ea7e3b215cf101a900f7e6c1b7d0d",
+            "status": "approved",
+            "title": "Aurora approved"
+          }
+        ],
+        "origin": "OpenAI response explicitly saved locally",
+        "provider": "openai",
+        "model": "gpt-4o-mini-2024-07-18",
+        "decision": null
+      }
+    },
+    "operations": {
+      "f62c1207b9654e76880e14ad88d1180050331785e92c4b2aa688a2f2fd893a98": "7653a4afb0945771c7a9b887f9815a6a3da2fe153493c1e77343029dc9829720"
+    }
+  }
+}

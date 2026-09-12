@@ -1,0 +1,11 @@
+{
+  "keychainCopy": "status 0, no secret emitted",
+  "signedAppKeychainAccess": "user authorized",
+  "start": "Local tunnel ready observed",
+  "children": [
+    89216,
+    89218
+  ],
+  "stop": "STOP BUSINESS TUNNEL observed Tunnel stopped; both actual child PIDs absent",
+  "remoteBusinessAcceptance": "pending"
+}

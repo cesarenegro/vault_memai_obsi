@@ -1,0 +1,509 @@
+{
+  "bank": "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8",
+  "platform": "Darwin arm64",
+  "app_sha256": "2e56c116593de5eca9886e523e07af4a5f1d9f8257252b23b99db6b2ad1fb672",
+  "harness_sha256": "f1c8805a6f78546c1ffda9f21b14e24eb2c5e67c175ba75518bae612e0e8adf9",
+  "bundle_inventory": {
+    "Contents/Info.plist": "09c75bb744d9406f5e7f961f86205ebb81a9da577ec51408f842e23a9ed164e8",
+    "Contents/MacOS/limen-vault": "2e56c116593de5eca9886e523e07af4a5f1d9f8257252b23b99db6b2ad1fb672",
+    "Contents/Resources/icon.icns": "21e41cae95b394ca7ccf98d8457e625e6e16080ecb1a8ef834275cf9ee83dd24",
+    "Contents/Resources/mcp/LICENSE": "f4c1d7ba32ef5bcf5cf03e2eefec5825ebafedf50fa330a36700a49c605c1ef4",
+    "Contents/Resources/mcp/NOTICE": "1364c020d86ecf948b78b7c655175032068203d13aece70fb0bfe112d7802dc2",
+    "Contents/Resources/mcp/cloudflared": "77a090a3901745b7e8f0b3ce75fffbafa443c51dddf70f27af6711725f74ce46",
+    "Contents/Resources/mcp/cloudflared-manifest.json": "80003d8a8f38d6a0bd74aabc096e9f99a6e8fad8ed4da699e26a8231fa453aa1",
+    "Contents/Resources/mcp/tunnel-client": "deb06b923b5bacf759d9eef457b73d2d064983373edfa094736456e25f1bb3ef",
+    "Contents/Resources/mcp/tunnel-client-v0.0.14-darwin-arm64-licenses.txt": "43fe622ebdd5fc5813415f5c7c8fb0ef0d7d551fa3383c66d04779aeb7906ef5",
+    "Contents/Resources/mcp/tunnel-client-v0.0.14-darwin-arm64.spdx.json": "93932adb3b879e37b486fb000cbb84241795fd2139d76eb85773c17c30a184bb",
+    "Contents/Resources/mcp/upstream-manifest.json": "fd5ebff881cb391a6b5f47b44e13b19f1c2dc968f127f583d94ff4ba121916fd",
+    "Contents/Resources/vault-template/00_SYSTEM/HOME.md": "37153380da43afd1a9de225ddaba693ee5841371e20044296130c519033a9d75",
+    "Contents/Resources/vault-template/00_SYSTEM/VAULT_MANIFEST.json": "bd5776ded20114b033259db15044bc73c80a94ad3fc425b37016e4b702f1e0f1",
+    "Contents/Resources/vault-template/00_SYSTEM/VAULT_RULES.md": "a8752973ff81088a8ce25944a3c067ff9720c48f78bb7818d2ab854ed105dc67",
+    "Contents/Resources/vault-template/01_CLIENTS/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Contents/Resources/vault-template/02_PROJECTS/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Contents/Resources/vault-template/03_BRANDS/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Contents/Resources/vault-template/04_POSITIONING/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Contents/Resources/vault-template/05_PACKAGING_KNOWLEDGE/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Contents/Resources/vault-template/06_METHODS/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Contents/Resources/vault-template/07_CASE_STUDIES/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Contents/Resources/vault-template/08_MARKET_RESEARCH/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Contents/Resources/vault-template/09_COMPETITORS/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Contents/Resources/vault-template/10_APPROVED_OUTPUTS/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Contents/Resources/vault-template/20_RAW_SOURCES/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Contents/Resources/vault-template/80_AI_OUTPUTS/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Contents/Resources/vault-template/90_PROPOSALS/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Contents/Resources/vault-template/99_ARCHIVE/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Contents/_CodeSignature/CodeResources": "350d28c2a60e8971395235fb2c30cc8c7afa0088fb8a2c56885cfb66b2f2244b"
+  },
+  "policy": "(version 1)\n(allow default)\n(deny network*)\n(deny file-read* (subpath \"/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN\"))\n",
+  "results": [
+    {
+      "criterion": "Isolation enforced",
+      "status": "PASS",
+      "detail": "Loopback HTTP works outside sandbox and is denied inside; checkout read and Node lookup denied."
+    },
+    {
+      "criterion": "S1 native local operations offline",
+      "status": "PASS",
+      "detail": "Actual native create/open, RAW compilation, search/index and snapshot verification; no cloud."
+    },
+    {
+      "criterion": "S3 native persistence and read-only inventory",
+      "status": "PASS",
+      "detail": "Each call starts a new native process; persistent records recovered; complete inventory unchanged."
+    },
+    {
+      "criterion": "S6 corrupt and missing index",
+      "status": "PASS",
+      "detail": "Corrupt index fails and is preserved; absent index explicitly rebuilt."
+    },
+    {
+      "criterion": "S7 confinement, permission and snapshot corruption",
+      "status": "PASS",
+      "detail": "RAW symlink/traversal rejected, unreadable source rejected, altered snapshot detected."
+    },
+    {
+      "criterion": "S8 partial: existing lock/staging",
+      "status": "PASS",
+      "detail": "Pre-existing interrupted state is preserved and unpublished; actual kill-during-write NOT tested here."
+    },
+    {
+      "criterion": "Release bundle MCP offline",
+      "status": "PASS",
+      "detail": "Copied release app stdio works without network or checkout; read-only tool surface. GUI not inferred from CLI."
+    },
+    {
+      "criterion": "S2/S8 native M7 approval and actual interrupted writes",
+      "status": "PASS",
+      "detail": "Native approval offline, RAW preserved, actual SIGKILL at journal/document/index, explicit recovery/idempotence, re-index and approved search."
+    },
+    {
+      "criterion": "S1 GUI offline",
+      "status": "NOT_VERIFIED",
+      "detail": "Native operations passed separately; GUI full flow not executed by this bank."
+    },
+    {
+      "criterion": "S2 M7 desktop review/approval",
+      "status": "NOT_VERIFIED",
+      "detail": "Native M7 and UI implemented; desktop acceptance requires direct observation."
+    },
+    {
+      "criterion": "S4 interrupted provider / responsive GUI",
+      "status": "NOT_VERIFIED",
+      "detail": "Requires GUI operation and cancellation while network/service unavailable."
+    },
+    {
+      "criterion": "S5 external client unavailable",
+      "status": "NOT_VERIFIED",
+      "detail": "M6 evidence is baseline; no integrated M8 client scenario executed here."
+    },
+    {
+      "criterion": "Obsidian integrated acceptance",
+      "status": "NOT_VERIFIED",
+      "detail": "Requires actual Obsidian opening of this Vault; not tested here."
+    }
+  ],
+  "commands": [
+    {
+      "args": [
+        "/usr/bin/curl",
+        "--max-time",
+        "3",
+        "http://127.0.0.1:52498"
+      ],
+      "exit": 7,
+      "stdout": "",
+      "stderr": "  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n\n  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\n  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\ncurl: (7) Failed to connect to 127.0.0.1 port 52498 after 0 ms: Couldn't connect to server\n"
+    },
+    {
+      "args": [
+        "/bin/cat",
+        "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/package.json"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "cat: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/package.json: Operation not permitted\n"
+    },
+    {
+      "args": [
+        "/bin/sh",
+        "-c",
+        "command -v node"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "create",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/LIMEN Vault.app/Contents/Resources/vault-template"
+      ],
+      "exit": 0,
+      "stdout": "{\"state\":\"READY\",\"path\":\"/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé\",\"name\":\"Parity Vault\",\"page_count\":2,\"source_count\":0,\"proposal_count\":0,\"snapshot_id\":null,\"snapshot_age\":null,\"integrity_status\":\"unverified\"}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "open",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé"
+      ],
+      "exit": 0,
+      "stdout": "{\"status\":{\"state\":\"READY\",\"path\":\"/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé\",\"name\":\"Parity Vault\",\"page_count\":2,\"source_count\":0,\"proposal_count\":0,\"snapshot_id\":null,\"snapshot_age\":null,\"integrity_status\":\"unverified\"},\"validation\":{\"is_valid\":true,\"errors\":[],\"warnings\":[],\"checked_folders_count\":15,\"checked_files_count\":3,\"system_files_valid\":true,\"page_count\":2,\"source_count\":0,\"proposal_count\":0,\"state\":\"READY\"}}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "knowledge",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "01_CLIENTS"
+      ],
+      "exit": 0,
+      "stdout": "[{\"markdown\":\"---\\nschema_version: 1\\nid: m8-approved\\ntitle: Aurora\\ntype: client\\nclient: Acme\\nproject: Aurora\\nstatus: approved\\ncreated_at: \\\"2026-09-12T00:00:00Z\\\"\\nupdated_at: \\\"2026-09-12T00:00:00Z\\\"\\ntags: [offline]\\nsource_ids: []\\n---\\nAurora local offline verification.\\n\",\"relativePath\":\"01_CLIENTS/approved.md\",\"sha256\":\"325ff9df92f6346ff4882f4696dc421b3f1945522eb359ada17c7028f03d0207\",\"status\":\"approved\",\"title\":\"Aurora\"}]\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "compile",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "20_RAW_SOURCES/source.txt"
+      ],
+      "exit": 0,
+      "stdout": "{\"source_relative_path\":\"20_RAW_SOURCES/source.txt\",\"status\":\"compiled\",\"draft_relative_path\":\"90_PROPOSALS/src_a42a0f2c50a9d8c171811068770c59d866b6c6c63e7294529556871705955dd1-bc1f6b7ae864ca18-1789226428630949000-83282-0.md\",\"error\":null}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "search-index",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé"
+      ],
+      "exit": 0,
+      "stdout": "{\"state\":\"ready\",\"total_indexed\":2,\"last_indexed_at\":\"2026-09-12T15:20:28.676Z\",\"version\":2,\"indexed_categories\":{\"client\":1,\"proposal\":1}}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "search",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "{\"term\": \"Aurora\"}"
+      ],
+      "exit": 0,
+      "stdout": "[{\"id\":\"doc_bcf50406ab48952e893227ab8239273205c04afcba54a606b17876e467c2a35a\",\"title\":\"Aurora\",\"relative_path\":\"01_CLIENTS/approved.md\",\"category\":\"client\",\"client\":\"Acme\",\"project\":\"Aurora\",\"tags\":[\"offline\"],\"status\":\"approved\",\"snippet\":\"Aurora local offline verification.\",\"score\":12.0,\"updated_at\":\"2026-09-12T00:00:00Z\",\"sha256\":\"325ff9df92f6346ff4882f4696dc421b3f1945522eb359ada17c7028f03d0207\"},{\"id\":\"doc_5790919b6f83ad868e04c8e0934f9f79a73077655edfd7cedb40f59222a53e07\",\"title\":\"source\",\"relative_path\":\"90_PROPOSALS/src_a42a0f2c50a9d8c171811068770c59d866b6c6c63e7294529556871705955dd1-bc1f6b7ae864ca18-1789226428630949000-83282-0.md\",\"category\":\"proposal\",\"client\":null,\"project\":null,\"tags\":[\"compiled\",\"txt\"],\"status\":\"draft\",\"snippet\":\"source Source: 20RAWSOURCES/source.txt SHA-256: bc1f6b7ae864ca18f1b5becf9cda8f126490b6396ebd14ae161abee39eabf927 Compiler: 0.2.0 Aurora local compilation test àèé.\",\"score\":1.0,\"updated_at\":\"2026-09-12T15:20:28.630Z\",\"sha256\":\"e97c2a42c69a4d2ff5d0fac33a33749c63b5525013f03bfd41cd300de272f816\"}]\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "snapshot",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "M8 offline snapshot"
+      ],
+      "exit": 0,
+      "stdout": "{\"id\":\"snap-20260912T152028710389000Z-83285-0\",\"vault_path\":\"/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé\",\"snapshot_path\":\"/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé/00_SYSTEM/SNAPSHOTS/snap-20260912T152028710389000Z-83285-0\",\"created_at\":\"2026-09-12T15:20:28.710Z\",\"note\":\"M8 offline snapshot\",\"manifest_file_count\":8,\"integrity_status\":\"valid\"}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "snapshot-verify",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "snap-20260912T152028710389000Z-83285-0"
+      ],
+      "exit": 0,
+      "stdout": "{\"is_integrity_valid\":true,\"manifest_present\":true,\"total_manifested_files\":8,\"verified_files_count\":8,\"modified_files\":[],\"missing_files\":[],\"added_files\":[],\"errors\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "open",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé"
+      ],
+      "exit": 0,
+      "stdout": "{\"status\":{\"state\":\"READY\",\"path\":\"/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé\",\"name\":\"Parity Vault\",\"page_count\":4,\"source_count\":0,\"proposal_count\":1,\"snapshot_id\":null,\"snapshot_age\":null,\"integrity_status\":\"unverified\"},\"validation\":{\"is_valid\":true,\"errors\":[],\"warnings\":[],\"checked_folders_count\":15,\"checked_files_count\":8,\"system_files_valid\":true,\"page_count\":4,\"source_count\":0,\"proposal_count\":1,\"state\":\"READY\"}}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "sources",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé"
+      ],
+      "exit": 0,
+      "stdout": "[{\"relative_path\":\"20_RAW_SOURCES/source.txt\",\"name\":\"source.txt\",\"extension\":\"txt\",\"size_bytes\":37,\"is_compiled\":true,\"status\":\"COMPILED\",\"first_compiled_at\":\"2026-09-12T15:20:28.630Z\",\"error\":null}]\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "proposals",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé"
+      ],
+      "exit": 0,
+      "stdout": "[{\"relative_path\":\"90_PROPOSALS/src_a42a0f2c50a9d8c171811068770c59d866b6c6c63e7294529556871705955dd1-bc1f6b7ae864ca18-1789226428630949000-83282-0.md\",\"title\":\"source\",\"status\":\"draft\",\"markdown\":\"---\\ncreated_at: 2026-09-12T15:20:28.630Z\\nid: prop_src_a42a0f2c50a9d8c171811068770c59d866b6c6c63e7294529556871705955dd1_1789226428630949000-83282-0\\nschema_version: 1\\nsource_ids:\\n- src_a42a0f2c50a9d8c171811068770c59d866b6c6c63e7294529556871705955dd1\\nstatus: draft\\ntags:\\n- compiled\\n- txt\\ntitle: source\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:28.630Z\\n---\\n\\n# source\\n\\n> Source: 20_RAW_SOURCES/source.txt\\n> SHA-256: bc1f6b7ae864ca18f1b5becf9cda8f126490b6396ebd14ae161abee39eabf927\\n> Compiler: 0.2.0\\n\\nAurora local compilation test àèé.\\n\"}]\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "snapshots",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé"
+      ],
+      "exit": 0,
+      "stdout": "[{\"id\":\"snap-20260912T152028710389000Z-83285-0\",\"vault_path\":\"/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé\",\"snapshot_path\":\"/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé/00_SYSTEM/SNAPSHOTS/snap-20260912T152028710389000Z-83285-0\",\"created_at\":\"2026-09-12T15:20:28.710Z\",\"note\":\"M8 offline snapshot\",\"manifest_file_count\":8,\"integrity_status\":\"valid\"}]\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "search",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "{\"term\": \"Aurora\"}"
+      ],
+      "exit": 0,
+      "stdout": "[{\"id\":\"doc_bcf50406ab48952e893227ab8239273205c04afcba54a606b17876e467c2a35a\",\"title\":\"Aurora\",\"relative_path\":\"01_CLIENTS/approved.md\",\"category\":\"client\",\"client\":\"Acme\",\"project\":\"Aurora\",\"tags\":[\"offline\"],\"status\":\"approved\",\"snippet\":\"Aurora local offline verification.\",\"score\":12.0,\"updated_at\":\"2026-09-12T00:00:00Z\",\"sha256\":\"325ff9df92f6346ff4882f4696dc421b3f1945522eb359ada17c7028f03d0207\"},{\"id\":\"doc_5790919b6f83ad868e04c8e0934f9f79a73077655edfd7cedb40f59222a53e07\",\"title\":\"source\",\"relative_path\":\"90_PROPOSALS/src_a42a0f2c50a9d8c171811068770c59d866b6c6c63e7294529556871705955dd1-bc1f6b7ae864ca18-1789226428630949000-83282-0.md\",\"category\":\"proposal\",\"client\":null,\"project\":null,\"tags\":[\"compiled\",\"txt\"],\"status\":\"draft\",\"snippet\":\"source Source: 20RAWSOURCES/source.txt SHA-256: bc1f6b7ae864ca18f1b5becf9cda8f126490b6396ebd14ae161abee39eabf927 Compiler: 0.2.0 Aurora local compilation test àèé.\",\"score\":1.0,\"updated_at\":\"2026-09-12T15:20:28.630Z\",\"sha256\":\"e97c2a42c69a4d2ff5d0fac33a33749c63b5525013f03bfd41cd300de272f816\"}]\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "search",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "{\"term\": \"Aurora\"}"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "key must be a string at line 1 column 2\n"
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "search-index",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé"
+      ],
+      "exit": 0,
+      "stdout": "{\"state\":\"ready\",\"total_indexed\":2,\"last_indexed_at\":\"2026-09-12T15:20:29.058Z\",\"version\":2,\"indexed_categories\":{\"client\":1,\"proposal\":1}}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "search",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "{\"term\": \"Aurora\"}"
+      ],
+      "exit": 0,
+      "stdout": "[{\"id\":\"doc_bcf50406ab48952e893227ab8239273205c04afcba54a606b17876e467c2a35a\",\"title\":\"Aurora\",\"relative_path\":\"01_CLIENTS/approved.md\",\"category\":\"client\",\"client\":\"Acme\",\"project\":\"Aurora\",\"tags\":[\"offline\"],\"status\":\"approved\",\"snippet\":\"Aurora local offline verification.\",\"score\":12.0,\"updated_at\":\"2026-09-12T00:00:00Z\",\"sha256\":\"325ff9df92f6346ff4882f4696dc421b3f1945522eb359ada17c7028f03d0207\"},{\"id\":\"doc_5790919b6f83ad868e04c8e0934f9f79a73077655edfd7cedb40f59222a53e07\",\"title\":\"source\",\"relative_path\":\"90_PROPOSALS/src_a42a0f2c50a9d8c171811068770c59d866b6c6c63e7294529556871705955dd1-bc1f6b7ae864ca18-1789226428630949000-83282-0.md\",\"category\":\"proposal\",\"client\":null,\"project\":null,\"tags\":[\"compiled\",\"txt\"],\"status\":\"draft\",\"snippet\":\"source Source: 20RAWSOURCES/source.txt SHA-256: bc1f6b7ae864ca18f1b5becf9cda8f126490b6396ebd14ae161abee39eabf927 Compiler: 0.2.0 Aurora local compilation test àèé.\",\"score\":1.0,\"updated_at\":\"2026-09-12T15:20:28.630Z\",\"sha256\":\"e97c2a42c69a4d2ff5d0fac33a33749c63b5525013f03bfd41cd300de272f816\"}]\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "compile",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "20_RAW_SOURCES/link.txt"
+      ],
+      "exit": 0,
+      "stdout": "{\"source_relative_path\":\"20_RAW_SOURCES/link.txt\",\"status\":\"error\",\"draft_relative_path\":null,\"error\":\"a path led outside of the filesystem\"}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "compile",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "20_RAW_SOURCES/../00_SYSTEM/HOME.md"
+      ],
+      "exit": 0,
+      "stdout": "{\"source_relative_path\":\"20_RAW_SOURCES/../00_SYSTEM/HOME.md\",\"status\":\"error\",\"draft_relative_path\":null,\"error\":\"Unsafe relative path\"}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "search",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "{\"term\": \"Aurora\"}"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Permission denied (os error 13)\n"
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "snapshot-verify",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "snap-20260912T152028710389000Z-83285-0"
+      ],
+      "exit": 0,
+      "stdout": "{\"is_integrity_valid\":false,\"manifest_present\":true,\"total_manifested_files\":8,\"verified_files_count\":7,\"modified_files\":[\"01_CLIENTS/approved.md\"],\"missing_files\":[],\"added_files\":[],\"errors\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "compile",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "20_RAW_SOURCES/source.txt"
+      ],
+      "exit": 0,
+      "stdout": "{\"source_relative_path\":\"20_RAW_SOURCES/source.txt\",\"status\":\"error\",\"draft_relative_path\":null,\"error\":\"Compiler lock unavailable; another operation or interrupted run: File exists (os error 17)\"}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "snapshots",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé"
+      ],
+      "exit": 0,
+      "stdout": "[{\"id\":\"snap-20260912T152028710389000Z-83285-0\",\"vault_path\":\"/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé\",\"snapshot_path\":\"/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé/00_SYSTEM/SNAPSHOTS/snap-20260912T152028710389000Z-83285-0\",\"created_at\":\"2026-09-12T15:20:28.710Z\",\"note\":\"M8 offline snapshot\",\"manifest_file_count\":8,\"integrity_status\":\"corrupted\"}]\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "search-index",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé"
+      ],
+      "exit": 0,
+      "stdout": "{\"state\":\"ready\",\"total_indexed\":2,\"last_indexed_at\":\"2026-09-12T15:20:29.407Z\",\"version\":2,\"indexed_categories\":{\"client\":1,\"proposal\":1}}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "m7",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "{\"action\": \"create\", \"operationId\": \"1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\", \"title\": \"M8 human review\", \"category\": \"client\", \"content\": \"Aurora offline review\"}"
+      ],
+      "exit": 0,
+      "stdout": "{\"generation\":1,\"items\":[{\"category\":\"client\",\"decision\":null,\"id\":\"1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.497712+00:00\",\"relativePath\":\"90_PROPOSALS/1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08-r1.md\",\"revision\":1,\"sha256\":\"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"M8 human review\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.497718+00:00\\nid: 1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: M8 human review\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.497718+00:00\\n---\\nAurora offline review\\n\",\"revision\":1}],\"workflowStatus\":\"pending\"}],\"reindexRequired\":true,\"version\":2}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "m7",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "{\"action\": \"approve\", \"operationId\": \"ab1873e1389fdd677af992f474311b660c40945ccf457f3b9160ff2f13581835\", \"id\": \"1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\", \"revision\": 1, \"expectedSha256\": \"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\", \"targetPath\": \"01_CLIENTS/m8-reviewed.md\"}"
+      ],
+      "exit": 0,
+      "stdout": "{\"generation\":2,\"items\":[{\"category\":\"client\",\"decision\":{\"action\":\"approve\",\"actor\":\"local human action\",\"at\":\"2026-09-12T15:20:30.531265+00:00\",\"publishedSha256\":\"9a9cacf05260a8743db6ffc1a1c75eb1622e384eda79aded56bdbe1e19e9f7ad\",\"revision\":1,\"sha256\":\"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\",\"targetPath\":\"01_CLIENTS/m8-reviewed.md\"},\"id\":\"1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.497712+00:00\",\"relativePath\":\"90_PROPOSALS/1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08-r1.md\",\"revision\":1,\"sha256\":\"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"M8 human review\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.497718+00:00\\nid: 1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: M8 human review\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.497718+00:00\\n---\\nAurora offline review\\n\",\"revision\":1}],\"workflowStatus\":\"approved\"}],\"reindexRequired\":true,\"version\":2}\n",
+      "stderr": ""
+    },
+    {
+      "stage": "journal",
+      "exit": -9,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "m7",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "{\"action\": \"recover\"}"
+      ],
+      "exit": 0,
+      "stdout": "{\"generation\":3,\"items\":[{\"category\":\"client\",\"decision\":{\"action\":\"approve\",\"actor\":\"local human action\",\"at\":\"2026-09-12T15:20:30.531265+00:00\",\"publishedSha256\":\"9a9cacf05260a8743db6ffc1a1c75eb1622e384eda79aded56bdbe1e19e9f7ad\",\"revision\":1,\"sha256\":\"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\",\"targetPath\":\"01_CLIENTS/m8-reviewed.md\"},\"id\":\"1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.497712+00:00\",\"relativePath\":\"90_PROPOSALS/1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08-r1.md\",\"revision\":1,\"sha256\":\"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"M8 human review\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.497718+00:00\\nid: 1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: M8 human review\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.497718+00:00\\n---\\nAurora offline review\\n\",\"revision\":1}],\"workflowStatus\":\"approved\"},{\"category\":\"client\",\"decision\":null,\"id\":\"9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.560388+00:00\",\"relativePath\":\"90_PROPOSALS/9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d-r1.md\",\"revision\":1,\"sha256\":\"4d848eba9248bb5526e581293da6f3accc44b9f7d6e5d93c421f165092b9b82d\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"Killed journal\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.560393+00:00\\nid: 9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: Killed journal\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.560393+00:00\\n---\\nRecover exact bytes\\n\",\"revision\":1}],\"workflowStatus\":\"pending\"}],\"reindexRequired\":true,\"version\":2}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "m7",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "{\"action\": \"create\", \"operationId\": \"9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d\", \"title\": \"Killed journal\", \"category\": \"client\", \"content\": \"Recover exact bytes\"}"
+      ],
+      "exit": 0,
+      "stdout": "{\"generation\":3,\"items\":[{\"category\":\"client\",\"decision\":{\"action\":\"approve\",\"actor\":\"local human action\",\"at\":\"2026-09-12T15:20:30.531265+00:00\",\"publishedSha256\":\"9a9cacf05260a8743db6ffc1a1c75eb1622e384eda79aded56bdbe1e19e9f7ad\",\"revision\":1,\"sha256\":\"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\",\"targetPath\":\"01_CLIENTS/m8-reviewed.md\"},\"id\":\"1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.497712+00:00\",\"relativePath\":\"90_PROPOSALS/1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08-r1.md\",\"revision\":1,\"sha256\":\"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"M8 human review\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.497718+00:00\\nid: 1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: M8 human review\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.497718+00:00\\n---\\nAurora offline review\\n\",\"revision\":1}],\"workflowStatus\":\"approved\"},{\"category\":\"client\",\"decision\":null,\"id\":\"9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.560388+00:00\",\"relativePath\":\"90_PROPOSALS/9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d-r1.md\",\"revision\":1,\"sha256\":\"4d848eba9248bb5526e581293da6f3accc44b9f7d6e5d93c421f165092b9b82d\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"Killed journal\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.560393+00:00\\nid: 9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: Killed journal\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.560393+00:00\\n---\\nRecover exact bytes\\n\",\"revision\":1}],\"workflowStatus\":\"pending\"}],\"reindexRequired\":true,\"version\":2}\n",
+      "stderr": ""
+    },
+    {
+      "stage": "document",
+      "exit": -9,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "m7",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "{\"action\": \"recover\"}"
+      ],
+      "exit": 0,
+      "stdout": "{\"generation\":4,\"items\":[{\"category\":\"client\",\"decision\":{\"action\":\"approve\",\"actor\":\"local human action\",\"at\":\"2026-09-12T15:20:30.531265+00:00\",\"publishedSha256\":\"9a9cacf05260a8743db6ffc1a1c75eb1622e384eda79aded56bdbe1e19e9f7ad\",\"revision\":1,\"sha256\":\"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\",\"targetPath\":\"01_CLIENTS/m8-reviewed.md\"},\"id\":\"1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.497712+00:00\",\"relativePath\":\"90_PROPOSALS/1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08-r1.md\",\"revision\":1,\"sha256\":\"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"M8 human review\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.497718+00:00\\nid: 1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: M8 human review\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.497718+00:00\\n---\\nAurora offline review\\n\",\"revision\":1}],\"workflowStatus\":\"approved\"},{\"category\":\"client\",\"decision\":null,\"id\":\"9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.560388+00:00\",\"relativePath\":\"90_PROPOSALS/9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d-r1.md\",\"revision\":1,\"sha256\":\"4d848eba9248bb5526e581293da6f3accc44b9f7d6e5d93c421f165092b9b82d\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"Killed journal\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.560393+00:00\\nid: 9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: Killed journal\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.560393+00:00\\n---\\nRecover exact bytes\\n\",\"revision\":1}],\"workflowStatus\":\"pending\"},{\"category\":\"client\",\"decision\":null,\"id\":\"bc7b34f5fc0e09290479420c50e014e006cf9b72202eb2becb8fd8e97bc34337\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.640788+00:00\",\"relativePath\":\"90_PROPOSALS/bc7b34f5fc0e09290479420c50e014e006cf9b72202eb2becb8fd8e97bc34337-r1.md\",\"revision\":1,\"sha256\":\"3b68592ac384a651539710652d4b4b0eccc1c783f49b4fc268d0aabf4497de2f\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"Killed document\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.640794+00:00\\nid: bc7b34f5fc0e09290479420c50e014e006cf9b72202eb2becb8fd8e97bc34337\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: Killed document\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.640794+00:00\\n---\\nRecover exact bytes\\n\",\"revision\":1}],\"workflowStatus\":\"pending\"}],\"reindexRequired\":true,\"version\":2}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "m7",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "{\"action\": \"create\", \"operationId\": \"bc7b34f5fc0e09290479420c50e014e006cf9b72202eb2becb8fd8e97bc34337\", \"title\": \"Killed document\", \"category\": \"client\", \"content\": \"Recover exact bytes\"}"
+      ],
+      "exit": 0,
+      "stdout": "{\"generation\":4,\"items\":[{\"category\":\"client\",\"decision\":{\"action\":\"approve\",\"actor\":\"local human action\",\"at\":\"2026-09-12T15:20:30.531265+00:00\",\"publishedSha256\":\"9a9cacf05260a8743db6ffc1a1c75eb1622e384eda79aded56bdbe1e19e9f7ad\",\"revision\":1,\"sha256\":\"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\",\"targetPath\":\"01_CLIENTS/m8-reviewed.md\"},\"id\":\"1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.497712+00:00\",\"relativePath\":\"90_PROPOSALS/1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08-r1.md\",\"revision\":1,\"sha256\":\"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"M8 human review\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.497718+00:00\\nid: 1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: M8 human review\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.497718+00:00\\n---\\nAurora offline review\\n\",\"revision\":1}],\"workflowStatus\":\"approved\"},{\"category\":\"client\",\"decision\":null,\"id\":\"9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.560388+00:00\",\"relativePath\":\"90_PROPOSALS/9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d-r1.md\",\"revision\":1,\"sha256\":\"4d848eba9248bb5526e581293da6f3accc44b9f7d6e5d93c421f165092b9b82d\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"Killed journal\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.560393+00:00\\nid: 9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: Killed journal\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.560393+00:00\\n---\\nRecover exact bytes\\n\",\"revision\":1}],\"workflowStatus\":\"pending\"},{\"category\":\"client\",\"decision\":null,\"id\":\"bc7b34f5fc0e09290479420c50e014e006cf9b72202eb2becb8fd8e97bc34337\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.640788+00:00\",\"relativePath\":\"90_PROPOSALS/bc7b34f5fc0e09290479420c50e014e006cf9b72202eb2becb8fd8e97bc34337-r1.md\",\"revision\":1,\"sha256\":\"3b68592ac384a651539710652d4b4b0eccc1c783f49b4fc268d0aabf4497de2f\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"Killed document\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.640794+00:00\\nid: bc7b34f5fc0e09290479420c50e014e006cf9b72202eb2becb8fd8e97bc34337\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: Killed document\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.640794+00:00\\n---\\nRecover exact bytes\\n\",\"revision\":1}],\"workflowStatus\":\"pending\"}],\"reindexRequired\":true,\"version\":2}\n",
+      "stderr": ""
+    },
+    {
+      "stage": "index",
+      "exit": -9,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "m7",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "{\"action\": \"recover\"}"
+      ],
+      "exit": 0,
+      "stdout": "{\"generation\":5,\"items\":[{\"category\":\"client\",\"decision\":{\"action\":\"approve\",\"actor\":\"local human action\",\"at\":\"2026-09-12T15:20:30.531265+00:00\",\"publishedSha256\":\"9a9cacf05260a8743db6ffc1a1c75eb1622e384eda79aded56bdbe1e19e9f7ad\",\"revision\":1,\"sha256\":\"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\",\"targetPath\":\"01_CLIENTS/m8-reviewed.md\"},\"id\":\"1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.497712+00:00\",\"relativePath\":\"90_PROPOSALS/1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08-r1.md\",\"revision\":1,\"sha256\":\"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"M8 human review\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.497718+00:00\\nid: 1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: M8 human review\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.497718+00:00\\n---\\nAurora offline review\\n\",\"revision\":1}],\"workflowStatus\":\"approved\"},{\"category\":\"client\",\"decision\":null,\"id\":\"9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.560388+00:00\",\"relativePath\":\"90_PROPOSALS/9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d-r1.md\",\"revision\":1,\"sha256\":\"4d848eba9248bb5526e581293da6f3accc44b9f7d6e5d93c421f165092b9b82d\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"Killed journal\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.560393+00:00\\nid: 9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: Killed journal\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.560393+00:00\\n---\\nRecover exact bytes\\n\",\"revision\":1}],\"workflowStatus\":\"pending\"},{\"category\":\"client\",\"decision\":null,\"id\":\"bc7b34f5fc0e09290479420c50e014e006cf9b72202eb2becb8fd8e97bc34337\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.640788+00:00\",\"relativePath\":\"90_PROPOSALS/bc7b34f5fc0e09290479420c50e014e006cf9b72202eb2becb8fd8e97bc34337-r1.md\",\"revision\":1,\"sha256\":\"3b68592ac384a651539710652d4b4b0eccc1c783f49b4fc268d0aabf4497de2f\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"Killed document\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.640794+00:00\\nid: bc7b34f5fc0e09290479420c50e014e006cf9b72202eb2becb8fd8e97bc34337\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: Killed document\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.640794+00:00\\n---\\nRecover exact bytes\\n\",\"revision\":1}],\"workflowStatus\":\"pending\"},{\"category\":\"client\",\"decision\":null,\"id\":\"d1cb6aa171628be13ddae74c3e56af10aa5eeea5a28190630dc162a84b9fbe5b\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.725292+00:00\",\"relativePath\":\"90_PROPOSALS/d1cb6aa171628be13ddae74c3e56af10aa5eeea5a28190630dc162a84b9fbe5b-r1.md\",\"revision\":1,\"sha256\":\"ff83ee40697d4b34a5727ccc92308e32d6982cb0b6ddd180ba49cfc2460357b7\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"Killed index\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.725297+00:00\\nid: d1cb6aa171628be13ddae74c3e56af10aa5eeea5a28190630dc162a84b9fbe5b\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: Killed index\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.725297+00:00\\n---\\nRecover exact bytes\\n\",\"revision\":1}],\"workflowStatus\":\"pending\"}],\"reindexRequired\":true,\"version\":2}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "m7",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "{\"action\": \"create\", \"operationId\": \"d1cb6aa171628be13ddae74c3e56af10aa5eeea5a28190630dc162a84b9fbe5b\", \"title\": \"Killed index\", \"category\": \"client\", \"content\": \"Recover exact bytes\"}"
+      ],
+      "exit": 0,
+      "stdout": "{\"generation\":5,\"items\":[{\"category\":\"client\",\"decision\":{\"action\":\"approve\",\"actor\":\"local human action\",\"at\":\"2026-09-12T15:20:30.531265+00:00\",\"publishedSha256\":\"9a9cacf05260a8743db6ffc1a1c75eb1622e384eda79aded56bdbe1e19e9f7ad\",\"revision\":1,\"sha256\":\"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\",\"targetPath\":\"01_CLIENTS/m8-reviewed.md\"},\"id\":\"1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.497712+00:00\",\"relativePath\":\"90_PROPOSALS/1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08-r1.md\",\"revision\":1,\"sha256\":\"e476f2538a2a6b5e3a650236e686304055fa728d5be03dc47d4b4e6c28c959a6\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"M8 human review\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.497718+00:00\\nid: 1e370f37cc05b465022fef0e8536402c28a1e3cb507adf7d55a5b37f81a88b08\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: M8 human review\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.497718+00:00\\n---\\nAurora offline review\\n\",\"revision\":1}],\"workflowStatus\":\"approved\"},{\"category\":\"client\",\"decision\":null,\"id\":\"9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.560388+00:00\",\"relativePath\":\"90_PROPOSALS/9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d-r1.md\",\"revision\":1,\"sha256\":\"4d848eba9248bb5526e581293da6f3accc44b9f7d6e5d93c421f165092b9b82d\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"Killed journal\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.560393+00:00\\nid: 9f695e755bbfe3dcb8fecbcb4ac6eb0a8197f6f2618372faa08406a99cecc15d\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: Killed journal\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.560393+00:00\\n---\\nRecover exact bytes\\n\",\"revision\":1}],\"workflowStatus\":\"pending\"},{\"category\":\"client\",\"decision\":null,\"id\":\"bc7b34f5fc0e09290479420c50e014e006cf9b72202eb2becb8fd8e97bc34337\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.640788+00:00\",\"relativePath\":\"90_PROPOSALS/bc7b34f5fc0e09290479420c50e014e006cf9b72202eb2becb8fd8e97bc34337-r1.md\",\"revision\":1,\"sha256\":\"3b68592ac384a651539710652d4b4b0eccc1c783f49b4fc268d0aabf4497de2f\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"Killed document\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.640794+00:00\\nid: bc7b34f5fc0e09290479420c50e014e006cf9b72202eb2becb8fd8e97bc34337\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: Killed document\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.640794+00:00\\n---\\nRecover exact bytes\\n\",\"revision\":1}],\"workflowStatus\":\"pending\"},{\"category\":\"client\",\"decision\":null,\"id\":\"d1cb6aa171628be13ddae74c3e56af10aa5eeea5a28190630dc162a84b9fbe5b\",\"kind\":\"proposal\",\"model\":null,\"origin\":\"local human input\",\"provider\":null,\"revisions\":[{\"createdAt\":\"2026-09-12T15:20:30.725292+00:00\",\"relativePath\":\"90_PROPOSALS/d1cb6aa171628be13ddae74c3e56af10aa5eeea5a28190630dc162a84b9fbe5b-r1.md\",\"revision\":1,\"sha256\":\"ff83ee40697d4b34a5727ccc92308e32d6982cb0b6ddd180ba49cfc2460357b7\"}],\"sourceWarnings\":[\"No source references available; provenance is incomplete\"],\"sources\":[],\"title\":\"Killed index\",\"versions\":[{\"markdown\":\"---\\nclient: ''\\ncreated_at: 2026-09-12T15:20:30.725297+00:00\\nid: d1cb6aa171628be13ddae74c3e56af10aa5eeea5a28190630dc162a84b9fbe5b\\nproject: ''\\nschema_version: 1\\nsource_ids: []\\nstatus: draft\\ntags: []\\ntitle: Killed index\\ntype: proposal\\nupdated_at: 2026-09-12T15:20:30.725297+00:00\\n---\\nRecover exact bytes\\n\",\"revision\":1}],\"workflowStatus\":\"pending\"}],\"reindexRequired\":true,\"version\":2}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "search-index",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé"
+      ],
+      "exit": 0,
+      "stdout": "{\"state\":\"ready\",\"total_indexed\":7,\"last_indexed_at\":\"2026-09-12T15:20:30.803Z\",\"version\":2,\"indexed_categories\":{\"client\":2,\"proposal\":5}}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/vault-check",
+        "search",
+        "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-uhkn8xs8/Vault Unicode àèé",
+        "{\"term\": \"Aurora\", \"status\": \"approved\"}"
+      ],
+      "exit": 0,
+      "stdout": "[{\"id\":\"doc_bcf50406ab48952e893227ab8239273205c04afcba54a606b17876e467c2a35a\",\"title\":\"Aurora\",\"relative_path\":\"01_CLIENTS/approved.md\",\"category\":\"client\",\"client\":\"Acme\",\"project\":\"Aurora\",\"tags\":[\"offline\"],\"status\":\"approved\",\"snippet\":\"Aurora local offline verification.\",\"score\":12.94,\"updated_at\":\"2026-09-12T00:00:00Z\",\"sha256\":\"325ff9df92f6346ff4882f4696dc421b3f1945522eb359ada17c7028f03d0207\"},{\"id\":\"doc_026b04c99e04726d7ffab924c69c34cb65161f2ecf88ba4b700f9bdaed35600e\",\"title\":\"M8 human review\",\"relative_path\":\"01_CLIENTS/m8-reviewed.md\",\"category\":\"client\",\"client\":\"\",\"project\":\"\",\"tags\":[],\"status\":\"approved\",\"snippet\":\"Aurora offline review\",\"score\":1.47,\"updated_at\":\"2026-09-12T15:20:30.531409+00:00\",\"sha256\":\"9a9cacf05260a8743db6ffc1a1c75eb1622e384eda79aded56bdbe1e19e9f7ad\"}]\n",
+      "stderr": ""
+    }
+  ],
+  "acceptance": "INCOMPLETE"
+}

@@ -34,38 +34,6 @@ export interface VaultStatusInfo {
 
 export class VaultManager {
   /**
-   * Helper: Counts markdown files in a given directory path.
-   */
-  private static countMarkdownFiles(dirPath: string, rootDir: string): number {
-    let count = 0;
-    if (!fs.existsSync(dirPath)) return 0;
-
-    try {
-      validateSymlinkSafety(rootDir, dirPath);
-      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-
-      for (const entry of entries) {
-        const fullPath = path.join(dirPath, entry.name);
-        try {
-          validateSymlinkSafety(rootDir, fullPath);
-
-          if (entry.isDirectory() && !entry.name.startsWith('.')) {
-            count += VaultManager.countMarkdownFiles(fullPath, rootDir);
-          } else if (entry.isFile() && entry.name.endsWith('.md')) {
-            count++;
-          }
-        } catch {
-          // Skip unreadable / security error files
-        }
-      }
-    } catch {
-      return 0;
-    }
-
-    return count;
-  }
-
-  /**
    * Creates a new Vault at targetPath and returns its VaultStatusInfo.
    */
   static createVault(targetPath: string, vaultName?: string, customTemplateDir?: string): VaultStatusInfo {
@@ -76,12 +44,12 @@ export class VaultManager {
       state: validation.isValid ? 'READY' : 'INVALID',
       path: created.vaultPath,
       name: created.vaultName,
-      pageCount: VaultManager.countMarkdownFiles(created.vaultPath, created.vaultPath),
-      sourceCount: VaultManager.countMarkdownFiles(path.join(created.vaultPath, '20_RAW_SOURCES'), created.vaultPath),
-      proposalCount: VaultManager.countMarkdownFiles(path.join(created.vaultPath, '90_PROPOSALS'), created.vaultPath),
+      pageCount: validation.pageCount ?? 0,
+      sourceCount: validation.sourceCount ?? 0,
+      proposalCount: validation.proposalCount ?? 0,
       snapshotId: null,
       snapshotAge: null,
-      integrityStatus: validation.isValid ? 'valid' : 'corrupted',
+      integrityStatus: 'unverified',
     };
   }
 
@@ -171,38 +139,31 @@ export class VaultManager {
     let vaultName = path.basename(resolved);
     let snapshotId: string | null = null;
 
-    // Try reading name from manifest if present
-    const manifestPath = path.join(resolved, '00_SYSTEM', 'VAULT_MANIFEST.json');
-    if (fs.existsSync(manifestPath)) {
-      try {
-        const manifestRaw = fs.readFileSync(manifestPath, 'utf8');
-        const manifestData = JSON.parse(manifestRaw);
-        if (manifestData.vault_name) {
-          vaultName = manifestData.vault_name;
-        }
-        if (manifestData.snapshot_id) {
-          snapshotId = manifestData.snapshot_id;
-        }
-      } catch {
-        // Fall back to folder basename if manifest read fails
+    // Use only already validated manifest data (never re-read or parse unvalidated/rejected manifest)
+    if (validation.isValid && validation.validatedManifest) {
+      if (typeof validation.validatedManifest.vault_name === 'string') {
+        vaultName = validation.validatedManifest.vault_name;
+      }
+      if (typeof validation.validatedManifest.snapshot_id === 'string') {
+        snapshotId = validation.validatedManifest.snapshot_id;
       }
     }
 
     let state: VaultState = 'READY';
     if (!validation.isValid) {
-      state = validation.systemFilesValid ? 'INCOMPLETE' : 'INVALID';
+      state = (validation.state as VaultState) || 'INVALID';
     }
 
     const status: VaultStatusInfo = {
       state,
       path: resolved,
       name: vaultName,
-      pageCount: VaultManager.countMarkdownFiles(resolved, resolved),
-      sourceCount: VaultManager.countMarkdownFiles(path.join(resolved, '20_RAW_SOURCES'), resolved),
-      proposalCount: VaultManager.countMarkdownFiles(path.join(resolved, '90_PROPOSALS'), resolved),
+      pageCount: validation.pageCount ?? 0,
+      sourceCount: validation.sourceCount ?? 0,
+      proposalCount: validation.proposalCount ?? 0,
       snapshotId,
       snapshotAge: null,
-      integrityStatus: validation.isValid ? 'valid' : 'corrupted',
+      integrityStatus: 'unverified',
     };
 
     return {

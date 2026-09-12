@@ -1,0 +1,12 @@
+{
+  "observed": "2026-09-12",
+  "bundle": {
+    "bank": "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m9-qa-v4hz1b7g",
+    "binary_sha256": "2e56c116593de5eca9886e523e07af4a5f1d9f8257252b23b99db6b2ad1fb672",
+    "harnessExcluded": true
+  },
+  "createVaultFromUI": "READY and initial manifest VERIFIED",
+  "knowledgeWithoutIndex": "title, approved status, exact SHA-256 and Markdown visible",
+  "noteSha256": "0508c182d18f2340f5f706b0073944afc21d97db3aa049475834b77a1110d277",
+  "searchIndexAbsentAfterRead": true
+}

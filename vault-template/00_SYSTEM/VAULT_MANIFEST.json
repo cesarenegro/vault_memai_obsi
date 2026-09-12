@@ -7,13 +7,13 @@
   "files": [
     {
       "path": "00_SYSTEM/HOME.md",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "size": 750
+      "sha256": "37153380da43afd1a9de225ddaba693ee5841371e20044296130c519033a9d75",
+      "size": 1159
     },
     {
       "path": "00_SYSTEM/VAULT_RULES.md",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "size": 520
+      "sha256": "a8752973ff81088a8ce25944a3c067ff9720c48f78bb7818d2ab854ed105dc67",
+      "size": 772
     }
   ]
 }

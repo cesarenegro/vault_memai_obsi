@@ -1,0 +1,39 @@
+{
+  "date": "2026-09-12",
+  "binarySha256": "2e56c116593de5eca9886e523e07af4a5f1d9f8257252b23b99db6b2ad1fb672",
+  "installation": "/Users/cesare/Applications/LIMEN Vault.app",
+  "api": {
+    "status": "PASS",
+    "model": "gpt-4o-mini-2024-07-18",
+    "tokensObserved": [
+      771,
+      780
+    ],
+    "answerDate": "17 October 2026",
+    "phrase": "blue espresso",
+    "sources": [
+      "01_CLIENTS/approved.md",
+      "01_CLIENTS/aurora-reviewed-ui.md"
+    ]
+  },
+  "cancel": {
+    "status": "PASS",
+    "observedMessage": "Cancelled. An already transmitted request may still be processed by the provider.",
+    "localNavigationAfterCancel": "Settings and Knowledge usable"
+  },
+  "localMcpRevoke": {
+    "status": "PASS",
+    "beforeRevokeUnauthenticatedHttp": 401,
+    "afterRevokeCurlExit": 7,
+    "afterRevokeHttp": "000",
+    "localKnowledgeAfterRevoke": "Four actual client notes shown"
+  },
+  "codex": {
+    "exit": 0,
+    "evidence": "codex-installed.jsonl"
+  },
+  "limits": [
+    "Local MCP revocation does not certify ChatGPT Business tunnel shutdown.",
+    "API cancellation is not proof of physical network loss during an in-flight call."
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "pnpm-test.log": "8d5888b9bd85bafd8a0331006d971bc2d2f9f79d119b386d2cc6f300161e2334",
+  "typecheck.log": "f0ab2d027c55d9f7ad11c2c154c745083f9e9f1385820d5b7300f0bbadcd2083",
+  "build.log": "61d17ebfda6e173167109ae099a87225b5364d80290a1cb70ec44e58a338d684",
+  "bundle-build.log": "dc438613375fee9a02ff8944b2c32ebb9a16c78ab6a95aae988e27c3a5551153",
+  "sign-final.log": "124ae7f9a331080a6bdffe132419c1b71ff28359a698082279dfa91ace466da7",
+  "final-candidate.json": "f0fcff095ee5436b38f9d55caa627f10ebf10e6fcd9656deb5b9414cbef02ab0",
+  "installed-online-ui.json": "1a7b459eeaedc833ef5a8427fbe5bda7b288bace1b4ddb51ff396d47f166b0a2",
+  "install-bank.json": "c519ac843e800aeef1b0f2002aed0ad52495e84eb5d39635ce0dd575ca3684f2",
+  "rust-release-tests.log": "2e4971ff7bef175cc3f69a04450eaace4c4d865593b3a9744ffaf0e5808a070b"
+}

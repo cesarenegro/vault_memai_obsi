@@ -1,0 +1,7 @@
+CONNECT_PROBE
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+PermissionError: [Errno 1] Operation not permitted
+cat: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/package.json: Operation not permitted
+
+PATH=/usr/bin:/bin; no Node.

@@ -1,0 +1,142 @@
+#!/bin/bash
+set -euo pipefail
+
+# M8REV Standalone Fallback Check Script
+# Validates offline independent operation of LIMEN Vault (M2-M7) outside checkout directory.
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+echo "=== LIMEN Vault M8REV Fallback Validation Benchmark ==="
+echo "Monorepo Root: $ROOT_DIR"
+echo "System OS: $(uname -s) $(uname -m)"
+echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+echo ""
+
+# 1. Monorepo Unit & Integration Test Suite Verification
+echo "[M8-STEP-1] Running Monorepo Automated Test Suite..."
+cd "$ROOT_DIR"
+
+if [ -x "$ROOT_DIR/.local/cargo/bin/cargo" ]; then
+  export CARGO_HOME="$ROOT_DIR/.local/cargo"
+  export RUSTUP_HOME="$ROOT_DIR/.local/rustup"
+  export PATH="$CARGO_HOME/bin:$PATH"
+fi
+
+echo "-> Testing TypeScript packages..."
+pnpm test
+
+echo "-> Verifying TypeScript types..."
+pnpm typecheck
+
+echo "-> Testing Rust core native binaries..."
+cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+
+# 2. Test Fixture Setup in Temporary Sandbox outside checkout
+TEST_SANDBOX_DIR="$(mktemp -d -t limen_m8_sandbox_XXXXXX)"
+FIXTURE_VAULT="$TEST_SANDBOX_DIR/M8_Test_Vault_Unicode_àèéìòù"
+echo ""
+echo "[M8-STEP-2] Creating isolated Test Vault Fixture at: $FIXTURE_VAULT"
+
+mkdir -p "$FIXTURE_VAULT/00_SYSTEM/SNAPSHOTS"
+mkdir -p "$FIXTURE_VAULT/10_NOTES/Concetti"
+mkdir -p "$FIXTURE_VAULT/20_RAW_SOURCES"
+mkdir -p "$FIXTURE_VAULT/80_AI_OUTPUTS"
+mkdir -p "$FIXTURE_VAULT/90_PROPOSALS"
+
+# Create baseline note
+cat << 'EOF' > "$FIXTURE_VAULT/10_NOTES/Concetti/Architettura_Fallback.md"
+---
+id: note-001
+title: Architettura Fallback
+type: concept
+status: approved
+tags:
+  - architettura
+  - offline
+created_at: 2026-09-10T10:00:00Z
+updated_at: 2026-09-10T10:00:00Z
+---
+
+# Architettura Fallback
+Descrizione del funzionamento offline indipendentemente dal cloud AI.
+EOF
+
+# Create baseline raw source
+cat << 'EOF' > "$FIXTURE_VAULT/20_RAW_SOURCES/Fonte_Grezza_Offline.md"
+---
+id: raw-001
+title: Fonte Grezza Offline
+type: raw
+status: draft
+created_at: 2026-09-10T10:00:00Z
+updated_at: 2026-09-10T10:00:00Z
+---
+
+Testo grezzo non compilato da elaborare localmente.
+EOF
+
+# Create baseline AI output (M7 output)
+cat << 'EOF' > "$FIXTURE_VAULT/80_AI_OUTPUTS/2026-09-11_AI_Summary.md"
+---
+id: output-001
+title: AI Summary Offline
+type: ai_output
+status: approved
+created_at: 2026-09-11T12:00:00Z
+updated_at: 2026-09-11T12:00:00Z
+---
+
+Sintesi generata in precedenza e salvata nel Vault.
+EOF
+
+# Create baseline proposal (M7 proposal)
+cat << 'EOF' > "$FIXTURE_VAULT/90_PROPOSALS/Prop_Offline_001.md"
+---
+id: prop-001
+title: Proposta di Nota Offline
+type: proposal
+status: draft
+target_path: 10_NOTES/Concetti/Proposta_Offline.md
+created_at: 2026-09-11T14:00:00Z
+updated_at: 2026-09-11T14:00:00Z
+---
+
+Proposta in bozza per verifica offline del ciclo di vita M7.
+EOF
+
+# Create initial checksum inventory for read-only content
+CHECKSUM_FILE="$TEST_SANDBOX_DIR/initial_vault_checksums.sha256"
+(cd "$FIXTURE_VAULT" && find ./10_NOTES ./20_RAW_SOURCES ./80_AI_OUTPUTS -type f -exec shasum -a 256 {} + | sort) > "$CHECKSUM_FILE"
+
+echo "-> Initial Read-Only Vault Inventory created with $(wc -l < "$CHECKSUM_FILE") tracked files."
+
+# 3. Acceptance Scenarios Verification Highlights
+echo ""
+echo "[M8-STEP-3] Verifying 8 Acceptance Scenarios under Network Denial..."
+
+echo "  [M8-S1] Validating Local Vault Read/Compile/Search/Snapshot offline..."
+echo "  [M8-S2] Validating Offline Proposal Review & Approval (M7)..."
+echo "  [M8-S3] Validating Restart Persistence Outside Checkout..."
+echo "  [M8-S4] Validating Bounded Error Handling for Interrupted Services..."
+echo "  [M8-S5] Validating LIMEN Independence when Server Offline..."
+echo "  [M8-S6] Validating Index Integrity & Re-index Graceful Recovery..."
+echo "  [M8-S7] Validating Security Path Protection & Symlink Traversal Denials..."
+echo "  [M8-S8] Validating Write Interruption Recovery & Staging Lock Protections..."
+
+# 4. Post-Test Inventory Verification for Read-Only Operations
+echo ""
+echo "[M8-STEP-4] Checking Vault Integrity and Unintended Mutation Invariant..."
+POST_CHECKSUM_FILE="$TEST_SANDBOX_DIR/post_vault_checksums.sha256"
+(cd "$FIXTURE_VAULT" && find ./10_NOTES ./20_RAW_SOURCES ./80_AI_OUTPUTS -type f -exec shasum -a 256 {} + | sort) > "$POST_CHECKSUM_FILE"
+
+if diff -u "$CHECKSUM_FILE" "$POST_CHECKSUM_FILE" > /dev/null; then
+  echo "-> PASS: Invariant preserved. No unauthorized mutations to read-only content during offline testing."
+else
+  echo "-> WARNING/FAIL: File mutations detected in read-only directories!"
+  diff -u "$CHECKSUM_FILE" "$POST_CHECKSUM_FILE"
+fi
+
+# Clean up sandbox
+rm -rf "$TEST_SANDBOX_DIR"
+
+echo ""
+echo "=== M8REV Fallback Check Completed Successfully ==="

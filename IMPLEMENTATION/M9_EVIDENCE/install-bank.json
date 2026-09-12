@@ -1,0 +1,12 @@
+{
+  "bank": "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m9-install-1k3g7cbo",
+  "checks": [
+    "PASS clean directory installation: exact signed bundle inventory, external Vault retained",
+    "PASS actual ENOSPC: old app and external Vault unchanged; incomplete copy never replaces installed app",
+    "PASS actual SIGKILL during staged copy: previous app and Vault preserved",
+    "PASS staged replacement and compatible rollback preserve exact data; same-version package rehearsal, no migration inferred",
+    "PASS removing only the test app preserves external Vault"
+  ],
+  "status": "PASS",
+  "host": "macOS 26.3"
+}

@@ -1,0 +1,5 @@
+{
+  "original_text_section_sha256": "27d78321ce21dd0c9cb2c3a29c03e3bf113e6511e56909abe34f3e0ba035d296",
+  "qa_text_section_sha256": "27d78321ce21dd0c9cb2c3a29c03e3bf113e6511e56909abe34f3e0ba035d296",
+  "note": "QA signature changed by ad-hoc re-signing; executable code section matches original. Native UI uses same bundled frontend."
+}

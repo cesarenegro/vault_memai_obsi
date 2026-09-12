@@ -1,0 +1,13 @@
+{
+  "bank": "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m9-qa-v4hz1b7g",
+  "vault": "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m9-qa-v4hz1b7g/Vault M9 \u00e0\u00e8\u00e9",
+  "before": {
+    "01_CLIENTS/draft.md": "6805d7ca670799face07aa364a1588c80e6823f8cae6cda16140bedacb131f98",
+    "01_CLIENTS/approved.md": "846481b490e32c1e80d0fe622307c647800ea7e3b215cf101a900f7e6c1b7d0d",
+    "20_RAW_SOURCES/untouched.txt": "84067e616094695c7940f5d7fa4aec7e767eb0a865148e7ef5b9cc2742f47b24",
+    "00_SYSTEM/SEARCH_INDEX.json": "3b760bfb1790d7813ec3e94eb969df684b237e5725f57b09f26eb57c720fb65f",
+    "00_SYSTEM/VAULT_MANIFEST.json": "b93a0bce2b466ad3d7494b335ec9a7680ce674704a660f5c3673c11103dde138",
+    "00_SYSTEM/HOME.md": "37153380da43afd1a9de225ddaba693ee5841371e20044296130c519033a9d75",
+    "00_SYSTEM/VAULT_RULES.md": "a8752973ff81088a8ce25944a3c067ff9720c48f78bb7818d2ab854ed105dc67"
+  }
+}

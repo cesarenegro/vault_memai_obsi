@@ -1,0 +1,16 @@
+LIMEN Vault — blocchi e dipendenze, 12 settembre 2026
+Checklist principale: TASK_LIST.md.
+
+M7 completata in locale. Nessun residuo di accettazione M7.
+
+M8 completata in locale. Nessun residuo obbligatorio. Limiti Obsidian nel rapporto.
+
+M9
+- Upload Apple fallito con HTTPClientError.deadlineExceeded; autenticazione LIMEN-M9 valida. Nessun rifiuto del codice da Apple osservato. Attendere rete diversa/hotspot già richiesto prima di riprovare; niente loop di upload. Utente conferma stessa rete e propone hotspot dopo verifica. History Apple raggiungibile: tre richieste ancora In Progress, nessuna Accepted.
+- Credenziale tunnel salvata e accesso app autorizzato. Readiness/start/stop reali PASS. Resta lettura Business remota: controllo scheda Chrome via estensione in timeout due volte; chiesto di portare Plugins in primo piano per controllo nativo.
+- Verificare Business reale dal bundle installato, uscita e revoca remota. Non usare i soli test M6 come certificazione di M9.
+- Restano DMG notarizzato/stapled, Gatekeeper e prova su account macOS pulito. Banco di installazione in directory/APFS passato, ma non equivale a un nuovo account OS.
+- Etichette corrette, build/firma/installazione terminate; hash in M9_EVIDENCE/final-candidate.json. Etichette verificate dopo sblocco; blocco Mac risolto.
+- Spazio attuale verificato circa 9 GiB; vecchio blocco ENOSPC risolto.
+
+Nessun commit/push/tag/deploy. M10 fuori incarico. Pubblicazione separata.

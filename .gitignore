@@ -18,3 +18,14 @@ SECRETS.TXT
 # System / OS
 .DS_Store
 *.log
+
+# Local M2 build tools, baselines and QA artifacts
+.local/
+
+# Generated Tauri schema metadata
+apps/desktop/src-tauri/gen/
+
+# Downloaded release auxiliaries; restored by release preparation script.
+apps/desktop/src-tauri/resources/mcp/tunnel-client
+apps/desktop/src-tauri/resources/mcp/cloudflared
+scripts/__pycache__/

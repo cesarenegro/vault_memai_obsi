@@ -10,6 +10,7 @@ import {
   SecurityPathError,
   sanitizeVaultPath,
   validateSymlinkSafety,
+  parseYamlFrontmatter,
 } from '../src/index.js';
 
 function runVaultCoreTests() {
@@ -29,7 +30,7 @@ function runVaultCoreTests() {
     assert.strictEqual(status.state, 'READY');
     assert.strictEqual(status.name, 'My New Test Vault');
     assert.strictEqual(status.path, path.resolve(vaultPath));
-    assert.strictEqual(status.integrityStatus, 'valid');
+    assert.strictEqual(status.integrityStatus, 'unverified');
     assert.ok(status.pageCount >= 1);
 
     assert.strictEqual(res.status.state, 'READY');
@@ -78,10 +79,13 @@ function runVaultCoreTests() {
     const { status: corruptStatus, validation: corruptVal } = VaultManager.openVault(corruptPath);
     assert.strictEqual(corruptStatus.state, 'INVALID');
     assert.strictEqual(corruptVal.isValid, false);
+    assert.strictEqual(corruptStatus.name, 'CorruptManifestVault'); // Must not use corrupt manifest data
     console.log('  ✅ 5. Corrupt manifest detection passed');
 
-    // 6. Path traversal protection
+    // 6. Path traversal & prefix escape protection (e.g. vault-outside)
     const securePath = path.join(testTmpDir, 'SecureVault');
+    const siblingPath = path.join(testTmpDir, 'SecureVault-outside');
+    fs.mkdirSync(siblingPath, { recursive: true });
     VaultManager.createVault(securePath, 'Secure Vault');
 
     assert.throws(() => {
@@ -91,7 +95,11 @@ function runVaultCoreTests() {
     assert.throws(() => {
       sanitizeVaultPath(securePath, '/etc/passwd');
     }, SecurityPathError);
-    console.log('  ✅ 6. Path traversal protection passed');
+
+    assert.throws(() => {
+      sanitizeVaultPath(securePath, '../SecureVault-outside');
+    }, SecurityPathError);
+    console.log('  ✅ 6. Path traversal and prefix escape (vault-outside) protection passed');
 
     // 7. Symlink safety
     const symlinkPath = path.join(securePath, '01_CLIENTS', 'external_link.md');
@@ -109,17 +117,76 @@ function runVaultCoreTests() {
       console.log('  ⚠️  7. Symlink test skipped (privileges not available)');
     }
 
-    // 8. Read-only invariant check
+    // 8. System file directory masquerading rejection
+    const masqVaultPath = path.join(testTmpDir, 'MasqVault');
+    VaultManager.createVault(masqVaultPath, 'Masquerading Vault');
+    const homeFilePath = path.join(masqVaultPath, '00_SYSTEM', 'HOME.md');
+    fs.rmSync(homeFilePath, { force: true });
+    fs.mkdirSync(homeFilePath); // Replace HOME.md with a directory!
+
+    const masqRes = VaultManager.openVault(masqVaultPath);
+    assert.strictEqual(masqRes.validation.isValid, false);
+    assert.ok(masqRes.validation.errors.some((e) => e.includes('not a regular file')));
+    console.log('  ✅ 8. System file directory masquerading rejection passed');
+
+    // 9. Multiline YAML frontmatter with js-yaml
+    const yamlVaultPath = path.join(testTmpDir, 'YamlVault');
+    VaultManager.createVault(yamlVaultPath, 'YAML Vault');
+    const mdTestFile = path.join(yamlVaultPath, '01_CLIENTS', 'test_multiline.md');
+    fs.writeFileSync(
+      mdTestFile,
+      `---
+title: "Test Multiline"
+tags:
+  - client
+  - active
+  - high-priority
+date: 2026-09-11
+---
+# Content`,
+      'utf8'
+    );
+    const content = fs.readFileSync(mdTestFile, 'utf8');
+    const parsedFrontmatter = parseYamlFrontmatter(content);
+    assert.ok(parsedFrontmatter && parsedFrontmatter.data);
+    assert.strictEqual(parsedFrontmatter.syntaxError, undefined);
+    assert.deepStrictEqual(parsedFrontmatter.data.tags, ['client', 'active', 'high-priority']);
+    console.log('  ✅ 9. Multiline YAML frontmatter parsing passed');
+
+    // 10. Invalid YAML syntax rejection
+    const badYamlVaultPath = path.join(testTmpDir, 'BadYamlVault');
+    VaultManager.createVault(badYamlVaultPath, 'Bad YAML Vault');
+    const badMdFile = path.join(badYamlVaultPath, '01_CLIENTS', 'bad_syntax.md');
+    fs.writeFileSync(
+      badMdFile,
+      `---
+title: "Unclosed String
+invalid: [unclosed list
+---
+# Content`,
+      'utf8'
+    );
+    const badYamlRes = VaultManager.openVault(badYamlVaultPath);
+    assert.strictEqual(badYamlRes.validation.isValid, false, 'Vault with invalid YAML syntax must be invalid');
+    assert.ok(
+      badYamlRes.validation.errors.some((e) => e.includes('Invalid YAML syntax')),
+      'Should report Invalid YAML syntax error'
+    );
+    console.log('  ✅ 10. Invalid YAML syntax rejection passed');
+
+    // 11. Read-only invariant check (content, mtimeMs, ctimeMs)
     const homeFile = path.join(securePath, '00_SYSTEM', 'HOME.md');
     const contentBefore = fs.readFileSync(homeFile, 'utf8');
-    const mtimeBefore = fs.statSync(homeFile).mtimeMs;
+    const statBefore = fs.statSync(homeFile);
 
     VaultManager.openVault(securePath);
     VaultValidator.validateVault(securePath);
 
-    assert.strictEqual(fs.readFileSync(homeFile, 'utf8'), contentBefore);
-    assert.strictEqual(fs.statSync(homeFile).mtimeMs, mtimeBefore);
-    console.log('  ✅ 8. Read-only invariant verified');
+    const statAfter = fs.statSync(homeFile);
+    assert.strictEqual(fs.readFileSync(homeFile, 'utf8'), contentBefore, 'Content must not be modified');
+    assert.strictEqual(statAfter.mtimeMs, statBefore.mtimeMs, 'Modification time (mtime) must not be altered');
+    assert.strictEqual(statAfter.ctimeMs, statBefore.ctimeMs, 'Change time (ctime) must not be altered');
+    console.log('  ✅ 11. Read-only invariant (content, mtime, ctime) verified');
 
     console.log('🎉 All Vault Core unit tests passed cleanly!');
   } finally {

@@ -1,0 +1,5 @@
+{
+  "bank": "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m9-qa-v4hz1b7g",
+  "binary_sha256": "838874d9ec4dc0c548f6bfd9dd8293ea228684f21184b180aa828a5353437638",
+  "isolation": "checkout denied; online API test then offline network denial"
+}

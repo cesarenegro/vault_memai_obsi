@@ -2,7 +2,7 @@
 
 > **Independent Local-First AI Knowledge System**
 
-LIMEN Vault is a standalone, local-first knowledge environment built for LIMEN / Packaging in Italy. It provides an offline-capable, Obsidian-compatible Markdown Knowledge Vault, local full-text search, persistent knowledge wiki compilation, snapshot integrity verification, and AI-assisted knowledge workflows.
+LIMEN Vault is a standalone, local-first knowledge environment built for LIMEN / Packaging in Italy. M2/M3 provide offline Vault creation/opening, structural validation, versioned snapshots and SHA-256 verification in the native desktop app. Local search, knowledge compilation and AI workflows remain later milestones.
 
 ---
 
@@ -62,6 +62,7 @@ LIMEN-VAULT/
 ## 3. Quick Start & Running Locally
 
 ### Prerequisites
+- Native macOS development/build also requires Rust/Cargo and Xcode. The packaged app does not require Node or a development server.
 - Node.js (>= 20.0.0)
 - `pnpm` (>= 9.0.0)
 
@@ -90,15 +91,18 @@ pnpm test
 # TypeScript type checking across all apps & packages
 pnpm typecheck
 
-# Production build
+# Frontend/package production build (does not build the native app)
 pnpm build
+
+# Native tests, TS/Rust parity and macOS app bundle (Rust + Xcode required)
+./scripts/m3-native-check.sh
 ```
 
 ---
 
 ## 5. Current Milestone Status
 
-**Current Milestone:** `M0 — FOUNDATION` & `M1 — PRODUCT UI SHELL` (COMPLETE)
+**Latest completed milestone:** `M3 — SNAPSHOTS & INTEGRITY` (VERIFIED LOCALLY, 12 September 2026, macOS ARM64). No release published; see [TASK_LIST.md](TASK_LIST.md).
 
 - [x] Monorepo architecture established
 - [x] Standalone independence guards implemented

@@ -1,0 +1,22 @@
+{
+  "vault": "/private/tmp/limen-m4-ui-ltep9ush/M4 Test Vault",
+  "original_draft": "90_PROPOSALS/src_ecee5cbec45e130b039e8d0d29aa2876e4a40a7372c124c460e7e63a86e27f00-409bfc1135224382-1789211056948976000-7329-0.md",
+  "system_hashes": {
+    "VAULT_MANIFEST.json": "c330ed9c63fb724ac676c9cdf842edfed92ce78a9b71f1c5664f1c74e3458a86",
+    "HOME.md": "37153380da43afd1a9de225ddaba693ee5841371e20044296130c519033a9d75",
+    "VAULT_RULES.md": "a8752973ff81088a8ce25944a3c067ff9720c48f78bb7818d2ab854ed105dc67"
+  },
+  "raw_html_sha": "8b0c54bbb8885c4d6049ecabba9fa9ae940dfca9f23d3bbd73dc801441c1d6f1",
+  "human_draft_sha": "e84068f024fb71d5cad87cc14e37ecf0772ec250112cd6f7c4ce7ab2ddc399d4",
+  "final_checks": {
+    "revisions": 3,
+    "human_draft_unchanged": true,
+    "raw_sources_unchanged_by_compiler": true,
+    "system_manifest_rules_unchanged": true,
+    "no_approved_pages_written": true,
+    "no_pending_files": true,
+    "ui_restarted": true,
+    "ui_repeat_compiled": 0,
+    "ui_repeat_unchanged": 2
+  }
+}

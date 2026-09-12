@@ -1,0 +1,13 @@
+{
+  "actualUpstream": "api.openai.com:443",
+  "serverTlsBytesObserved": true,
+  "clientTlsBytesForwardedAfterServer": true,
+  "action": "closed both TCP sockets during request",
+  "payloadLogged": false,
+  "vaultInventoryUnchanged": true,
+  "uiError": "OpenAI unavailable or request timed out",
+  "localKnowledgeAfterError": "Four actual client notes visible",
+  "binarySha256": "2faa40bc1798e6fae44c44b99696987ecfe1d8810f152a16cd7a95499cae8e6b",
+  "mechanism": "CONNECT proxy forwards encrypted TLS to actual OpenAI then closes both sockets; no mock response or TLS interception",
+  "labelsVerified": true
+}

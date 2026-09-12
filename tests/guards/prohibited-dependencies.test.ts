@@ -45,6 +45,8 @@ function scanDirectory(dirPath: string): { file: string; term: string; line: num
     const fullPath = path.join(dirPath, entry.name);
 
     if (entry.isDirectory()) {
+      // Cargo target contains generated artifacts and dependency binaries, not application source.
+      if (fullPath === path.resolve(process.cwd(), 'apps/desktop/src-tauri/target')) continue;
       if (entry.name === 'node_modules' || entry.name === '.next' || entry.name === 'dist' || entry.name === 'out') {
         continue;
       }

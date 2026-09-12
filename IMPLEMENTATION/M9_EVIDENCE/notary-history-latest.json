@@ -1,0 +1,23 @@
+{
+  "message": "Successfully received submission history.",
+  "history": [
+    {
+      "name": "notarization.zip",
+      "createdDate": "2026-09-12T15:21:53.206Z",
+      "id": "50d27906-8a3b-4854-9e9e-38627d254dc6",
+      "status": "In Progress"
+    },
+    {
+      "id": "9209a42b-53f2-4270-bd61-06318c3b28c8",
+      "name": "notarization.zip",
+      "createdDate": "2026-09-12T15:12:49.664Z",
+      "status": "In Progress"
+    },
+    {
+      "id": "3d387e89-419e-4ff7-8395-15c699f17f89",
+      "createdDate": "2026-09-12T15:04:31.020Z",
+      "name": "notarization.zip",
+      "status": "In Progress"
+    }
+  ]
+}

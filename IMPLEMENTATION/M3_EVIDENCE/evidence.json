@@ -1,0 +1,11 @@
+{
+  "snapshot_id": "snap-20260912T094227462741000Z-98119-0",
+  "folders": 15,
+  "snapshot_files": 3,
+  "no_recursion": true,
+  "snapshot_hashes_match": true,
+  "checkout_denied": "cat: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/package.json: Operation not permitted",
+  "network_denied": "connect=-1 errno=1",
+  "node_unavailable_in_path": true,
+  "vite_server_stopped": true
+}

@@ -3,13 +3,15 @@
   "version": "0.1.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "type": "module",
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'snapshot-engine clean'",
-    "test": "echo 'snapshot-engine tests pass'"
+    "test": "node --import tsx/esm tests/snapshot-engine.test.ts && node --import tsx/esm tests/m3-regressions.test.ts"
   },
   "dependencies": {
+    "@limen-vault/vault-core": "workspace:*",
     "@limen-vault/vault-schema": "workspace:*"
   },
   "devDependencies": {

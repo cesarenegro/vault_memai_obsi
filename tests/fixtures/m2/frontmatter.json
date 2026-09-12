@@ -1,0 +1,52 @@
+[
+  {
+    "name": "plain",
+    "content": "# Free note",
+    "state": "READY"
+  },
+  {
+    "name": "valid",
+    "content": "---\nschema_version: 1\nid: example\ntitle: \"A: title\"\ntype: client\ncreated_at: 2026-09-11T00:00:00Z\nupdated_at: 2026-09-11\ntags:\n  - one\n  - two\nsource_ids: [source]\n---\n# Body",
+    "state": "READY"
+  },
+  {
+    "name": "crlf",
+    "content": "---\r\nschema_version: 1\r\nid: example\r\ntitle: \"A: title\"\r\ntype: client\r\ncreated_at: 2026-09-11T00:00:00Z\r\nupdated_at: 2026-09-11\r\ntags:\r\n  - one\r\n  - two\r\nsource_ids: [source]\r\n---\r\n# Body",
+    "state": "READY"
+  },
+  {
+    "name": "schema",
+    "content": "---\ntitle: Missing fields\n---\n# Body",
+    "state": "INVALID"
+  },
+  {
+    "name": "syntax",
+    "content": "---\ntitle: \"unclosed\n---\n# Body",
+    "state": "INVALID"
+  },
+  {
+    "name": "unclosed",
+    "content": "---\nid: x",
+    "state": "INVALID"
+  },
+  {
+    "name": "scalar",
+    "content": "---\nhello\n---\n# Body",
+    "state": "INVALID"
+  },
+  {
+    "name": "array",
+    "content": "---\n- one\n- two\n---\n# Body",
+    "state": "INVALID"
+  },
+  {
+    "name": "nested",
+    "content": "---\nschema_version: 1\nid: example\ntitle: \"A: title\"\ntype: client\ncreated_at: 2026-09-11T00:00:00Z\nupdated_at: 2026-09-11\ntags: {nested: invalid}\nsource_ids: [source]\n---\n# Body",
+    "state": "INVALID"
+  },
+  {
+    "name": "wrong_status",
+    "content": "---\nschema_version: 1\nid: example\ntitle: \"A: title\"\ntype: client\nstatus: published\ncreated_at: 2026-09-11T00:00:00Z\nupdated_at: 2026-09-11\ntags:\n  - one\n  - two\nsource_ids: [source]\n---\n# Body",
+    "state": "INVALID"
+  }
+]

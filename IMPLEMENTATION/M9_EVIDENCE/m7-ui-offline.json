@@ -1,0 +1,180 @@
+{
+  "observed": "2026-09-12",
+  "bundle": {
+    "bank": "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m9-qa-v4hz1b7g",
+    "binary_sha256": "838874d9ec4dc0c548f6bfd9dd8293ea228684f21184b180aa828a5353437638",
+    "isolation": "checkout denied; online API test then offline network denial"
+  },
+  "rawAndOriginalNotesUnchanged": true,
+  "actions": [
+    "real API save",
+    "restart with network denied",
+    "read persisted output with actual provider/model",
+    "create proposal",
+    "side by side review",
+    "save revision 2",
+    "approve exact revision 2 and destination",
+    "re-index and filter Approved shows 2 notes",
+    "compile RAW offline",
+    "import M4 preserving original",
+    "approve imported M4",
+    "create snapshot: 17 files, VERIFIED",
+    "API with network denied: explicit error, GUI remains responsive"
+  ],
+  "state": {
+    "version": 2,
+    "generation": 6,
+    "items": {
+      "2f9f3c826ed840cfab8de559b9044f557bf6a0b936824d859d4b40c25f10cdbb": {
+        "id": "2f9f3c826ed840cfab8de559b9044f557bf6a0b936824d859d4b40c25f10cdbb",
+        "kind": "proposal",
+        "title": "untouched",
+        "category": "client",
+        "workflowStatus": "approved",
+        "revisions": [
+          {
+            "revision": 1,
+            "relativePath": "90_PROPOSALS/2f9f3c826ed840cfab8de559b9044f557bf6a0b936824d859d4b40c25f10cdbb-r1.md",
+            "sha256": "43b5dcdcc69c44c2a52708a0c555973ed2210ada63bbf288eac3748c215bb247",
+            "createdAt": "2026-09-12T15:09:45.971145+00:00"
+          }
+        ],
+        "sources": [
+          {
+            "relativePath": "90_PROPOSALS/src_86fcb03d0d2c84efb35b6e1970692f47538b309e991eed59faefb9b1bf52d7df-84067e616094695c-1789225761362025000-81383-0.md",
+            "sha256": "157dee9e58a8394fcfdc633cf9a5e0a26970f07c67a0c27c354ef13188d4e763"
+          }
+        ],
+        "origin": "Explicit import of 90_PROPOSALS/src_86fcb03d0d2c84efb35b6e1970692f47538b309e991eed59faefb9b1bf52d7df-84067e616094695c-1789225761362025000-81383-0.md",
+        "provider": null,
+        "model": null,
+        "decision": {
+          "action": "approve",
+          "actor": "local human action",
+          "at": "2026-09-12T15:10:21.375589+00:00",
+          "publishedSha256": "45395efa84c6f49f7feec7314825459c1eb7b96a6c796c3b7cb98718dfe8438f",
+          "revision": 1,
+          "sha256": "43b5dcdcc69c44c2a52708a0c555973ed2210ada63bbf288eac3748c215bb247",
+          "targetPath": "01_CLIENTS/m4-reviewed-ui.md"
+        }
+      },
+      "e7446564ad3540b384a60cc9acfc1ddf530fc9fa44bd4b34aa8b9f197aef4ebe": {
+        "id": "e7446564ad3540b384a60cc9acfc1ddf530fc9fa44bd4b34aa8b9f197aef4ebe",
+        "kind": "proposal",
+        "title": "What is the Aurora launch date and verification phrase? Cite the approved source.",
+        "category": "client",
+        "workflowStatus": "approved",
+        "revisions": [
+          {
+            "revision": 1,
+            "relativePath": "90_PROPOSALS/e7446564ad3540b384a60cc9acfc1ddf530fc9fa44bd4b34aa8b9f197aef4ebe-r1.md",
+            "sha256": "461c4006f504e24da6b95b4069d0da92c2a1682d95a2eea5dfd567079795e194",
+            "createdAt": "2026-09-12T15:06:44.191330+00:00"
+          },
+          {
+            "revision": 2,
+            "relativePath": "90_PROPOSALS/e7446564ad3540b384a60cc9acfc1ddf530fc9fa44bd4b34aa8b9f197aef4ebe-r2.md",
+            "sha256": "f6efd69b37675acb34145d77bb998f12e52007652b5edbf69338c15a5e81b3d5",
+            "createdAt": "2026-09-12T15:07:58.223845+00:00"
+          }
+        ],
+        "sources": [
+          {
+            "category": "client",
+            "documentId": "doc_bcf50406ab48952e893227ab8239273205c04afcba54a606b17876e467c2a35a",
+            "relativePath": "01_CLIENTS/approved.md",
+            "sha256": "846481b490e32c1e80d0fe622307c647800ea7e3b215cf101a900f7e6c1b7d0d",
+            "status": "approved",
+            "title": "Aurora approved"
+          }
+        ],
+        "origin": "Saved output f62c1207b9654e76880e14ad88d1180050331785e92c4b2aa688a2f2fd893a98",
+        "provider": "openai",
+        "model": "gpt-4o-mini-2024-07-18",
+        "decision": {
+          "action": "approve",
+          "actor": "local human action",
+          "at": "2026-09-12T15:08:19.906819+00:00",
+          "publishedSha256": "0508c182d18f2340f5f706b0073944afc21d97db3aa049475834b77a1110d277",
+          "revision": 2,
+          "sha256": "f6efd69b37675acb34145d77bb998f12e52007652b5edbf69338c15a5e81b3d5",
+          "targetPath": "01_CLIENTS/aurora-reviewed-ui.md"
+        }
+      },
+      "f62c1207b9654e76880e14ad88d1180050331785e92c4b2aa688a2f2fd893a98": {
+        "id": "f62c1207b9654e76880e14ad88d1180050331785e92c4b2aa688a2f2fd893a98",
+        "kind": "output",
+        "title": "What is the Aurora launch date and verification phrase? Cite the approved source.",
+        "category": "",
+        "workflowStatus": "pending",
+        "revisions": [
+          {
+            "revision": 1,
+            "relativePath": "80_AI_OUTPUTS/f62c1207b9654e76880e14ad88d1180050331785e92c4b2aa688a2f2fd893a98-r1.md",
+            "sha256": "bc0a2772b66d3e3865fea4259d71ccbcf5ca7975bb12a391ee4179488003e933",
+            "createdAt": "2026-09-12T15:05:17.914265+00:00"
+          }
+        ],
+        "sources": [
+          {
+            "category": "client",
+            "documentId": "doc_bcf50406ab48952e893227ab8239273205c04afcba54a606b17876e467c2a35a",
+            "relativePath": "01_CLIENTS/approved.md",
+            "sha256": "846481b490e32c1e80d0fe622307c647800ea7e3b215cf101a900f7e6c1b7d0d",
+            "status": "approved",
+            "title": "Aurora approved"
+          }
+        ],
+        "origin": "OpenAI response explicitly saved locally",
+        "provider": "openai",
+        "model": "gpt-4o-mini-2024-07-18",
+        "decision": null
+      }
+    },
+    "operations": {
+      "1ddb7c776be149db8fb639930b44e759887bf9421ab14634bae9ab73e7cd7063": "2d792eacf975b5047f227c8ceebb5de3b69c161b14db45a51c6230db0d2c99dc",
+      "2f9f3c826ed840cfab8de559b9044f557bf6a0b936824d859d4b40c25f10cdbb": "da02b79c1357dd35109e05fb7b9d74c67259fb36175ab19e1d69340572a2f6fa",
+      "5fa6751022e140699cc6382c215235fd82f6537f75244e088b612957911fe2c9": "0a0cbcdc756da0a118b9b6fe4638ec0a060510e57141c9623dacfc8adefcd67a",
+      "c44e40762ac64fae9e342365858183ea764da9e926484d108d20c7b2d8042a96": "1ea063529fe58089603a5728cfb1e3360b298983fc5764298e0e7a1315fa7d53",
+      "e7446564ad3540b384a60cc9acfc1ddf530fc9fa44bd4b34aa8b9f197aef4ebe": "928376c78866a3a2481622a133a4c2e90a88490cd7be50f5597360c4d8bf2270",
+      "f62c1207b9654e76880e14ad88d1180050331785e92c4b2aa688a2f2fd893a98": "7653a4afb0945771c7a9b887f9815a6a3da2fe153493c1e77343029dc9829720"
+    }
+  },
+  "afterHashes": {
+    "01_CLIENTS/aurora-reviewed-ui.md": "0508c182d18f2340f5f706b0073944afc21d97db3aa049475834b77a1110d277",
+    "01_CLIENTS/draft.md": "6805d7ca670799face07aa364a1588c80e6823f8cae6cda16140bedacb131f98",
+    "01_CLIENTS/m4-reviewed-ui.md": "45395efa84c6f49f7feec7314825459c1eb7b96a6c796c3b7cb98718dfe8438f",
+    "01_CLIENTS/approved.md": "846481b490e32c1e80d0fe622307c647800ea7e3b215cf101a900f7e6c1b7d0d",
+    "90_PROPOSALS/src_86fcb03d0d2c84efb35b6e1970692f47538b309e991eed59faefb9b1bf52d7df-84067e616094695c-1789225761362025000-81383-0.md": "157dee9e58a8394fcfdc633cf9a5e0a26970f07c67a0c27c354ef13188d4e763",
+    "90_PROPOSALS/e7446564ad3540b384a60cc9acfc1ddf530fc9fa44bd4b34aa8b9f197aef4ebe-r2.md": "f6efd69b37675acb34145d77bb998f12e52007652b5edbf69338c15a5e81b3d5",
+    "90_PROPOSALS/e7446564ad3540b384a60cc9acfc1ddf530fc9fa44bd4b34aa8b9f197aef4ebe-r1.md": "461c4006f504e24da6b95b4069d0da92c2a1682d95a2eea5dfd567079795e194",
+    "90_PROPOSALS/2f9f3c826ed840cfab8de559b9044f557bf6a0b936824d859d4b40c25f10cdbb-r1.md": "43b5dcdcc69c44c2a52708a0c555973ed2210ada63bbf288eac3748c215bb247",
+    "20_RAW_SOURCES/untouched.txt": "84067e616094695c7940f5d7fa4aec7e767eb0a865148e7ef5b9cc2742f47b24",
+    "80_AI_OUTPUTS/f62c1207b9654e76880e14ad88d1180050331785e92c4b2aa688a2f2fd893a98-r1.md": "bc0a2772b66d3e3865fea4259d71ccbcf5ca7975bb12a391ee4179488003e933",
+    "00_SYSTEM/M7_STATE.json": "f4d023e514d1d6bc170a5540350de298132adc427f14e40239d3120cc6477dfe",
+    "00_SYSTEM/COMPILER_INDEX.json": "928101e46ea4d670c3dfd48f4f864bbf0ed9ffb57016d2f95461fd50c3c90827",
+    "00_SYSTEM/SEARCH_INDEX.json": "3edc653652ddd1965d7859aa540d372e021b93f072c54a44256787799765d46f",
+    "00_SYSTEM/VAULT_MANIFEST.json": "b93a0bce2b466ad3d7494b335ec9a7680ce674704a660f5c3673c11103dde138",
+    "00_SYSTEM/HOME.md": "37153380da43afd1a9de225ddaba693ee5841371e20044296130c519033a9d75",
+    "00_SYSTEM/.m7-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "00_SYSTEM/VAULT_RULES.md": "a8752973ff81088a8ce25944a3c067ff9720c48f78bb7818d2ab854ed105dc67",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/snapshot_manifest.json": "35d1e79c6cc99f1ca614bcbb5486504579adc7c8291c4b604cbf52709fe2a15d",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/01_CLIENTS/aurora-reviewed-ui.md": "0508c182d18f2340f5f706b0073944afc21d97db3aa049475834b77a1110d277",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/01_CLIENTS/draft.md": "6805d7ca670799face07aa364a1588c80e6823f8cae6cda16140bedacb131f98",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/01_CLIENTS/m4-reviewed-ui.md": "45395efa84c6f49f7feec7314825459c1eb7b96a6c796c3b7cb98718dfe8438f",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/01_CLIENTS/approved.md": "846481b490e32c1e80d0fe622307c647800ea7e3b215cf101a900f7e6c1b7d0d",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/90_PROPOSALS/src_86fcb03d0d2c84efb35b6e1970692f47538b309e991eed59faefb9b1bf52d7df-84067e616094695c-1789225761362025000-81383-0.md": "157dee9e58a8394fcfdc633cf9a5e0a26970f07c67a0c27c354ef13188d4e763",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/90_PROPOSALS/e7446564ad3540b384a60cc9acfc1ddf530fc9fa44bd4b34aa8b9f197aef4ebe-r2.md": "f6efd69b37675acb34145d77bb998f12e52007652b5edbf69338c15a5e81b3d5",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/90_PROPOSALS/e7446564ad3540b384a60cc9acfc1ddf530fc9fa44bd4b34aa8b9f197aef4ebe-r1.md": "461c4006f504e24da6b95b4069d0da92c2a1682d95a2eea5dfd567079795e194",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/90_PROPOSALS/2f9f3c826ed840cfab8de559b9044f557bf6a0b936824d859d4b40c25f10cdbb-r1.md": "43b5dcdcc69c44c2a52708a0c555973ed2210ada63bbf288eac3748c215bb247",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/20_RAW_SOURCES/untouched.txt": "84067e616094695c7940f5d7fa4aec7e767eb0a865148e7ef5b9cc2742f47b24",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/80_AI_OUTPUTS/f62c1207b9654e76880e14ad88d1180050331785e92c4b2aa688a2f2fd893a98-r1.md": "bc0a2772b66d3e3865fea4259d71ccbcf5ca7975bb12a391ee4179488003e933",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/00_SYSTEM/M7_STATE.json": "f4d023e514d1d6bc170a5540350de298132adc427f14e40239d3120cc6477dfe",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/00_SYSTEM/COMPILER_INDEX.json": "928101e46ea4d670c3dfd48f4f864bbf0ed9ffb57016d2f95461fd50c3c90827",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/00_SYSTEM/SEARCH_INDEX.json": "3edc653652ddd1965d7859aa540d372e021b93f072c54a44256787799765d46f",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/00_SYSTEM/VAULT_MANIFEST.json": "b93a0bce2b466ad3d7494b335ec9a7680ce674704a660f5c3673c11103dde138",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/00_SYSTEM/HOME.md": "37153380da43afd1a9de225ddaba693ee5841371e20044296130c519033a9d75",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/00_SYSTEM/.m7-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "00_SYSTEM/SNAPSHOTS/snap-20260912T151136284876000Z-81383-0/00_SYSTEM/VAULT_RULES.md": "a8752973ff81088a8ce25944a3c067ff9720c48f78bb7818d2ab854ed105dc67"
+  }
+}

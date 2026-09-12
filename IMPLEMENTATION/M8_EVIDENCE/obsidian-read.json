@@ -1,0 +1,9 @@
+{
+  "vault": "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m8-real-coee2qja/Vault Unicode \u00e0\u00e8\u00e9",
+  "version": "1.13.7",
+  "observedUi": "m8-reviewed: Aurora offline review; status approved; type client",
+  "contentInventoryUnchanged": true,
+  "readAcceptance": "PASS",
+  "additionalNetworkSandbox": "NOT VERIFIED: Electron sandbox initialization failed; no --no-sandbox workaround used",
+  "scope": "LIMEN bundle network isolation separately verified; Obsidian local-read acceptance does not certify Obsidian network isolation"
+}

@@ -1,0 +1,7 @@
+{
+  "app": "/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m6-ui-cgclzptb/LIMEN Vault.app",
+  "path": "/usr/bin:/bin",
+  "checkout_read": "denied",
+  "network": "allowed for API E2E; offline mode is separate",
+  "binary_sha256_before_qa_signing": "dfd3ebd1a6ddf4f34bc89ada992818a59185a99d91660cf395c95637b7a99a0c"
+}

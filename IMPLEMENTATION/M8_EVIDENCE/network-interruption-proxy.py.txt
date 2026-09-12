@@ -1,0 +1,27 @@
+import socket,threading,select,time,pathlib,json
+bank=pathlib.Path('/private/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m9-qa-v4hz1b7g')
+s=socket.socket();s.bind(('127.0.0.1',52984));s.listen();(bank/'proxy-port.txt').write_text(str(s.getsockname()[1]));print('Proxy ready',s.getsockname()[1],flush=True)
+def relay(c):
+ u=None
+ try:
+  header=b''
+  while b'\r\n\r\n' not in header: header+=c.recv(1)
+  if header.split(b'\r\n')[0]!=b'CONNECT api.openai.com:443 HTTP/1.1': c.close();return
+  u=socket.create_connection(('api.openai.com',443),10);c.sendall(b'HTTP/1.1 200 Connection Established\r\n\r\n')
+  received_server=False;cut_at=None
+  while True:
+   for q in select.select([c,u],[],[],0.02)[0]:
+    data=q.recv(65536)
+    if not data:return
+    (u if q is c else c).sendall(data)
+    if q is u:received_server=True
+    if q is c and received_server and (bank/'cut-proxy.flag').exists() and cut_at is None:cut_at=time.monotonic()+0.15
+   if cut_at is not None and time.monotonic()>=cut_at:
+    (bank/'proxy-interruption.json').write_text(json.dumps({'actualUpstream':'api.openai.com:443','serverTlsBytesObserved':True,'clientTlsBytesForwardedAfterServer':True,'action':'closed both TCP sockets during request','payloadLogged':False}))
+    print('Real OpenAI connection interrupted; no payload logged',flush=True);return
+ except Exception as e: print(type(e).__name__,flush=True)
+ finally:
+  c.close()
+  if u:u.close()
+while True:
+ c,_=s.accept();threading.Thread(target=relay,args=(c,),daemon=True).start()

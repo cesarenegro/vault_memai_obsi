@@ -1,0 +1,4 @@
+(version 1)
+(allow default)
+(deny network*)
+(deny file-read* (subpath "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN"))

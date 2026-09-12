@@ -1,0 +1,27 @@
+{
+  "vault": "/private/tmp/limen-m5-ui-er8qo4iu/M5 Test Vault",
+  "before_hashes": {
+    "01_CLIENTS/draft.md": "97cb17c476cde94dea84026f296a4e3f60e05eebf1b9ab59aec16df17d7dbae2",
+    "01_CLIENTS/unicode.md": "155d894e9a286cc2b5d358b2ee9bb414c9ec35b4d1ec5359bb6685d9c900406c",
+    "01_CLIENTS/approved.md": "d756256ccb2dc94ba294bea673b2fe11342ae82449dd19d57a50b986f5af2d6c",
+    "01_CLIENTS/strategy.md": "ac301d1797c123a81d719a8d1494fbdc6ed78b48ed97529c8674b14a4b0402e8",
+    "20_RAW_SOURCES/untouched.txt": "b795399474e887f0e7a0d9f03909d069a7ba06d4c6160317d5dc543f9f90e5c7",
+    "00_SYSTEM/VAULT_MANIFEST.json": "310359d83e8cc53c224bb071c0826b554633f3e10c27e4688bf06773a250e896",
+    "00_SYSTEM/HOME.md": "37153380da43afd1a9de225ddaba693ee5841371e20044296130c519033a9d75",
+    "00_SYSTEM/VAULT_RULES.md": "a8752973ff81088a8ce25944a3c067ff9720c48f78bb7818d2ab854ed105dc67"
+  },
+  "index_hash_before_restart": "901865edafa2ea9bac7c7894fb8b628849bd7348162fd7c0f6ced1b1e97e514e",
+  "after_hashes": {
+    "01_CLIENTS/draft.md": "97cb17c476cde94dea84026f296a4e3f60e05eebf1b9ab59aec16df17d7dbae2",
+    "01_CLIENTS/unicode.md": "155d894e9a286cc2b5d358b2ee9bb414c9ec35b4d1ec5359bb6685d9c900406c",
+    "01_CLIENTS/approved.md": "d756256ccb2dc94ba294bea673b2fe11342ae82449dd19d57a50b986f5af2d6c",
+    "01_CLIENTS/strategy.md": "ac301d1797c123a81d719a8d1494fbdc6ed78b48ed97529c8674b14a4b0402e8",
+    "20_RAW_SOURCES/untouched.txt": "b795399474e887f0e7a0d9f03909d069a7ba06d4c6160317d5dc543f9f90e5c7",
+    "00_SYSTEM/SEARCH_INDEX.json": "901865edafa2ea9bac7c7894fb8b628849bd7348162fd7c0f6ced1b1e97e514e",
+    "00_SYSTEM/VAULT_MANIFEST.json": "310359d83e8cc53c224bb071c0826b554633f3e10c27e4688bf06773a250e896",
+    "00_SYSTEM/HOME.md": "37153380da43afd1a9de225ddaba693ee5841371e20044296130c519033a9d75",
+    "00_SYSTEM/VAULT_RULES.md": "a8752973ff81088a8ce25944a3c067ff9720c48f78bb7818d2ab854ed105dc67"
+  },
+  "original_files_unchanged": true,
+  "index_unchanged_after_queries_and_restart": true
+}

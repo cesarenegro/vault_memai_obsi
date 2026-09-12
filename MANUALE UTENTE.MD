@@ -1,10 +1,36 @@
-# 📘 LIMEN Vault — Manuale Utente Completo
+# LIMEN Vault — Manuale operativo 0.1.0
 
-> **Sistema di Conoscenza Local-First Indipendente per Packaging in Italy**
+Aggiornato il 12 settembre 2026. M2–M8 completate in locale su macOS ARM64. Il candidato M9 è firmato e installato, ma non ancora notarizzato: non è una release pubblicata. Sono operative compilazione locale, ricerca, API OpenAI, consultazione MCP e revisione umana delle proposte. Il collegamento Business del pacchetto installato è ancora in accettazione.
 
-Benvenuto nel **Manuale Utente Ufficiale di LIMEN Vault** (MEMAI Fallback Obsidian). Questo manuale guida l'utente e il team nella gestione, organizzazione ed elaborazione della conoscenza aziendale in modalità completamente **local-first** e sicura.
+## Creare o aprire un Vault
 
----
+1. Avviare l’app macOS LIMEN Vault. Nel campo **Target Vault Path (Local Directory)** inserire la cartella desiderata.
+2. Usare **CREATE NEW VAULT** per una cartella nuova o vuota; vengono create le 15 cartelle obbligatorie e i tre file di sistema dal template incorporato.
+3. Usare **OPEN EXISTING VAULT** per una cartella già creata. L’apertura valida l’albero in sola lettura e mostra stato, percorso e conteggi reali.
+
+La versione browser mostra l’indisponibilità delle operazioni native e non crea file. Il bundle macOS funziona senza Node, server di sviluppo o rete. Per cambiare Vault riavviare l’app e scegliere un percorso nella schermata iniziale; Settings non implementa ancora un selettore persistente.
+
+La creazione rifiuta una destinazione occupata e non sovrascrive file. Il template viene verificato prima delle scritture; directory e file vengono creati in esclusiva. Se si verifica un errore a metà operazione, i dati parziali restano sul disco: scegliere una nuova destinazione oppure esaminare manualmente quella parziale. L’app non cancella automaticamente dati potenzialmente preesistenti o concorrenti e non promette una transazione atomica dell’intero albero.
+
+## Stati e conteggi
+
+| Stato | Significato |
+| --- | --- |
+| NO_VAULT | Nessun Vault selezionato |
+| NOT_ACCESSIBLE | Root inesistente o non accessibile |
+| INCOMPLETE | Una cartella obbligatoria manca |
+| INVALID | File obbligatori, manifest, frontmatter o accessi interni non validi |
+| READY | Validazione strutturale superata |
+
+READY certifica la struttura. La card SHA-256 di M3 mostra VERIFIED dopo il confronto effettivo con il manifest, DISCREPANCY per file modificati/mancanti/aggiunti e UNVERIFIED quando la verifica non è stata completata. Un Vault appena creato mostra 2 file Markdown (HOME e VAULT_RULES), 0 fonti e 0 proposte. I conteggi sono rilevati nella stessa scansione di validazione.
+
+La validazione non modifica contenuti, elenco dei file, mtime o ctime; atime dipende dal filesystem. I link simbolici discendenti sono rifiutati, anche quelli interni, per evitare cicli e reindirizzamenti. La root selezionata viene canonicalizzata, inclusi gli alias macOS /tmp e /var.
+
+## Aprire in Obsidian
+
+LIMEN rileva Obsidian nelle installazioni globale e utente. Il pulsante **Open in Obsidian** apre direttamente un Vault già registrato nell’app ricevente.
+
+Per un nuovo Vault, Obsidian richiede una registrazione iniziale. LIMEN apre il selettore e mostra il percorso da scegliere. Usare **Open folder as vault → Open**, selezionare la cartella appena creata da LIMEN e confermare. Poi premere nuovamente **Open in Obsidian**. Non occorre creare un secondo Vault. Le etichette inglesi e il comportamento sono stati verificati nell’interfaccia Obsidian 1.13.7 l’11 settembre 2026. LIMEN legge il registro locale senza modificarlo; Obsidian può creare la propria cartella `.obsidian` nel Vault selezionato.
 
 ## 📂 1. Guida alla Scelta della Sottocartella
 
@@ -12,7 +38,7 @@ L'utente (o il consulente) deposita i file Markdown (`.md`) nella cartella appro
 
 ### 📥 Se stai inserendo materiale di partenza grezzo:
 * **`20_RAW_SOURCES/`**: Inserisci qui tutti i documenti di input grezzi, trascrizioni di chiamate, appunti non strutturati, brief iniziali o estratti.
-  * *Perché?* Questo è l'hub in cui il motore AI legge i materiali per elaborare le sintesi senza modificare mai i file originali.
+  * *Perché?* Il compilatore legge queste fonti senza modificarle; RAW è escluso dal contesto AI.
 
 ### 🏢 Se stai inserendo conoscenza organizzata e strutturata:
 * **`01_CLIENTS/`**: Profili e schede dei clienti (es. `cliente-acme.md`).
@@ -26,15 +52,13 @@ L'utente (o il consulente) deposita i file Markdown (`.md`) nella cartella appro
 * **`09_COMPETITORS/`**: Schede e analisi dei concorrenti.
 
 ### 📄 Se stai inserendo output definitivi ed approvati:
-* **`10_APPROVED_OUTPUTS/`**: Inserisci qui (o sposta da `90_PROPOSALS/`) i documenti finali verificati e validati dall'utente.
+* **`10_APPROVED_OUTPUTS/`**: Contiene output approvati. Nel workflow M7 usare l’approvazione esplicita: crea un nuovo file e conserva la proposta originale.
 
 ---
 
-## 📝 2. Come deve essere fatto un file (Formato Markdown + Frontmatter)
+## Formato delle note
 
-I file del Vault sono semplici file Markdown (`.md`).
-
-Per garantire che il sistema possa indicizzare, cercare e verificare l'integrità del file, ogni nota deve contenere un'intestazione iniziale **YAML Frontmatter** in cima al file:
+Le note sono file Markdown. Una nota libera senza frontmatter è accettata con un avviso (i file di sistema non richiedono tale avviso). Quando presente, il frontmatter deve essere una mappa YAML valida e rispettare `vault-schema`: id, title, type, created_at e updated_at sono obbligatori; gli altri campi seguono lo schema.
 
 ```yaml
 ---
@@ -55,141 +79,52 @@ tags: [packaging, posizionamento, acme]
 Qui va il testo in formato Markdown della nota...
 ```
 
----
+Le date YAML restano stringhe. Intestazioni non chiuse, sintassi invalida, liste/scalari al posto della mappa o campi con tipi errati rendono il Vault INVALID.
 
-## 🖥️ 3. Come lavora l'utente sul Vault
+## Snapshot locali e integrità — M3
 
-* **Apertura con Obsidian o Finder:**
-  L'utente apre la cartella del Vault direttamente dall'applicazione Obsidian su Mac (o tramite il Finder).
-* **Creazione / Inserimento:**
-  Crea nuove note o trascina file `.md` nella cartella di competenza (es. trascina note grezze in `20_RAW_SOURCES/`).
-* **Elaborazione AI (Proposte):**
-  L'AI legge da `20_RAW_SOURCES/` e genera le proposte analitiche direttamente in `90_PROPOSALS/` o le bozze in `80_AI_OUTPUTS/`.
-* **Approvazione:**
-  L'utente revisiona la proposta in `90_PROPOSALS/`, la approva e la sposta nella cartella definitiva (es. `04_POSITIONING/` o `10_APPROVED_OUTPUTS/`).
+1. Aprire o creare il Vault nell’app desktop. La Home verifica i file rispetto al manifest del Vault attivo.
+2. Aprire **Snapshots**, inserire eventualmente una nota e premere **CREATE SNAPSHOT**. La copia viene pubblicata in `00_SYSTEM/SNAPSHOTS/snap-…/` solo dopo copia, manifest e verifica riusciti.
+3. L’elenco mostra snapshot, data, nota, numero di file e stato. Chiudendo e riaprendo l’app gli snapshot restano su disco.
+4. Premere **RECHECK INTEGRITY** per ricalcolare gli hash degli snapshot e del Vault. VERIFIED indica corrispondenza al manifest; CORRUPTED segnala alterazioni o manifest invalido; INCOMPLETE indica manifest assente.
+5. Se la lettura non riesce, l’app mostra l’errore e UNVERIFIED nella Home. Correggere il problema di accesso e riprovare; i pulsanti tornano disponibili dopo l’errore.
 
----
+I conteggi Home riguardano il Vault attivo, escludendo le copie archiviate. Creare uno snapshot non aggiorna il manifest del Vault attivo: una modifica ai documenti può continuare a essere segnalata come discrepanza. SHA-256 verifica la corrispondenza con il manifest locale, non la sua autenticità.
 
-## 📄 4. Gestione di File PDF, TXT, HTML o Word (Conversione Automatica)
+La pubblicazione dello snapshot è atomica e non sovrascrive quelli esistenti. Non è una cattura istantanea del filesystem: evitare modifiche simultanee se serve una versione uniforme dei documenti. Gli errori gestiti puliscono il proprio staging; un arresto forzato può lasciare `.pending-*`, ignorato dall’elenco e non pubblicato. Non è implementata una funzione di ripristino automatico del Vault.
 
-Per i file PDF, TXT, HTML, DOCX o altri formati, l'utente **non deve fare la conversione a mano**.
+Per una prova manuale usare un Vault temporaneo: creare uno snapshot, riavviare l’app e verificarne la presenza; modificare un file nella sola copia e premere RECHECK. Il risultato deve essere CORRUPTED mentre il Vault originale resta verificato. In caso di errore conservare messaggio e schermata. Non eseguire questa prova su copie che servono come backup reale.
 
-La trasformazione in formato Markdown (`.md`) viene gestita **automaticamente dal sistema LIMEN Vault**.
+## Conoscenza, fonti e ricerca
 
-### ⚙️ Chi fa la conversione e come funziona?
-* **Chi la esegue:** Il modulo `@limen-vault/knowledge-compiler` (il compilatore di conoscenza integrato nell'applicazione LIMEN Vault).
-* **Cosa fa il sistema in automatico:**
-  1. **Estrazione del testo:** Estrae il testo grezzo e la struttura da PDF, file di testo (`.txt`), pagine web HTML o documenti Word.
-  2. **Generazione del Frontmatter:** Crea in automatico l'intestazione standard YAML (con `title`, `id`, `created_at`, `status: raw`, ecc.).
-  3. **Formattazione Markdown:** Converte titoli, elenchi e tabelle nel formato grafico Markdown `.md`.
-  4. **Archiviazione:** Salva la nuova nota `.md` nella cartella `20_RAW_SOURCES/` (o direttamente in `90_PROPOSALS/` se viene richiesta una sintesi AI).
+Knowledge legge direttamente i Markdown delle categorie, anche senza indice di ricerca. Sources mostra i documenti RAW; la compilazione locale genera bozze in 90_PROPOSALS, conservando l’originale. Le bozze compilate richiedono revisione prima di diventare conoscenza approvata.
 
-### 👤 Cosa deve fare semplicemente l'utente?
-L'utente ha 2 modalità semplicissime per caricare i file:
-1. **Tramite l'Interfaccia dell'App (Consigliato):**
-   * Apri l'App LIMEN Vault (Web o Desktop) e fai il **drag & drop** (trascina e rilascia) del file PDF/TXT/HTML direttamente nell'area *"Importa Fonti"*. L'App trasforma ed importa il file direttamente nel Vault in formato `.md`.
-2. **Tramite la Cartella del Finder:**
-   * Se l'utente incolla direttamente un PDF o TXT dentro `20_RAW_SOURCES/`, al successivo avvio dell'App, il `knowledge-compiler` individua il file grezzo e genera la nota `.md` corrispondente.
+Search utilizza un indice locale. Dopo nuove note o approvazioni usare RE-INDEX SEARCH VAULT. Un indice corrotto viene segnalato e preservato; non viene azzerato silenziosamente. Le etichette Home Markdown Files e Proposal Files contano file e revisioni, non decisioni ancora pendenti.
 
-### 💡 Perché i file vengono trasformati in `.md`?
-* **Zero dipendenze da software proprietari:** I file `.md` si aprono sempre e con qualsiasi strumento su qualsiasi computer (Obsidian, VSCode, TextEdit, ecc.).
-* **Ricerca Istantanea:** Il motore di ricerca locale offline del Vault indicizza il testo `.md` in millisecondi.
-* **Compatibilità Obsidian:** Obsidian funziona nativamente ed esclusivamente su file `.md`.
+## OpenAI e salvataggio delle risposte
 
----
+In Settings inserire la chiave nel campo OpenAI API key e usare SAVE KEY. Il valore resta nel Portachiavi macOS; l’eventuale autorizzazione va completata nella finestra macOS. CHECK KEYCHAIN verifica la presenza, non la validità presso OpenAI. La validità e il modello sono verificati quando parte una richiesta.
 
-## 🔄 5. Flusso Completo: Da `20_RAW_SOURCES` alla Cartella Finale
+In Ask Knowledge scegliere un modello disponibile, scrivere la domanda e usare PREVIEW SOURCES. Esaminare i documenti mostrati prima di SEND DISPLAYED SOURCES TO OPENAI. Per interrompere l’attesa usare CANCEL: una richiesta già trasmessa può comunque essere elaborata dal provider. Senza rete la consultazione locale resta utilizzabile.
 
-Ecco esattamente come gestiamo questo flusso con la massima sicurezza per i tuoi dati:
+SAVE OUTPUT AS DRAFT salva esplicitamente la risposta, il modello e le fonti disponibili. Non promuove il testo a conoscenza approvata. AI Outputs consente di ritrovarlo dopo riavvio e offline.
 
-### 1. 🛑 Il file originale rimane SEMPRE in `20_RAW_SOURCES/` (Principio di Immutabilità)
-Il file sorgente grezzo (o la sua conversione `.md`) **NON viene mai rimosso né spostato** da `20_RAW_SOURCES/`.
-* **Motivo:** `20_RAW_SOURCES/` è l'archivio storico delle fonti. Conservare l'originale intatto ti garantisce la tracciabilità totale di da dove proviene una determinata informazione.
+## Proposte e approvazione umana
 
-### 2. 🤖 L'AI elabora e crea una Proposta in `90_PROPOSALS/`
-Quando l'AI analizza il documento presente in `20_RAW_SOURCES/`:
-* Estrae i concetti chiave.
-* Identifica la cartella di pertinenza finale (es. `04_POSITIONING/`, `01_CLIENTS/` o `05_PACKAGING_KNOWLEDGE/`).
-* Genera un file `.md` compilato e lo inserisce temporaneamente nella cartella `90_PROPOSALS/` (con lo stato `status: pending`).
+In Proposals creare una proposta da un output oppure importare esplicitamente una bozza M4. Controllare contenuto, fonti e hash. Ogni modifica produce una nuova revisione; le precedenti restano conservate. L’importazione mantiene il documento originale anche quando contiene frontmatter nel corpo: rivederlo prima di approvare.
 
-### 3. ✅ Approvazione Umana: Lo Spostamento Automatico alla Cartella Finale
-Per garantire il controllo assoluto ed evitare che l'AI inserisca contenuti errati nella conoscenza ufficiale:
-1. L'utente apre l'App (o Obsidian) e vede la proposta in attesa nella cartella `90_PROPOSALS/`.
-2. L'utente clicca su **"Approva Proposta"**.
-3. In quel momento, **LIMEN Vault sposta automaticamente il file** dalla cartella `90_PROPOSALS/` alla cartella finale di pertinenza (es. spostando il file definitivo direttamente dentro `04_POSITIONING/` o `01_CLIENTS/`) e ne imposta lo stato su `status: approved`.
+Scegliere la destinazione consentita, esaminare la revisione esatta e confermare l’approvazione. Il backend controlla nuovamente hash e revisione. Una collisione non sovrascrive la nota esistente; RAW non è una destinazione ammessa. Il rifiuto registra la decisione senza cancellare la bozza. Reindicizzare esplicitamente dopo pubblicazione.
 
----
+In caso di operazione interrotta conservare i file e usare il recupero esplicito del workflow. Non cancellare manualmente stato/journal per nascondere l’errore. Indici corrotti e conflitti richiedono esame; le prove di arresto processo non garantiscono recupero dopo guasti hardware o perdita di alimentazione.
 
-## 📊 6. Diagrams & Workflow di Flusso (Mermaid)
+## Client esterni e rilascio M9
 
-### A. Diagramma dell'Ingestione e Conversione Documenti
+MCP espone soltanto consultazione di conoscenza approvata e indicizzata. ENABLE LOCAL MCP attiva l’endpoint locale; REVOKE MCP lo arresta e invalida l’accesso. Non condividere il token in chat o documenti.
 
-```mermaid
-flowchart TD
-    A["Documento Grezzo (PDF / TXT / HTML / DOCX)"] -->|Drag & Drop o Finder| B["Ingestione App LIMEN Vault"]
-    B --> C["@limen-vault/knowledge-compiler"]
-    C --> D["Estrazione Testo & Layout"]
-    D --> E["Generazione YAML Frontmatter"]
-    E --> F["Creazione File .md"]
-    F --> G["Salvataggio permanente in 20_RAW_SOURCES/"]
-```
+Codex può usare il comando stdio del binario installato, con il percorso Vault autorizzato come argomento separato: /Users/cesare/Applications/LIMEN Vault.app/Contents/MacOS/limen-vault --mcp-stdio <percorso-assoluto-vault>. Nei file di configurazione utilizzare un campo command e un array args, preservando gli spazi. Non inserire il percorso del checkout. Il client avvia il processo; rimuovere la sua configurazione e arrestare la sessione per disabilitarlo.
 
-### B. Diagramma del Workflow AI & Approvazione Umana
+Le impostazioni Business contengono identificativi tunnel/organizzazione, chiave runtime separata nel Portachiavi e comandi START/STOP BUSINESS TUNNEL. La readiness locale non certifica la connessione remota. La procedura di accettazione M9 è ancora aperta: non considerare il candidato una distribuzione Business verificata.
 
-```mermaid
-flowchart LR
-    subgraph SORGENTI ["1. Sorgenti Immutabili"]
-        R["20_RAW_SOURCES/nota.md"]
-    end
+Il Vault deve restare fuori dalla .app. Prima di aggiornare fermare tunnel e applicazione; conservare la precedente copia fino alla verifica della nuova versione. Il banco ha verificato sostituzione e rollback della stessa versione, non migrazioni tra schemi diversi. La rimozione della sola applicazione conserva il Vault; le credenziali nel Portachiavi non vengono automaticamente cancellate.
 
-    subgraph AI ["2. Elaborazione AI"]
-        ENGINE["@limen-vault/ai-engine"]
-        P["90_PROPOSALS/proposta.md<br/>(status: pending)"]
-    end
-
-    subgraph USER ["3. Human-in-the-Loop"]
-        REVIEW["Revisione Utente"]
-        APPROVE{"Decisione Utente"}
-    end
-
-    subgraph TARGET ["4. Conoscenza Ufficiale"]
-        DEST["Cartella Finale<br/>(es. 04_POSITIONING / 01_CLIENTS)"]
-    end
-
-    R -->|Lettura Read-Only| ENGINE
-    ENGINE -->|Genera Proposta| P
-    P --> REVIEW
-    REVIEW --> APPROVE
-    APPROVE -->|APPROVA| DEST
-    APPROVE -->|RIFIUTA| DISCARD["Scartato / Modifica richiesta"]
-```
-
----
-
-## 🔒 7. Integrità dei Dati (SHA-256 Checksum)
-
-LIMEN Vault calcola automaticamente un checksum **SHA-256** per ciascuna nota presente nel Vault e aggiorna il manifest in `00_SYSTEM/VAULT_MANIFEST.json`. Questo assicura che il Vault sia protetto da modifiche non autorizzate o corruzione dei dati.
-
----
-
-## 🛠️ 8. Creazione, Apertura e Validazione del Vault (Milestone M2)
-
-### A. Creazione del Vault (`createVault`)
-1. L'utente specifica un percorso locale su Mac (es. `/Users/cesare/Documents/VAULT`).
-2. Il runtime crea e popola le 15 sottocartelle obbligatorie copiandole dal modello `vault-template/` e aggiorna il manifest `00_SYSTEM/VAULT_MANIFEST.json`.
-3. **Protezione dei dati (Zero Overwrite):** Se il percorso di destinazione esiste già ed è popolato con un Vault o file di sistema, la creazione si blocca sollevando `VaultAlreadyExistsError` senza sovrascrivere alcun file.
-
-### B. Apertura del Vault (`openVault`)
-1. Aprire un Vault esegue un'ispezione strutturale in **sola lettura**.
-2. Il runtime verifica la presenza di tutte le 15 cartelle obbligatorie e la validità del manifest.
-3. **Invariante Read-Only:** L'apertura e la scansione non modificano mai alcun file o timestamp sul disco.
-
-### C. Validazione Strutturale e Protezione Percorsi (`validateVault`)
-* **Stati del Vault gestiti:**
-  - `READY`: Vault valido, integro e completo.
-  - `INCOMPLETE`: Manca una o più cartelle obbligatorie (es. `04_POSITIONING`).
-  - `INVALID`: Manifest corrotto o non conforme allo schema JSON.
-  - `NOT_ACCESSIBLE`: Percorso inesistente o privo di permessi di lettura.
-* **Sicurezza Symlink & Path Traversal:**
-  I tentativi di uscire dal Vault (`..` o percorsi assoluti esterni) e i link simbolici che puntano all'esterno del Vault sollevano l'errore di sicurezza `SecurityPathError`.
-
+Installazione DMG notarizzato, Gatekeeper e account macOS pulito restano verifiche M9 aperte. Non aggirare Gatekeeper né rimuovere quarantena per dichiarare riuscita l’installazione.
