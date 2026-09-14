@@ -1,0 +1,9 @@
+{
+  "source": "User report",
+  "dmgMountedInGuest": true,
+  "appCopiedAndLaunched": "PASS user confirmed",
+  "newVaultReady": "PASS user confirmed",
+  "notIndependentToolObservation": true,
+  "userConfirmation": "app avviata, Vault READY",
+  "status": "PASS manual user acceptance"
+}

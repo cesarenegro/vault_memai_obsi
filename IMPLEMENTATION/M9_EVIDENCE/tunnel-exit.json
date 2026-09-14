@@ -1,0 +1,9 @@
+{
+  "action": "native Quit LIMEN Vault menu",
+  "processes": {
+    "88450": "absent",
+    "13183": "absent",
+    "13184": "absent"
+  },
+  "status": "PASS"
+}

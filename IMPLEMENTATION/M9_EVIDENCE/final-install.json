@@ -1,0 +1,77 @@
+{
+  "bank": "/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m9-final-rjpam_j5",
+  "installedApp": "/Users/cesare/Applications/LIMEN Vault.app",
+  "download": "Actual loopback HTTP transfer; quarantine explicitly added for acceptance test, never removed",
+  "sha256": "4e42e19b712bd8be3cfc38ca41400e42160a01fad2ba32253dd5e77363bc6168",
+  "checks": [
+    {
+      "command": [
+        "xcrun",
+        "stapler",
+        "validate",
+        "/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m9-final-rjpam_j5/LIMEN.dmg"
+      ],
+      "exit": 0,
+      "output": "Processing: /var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m9-final-rjpam_j5/LIMEN.dmg\nThe validate action worked!\n"
+    },
+    {
+      "command": [
+        "spctl",
+        "--assess",
+        "--type",
+        "open",
+        "--context",
+        "context:primary-signature",
+        "--verbose=4",
+        "/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m9-final-rjpam_j5/LIMEN.dmg"
+      ],
+      "exit": 0,
+      "output": "/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m9-final-rjpam_j5/LIMEN.dmg: accepted\nsource=Notarized Developer ID\n"
+    },
+    {
+      "command": [
+        "xcrun",
+        "stapler",
+        "validate",
+        "/Volumes/LIMEN Vault/LIMEN Vault.app"
+      ],
+      "exit": 0,
+      "output": "Processing: /Volumes/LIMEN Vault/LIMEN Vault.app\nThe validate action worked!\n"
+    },
+    {
+      "command": [
+        "codesign",
+        "--verify",
+        "--deep",
+        "--strict",
+        "/Volumes/LIMEN Vault/LIMEN Vault.app"
+      ],
+      "exit": 0,
+      "output": ""
+    },
+    {
+      "command": [
+        "spctl",
+        "--assess",
+        "--type",
+        "execute",
+        "--verbose=4",
+        "/Users/cesare/Applications/LIMEN Vault.notarized-stage.app"
+      ],
+      "exit": 0,
+      "output": "/Users/cesare/Applications/LIMEN Vault.notarized-stage.app: accepted\nsource=Notarized Developer ID\n"
+    },
+    {
+      "command": [
+        "xcrun",
+        "stapler",
+        "validate",
+        "/Users/cesare/Applications/LIMEN Vault.notarized-stage.app"
+      ],
+      "exit": 0,
+      "output": "Processing: /Users/cesare/Applications/LIMEN Vault.notarized-stage.app\nThe validate action worked!\n"
+    }
+  ],
+  "cleanOsAccount": false,
+  "guiLaunch": "pending"
+}

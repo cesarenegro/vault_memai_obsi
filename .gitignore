@@ -14,6 +14,7 @@ build
 .env.local
 .env.production
 SECRETS.TXT
+UTENTI PASSWORD.TXT
 
 # System / OS
 .DS_Store

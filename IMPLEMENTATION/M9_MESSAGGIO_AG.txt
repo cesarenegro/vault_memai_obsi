@@ -1,0 +1,17 @@
+M9 è completata e verificata in locale da Codex. Usa come fonte IMPLEMENTATION/2026-09-12_M9_CLOSURE.md e TASK_LIST.md aggiornato.
+
+Verificati: API/Codex/ChatGPT Business dalla copia installata; lettura Business con hash identico al file e Vault invariato; stop/restart/uscita app senza figli residui; nuova chiamata Business dopo STOP non restituisce dati. Test, build e banco APFS per aggiornamento/interruzione/ENOSPC/rollback/disinstallazione superati nei limiti documentati.
+
+App e DMG firmati e notarizzati da Apple:
+- App Accepted: 87834a15-bd33-4962-b276-dcd31829a2e7.
+- DMG Accepted: 6d3af9a1-ceba-425e-894b-6d5194960dbe.
+- Stapling, validate e Gatekeeper: PASS, Notarized Developer ID.
+- Collaudo Guest manuale dell’utente: app avviata, nuovo Vault READY senza credenziali.
+
+DMG: /Users/Shared/LIMEN-M9/LIMEN-Vault-0.1.0-arm64.dmg
+SHA256: 4e42e19b712bd8be3cfc38ca41400e42160a01fad2ba32253dd5e77363bc6168
+Nessun commit/push/tag/deploy o pubblicazione effettuato. M9 chiusa in locale, non pubblicata.
+
+Non modificare artefatti o evidenze della release M9. Non riaprire test già passati senza una modifica o un problema concreto. Per M10 leggi IMPL_PLANS/IMP_PLAN_M10REV.MD (REV 2): è un piano, non un’autorizzazione implicita a deploy, bucket o migrazioni CRM. L’integrazione CRM è proposta in IMPL_PLANS/IMP_PLAN_CRM_LIMEN_BRIDGEREV.MD e richiede prima audit del vero repository CRM. Mantieni autonomia del Vault, RAW immutabili e approvazione umana M7.
+
+REQUISITO UX PER I PROSSIMI INTERVENTI: leggere IMPL_PLANS/UX_AI_INTEGRATION_REV.MD. Collega ChatGPT Business / Attiva AI, configurazione amministrativa una tantum, modello predefinito verificato e contesto automatico autorizzato. Niente token, tunnel ID, organization ID o scelta modello nel flusso ordinario. Non promettere provisioning automatico non supportato e non confondere login Business con API.

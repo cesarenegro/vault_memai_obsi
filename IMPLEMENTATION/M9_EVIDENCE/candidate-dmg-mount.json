@@ -1,0 +1,8 @@
+{
+  "mountedReadOnly": true,
+  "appSignatureValid": true,
+  "exactInventoryMatches": true,
+  "gatekeeperExit": 3,
+  "gatekeeperOutput": "/Volumes/LIMEN Vault Candidate/LIMEN Vault.app: rejected\nsource=Unnotarized Developer ID\n",
+  "notarized": false
+}

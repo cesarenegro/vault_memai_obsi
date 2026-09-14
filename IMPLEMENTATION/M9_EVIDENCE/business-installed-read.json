@@ -1,0 +1,28 @@
+{
+  "status": "PASS",
+  "chat": "https://chatgpt.com/c/6aa57b1f-7ec0-83eb-81fd-38c0b0304c33",
+  "workspace": "Arkai for LIMEN VAULT Business",
+  "plugin": "LIMEN Vault M6 QA",
+  "installedBinarySha256": "2faa40bc1798e6fae44c44b99696987ecfe1d8810f152a16cd7a95499cae8e6b",
+  "observedSteps": [
+    "Listed vaults and searched for Aurora",
+    "Searched Vault for Aurora and read the requested document"
+  ],
+  "returnedDate": "17 October 2026",
+  "returnedPhrase": "blue espresso",
+  "returnedPath": "01_CLIENTS/approved.md",
+  "returnedSha256": "846481b490e32c1e80d0fe622307c647800ea7e3b215cf101a900f7e6c1b7d0d",
+  "localHashMatches": true,
+  "vaultInventoryUnchanged": true,
+  "stopChildrenAbsent": [
+    2025,
+    2028
+  ],
+  "remoteAfterStop": {
+    "status": "PASS unavailable",
+    "observedError": "HTTP 504: {\"detail\":\"MCP request timed out\"}",
+    "displayedDuration": "2 minutes, 8 seconds",
+    "newVaultDataReturned": false,
+    "limit": "Remote timeout is provider-controlled; local stop completed promptly"
+  }
+}
