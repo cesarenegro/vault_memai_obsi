@@ -1,0 +1,10 @@
+{
+  "date": "2026-09-13",
+  "uiVersion": "0.2.0",
+  "nativeRevoke": "Pubblicazione ritirata",
+  "appAccepted": "d507ac22-ad50-4ca4-bd71-49a9fdac8937",
+  "staplerAttempts": 3,
+  "staplerStatus": "blocked error 73, Contents/CodeResources absent",
+  "firstNotarizedDmg": "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/.local/m10-candidate/LIMEN-Vault-0.2.0-arm64.dmg",
+  "latestCodePackaged": false
+}

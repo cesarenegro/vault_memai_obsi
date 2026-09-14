@@ -2,15 +2,16 @@
   "name": "limen-vault-monorepo",
   "private": true,
   "version": "0.1.0",
-  "description": "LIMEN Vault — Standalone Local-First AI Knowledge System",
+  "description": "LIMEN Vault \u2014 Standalone Local-First AI Knowledge System",
   "scripts": {
     "build": "pnpm --recursive run build",
     "lint": "pnpm --recursive run lint",
     "typecheck": "pnpm --recursive run typecheck",
-    "test": "pnpm --recursive run test && pnpm test:guards",
+    "test": "pnpm --recursive run test && pnpm test:guards && pnpm test:sync-service",
     "test:guards": "node --import tsx/esm tests/guards/prohibited-dependencies.test.ts",
     "dev:web": "pnpm --filter @limen-vault/web dev",
-    "dev:desktop": "pnpm --filter @limen-vault/desktop dev"
+    "dev:desktop": "pnpm --filter @limen-vault/desktop dev",
+    "test:sync-service": "node --test services/vault-sync-api/worker.test.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

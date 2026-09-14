@@ -1,0 +1,18 @@
+{
+  "date": "2026-09-13",
+  "production": "https://pii-crm.vercel.app",
+  "deployment": "https://pii-3zbbmnw2t-cesares-projects-cda0db9c.vercel.app",
+  "tests": {
+    "bridge": "7/7 PASS",
+    "typecheck": "PASS",
+    "build": "PASS",
+    "production_anonymous_search": 403,
+    "production_authenticated_status": {
+      "status": "NO_PUBLICATION",
+      "bucket": "m3mai-core-vault"
+    },
+    "production_safari_ui": "Admin ADMIN: Archivio documenti; selettori Materiali CRM / MEMAI e LIMEN Vault; Archivio collegato; Nessuna pubblicazione"
+  },
+  "storage_mutations": false,
+  "notes_published": false
+}

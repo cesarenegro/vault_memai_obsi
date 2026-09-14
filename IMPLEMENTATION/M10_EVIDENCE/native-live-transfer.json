@@ -1,0 +1,27 @@
+{
+  "date": "2026-09-13T10:40:56.902Z",
+  "endpoint": "https://limen-vault-sync.cesare-negro.workers.dev",
+  "scope": "Actual native UI upload and import via deployed Worker and R2, same Mac",
+  "source": "/tmp/limen-m10-ui.6ncbyK/Vault",
+  "target": "/tmp/limen-m10-ui.6ncbyK/LIMEN-copy-4ae2c55159822900f456210caf8f450f",
+  "releaseId": "rel-58875c54192a37835486333dc6a98c8c",
+  "uiUpload": "COMMITTED",
+  "uiDownload": "IMPORTED",
+  "checks": [
+    {
+      "file": "00_SYSTEM/HOME.md",
+      "equal": true,
+      "sha256": "37153380da43afd1a9de225ddaba693ee5841371e20044296130c519033a9d75"
+    },
+    {
+      "file": "00_SYSTEM/VAULT_MANIFEST.json",
+      "equal": true,
+      "sha256": "069f7f75083d191c04624e8e80f37706432734416bf52f3d294413699b56f72f"
+    },
+    {
+      "file": "00_SYSTEM/VAULT_RULES.md",
+      "equal": true,
+      "sha256": "a8752973ff81088a8ce25944a3c067ff9720c48f78bb7818d2ab854ed105dc67"
+    }
+  ]
+}

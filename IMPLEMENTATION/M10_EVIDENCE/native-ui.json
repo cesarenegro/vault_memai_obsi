@@ -1,0 +1,14 @@
+{
+  "date": "2026-09-13",
+  "binary": "apps/desktop/src-tauri/target/release/bundle/macos/LIMEN Vault.app",
+  "fixture": "/tmp/limen-m10-ui.6ncbyK/Vault",
+  "observations": [
+    "Native create Vault READY; 2 Markdown files; SHA-256 VERIFIED",
+    "Transfers panel returns NOT_CONFIGURED via native IPC",
+    "Attempt without cloud configuration does not block local Vault",
+    "Final candidate reopened fixture READY / VERIFIED",
+    "Transfers shows version history selector and NOT_CONFIGURED",
+    "Unconfigured upload reports: Collega prima l\u2019archivio in Impostazioni Cloud Copy."
+  ],
+  "limitation": "Configured deployed Worker and CRM E2E pending account access."
+}

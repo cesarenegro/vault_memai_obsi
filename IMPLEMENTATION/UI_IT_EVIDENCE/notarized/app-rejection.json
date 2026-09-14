@@ -1,0 +1,61 @@
+{
+  "logFormatVersion": 1,
+  "jobId": "da79787c-7839-4792-af51-9599f70a8d96",
+  "status": "Invalid",
+  "statusSummary": "Archive contains critical validation errors",
+  "statusCode": 4000,
+  "archiveFilename": "app.zip",
+  "uploadDate": "2026-09-13T18:46:44.322Z",
+  "sha256": "bb474466e2d1cef8ac924295e243305bf9ff32195bfe30dd609fe6a8d6a14ccc",
+  "ticketContents": null,
+  "issues": [
+    {
+      "severity": "error",
+      "code": null,
+      "path": "app.zip/LIMEN Vault.app/Contents/Resources/mcp/cloudflared",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "arm64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "app.zip/LIMEN Vault.app/Contents/Resources/mcp/cloudflared",
+      "message": "The signature does not include a secure timestamp.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087733",
+      "architecture": "arm64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "app.zip/LIMEN Vault.app/Contents/Resources/mcp/cloudflared",
+      "message": "The executable does not have the hardened runtime enabled.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087724",
+      "architecture": "arm64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "app.zip/LIMEN Vault.app/Contents/Resources/mcp/tunnel-client",
+      "message": "The binary is not signed with a valid Developer ID certificate.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087721",
+      "architecture": "arm64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "app.zip/LIMEN Vault.app/Contents/Resources/mcp/tunnel-client",
+      "message": "The signature does not include a secure timestamp.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087733",
+      "architecture": "arm64"
+    },
+    {
+      "severity": "error",
+      "code": null,
+      "path": "app.zip/LIMEN Vault.app/Contents/Resources/mcp/tunnel-client",
+      "message": "The executable does not have the hardened runtime enabled.",
+      "docUrl": "https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/resolving_common_notarization_issues#3087724",
+      "architecture": "arm64"
+    }
+  ]
+}

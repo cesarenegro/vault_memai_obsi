@@ -14,6 +14,7 @@ const readdir = libc.func(darwin && process.arch === 'x64' ? 'readdir$INODE64' :
 const unlinkat = libc.func('int unlinkat(int fd, const char *name, int flags)');
 const renameExclusive = libc.func(darwin ? 'int renameatx_np(int fromfd, const char *from, int tofd, const char *to, unsigned int flags)' : 'int renameat2(int fromfd, const char *from, int tofd, const char *to, unsigned int flags)');
 const renameReplace = libc.func('int renameat(int fromfd, const char *from, int tofd, const char *to)');
+const flock = libc.func('int flock(int fd, int operation)');
 const closedir = libc.func('int closedir(void *dir)');
 const errnoPtr = libc.func(darwin ? 'int *__error(void)' : 'int *__errno_location(void)');
 const errno = () => koffi.decode(errnoPtr(), 'int') as number;
@@ -25,6 +26,11 @@ export class SafeDir {
   constructor(readonly fd: number) {}
   static open(root: string): SafeDir { return new SafeDir(fs.openSync(fs.realpathSync(root), flags | fs.constants.O_DIRECTORY)); }
   close() { fs.closeSync(this.fd); }
+  lockExisting(name: string): () => void {
+    const fd=this.open(name);
+    if(!fs.fstatSync(fd).isFile() || flock(fd, 1 | 4)!==0) {fs.closeSync(fd);throw new Error(`Vault operation is active: ${name}`);}
+    return () => {fs.closeSync(fd);};
+  }
   open(name: string, directory = false): number {
     component(name);
     const fd = openat(this.fd, name, flags | (directory ? fs.constants.O_DIRECTORY : 0), 'unsigned int', 0) as number;

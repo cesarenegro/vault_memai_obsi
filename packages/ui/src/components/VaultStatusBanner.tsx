@@ -34,10 +34,10 @@ export const VaultStatusBanner: React.FC<VaultStatusBannerProps> = ({
         <StatusBadge status={status} />
         <div>
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--limen-text-primary)' }}>
-            {vaultName || 'No Vault Loaded'}
+            {vaultName || 'Nessun Vault aperto'}
           </div>
           <div style={{ fontSize: 12, color: 'var(--limen-text-muted)', marginTop: 2 }}>
-            {vaultPath ? vaultPath : 'Select or create a local Vault directory'} • {pageCount} Markdown Files
+            {vaultPath ? vaultPath : 'Seleziona o crea una cartella Vault locale'} • {pageCount} File Markdown
           </div>
         </div>
       </div>
@@ -46,7 +46,7 @@ export const VaultStatusBanner: React.FC<VaultStatusBannerProps> = ({
         <button
           onClick={onOpenObsidian}
           disabled={!obsidianAvailable || status === 'NO_VAULT'}
-          title={!obsidianAvailable ? 'Obsidian app not detected on local Mac' : 'Open Vault in Obsidian'}
+          title={!obsidianAvailable ? 'Obsidian non rilevato su questo Mac' : 'Apri il Vault in Obsidian'}
           style={{
             backgroundColor: 'transparent',
             color: obsidianAvailable ? 'var(--limen-text-primary)' : 'var(--limen-text-muted)',
@@ -61,8 +61,8 @@ export const VaultStatusBanner: React.FC<VaultStatusBannerProps> = ({
             gap: 6,
           }}
         >
-          <span>Open in Obsidian</span>
-          {!obsidianAvailable && <span style={{ fontSize: 10, color: '#e11d48' }}>(Unavailable)</span>}
+          <span>Apri in Obsidian</span>
+          {!obsidianAvailable && <span style={{ fontSize: 10, color: '#e11d48' }}>(Non disponibile)</span>}
         </button>
       )}
     </div>

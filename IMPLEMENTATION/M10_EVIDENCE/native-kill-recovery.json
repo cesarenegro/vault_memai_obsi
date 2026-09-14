@@ -1,0 +1,12 @@
+{
+  "phase": "SIGKILL during native upload",
+  "pending": {
+    "operationId": "c9372a78b3b1968f8e1a60eedee849d4",
+    "vaultPath": "/tmp/limen-m10-ui.6ncbyK/Vault"
+  },
+  "resumeUi": "COMMITTED",
+  "releaseId": "rel-c9372a78b3b1968f8e1a60eedee849d4",
+  "sourceHashesUnchanged": true,
+  "sourceFileCount": 19,
+  "sameOperationId": true
+}

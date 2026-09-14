@@ -1,0 +1,12 @@
+{
+  "date": "2026-09-13",
+  "method": "Render authenticated Web Shell, read-only environment query",
+  "service": "srv-d8j0fqnlk1mc738mfeo0",
+  "STORAGE_TYPE": "s3",
+  "AWS_S3_BUCKET": "m3mai-core-vault",
+  "AWS_ENDPOINT_URL_S3": "https://626e87205af76de13d2245d8a94d9208.r2.cloudflarestorage.com",
+  "health": "degraded",
+  "cause": "ingestion_recovery late",
+  "last_live_commit": "bce9d617104f7ae46b01cab1e542a21abd9a8d5a",
+  "storage_changed": false
+}

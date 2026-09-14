@@ -248,10 +248,46 @@ fn main() {
     }
 
     tauri::Builder::default()
+        .menu(|app| {
+            use tauri::menu::{Menu, MenuItemKind};
+            // Keep native menu roles and keyboard shortcuts; localize labels only.
+            fn translate(item: MenuItemKind<tauri::Wry>) -> tauri::Result<()> {
+                fn label(text: &str) -> &str {
+                    match text {
+                        "File" => "File", "Edit" => "Modifica", "View" => "Vista",
+                        "Window" => "Finestra", "Help" => "Aiuto",
+                        "Undo" => "Annulla", "Redo" => "Ripeti", "Cut" => "Taglia",
+                        "Copy" => "Copia", "Paste" => "Incolla", "Select All" => "Seleziona tutto",
+                        "Minimize" => "Riduci a icona", "Zoom" | "Maximize" => "Ingrandisci",
+                        "Close Window" | "Close" => "Chiudi finestra",
+                        "Enter Full Screen" | "Toggle Full Screen" | "Fullscreen" => "Schermo intero",
+                        "Services" => "Servizi", "Hide Others" => "Nascondi le altre",
+                        "Show All" => "Mostra tutto",
+                        t if t.starts_with("About ") || t == "About" => "Informazioni su LIMEN Vault",
+                        t if t.starts_with("Hide ") || t == "Hide" => "Nascondi LIMEN Vault",
+                        t if t.starts_with("Quit ") || t == "Quit" => "Esci da LIMEN Vault",
+                        _ => text,
+                    }
+                }
+                match item {
+                    MenuItemKind::Submenu(menu) => {
+                        menu.set_text(label(&menu.text()?))?;
+                        for child in menu.items()? { translate(child)?; }
+                    }
+                    MenuItemKind::Predefined(item) => item.set_text(label(&item.text()?))?,
+                    _ => {}
+                }
+                Ok(())
+            }
+            let menu = Menu::default(app)?;
+            for item in menu.items()? { translate(item)?; }
+            Ok(menu)
+        })
         .manage(std::sync::Arc::new(limen_vault::ai::AiState::default()))
+        .manage(std::sync::Arc::new(limen_vault::sync::State::default()))
         .manage(limen_vault::mcp::McpState::default())
         .manage(limen_vault::tunnel::TunnelState::default())
-        .invoke_handler(tauri::generate_handler![
+        .invoke_handler(tauri::generate_handler![sync_revoke_publication,sync_select_notes,sync_list_releases,sync_get_status,sync_save_config,sync_save_key,sync_disconnect,sync_test_connection,sync_plan_transfer,sync_execute_transfer,sync_cancel_transfer,
             get_default_vault_path,
             create_vault,
             open_vault,
@@ -379,3 +415,29 @@ fn mcp_status(state:tauri::State<'_,limen_vault::mcp::McpState>)->serde_json::Va
 fn mcp_stop(state:tauri::State<'_,limen_vault::mcp::McpState>){state.stop();}
 #[tauri::command]
 fn mcp_start(vault_path:String,include_drafts:bool,state:tauri::State<'_,limen_vault::mcp::McpState>)->Result<limen_vault::mcp::ConnectionInfo,String>{state.start(PathBuf::from(vault_path),include_drafts)}
+
+#[tauri::command]
+fn sync_get_status(app:tauri::AppHandle,state:tauri::State<'_,std::sync::Arc<limen_vault::sync::State>>)->Result<serde_json::Value,String>{let mut v=limen_vault::sync::status(&app.path().app_data_dir().map_err(|e|e.to_string())?);let p=state.progress();if !p.is_null(){v["status"]=p["status"].clone();v["progress"]=p;}Ok(v)}
+#[tauri::command]
+async fn sync_save_key(token:String)->Result<(),String>{tauri::async_runtime::spawn_blocking(move||limen_vault::sync::save_key(token)).await.map_err(|e|e.to_string())?}
+#[tauri::command]
+fn sync_save_config(app:tauri::AppHandle,config:serde_json::Value)->Result<(),String>{limen_vault::sync::save_config(&app.path().app_data_dir().map_err(|e|e.to_string())?,config)}
+#[tauri::command]
+async fn sync_disconnect(app:tauri::AppHandle)->Result<(),String>{let p=app.path().app_data_dir().map_err(|e|e.to_string())?;tauri::async_runtime::spawn_blocking(move||limen_vault::sync::disconnect(&p)).await.map_err(|e|e.to_string())?}
+#[tauri::command]
+async fn sync_test_connection(app:tauri::AppHandle)->Result<serde_json::Value,String>{let p=app.path().app_data_dir().map_err(|e|e.to_string())?;tauri::async_runtime::spawn_blocking(move||limen_vault::sync::test_connection(&p)).await.map_err(|e|e.to_string())?}
+#[tauri::command]
+async fn sync_plan_transfer(app:tauri::AppHandle,state:tauri::State<'_,std::sync::Arc<limen_vault::sync::State>>,vault_path:String,operation:String,release_id:Option<String>)->Result<serde_json::Value,String>{let p=app.path().app_data_dir().map_err(|e|e.to_string())?;let state=state.inner().clone();tauri::async_runtime::spawn_blocking(move||state.plan(&p,Path::new(&vault_path),&operation,release_id.as_deref())).await.map_err(|e|e.to_string())?}
+#[tauri::command]
+async fn sync_execute_transfer(app:tauri::AppHandle,state:tauri::State<'_,std::sync::Arc<limen_vault::sync::State>>,vault_path:String,operation_id:String)->Result<serde_json::Value,String>{let p=app.path().app_data_dir().map_err(|e|e.to_string())?;let state=state.inner().clone();tauri::async_runtime::spawn_blocking(move||state.execute(&p,&operation_id,Path::new(&vault_path))).await.map_err(|e|e.to_string())?}
+#[tauri::command]
+fn sync_cancel_transfer(state:tauri::State<'_,std::sync::Arc<limen_vault::sync::State>>,operation_id:String){state.cancel(&operation_id);}
+
+#[tauri::command]
+async fn sync_list_releases(app:tauri::AppHandle)->Result<serde_json::Value,String>{let p=app.path().app_data_dir().map_err(|e|e.to_string())?;tauri::async_runtime::spawn_blocking(move||limen_vault::sync::list_releases(&p)).await.map_err(|e|e.to_string())?}
+
+#[tauri::command]
+async fn sync_select_notes(app:tauri::AppHandle,state:tauri::State<'_,std::sync::Arc<limen_vault::sync::State>>,operation_id:String,paths:Vec<String>)->Result<String,String>{let p=app.path().app_data_dir().map_err(|e|e.to_string())?;let state=state.inner().clone();tauri::async_runtime::spawn_blocking(move||state.select(&p,&operation_id,&paths)).await.map_err(|e|e.to_string())?}
+
+#[tauri::command]
+async fn sync_revoke_publication(app:tauri::AppHandle)->Result<serde_json::Value,String>{let p=app.path().app_data_dir().map_err(|e|e.to_string())?;tauri::async_runtime::spawn_blocking(move||limen_vault::sync::revoke_publication(&p)).await.map_err(|e|e.to_string())?}

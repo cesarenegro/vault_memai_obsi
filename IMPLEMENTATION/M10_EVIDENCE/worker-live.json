@@ -1,0 +1,63 @@
+{
+  "date": "2026-09-13T10:43:10.883Z",
+  "endpoint": "https://limen-vault-sync.cesare-negro.workers.dev",
+  "scope": "HTTPS deployed Worker and real R2, isolated synthetic grant",
+  "results": [
+    {
+      "name": "anonymous denied",
+      "pass": true
+    },
+    {
+      "name": "invalid grant denied",
+      "pass": true
+    },
+    {
+      "name": "cross-channel commit denied",
+      "pass": true
+    },
+    {
+      "name": "corrupt object denied",
+      "pass": true
+    },
+    {
+      "name": "upload",
+      "pass": true
+    },
+    {
+      "name": "commit",
+      "pass": true
+    },
+    {
+      "name": "idempotent commit",
+      "pass": true
+    },
+    {
+      "name": "download matches",
+      "pass": true
+    },
+    {
+      "name": "history includes committed version",
+      "pass": true
+    },
+    {
+      "name": "concurrent writers: one winner",
+      "pass": true
+    },
+    {
+      "name": "old published release denied",
+      "pass": true
+    },
+    {
+      "name": "revoke",
+      "pass": true
+    },
+    {
+      "name": "read after revoke denied",
+      "pass": true
+    },
+    {
+      "name": "revoked replay denied",
+      "pass": true
+    }
+  ]
+}

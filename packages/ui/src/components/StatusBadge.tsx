@@ -22,7 +22,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label }) => {
     }
   };
 
-  const textLabel = label || status.replace('_', ' ');
+  const textLabel = label || ({READY:'Pronto', INITIALIZING:'Inizializzazione', INVALID:'Non valido', NO_VAULT:'Nessun Vault', NOT_CONFIGURED:'Non configurato', OFFLINE:'Non connesso', STALE_SNAPSHOT:'Copia non aggiornata'}[status]);
 
   return (
     <span className={`limen-badge ${getStyleClass()}`}>

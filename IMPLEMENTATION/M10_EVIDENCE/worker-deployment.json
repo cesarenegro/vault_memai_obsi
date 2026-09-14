@@ -1,0 +1,8 @@
+{
+  "endpoint": "https://limen-vault-sync.cesare-negro.workers.dev",
+  "version": "5f7a9eaa-ae77-4096-b108-10efd5c93ee8",
+  "bucket": "m3mai-core-vault",
+  "testTenant": "m10-e2e-d441236d-d013-4af5-b3a7-6eaec23ecdd7",
+  "vaultId": "vault-ba36649d-9900-4230-b37b-8c5f8aa454b2",
+  "expiresAt": "2026-09-20T10:37:37.353Z"
+}

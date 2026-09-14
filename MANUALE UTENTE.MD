@@ -1,6 +1,6 @@
 # LIMEN Vault — Manuale operativo 0.1.0
 
-Aggiornato il 12 settembre 2026. M2–M8 completate in locale su macOS ARM64. Il candidato M9 è firmato e installato, ma non ancora notarizzato: non è una release pubblicata. Sono operative compilazione locale, ricerca, API OpenAI, consultazione MCP e revisione umana delle proposte. Il collegamento Business del pacchetto installato è ancora in accettazione.
+Aggiornato il 12 settembre 2026. M2–M8 completate in locale su macOS ARM64. App e DMG M9 sono firmati e notarizzati; Gatekeeper è verificato. Il pacchetto è disponibile localmente, non pubblicato. Sono operative compilazione locale, ricerca, API OpenAI, consultazione MCP e revisione umana delle proposte. Il collegamento Business del candidato installato è stato provato in Safari con lettura e arresto verificati.
 
 ## Creare o aprire un Vault
 
@@ -123,8 +123,8 @@ MCP espone soltanto consultazione di conoscenza approvata e indicizzata. ENABLE 
 
 Codex può usare il comando stdio del binario installato, con il percorso Vault autorizzato come argomento separato: /Users/cesare/Applications/LIMEN Vault.app/Contents/MacOS/limen-vault --mcp-stdio <percorso-assoluto-vault>. Nei file di configurazione utilizzare un campo command e un array args, preservando gli spazi. Non inserire il percorso del checkout. Il client avvia il processo; rimuovere la sua configurazione e arrestare la sessione per disabilitarlo.
 
-Le impostazioni Business contengono identificativi tunnel/organizzazione, chiave runtime separata nel Portachiavi e comandi START/STOP BUSINESS TUNNEL. La readiness locale non certifica la connessione remota. La procedura di accettazione M9 è ancora aperta: non considerare il candidato una distribuzione Business verificata.
+Le impostazioni Business contengono identificativi tunnel/organizzazione, chiave runtime separata nel Portachiavi e comandi START/STOP BUSINESS TUNNEL. La readiness locale non certifica la connessione remota. La lettura Business del candidato installato è verificata. STOP impedisce nuove letture locali: il client remoto può impiegare il proprio timeout prima di mostrare indisponibilità (2m8s nella prova). L’uscita dell’app arresta anche i processi ausiliari. Notarizzazione app/DMG e Gatekeeper sono superati.
 
 Il Vault deve restare fuori dalla .app. Prima di aggiornare fermare tunnel e applicazione; conservare la precedente copia fino alla verifica della nuova versione. Il banco ha verificato sostituzione e rollback della stessa versione, non migrazioni tra schemi diversi. La rimozione della sola applicazione conserva il Vault; le credenziali nel Portachiavi non vengono automaticamente cancellate.
 
-Installazione DMG notarizzato, Gatekeeper e account macOS pulito restano verifiche M9 aperte. Non aggirare Gatekeeper né rimuovere quarantena per dichiarare riuscita l’installazione.
+DMG notarizzato, ticket e Gatekeeper sono verificati. Collaudo Guest confermato dall’utente: app avviata e nuovo Vault READY. M9 completata in locale. Non aggirare Gatekeeper né rimuovere quarantena per dichiarare riuscita l’installazione.

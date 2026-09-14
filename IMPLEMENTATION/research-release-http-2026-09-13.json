@@ -1,0 +1,23 @@
+[
+  {
+    "url": "https://m3mai-backend.onrender.com/health",
+    "status": 200,
+    "body": "{\"status\":\"ok\"}"
+  },
+  {
+    "url": "https://m3mai-backend.onrender.com/research/jobs",
+    "status": 401,
+    "body": "{\"detail\":\"Not authenticated\"}"
+  },
+  {
+    "url": "https://pii-crm.vercel.app/api/limen/catalog",
+    "status": 404,
+    "body": "<!DOCTYPE html><html data-dpl-id=\"dpl_CSZPgsq6uTaMspWnTZJFVmAtpg6R\" lang=\"en\" class=\"geist_a71539c9-module__T19VSG__variable geist_mono_8d43a2aa-modul",
+    "note": "Percorso inesistente, non una verifica della guardia"
+  },
+  {
+    "url": "https://pii-crm.vercel.app/api/admin/limen",
+    "status": 403,
+    "body": "{\"error\":\"Accesso non autorizzato\"}"
+  }
+]

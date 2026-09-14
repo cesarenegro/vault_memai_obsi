@@ -1,0 +1,12 @@
+{
+  "date": "2026-09-13",
+  "url": "https://pii-crm.vercel.app/admin/materials?source=memai",
+  "deployment": "https://pii-mo8d6ir78-cesares-projects-cda0db9c.vercel.app",
+  "authenticated_ui": "Admin ADMIN",
+  "documents": 21,
+  "preview_test": "MERAVIA fictional brand test: content displayed",
+  "unit_tests": "11/11 PASS",
+  "typecheck": "PASS",
+  "build": "PASS",
+  "migration": false
+}

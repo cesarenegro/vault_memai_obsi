@@ -1,0 +1,9 @@
+{
+  "date": "2026-09-13T10:46:18.510Z",
+  "release": "rel-9d7d128722710dcd181cc2da86c82155",
+  "selectedPaths": [
+    "01_CLIENTS/selected.md"
+  ],
+  "excludedApprovedNoteAbsent": true,
+  "scope": "Actual native UI checkbox selection; manifest retrieved over deployed HTTPS Worker"
+}

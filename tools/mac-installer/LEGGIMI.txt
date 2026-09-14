@@ -1,0 +1,18 @@
+LIMEN VAULT + OBSIDIAN — INSTALLAZIONE
+
+1. Apri «Installa LIMEN Vault».
+2. Premi «Installa» e attendi il completamento.
+3. Premi «Apri LIMEN Vault»: l’interfaccia è in italiano. Apri il Vault esistente oppure creane uno nuovo.
+
+Se LIMEN 0.2.0 è già installato, chiudilo prima di premere Installa. Il pacchetto aggiorna anche una precedente 0.2.0 in inglese e conserva l’app precedente in «Applicazioni/LIMEN - versioni precedenti». Le cartelle e le note del Vault non vengono modificate.
+
+Le cartelle del Vault vengono create dall'app. I dati esistenti non vengono spostati.
+LIMEN viene installato in Applicazioni del tuo account come «LIMEN Vault 0.2.0».
+Se Obsidian è già installato, viene conservato; altrimenti viene scaricato dal distributore ufficiale e installato nello stesso percorso.
+Non sono richiesti comandi Terminale né password di amministratore.
+
+Requisiti: Mac Apple Silicon (M1 o successivo), macOS 26.3 o successivo.
+Internet serve per scaricare Obsidian se assente. L'accesso locale al Vault non richiede il cloud.
+La sincronizzazione cloud si collega separatamente nell'app con il codice fornito dall'amministratore: questo installer non contiene credenziali personali.
+
+Se l'installazione di Obsidian non riesce, LIMEN già installato rimane disponibile. Ripeti «Installa» dopo aver risolto la connessione o liberato spazio.

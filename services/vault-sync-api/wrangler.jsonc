@@ -1,0 +1,6 @@
+{
+  "name": "limen-vault-sync",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-09-13",
+  "r2_buckets": [{"binding":"VAULT","bucket_name":"m3mai-core-vault"}]
+}

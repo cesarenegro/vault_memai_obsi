@@ -1,0 +1,14 @@
+{
+  "fresh_install": "PASS",
+  "upgrade_from_english_0_2_0": "PASS",
+  "old_app_preserved": "PASS",
+  "vault_sentinel_unchanged": "PASS",
+  "untrusted_destination_refused": "PASS",
+  "gatekeeper_fresh": "PASS",
+  "signature_updated": "PASS",
+  "bank": "/tmp/limen-installer-test-it-9dw6fqjb",
+  "installed_app": "/tmp/limen-installer-test-it-9dw6fqjb/LIMEN Vault 0.2.0.app",
+  "binary_sha256": "a578c025b7e3b47bc98f91d6ebab74d7b90e7e7ef189e9f0950de15f2672773e",
+  "running_app_update_refused_without_changes": "PASS",
+  "italian_ui_from_installer": "PASS"
+}

@@ -1,8 +1,29 @@
-# TASK LIST — LIMEN Vault: M7 e M8 verificate in locale; M9 aperta
+# TASK LIST — LIMEN Vault: M2–M9 locali; M10 parziale, Worker/CRM pubblicati e installer consegnato
 
-Aggiornata: 12 settembre 2026. M2–M6 completate in locale secondo i rapporti collegati. M7 e M8 verificate in locale; M9 ancora aperta; nessuna pubblicazione.
+PUBBLICATO E COLLAUDATO — salute MEMAI ok; Workbench Codex read attivo; ricerca reale completata con risposta italiana e 8 fonti, annullamento durante esecuzione PASS. Backend 9043ff5, Render dep-dajgdl0jo6nc73dp4lr0 Live. CRM dpl_CSZPgsq6uTaMspWnTZJFVmAtpg6R Ready su pii-crm.vercel.app. Pre-deploy: entrambi gli script PASS; schema u1c2d3e4f5a6 = head. Commit/push MEMAI autorizzati ed eseguiti su codex/research-runtime; nessun merge main.
 
-**Stato verificato:** suite TypeScript, typecheck/build e 50 esecuzioni test Rust passate. App firmata Developer ID installata e provata con API/Codex. Etichette dei contatori corrette; nuova build firmata e installata. Etichette verificate nella UI dopo sblocco; M8 completata. Notarizzazione non completata: upload Apple interrotto da timeout. Nessun DMG finale notarizzato.
+
+- [x] Pre-deploy Docker certificato: START/PASS validazione e START/PASS migrazioni osservati; schema corrente = head u1c2d3e4f5a6.
+
+Aggiornata: 13 settembre 2026. M2–M9 completate in locale secondo le evidenze conservate. M10 parziale: Worker/CRM pubblicati e installer notarizzato consegnato. UI italiana e installer notarizzati consegnati in USER INSTALL, manuale incluso. Mapping con note reali richiesto: in attesa della scelta dei documenti e Cliente/Progetto. Salute MEMAI corretta e verificata dopo 21 minuti; Workbench Codex read pubblicato e collaudato. Ricerca multi-agent pubblicata e collaudata: creazione, risposta con fonti e annullamento.
+
+**Stato verificato:** M7/M8/M9 chiuse in locale con evidenze preservate. M10 non integralmente chiusa: Worker/CRM pubblicati, installer consegnato; restano note reali/mapping, secondo Mac e offline in account pulito. Commit/push MEMAI eseguiti con autorizzazione; nessun commit/push LIMEN o CRM.
+
+## Priorità utente — interfaccia italiana e manuale (13 settembre 2026)
+
+- [x] Interfaccia italiana implementata e installata in `~/Applications/LIMEN Vault 0.2.0.app`: undici sezioni, menu nativi, stati/categorie e messaggi. Metadati/file e diagnostica tecnica originale preservati; voci aggiunte da macOS seguono la lingua del sistema.
+- [x] `manuale UI utente.txt` consegnato: 17 sezioni, undici menu, workflow operativi, differenza fra approvazione locale, copia privata e pubblicazione, spiegazione avvisi CRM e mapping.
+- [x] pnpm test/typecheck/build PASS in sequenza; Rust 38 lib + 18 main PASS; build Tauri finale PASS, firma Developer ID e verifica strict PASS. Visita delle undici sezioni e copia locale verificata su fixture isolata. Avvio della copia installata: “Benvenuto in LIMEN Vault”, Vault reale “Pronto”. Evidenze: IMPLEMENTATION/UI_IT_EVIDENCE/.
+- [x] Primo rebuild finale fallito per disco pieno, risolto eliminando solo cache Rust debug generata; retry PASS. Copia installata precedente conservata in `.local/ui-it/installata-precedente/`; vecchie istanze inglesi chiuse.
+- [x] CONSEGNATI in USER INSTALL: installer italiano e DMG app italiano, sostituiti i due pacchetti inglesi. App LIMEN, DMG app, app installer e DMG installer tutti Apple Accepted e stapled; Gatekeeper PASS. Installer dal DMG finale verificato in sola lettura, payload e manuale confrontati tramite SHA-256.
+- [x] Installer aggiornato: installazione nuova e aggiornamento da 0.2.0 inglese PASS; app precedente e documenti conservati; destinazione non valida e app ancora aperta rifiutate senza modifiche. UI dell’app installata dal pacchetto osservata in italiano. Backup consegna: USER INSTALL/STORICO/2026-09-13-versione-inglese. Evidenze: IMPLEMENTATION/UI_IT_EVIDENCE/notarized/.
+- [x] Diagnosi codice CRM: Workbench richiede `MEMAI_WORKBENCH_ENABLED=true`; ricerca multi-agent richiede `MEMAI_VPRO_MULTI_AGENT_ENABLED=true`. Gli avvisi provengono dai controlli CRM prima della chiamata API, non provano un guasto dell’archivio LIMEN.
+- [x] PUBBLICATO — Flag CRM e backend Workbench/multi-agent attivi. Backend dep-dajfpop594qs73c1qmk0 Live, stesso commit bce9d61; Codex read. Workbench: creazione, cronologia e revoca workspace vuoto PASS.
+- [x] Ricerca multi-agent pubblicata: avvio da Safari Admin, job c2af2b36-baa2-4dfb-b09e-175720e4da42 completed in 13.24 s con risposta italiana e 8 fonti; job 319f0fbd-aed4-4b42-9876-e4f7e26a843f running → cancelled sulle API reali, senza risposta.
+- [ ] Collaudo con note reali e mapping richiesto dall’utente: Vault reale contiene soltanto HOME.md e VAULT_RULES.md di sistema. Chiesti documenti approvati e Cliente/Progetto; nessuna pubblicazione inventata. Contratto verificato: frontmatter `client`/`project` → manifesto → filtri CRM per uguaglianza esatta. Matrice preparata nel rapporto UI italiana.
+
+- [x] Cron Render m3mai-reconcile corretto da 0 * * * * a */10 * * * *; monitor runtime confermato 600 secondi. API interne workspaces/research/jobs/settings-workbench tutte HTTP 200.
+- [x] Salute MEMAI: heartbeat ingestion 19:30:06 e 19:40:27 UTC; /health HTTP 200 status ok alle 19:47:14 UTC, oltre 20 minuti dalla correzione cron. Nessun recupero manuale.
 
 ## Regole operative — aggiornamento 12 settembre 2026
 
@@ -23,8 +44,8 @@ Aggiornata: 12 settembre 2026. M2–M6 completate in locale secondo i rapporti c
 | M6 | AI interna + Business/Codex esterni | Completata e verificata in locale | Tre E2E reali, revoca e offline verificati; QA disconnessa |
 | M7 | Output e proposte | Completata e verificata in locale | Nessuna pubblicazione |
 | M8 | Validazione fallback | Completata e verificata in locale | Nessun residuo M8; limiti piattaforma/Obsidian nel rapporto |
-| M9 | Release macOS | Candidato firmato e installato; API/Codex PASS | Business installato, notarizzazione/DMG e account macOS pulito |
-| M10 | Sincronizzazione R2 | Futura e opzionale | Definizione e implementazione senza dipendenza cloud |
+| M9 | Release macOS | Completata in locale: notarizzazione, Gatekeeper, AI e Guest PASS | Nessun residuo; pubblicazione separata |
+| M10 | Sincronizzazione R2 | Worker, CRM e cataloghi pubblicati; installer notarizzato consegnato | Note reali/mapping, secondo dispositivo e prova offline in account pulito |
 
 ## M0 — Fondamenta
 
@@ -211,50 +232,77 @@ Piano: [IMP_PLAN_M8REV.MD](IMPL_PLANS/IMP_PLAN_M8REV.MD). Rapporto corrente: IMP
 - [x] Suite finali e matrice del prodotto M2–M7 completo con evidenze consolidate nel rapporto di chiusura.
 - [x] **M8REV completata in locale.** Isolamento rete provato su LIMEN; lettura Obsidian provata, isolamento del processo Obsidian non certificato.
 
-## M9REV — Release macOS: implementazione e verifiche in corso
+## M9REV — Release macOS: completata e verificata in locale
 
-Piano: [IMP_PLAN_M9REV.MD](IMPL_PLANS/IMP_PLAN_M9REV.MD). Stato: candidato firmato Developer ID, installato e provato. Notarizzazione bloccata dal trasporto upload; Business e accettazione finale ancora aperti.
+Piano: [IMP_PLAN_M9REV.MD](IMPL_PLANS/IMP_PLAN_M9REV.MD). Stato: app/DMG finali notarizzati, Gatekeeper PASS; API/Codex/Business verificati. Collaudo Guest manuale confermato dall’utente: app avviata, nuovo Vault READY.
 
 - [x] Redatto M9REV e verificata coerenza con configurazione Tauri, M6 e piano M8; consultata documentazione ufficiale firma/notarizzazione/updater.
 - [x] Identità Developer ID Application presente; profilo Portachiavi LIMEN-M9 validato tramite servizio Apple (history riuscito). Nessun segreto esportato.
 - [x] M9.1: baseline M7/M8 accettata; 0.1.0, minimo macOS 26.3 ARM64 e prerequisiti Apple verificati.
 - [x] Ausiliari tunnel versionati, SHA-256 verificato, licenze e inventario inclusi. Script firma/DMG/notarizzazione preparato e sintassi verificata.
 - [x] CSP configurata e UI verificata nel candidato macOS 26.3 ARM64, unico ambiente disponibile. Harness vault-check escluso dal pacchetto firmato.
-- [ ] M9.2: produrre app/DMG Apple Silicon con risorse complete e senza percorsi checkout/QA.
+- [x] M9.2: app e DMG candidato Apple Silicon prodotti con risorse complete, harness escluso; montaggio read-only e confronto inventario esatto PASS. Artefatto NOT-NOTARIZED, non distribuibile.
 - [x] API reale e Codex MCP dalla copia in ~/Applications: PASS; credenziale API utilizzabile dal bundle firmato.
-- [x] Tunnel installato: chiave separata Portachiavi autorizzata, readiness locale, STOP elimina realmente tunnel e processo MCP figlio; restart riuscito. Evidenza tunnel-local-ui.json. Connessione Business remota ancora da verificare.
-- [ ] M9.3: rendere API/Codex/Business utilizzabili dall’installazione; configurazione tunnel stabile, credenziali protette, stato e revoca reali.
-- [ ] M9.4: configurazione di produzione, firma, notarizzazione e Gatekeeper verificati.
+- [x] Tunnel installato: chiave separata Portachiavi autorizzata, readiness locale, STOP elimina realmente tunnel e processo MCP figlio; restart riuscito. Evidenza tunnel-local-ui.json. Lettura Business remota PASS in Safari: data/frase/percorso/hash identici alla fixture, inventario invariato; business-installed-read.json. Nuova chiamata dopo STOP: HTTP 504 MCP request timed out, nessun dato nuovo; timeout remoto 2m8s, stop locale immediato.
+- [x] M9.3: API/Codex/Business verificati dall’installazione; credenziali Portachiavi, readiness, stop/restart e uscita app con figli assenti verificati. Nuova chiamata Business dopo stop: HTTP504 senza nuovi dati.
+- [x] M9.4: app Accepted (87834a15-bd33-4962-b276-dcd31829a2e7), DMG Accepted (6d3af9a1-ceba-425e-894b-6d5194960dbe), stapling/validate e Gatekeeper PASS. Copia ottenuta via HTTP locale con quarantena aggiunta per il test: ticket e Gatekeeper PASS; final-install.json.
 - [x] Banco APFS: copia esatta, ENOSPC reale, SIGKILL copia, sostituzione/rollback stessa versione e rimozione app preservano il Vault. M9_EVIDENCE/install-bank.json.
-- [ ] M9.5: installazione pulita, aggiornamento manuale, recupero e disinstallazione con conservazione dati verificati.
-- [ ] Superare matrice del piano sul pacchetto finale, inclusi offline ed E2E AI pertinenti.
-- [ ] Consegnare manuale, note di release, hash, inventario/licenze e rapporto con evidenze.
-- [ ] **M9 completata e verificata in locale**, firma/notarizzazione incluse.
+- [x] M9.5: installazione Guest e nuovo Vault READY confermati dall’utente; update/recupero/disinstallazione e conservazione dati verificati nel banco APFS. Provenienza e limiti nel rapporto M9.
+- [x] Matrice finale superata: IMPLEMENTATION/2026-09-12_M9_CLOSURE.md; test Guest manuale dell’utente distinto dalle prove strumentali.
+- [x] Manuale, note di release, hash DMG, inventario/licenze e rapporto disponibili. Copia del pacchetto finale in /Users/Shared/LIMEN-M9/.
+- [x] **M9 completata e verificata in locale**, firma/notarizzazione/Gatekeeper e Guest inclusi.
 - [ ] Pubblicazione separata, soltanto con incarico esplicito; registrare versione, destinazione e hash scaricato.
 
-## M10 — R2 Sync, opzionale dopo il prodotto locale
+## M10 — codice e banco R2 completati in parte; integrazione operativa in corso
 
-- [ ] Confermare necessità e perimetro della sincronizzazione opzionale.
-- [ ] Definire credenziali, trasferimenti, integrità, versioni e gestione conflitti.
-- [ ] Implementare sincronizzazione attivabile senza renderla obbligatoria.
-- [ ] Verificare interruzioni, indisponibilità R2 e accesso offline ai dati già locali.
-- [ ] Documentare e validare la funzione prima di dichiararla disponibile.
+- [x] Bucket scelto: `m3mai-core-vault` su Cloudflare R2, namespace `limen/`; nessun nuovo bucket o migrazione dati preesistenti.
+- [x] Correzioni TS: lock flock reale, categorie esatte, hash JSON, limiti contesto e verifica oggetti.
+- [x] Recupero TS: staging vuoto, scritture descriptor-relative esclusive, rifiuto symlink/collisioni, verifica prima di import, validazione Vault e rename senza overwrite. Suite sync-engine 13/13 PASS.
+- [x] Implementato servizio opzionale `services/vault-sync-api`: grant con scadenza, autorizzazione tenant/Vault/canale, oggetti immutabili, verifica server, CAS, idempotenza e revoca. Cinque test protocollo PASS.
+- [x] Implementati e registrati i comandi Rust M10, Portachiavi separato, cattura dei byte, piano persistente, retry limitati e ripresa. Test Rust 38 lib + 18 main PASS; candidato Tauri compilato.
+- [x] UI: collegamento amministrativo con codice, anteprima, operazioni esplicite, annullamento, ripresa e percorso della copia. Prova nativa: creazione Vault READY e cloud NOT_CONFIGURED senza bloccare il locale.
+- [x] R2 reale con dati sintetici: upload/download, commit idempotente, CAS concorrente con un vincitore, revoca e recupero di Vault privato valido READY. Evidenza: IMPLEMENTATION/M10_EVIDENCE/r2-protocol.json. Gateway eseguito localmente con adapter S3 reale: non equivale a Worker pubblicato o secondo Mac.
+- [x] CRM: guard/allowlist, verifica hash, controllo release durante lettura, contesto prima della richiesta AI; correzione direttiva use server. Typecheck e build completa PASS.
+- [x] Verifiche monorepo: pnpm test, pnpm typecheck, pnpm build PASS; controlli mirati ripetuti dopo le modifiche interessate.
+- [x] Documentati protocollo e recupero: docs/SYNC_PROTOCOL.md, docs/SYNC_RECOVERY.md.
+- [x] Worker pubblicato: https://limen-vault-sync.cesare-negro.workers.dev, binding m3mai-core-vault, grant di collaudo con scadenza. Upload/import dalla UI nativa riusciti, tre file identici: M10_EVIDENCE/native-live-transfer.json. Nessuna migrazione di oggetti preesistenti.
+- [x] Desktop → Worker → R2: upload/import PASS; selezione di una nota su due verificata sul manifest remoto; SIGKILL durante upload e ripresa stessa operationId con sorgenti invariati PASS.
+- [x] Protocollo Worker su HTTPS/R2 reale: 14 scenari PASS (auth, hash, CAS, history, revoca).
+- [x] CRM autenticato con Superadmin attivo: sette verifiche API PASS su autenticazione Supabase e R2 reali, compresa lettura della nota selezionata dalla UI desktop. CRM eseguito in locale.
+- [x] CRM pubblicato su pii-crm.vercel.app: build e deployment Vercel PASS; nessun commit/push.
+- [x] Correzione storage CRM pubblicata e verificata: destinazione dedicata m3mai-core-vault, allowlist Admin/Superadmin + guard staff, catalogo con selettore CRM/MEMAI e LIMEN. Sette test PASS, typecheck/build PASS; API produzione autenticata NO_PUBLICATION, anonimo 403; Safari catalogo PASS. Evidenza crm-storage-production.json.
+- [ ] Mapping Cliente/Progetto con contenuti reali da collaudare: Vault predefinito vuoto, nessuna nota reale pubblicata.
+- [x] Audit storage completato: IMPLEMENTATION/STORAGE_AUDIT_2026-09-13.md; catalogo materials distinto dal contenuto del bucket MEMAI.
+- [x] DMG finale consegnato in /Users/cesare/Documents/STEFANO PARMA PII ALL/USER INSTALL/LIMEN-Vault-0.2.0-arm64.dmg; hash e ticket verificati.
+- [x] Installer nativo LIMEN + Obsidian firmato/notarizzato e consegnato in USER INSTALL/Installa-LIMEN-Vault-0.2.0-arm64.dmg. Test isolati assente/presente, DMG finale, Gatekeeper, UI un clic e avvio app/Vault READY PASS. Requisiti Apple Silicon/macOS 26.3. Evidenze installer/.
+- [x] Catalogo MEMAI diretto pubblicato nel CRM: 21 documenti reali elencati, anteprima documento fittizio MERAVIA PASS; 11 test totali PASS, typecheck/build PASS. Nessuna duplicazione di file.
+- [x] MEMAI Render runtime verificato: STORAGE_TYPE=s3, bucket m3mai-core-vault, endpoint Cloudflare. Nessuna modifica storage.
+- [x] Diagnosi MEMAI approfondita in sola lettura: Render mostra `m3mai-reconcile` ogni ora e ultima esecuzione riuscita il 13 settembre alle 20:00 CEST; manifest ogni 10 minuti, monitor locale con soglia 20 minuti. Evidenze e limiti: IMPLEMENTATION/2026-09-13_MEMAI_HEALTH_DIAGNOSIS.md.
+- [ ] Allineare la frequenza cron in produzione previa autorizzazione specifica, quindi verificare heartbeat e salute oltre 20 minuti. Intervallo effettivo del monitor runtime ancora da leggere; nessuna manutenzione o rielaborazione avviata.
+- [x] SIGKILL e ENOSPC reali sulla app: sorgenti invariati, ripresa stessa operazione, import completo con 17 file identici. Evidenze native-kill-recovery.json e native-enospc.json.
+- [x] Ripresa dopo rename: ricevuta e hash impediscono sovrascritture; test Rust PASS.
+- [x] UI 0.2.0: ritiro della pubblicazione sintetica confermato e completato; comandi e stato TRANSFERRING presenti.
+- [x] Installazione finale dal DMG fuori checkout: Gatekeeper accettato, app 0.2.0 avviata e Vault READY, download IMPORTED. UI live osservata: 9/17 file, 2051 KB verificati.
+- [ ] Secondo Mac non disponibile secondo utente: prova sullo stesso Mac registrata come tale; requisito secondo dispositivo non certificato.
+- [x] Primo candidato 0.2.0 firmato/notarizzato, app e DMG Accepted; M9 congelata preservata.
+- [x] Candidato finale: build, firma e notarizzazione app Accepted (d507ac22-ad50-4ca4-bd71-49a9fdac8937).
+- [x] Consegna M10 precedente: DMG firmato/notarizzato e ticket verificato, staple app allora non ripetuto dopo tre errori. Sostituita dalla consegna italiana: nuova app e due DMG Accepted/stapled/Gatekeeper PASS (UI_IT_EVIDENCE/notarized). Resta non certificata l’apertura offline in account vergine.
+
+**M10: implementazione, CRM e installer pubblicati/consegnati. Restano collaudo con note reali e mapping Cliente/Progetto, secondo Mac e prova offline in account pulito. Non certificare criteri non eseguiti.**
 
 ## Ordine operativo e dipendenze
 
-1. M2 chiusa in locale: usare questa baseline verificata per le attività successive.
-2. M3 chiusa in locale: conservare questa baseline verificata per il lavoro successivo.
-3. M4 e M5 chiuse in locale: integrare M6REV sulla ricerca verificata; completare M7 con approvazione umana prima di attivare scritture AI.
-4. Eseguire M8 sul prodotto integrato.
-5. Preparare M9; mantenere completamento locale e pubblicazione separati.
-6. Affrontare M10 solo se richiesta.
+1. M2–M9 completate in locale; conservare artefatti ed evidenze della release notarizzata.
+2. Priorità attuale: risolvere discrepanza frequenza cron MEMAI dopo lettura intervallo runtime e autorizzazione della modifica produzione. M10 resta aperta per i collaudi elencati.
+3. Worker e CRM già pubblicati; ulteriori modifiche di produzione richiedono autorizzazione nella destinazione concreta. Nessuna migrazione richiesta.
 
-Blocchi e dipendenze operativi: TODO LIST.TXT. M5 chiusa; integrazione M6 sbloccata, secondo M6REV.
+Blocchi e dipendenze: TODO LIST.TXT.
 
 ## Evidenze e storico
 
-- Rapporto corrente: `IMPLEMENTATION/2026-09-12_M5_CLOSURE.md`; log e banco offline: `IMPLEMENTATION/M5_EVIDENCE/`.
+- Evidenze correnti M10: `IMPLEMENTATION/M10_EVIDENCE/`; diagnosi MEMAI: `IMPLEMENTATION/2026-09-13_MEMAI_HEALTH_DIAGNOSIS.md`.
 - Handover corrente: `SESSION HANDOVER.MD`; storico separato in `LAST SESSION/`.
 - Riproduzione automatica nativa: `scripts/m5-native-check.sh`.
 - Audit precedenti conservati come storico; non rappresentano lo stato operativo corrente.
-- Modifiche preesistenti conservate. Nessun commit/push/deploy della sessione.
+- Modifiche preesistenti conservate. Nessun commit/push/deploy in questa lavorazione; build italiana installata in locale. Deployment CRM precedente registrato in M10.
+

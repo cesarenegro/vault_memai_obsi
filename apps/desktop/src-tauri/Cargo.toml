@@ -1,6 +1,6 @@
 [package]
 name = "limen-vault"
-version = "0.1.0"
+version = "0.2.0"
 description = "LIMEN Vault Desktop macOS Application"
 authors = ["LIMEN"]
 edition = "2021"

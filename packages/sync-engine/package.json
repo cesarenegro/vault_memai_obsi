@@ -1,0 +1,20 @@
+{
+  "name": "@limen-vault/sync-engine",
+  "version": "0.1.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'sync-engine clean'",
+    "test": "node --import tsx/esm tests/sync-engine.test.ts"
+  },
+  "dependencies": {
+    "@limen-vault/vault-core": "workspace:*",
+    "@limen-vault/vault-schema": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

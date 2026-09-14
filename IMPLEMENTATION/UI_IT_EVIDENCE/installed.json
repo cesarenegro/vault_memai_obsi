@@ -1,0 +1,30 @@
+{
+  "date": "2026-09-13",
+  "app": "/Users/cesare/Applications/LIMEN Vault 0.2.0.app",
+  "binarySha256": "4adbea3ee2f4e73f1a00382c3512de61e3f2fbd985b65a49b380d06aa4065cd9",
+  "signature": "Developer ID; codesign --verify --deep --strict PASS",
+  "newNotarization": false,
+  "previousInstallerChanged": false,
+  "uiObserved": [
+    "Benvenuto in LIMEN Vault",
+    "Panoramica",
+    "Chiedi al Vault",
+    "Conoscenza",
+    "Fonti",
+    "Ricerca",
+    "Risposte AI",
+    "Proposte",
+    "Copie locali",
+    "Trasferimenti",
+    "Sistema",
+    "Impostazioni",
+    "Modifica",
+    "Vista",
+    "Finestra",
+    "Aiuto"
+  ],
+  "installedVault": "/Users/cesare/Documents/VAULT",
+  "installedVaultState": "PRONTO",
+  "realKnowledgeNotes": 0,
+  "mappingRealTest": "pending approved documents and client/project selection"
+}

@@ -1,0 +1,52 @@
+{
+  "date": "2026-09-13T10:05:04.925Z",
+  "bucket": "m3mai-core-vault",
+  "prefix": "limen/m10-test-52d86225-ddbe-47b8-bf82-bea9c6627732/vault/",
+  "scope": "Synthetic objects only; gateway invoked locally with real R2 S3 binding adapter, not deployed Worker or second Mac",
+  "results": [
+    {
+      "name": "upload real R2",
+      "pass": true
+    },
+    {
+      "name": "commit real R2",
+      "pass": true
+    },
+    {
+      "name": "idempotent commit",
+      "pass": true
+    },
+    {
+      "name": "download byte equality",
+      "pass": true
+    },
+    {
+      "name": "concurrent CAS one winner",
+      "pass": true
+    },
+    {
+      "name": "revocation",
+      "pass": true
+    },
+    {
+      "name": "read after revoke denied",
+      "pass": true
+    },
+    {
+      "name": "private Vault upload",
+      "pass": true
+    },
+    {
+      "name": "private Vault download",
+      "pass": true
+    },
+    {
+      "name": "private Vault import",
+      "pass": true
+    },
+    {
+      "name": "restored Vault validates READY",
+      "pass": true
+    }
+  ]
+}

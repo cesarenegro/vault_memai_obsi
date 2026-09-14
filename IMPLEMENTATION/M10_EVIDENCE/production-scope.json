@@ -1,0 +1,8 @@
+{
+  "vaultPath": "/Users/cesare/Documents/VAULT",
+  "tenantId": "tenant-98184759-50d1-4b89-869b-89e3814f6c0d",
+  "vaultId": "vault-8410c475-075f-4eeb-abe8-2f5370fca053",
+  "expiresAt": "2027-09-13T11:14:39.593Z",
+  "crm": "pii-crm.vercel.app",
+  "sharedContent": "none: empty default Vault"
+}

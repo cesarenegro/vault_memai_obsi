@@ -1,0 +1,11 @@
+{
+  "installer_ui": "Installa -> Installazione completata -> Apri LIMEN Vault",
+  "installed_app": "/Users/cesare/Applications/LIMEN Vault 0.2.0.app",
+  "native_version": "0.2.0",
+  "vault": "/Users/cesare/Documents/VAULT",
+  "vault_status": "READY",
+  "existing_obsidian_preserved": true,
+  "absent_obsidian_fixture": "PASS; official downloaded image, signature and Gatekeeper checked",
+  "final_dmg_mount_install": "PASS",
+  "clean_offline_account": "not tested"
+}

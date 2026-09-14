@@ -1,0 +1,405 @@
+LIMEN VAULT — MANUALE DELL’INTERFACCIA UTENTE
+Edizione italiana · 13 settembre 2026 · versione applicativa 0.2.0
+
+Questo manuale descrive LIMEN Vault 0.2.0 con interfaccia italiana.
+Il programma viene installato in:
+/Users/cesare/Applications/LIMEN Vault 0.2.0.app
+Il nuovo installer italiano aggiorna anche una precedente 0.2.0 in inglese.
+Chiudi LIMEN prima dell’aggiornamento. La versione precedente viene conservata in
+Applicazioni/LIMEN - versioni precedenti; i dati del Vault rimangono intatti.
+Lo stato della distribuzione e le verifiche effettive sono registrati in TASK_LIST.md.
+
+1. CHE COS’È LIMEN E CHE COSA SERVE
+
+Il Vault è una cartella del Mac contenente note Markdown, fonti originali, bozze,
+revisioni e copie locali. LIMEN gestisce e consulta questa struttura; Obsidian
+permette di scrivere e modificare le note. MEMAI è il servizio remoto con il proprio
+catalogo. Il CRM consulta i cataloghi e le note LIMEN pubblicate: non vede
+automaticamente ogni file che scrivi sul Mac.
+
+Per la build macOS consegnata servono Apple Silicon e macOS 26.3 o successivo.
+L’uso locale del Vault non richiede la disponibilità di MEMAI, CRM o R2.
+Servono invece rete e credenziali appropriate per OpenAI e i trasferimenti cloud.
+Una chiave API OpenAI e un collegamento ChatGPT Business sono configurazioni distinte.
+
+I nomi di cartelle e proprietà tecniche restano invariati anche nell’interfaccia
+italiana: per esempio 01_CLIENTS, status: approved e client. Non tradurli nei file.
+Il contenuto delle tue note e le risposte AI non vengono tradotti automaticamente.
+Gli eventuali dettagli diagnostici del sistema o dei fornitori sono conservati nella
+lingua originale sotto un messaggio italiano, per consentire assistenza precisa.
+
+2. PRIMO AVVIO: APRIRE O CREARE UN VAULT
+
+La schermata “Benvenuto in LIMEN Vault” chiede il “Percorso del Vault (cartella locale)”.
+Per riprendere il Vault già collegato, usa:
+/Users/cesare/Documents/VAULT
+Premi APRI VAULT ESISTENTE. Il risultato atteso è lo stato “Pronto”, con nome,
+percorso e numero di file Markdown. Pronto indica struttura valida: non certifica
+che ogni file sia identico a una copia precedente o che esista una pubblicazione CRM.
+
+Per un Vault nuovo, indica un percorso assoluto diverso, ancora non occupato, e
+premi CREA NUOVO VAULT. LIMEN crea le cartelle e i file necessari; non sovrascrive
+un Vault esistente. Non usare questo pulsante per riaprire il Vault attuale.
+Una generica cartella Obsidian priva della struttura LIMEN può non superare la
+validazione. Leggi gli errori; non cancellare file per forzare l’apertura.
+
+Se appare “Modalità anteprima nel browser”, stai usando l’anteprima web: apri il
+programma macOS per le operazioni sui file. Le funzioni native non sono disponibili
+in quell’anteprima.
+
+Dopo l’apertura, il menu laterale contiene undici sezioni. Il pulsante “Apri in
+Obsidian” compare anche sotto il menu e nel riepilogo del Vault. Richiede Obsidian
+rilevato sul Mac. Al primo collegamento può essere necessario selezionare la cartella
+nel selettore di Obsidian; torna poi in LIMEN e ripeti l’apertura. Il selettore di
+Obsidian usa la lingua impostata in Obsidian, indipendente da LIMEN.
+
+3. PANORAMICA
+
+È il riepilogo del Vault aperto. Mostra:
+- File Markdown: tutti i file Markdown conteggiati, inclusi quelli di sistema.
+  Un conteggio positivo non equivale alla presenza di note conoscenza pubblicabili.
+- Fonti originali: documenti trovati nell’area delle fonti.
+- File delle proposte: bozze e revisioni di compilazione salvate.
+- Integrità SHA-256: confronto con il manifesto del Vault.
+
+“Verificata” significa corrispondenza rispetto al manifesto controllato.
+“Non verificata” indica che la verifica non è stata eseguita o completata.
+“Differenze rilevate” indica file modificati, mancanti o aggiunti rispetto al
+manifesto. Può derivare anche da modifiche legittime: controlla l’elenco, senza
+confondere questa segnalazione con una diagnosi automatica di perdita dei dati.
+
+“Accesso rapido” apre la sezione Conoscenza; scegli lì la categoria desiderata.
+“Integrazione AI” apre Chiedi al Vault.
+
+4. CHIEDI AL VAULT
+
+Serve per porre una domanda a OpenAI usando fonti locali controllabili.
+Prima configura la chiave API nelle Impostazioni e aggiorna l’indice in Ricerca.
+
+Procedura:
+1) Nel campo del modello indica l’identificativo di un modello API disponibile
+   nel tuo account. LIMEN non garantisce disponibilità o accesso in base al nome.
+2) Scrivi la domanda, fino a 2.000 caratteri.
+3) Lascia deselezionata l’inclusione delle bozze se vuoi usare solo note approvate.
+   Se selezioni la casella, possono entrare bozze indicizzate e note non approvate;
+   le fonti originali RAW restano escluse.
+4) Premi ANTEPRIMA FONTI. Apri le singole fonti per controllare testo, percorso,
+   stato e impronta SHA-256. Questa fase prepara il contesto locale.
+5) Solo dopo il controllo premi INVIA A OPENAI LE FONTI MOSTRATE. Questa azione
+   trasmette domanda e contesto al fornitore.
+6) Leggi la risposta e apri le citazioni. La corrispondenza delle citazioni alle
+   fonti non garantisce da sola la correttezza di tutte le affermazioni.
+7) Se vuoi conservare la risposta, premi SALVA RISPOSTA COME BOZZA. Troverai la
+   bozza in Risposte AI. Il salvataggio non approva né pubblica sul CRM.
+
+ANNULLA interrompe l’attesa locale; una richiesta già trasmessa potrebbe essere
+comunque elaborata dal fornitore. Cambiare domanda, modello o inclusione delle
+bozze invalida l’anteprima precedente. Se le fonti sono cambiate o l’anteprima è
+scaduta, preparane una nuova. Senza fonti utilizzabili l’invio resta disabilitato.
+
+5. CONOSCENZA
+
+Consulta direttamente i file Markdown, senza bisogno dell’indice o della rete.
+Scegli una categoria nella barra in alto:
+
+Clienti              01_CLIENTS
+Progetti             02_PROJECTS
+Marchi               03_BRANDS
+Posizionamento       04_POSITIONING
+Confezionamento      05_PACKAGING_KNOWLEDGE
+Metodi               06_METHODS
+Casi studio          07_CASE_STUDIES
+Ricerca di mercato   08_MARKET_RESEARCH
+Concorrenti          09_COMPETITORS
+Contenuti approvati  10_APPROVED_OUTPUTS
+
+Apri una riga per leggere la nota e verificarne percorso, stato e impronta.
+Premi AGGIORNA CONOSCENZA dopo modifiche fatte in Obsidian. Una categoria vuota
+mostra un messaggio esplicito, non contenuti dimostrativi.
+Questa schermata consulta i documenti; per scriverli usa Obsidian.
+
+6. FONTI
+
+È l’elenco dei documenti originali sotto 20_RAW_SOURCES. Inserisci lì documenti
+Markdown, testo o HTML. L’interfaccia non offre un pulsante di caricamento file:
+usa il filesystem del Mac. La compilazione estrae testo e produce bozze locali;
+non è un servizio automatico di interpretazione AI di qualunque formato.
+
+Premi AGGIORNA FONTI per rileggere l’elenco. La tabella mostra percorso, estensione,
+dimensione e stato. “Da compilare” significa che non esiste una compilazione
+corrente; “Compilata” indica una compilazione registrata; “Modificata” indica che
+la fonte non corrisponde più alla versione compilata.
+
+“Compila bozza” elabora una singola fonte. COMPILA TUTTE LE FONTI elabora l’elenco.
+Il riepilogo distingue compilate, invariate, non supportate ed errori: un errore
+individuale non significa che tutte le altre fonti siano fallite.
+Le bozze vengono create in 90_PROPOSALS con status: draft. Le fonti originali
+sono conservate. Per revisionare e approvare passa a Proposte e importa la bozza.
+
+7. RICERCA
+
+Cerca nel testo e nei metadati tramite un indice locale.
+Premi AGGIORNA INDICE DI RICERCA la prima volta e dopo aggiunte o modifiche alle
+note, salvataggi AI o approvazioni. L’indice non va considerato sempre aggiornato
+in automatico. Lo stato mostra data e numero dei documenti indicizzati.
+
+Inserisci parole nel campo principale. Puoi combinare categoria, cliente, progetto,
+etichette separate da virgole e stato. I filtri usano i metadati delle note:
+se una nota non contiene il valore cercato, non apparirà con quel filtro.
+Gli stati disponibili sono Approvata, Bozza, In revisione e Archiviata.
+
+I risultati mostrano titolo, categoria, rilevanza, percorso ed estratto. Per leggere
+la nota completa consulta Conoscenza o aprila in Obsidian tramite il suo percorso.
+Se non trovi nulla: controlla i filtri, aggiorna l’indice e verifica che la nota
+esista realmente. Non confondere l’indice assente con un Vault privo di file.
+
+8. RISPOSTE AI
+
+Contiene le risposte salvate esplicitamente da Chiedi al Vault.
+Premi AGGIORNA per rileggere l’elenco. Apri una risposta per vedere testo, fonti,
+provenienza e cronologia delle revisioni conservate.
+
+Scegli la categoria destinazione e premi CREA PROPOSTA DALLA RISPOSTA SALVATA.
+La proposta è una copia da revisionare: non modifica automaticamente la conoscenza
+approvata e non invia nulla al CRM.
+
+RECUPERA OPERAZIONE INTERROTTA serve a recuperare il workflow locale quando una
+precedente operazione è rimasta incompleta. Leggi l’esito e aggiorna l’elenco.
+
+9. PROPOSTE
+
+È il punto di revisione umana prima dell’inserimento nella conoscenza approvata.
+Puoi lavorare su una proposta derivata da Risposte AI oppure aprire “Importa una
+bozza compilata da revisionare”. Nel secondo caso:
+1) Scegli la categoria appropriata.
+2) Apri la bozza, leggi il contenuto e premi IMPORTA BOZZA MOSTRATA.
+3) La copia importata mantiene la provenienza; l’originale non viene sostituito.
+
+Apri la proposta “Da revisionare”. Leggi testo, fonti e cronologia.
+Per modificarla, inserisci il testo nel campo “Testo della nuova revisione”,
+controlla il confronto e premi SALVA NUOVA REVISIONE (CONSERVA LA PRECEDENTE).
+La revisione precedente rimane disponibile.
+
+Per rifiutare: indica il motivo e premi RIFIUTA REVISIONE MOSTRATA.
+Per approvare:
+1) Indica un percorso relativo nuovo con estensione .md nella categoria della
+   proposta, seguendo il suggerimento del campo. Esempio per un cliente:
+   01_CLIENTS/nome-cliente.md
+2) Controlla revisione e destinazione. Il file non deve già esistere.
+3) Seleziona “Ho verificato questa revisione e la destinazione indicata”.
+4) Premi APPROVA REVISIONE MOSTRATA.
+5) Consulta il file nella categoria Conoscenza e aggiorna l’indice in Ricerca.
+
+Approvare inserisce la nota nel Vault locale. Per renderla consultabile nel CRM
+serve ancora Pubblica conoscenza nella sezione Trasferimenti.
+Non spostare file nelle cartelle di sistema per aggirare le destinazioni consentite.
+
+10. COPIE LOCALI
+
+Crea copie con cronologia sotto 00_SYSTEM/SNAPSHOTS. Puoi aggiungere una nota
+facoltativa, poi premere CREA COPIA LOCALE. La tabella mostra ID, data, nota,
+numero di file e risultato della verifica SHA-256.
+
+VERIFICA INTEGRITÀ aggiorna il controllo del Vault e l’elenco delle copie.
+Una copia “Verificata” corrisponde al proprio manifesto; “Incompleta” o
+“Danneggiata” richiede attenzione e non va presentata come copia valida.
+
+Questa UI elenca e verifica le copie: non contiene un pulsante generale di
+ripristino distruttivo sopra il Vault attuale. Inoltre, una copia sullo stesso
+disco non protegge dal guasto fisico dell’intero disco. La copia cloud privata
+è un’operazione distinta, descritta nella sezione seguente.
+
+11. TRASFERIMENTI
+
+Le operazioni remote sono esplicite. Il Vault locale continua a funzionare anche
+quando il cloud non è raggiungibile. Lo stato “Pronto” del cloud riguarda il
+collegamento, non certifica da solo che l’ultima pubblicazione sia aggiornata.
+
+Collegamento iniziale:
+- Apri Impostazioni Copia cloud.
+- Incolla il codice di collegamento fornito dall’amministratore nel campo riservato.
+- Premi Collega archivio, poi controlla l’esito. Non inventare né condividere il codice.
+- Test Connessione verifica il collegamento senza inviare contenuti del Vault.
+- Disconnetti disattiva il collegamento locale. È distinto da Ritira pubblicazione:
+  non usarlo come prova che una pubblicazione remota sia stata ritirata.
+
+A. Pubblica conoscenza — per il CRM
+Premi Pubblica conoscenza per preparare l’anteprima delle note approvate nelle
+cartelle 01–10. Seleziona esplicitamente le note da condividere. Controlla percorsi,
+categorie e dimensioni, quindi premi Conferma ed Esegui.
+La nuova pubblicazione sostituisce la selezione pubblicata precedente: includi
+anche le note precedenti che vuoi continuare a rendere disponibili.
+Bozze, file di sistema e fonti originali non sono un sostituto delle note approvate.
+Se non ci sono note idonee, non esiste una pubblicazione reale da collaudare.
+
+B. Carica versione — copia privata
+Prepara e conferma una copia privata comprendente i file elencati, incluse fonti
+e revisioni previste dal piano. Questa copia non è consultabile dal CRM come
+conoscenza pubblicata. Controlla sempre l’elenco e gli elementi esclusi.
+
+C. Scarica copia — recupero in un nuovo Vault
+Per una versione precedente, apri Versioni precedenti da recuperare, premi Carica
+versioni e seleziona quella desiderata; altrimenti usa Ultima versione.
+Premi Scarica copia, controlla l’anteprima e conferma. LIMEN verifica i file e
+importa un nuovo Vault senza sovrascrivere quello aperto. Al termine annota
+“Copia salvata”, che indica il percorso del nuovo Vault. Riapri quel percorso
+tramite la schermata iniziale per consultare la copia recuperata.
+
+Durante un trasferimento compare il progresso di file e byte verificati.
+Annulla trasferimento richiede l’arresto; può attendere la richiesta già in corso.
+Se appare Riprendi trasferimento interrotto, usa quel pulsante per riprendere
+l’operazione registrata. In caso di conflitto con una versione remota più recente,
+ricarica l’anteprima e controlla il nuovo piano prima di confermare.
+
+Ritira pubblicazione rimuove la disponibilità delle note per la consultazione
+cloud prevista dal servizio. Richiede Conferma ritiro. Le note locali rimangono.
+Mantieni pubblicazione annulla la scelta di ritiro.
+
+12. SISTEMA
+
+Mostra cartella del Vault, rilevamento di Obsidian, motore delle copie e ambiente
+di esecuzione. La dicitura sui servizi remoti descrive l’indipendenza locale:
+non è un controllo della salute attuale di MEMAI o del CRM.
+Per verificare il collegamento R2 usa Test Connessione in Trasferimenti.
+
+13. IMPOSTAZIONI
+
+Collegamenti AI:
+- Inserisci la chiave API OpenAI e premi SALVA CHIAVE: viene salvata nel Portachiavi.
+- VERIFICA PORTACHIAVI controlla la presenza della chiave, non la validità di ogni
+  modello o la disponibilità di credito API.
+- RIMUOVI CHIAVE elimina la credenziale locale usata da LIMEN.
+
+MCP in sola lettura:
+ATTIVA MCP LOCALE espone il collegamento per client configurati, limitato alle note
+approvate e indicizzate del Vault corrente. Controlla indirizzo e ID Vault.
+Il token è riservato. REVOCA MCP invalida il collegamento e il token corrente.
+Il riavvio dell’app disattiva il collegamento: non considerarlo un servizio sempre acceso.
+
+ChatGPT Business · tunnel privato:
+È opzionale. Richiede ID tunnel, ID organizzazione e chiave di esecuzione validi,
+con configurazione corrispondente nell’account OpenAI. SALVA CHIAVE TUNNEL conserva
+la chiave. AVVIA TUNNEL BUSINESS avvia il collegamento; “Tunnel locale pronto”
+richiede comunque verifica dal client ChatGPT Business. ARRESTA TUNNEL BUSINESS
+impedisce nuove letture locali. Il Mac e LIMEN devono restare in esecuzione.
+La revoca della connessione remota nel client ChatGPT è un passaggio separato.
+
+Cartella locale del Vault:
+Il campo mostra il percorso usato. Non usarlo per trasferire file o migrare il Vault:
+modificare il testo non sposta la cartella. Per cambiare Vault con validazione,
+riavvia l’app e usa APRI VAULT ESISTENTE dalla schermata iniziale.
+
+14. MENU NATIVI macOS
+
+LIMEN Vault: informazioni sull’app, Servizi di macOS, Nascondi LIMEN Vault,
+Nascondi le altre applicazioni, Esci da LIMEN Vault.
+File: Chiudi finestra.
+Modifica: Annulla, Ripeti, Taglia, Copia, Incolla, Seleziona tutto, secondo il
+controllo di testo selezionato. Non sono comandi di annullamento della pubblicazione.
+Vista: Schermo intero.
+Finestra: Riduci a icona, Ingrandisci, Chiudi finestra.
+Aiuto: menu nativo; questo manuale è un file separato.
+Le voci aggiunte dal sistema operativo o da altre app seguono la lingua di macOS.
+
+15. WORKFLOW COMPLETI
+
+Scrivere una nota e ritrovarla:
+Apri Vault → Apri in Obsidian → scrivi nella categoria corretta → torna in LIMEN
+→ Conoscenza → categoria → AGGIORNA CONOSCENZA → Ricerca → AGGIORNA INDICE DI RICERCA.
+Una nota non diventa approvata solo perché compare nell’elenco.
+
+Da un documento originale alla conoscenza approvata:
+Inserisci file in 20_RAW_SOURCES → Fonti → AGGIORNA FONTI → Compila bozza
+→ Proposte → importa bozza → controlla e revisiona → indica destinazione nuova
+→ approva revisione → Conoscenza → aggiorna → Ricerca → aggiorna indice.
+
+Da una domanda AI alla nota approvata:
+Configura chiave → aggiorna indice → Chiedi al Vault → modello e domanda
+→ ANTEPRIMA FONTI → controllo → invio → verifica risposta e citazioni
+→ salva bozza → Risposte AI → crea proposta → Proposte → revisione e approvazione.
+
+Condividere una nota con il CRM:
+Nota realmente approvata nel Vault → Trasferimenti → collegamento verificato
+→ Pubblica conoscenza → seleziona note → controlla anteprima → Conferma ed Esegui
+→ verifica l’esito → controlla la pubblicazione LIMEN nell’archivio CRM autorizzato.
+Non basta Carica versione: quella è una copia privata.
+
+Mapping Cliente/Progetto: nel blocco delle proprietà della nota, i campi tecnici
+client e project devono contenere gli identificativi CRM esatti del cliente e del
+progetto scelti. Il servizio li trasferisce nel manifesto pubblicato; i filtri API
+confrontano quei valori esattamente. Il nome visibile del cliente non viene
+convertito automaticamente in identificativo CRM. Fai verificare gli identificativi
+all’amministratore prima di pubblicare e non inventarli. La UI attuale delle
+Proposte non contiene un selettore collegato all’anagrafica CRM: i metadati vanno
+preparati nella nota. Il collaudo reale di questo mapping è ancora in attesa dei
+documenti approvati e del cliente/progetto da utilizzare.
+
+16. CRM, MEMAI E I DUE AVVISI “DISABILITATO”
+
+Produzione CRM corretta: https://pii-crm.vercel.app
+L’integrazione archivio ha tre origini distinte, secondo le prove già registrate:
+Materiali CRM (catalogo materials), MEMAI (API esistenti), LIMEN (note pubblicate).
+Storage LIMEN: m3mai-core-vault, namespace dedicato. La lettura CRM richiede
+l’accesso autorizzato; le API anonime sono negate.
+
+Al precedente collaudo il catalogo MEMAI mostrava 21 documenti e l’anteprima del
+documento di prova MERAVIA funzionava. Il Vault /Users/cesare/Documents/VAULT
+non conteneva note conoscenza reali pubblicate: LIMEN restituiva NO_PUBLICATION.
+Non si deve interpretare questo stato come collaudo completo del mapping
+Cliente/Progetto, che resta da fare con contenuti approvati.
+
+“Ricerca multi-agent disabilitata” e “Workbench disabilitato” riguardano due
+funzioni separate. Nel codice CRM, i controlli richiedono rispettivamente:
+MEMAI_VPRO_MULTI_AGENT_ENABLED=true
+MEMAI_WORKBENCH_ENABLED=true
+Se il controllo non passa, il CRM restituisce l’avviso prima di chiamare le API
+/research/jobs o /workspaces. Il testo “capability backend spenta” non dimostra
+quindi da solo che sia stato interrogato il backend né che l’archivio sia guasto.
+
+Aggiornamento del 13 settembre 2026: i flag CRM e backend sono stati attivati.
+Workbench Codex in lettura è stato collaudato creando e revocando un workspace vuoto.
+Il nuovo avvio delle ricerche è pubblicato e collaudato con provider reali: risposta
+in italiano con citazioni e otto fonti raccolte nella prova del 13 settembre 2026.
+Non è necessario attivarli per leggere le note LIMEN già pubblicate tramite archivio.
+Non sono inclusi percorsi web passo passo non ricontrollati nell’account corrente.
+
+RICERCHE MULTI-AGENT NEL CRM — percorso verificato il 13 settembre 2026
+
+Apri M3MAI Hub e scegli Ricerche multi-agent. Nel campo “Nuova ricerca sul Web
+pubblico” scrivi una domanda di almeno 10 caratteri e premi “Avvia ricerca”.
+Usa solo informazioni pubbliche: questa funzione ricerca sul Web, non legge
+automaticamente le note private del Vault. Il sistema esegue tre ricerche per
+fonti/dati, alternative e criticità, poi prepara una sintesi con OpenAI.
+
+La nuova richiesta compare nell’elenco. Aprila per vedere il dettaglio, che si
+aggiorna automaticamente ogni cinque secondi. “queued” significa in coda,
+“running” in esecuzione, “completed” completata, “partial” parziale, “failed”
+non riuscita e “cancelled” annullata. Se necessario usa il pulsante di aggiornamento.
+Quando disponibile, leggi “Risultato della ricerca” e controlla “Fonti raccolte”:
+“Apri fonte” apre il documento originale. La presenza di una fonte non certifica
+l’esattezza di tutte le affermazioni: confronta sempre sintesi e documento.
+
+Una ricerca può durare al massimo 120 secondi, effettuare quattro chiamate e
+raccogliere nove fonti. Una sola ricerca per organizzazione può essere attiva.
+I valori n/d per costo e token indicano dati non misurati, non un servizio gratuito.
+La ricerca non approva e non pubblica automaticamente nuove note nel Vault.
+Durante l’esecuzione il dettaglio mostra “Annulla job”; a conclusione il pulsante
+è disabilitato. Il backend conserva lo stato annullato e interrompe le operazioni
+in corso; le fonti già raccolte restano consultabili. Annullamento API reale
+verificato il 13 settembre 2026.
+
+17. PROBLEMI COMUNI E LIMITI DEL COLLAUDO
+
+Vault non valido: controlla percorso e messaggi di validazione; apri un Vault LIMEN
+strutturato correttamente, senza sovrascrivere la cartella esistente.
+Nessuna nota: verifica la categoria e i file reali; i file di sistema non sono conoscenza.
+Ricerca vuota: rimuovi filtri non necessari e aggiorna l’indice.
+AI senza fonti: verifica presenza, indicizzazione e approvazione delle note.
+AI non disponibile: controlla chiave, modello, rete e messaggio; il locale resta utilizzabile.
+Cloud non configurato: richiedi il codice all’amministratore; non cambiare bucket a caso.
+NO_PUBLICATION nel CRM: serve una pubblicazione approvata completata per il Vault collegato.
+Differenze di integrità: consulta l’elenco; non cancellare file automaticamente.
+
+M10 non è integralmente certificata: mancano collaudo con note reali e mapping,
+secondo Mac e apertura offline in account pulito. Le prove sullo stesso Mac non
+equivalgono a quelle sul secondo dispositivo. Gli artefatti M9 restano preservati.

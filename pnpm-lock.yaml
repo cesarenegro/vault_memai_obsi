@@ -175,6 +175,19 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
 
+  packages/sync-engine:
+    dependencies:
+      '@limen-vault/vault-core':
+        specifier: workspace:*
+        version: link:../vault-core
+      '@limen-vault/vault-schema':
+        specifier: workspace:*
+        version: link:../vault-schema
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
   packages/ui:
     dependencies:
       clsx:

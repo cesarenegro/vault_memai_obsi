@@ -1,16 +1,9 @@
-LIMEN Vault — blocchi e dipendenze, 12 settembre 2026
-Checklist principale: TASK_LIST.md.
-
-M7 completata in locale. Nessun residuo di accettazione M7.
-
-M8 completata in locale. Nessun residuo obbligatorio. Limiti Obsidian nel rapporto.
-
-M9
-- Upload Apple fallito con HTTPClientError.deadlineExceeded; autenticazione LIMEN-M9 valida. Nessun rifiuto del codice da Apple osservato. Attendere rete diversa/hotspot già richiesto prima di riprovare; niente loop di upload. Utente conferma stessa rete e propone hotspot dopo verifica. History Apple raggiungibile: tre richieste ancora In Progress, nessuna Accepted.
-- Credenziale tunnel salvata e accesso app autorizzato. Readiness/start/stop reali PASS. Resta lettura Business remota: controllo scheda Chrome via estensione in timeout due volte; chiesto di portare Plugins in primo piano per controllo nativo.
-- Verificare Business reale dal bundle installato, uscita e revoca remota. Non usare i soli test M6 come certificazione di M9.
-- Restano DMG notarizzato/stapled, Gatekeeper e prova su account macOS pulito. Banco di installazione in directory/APFS passato, ma non equivale a un nuovo account OS.
-- Etichette corrette, build/firma/installazione terminate; hash in M9_EVIDENCE/final-candidate.json. Etichette verificate dopo sblocco; blocco Mac risolto.
-- Spazio attuale verificato circa 9 GiB; vecchio blocco ENOSPC risolto.
-
-Nessun commit/push/tag/deploy. M10 fuori incarico. Pubblicazione separata.
+STATO OPERATIVO — 13 settembre 2026
+PUBBLICATO E COLLAUDATO — salute MEMAI ok; Workbench Codex read attivo; ricerca reale completata con risposta italiana e 8 fonti, annullamento durante esecuzione PASS. Backend 9043ff5, Render dep-dajgdl0jo6nc73dp4lr0 Live. CRM dpl_CSZPgsq6uTaMspWnTZJFVmAtpg6R Ready su pii-crm.vercel.app. Pre-deploy: entrambi gli script PASS; schema u1c2d3e4f5a6 = head. Commit/push MEMAI autorizzati ed eseguiti su codex/research-runtime; nessun merge main.
+VERIFICHE: backend 436 passed + 49 subtests (23 skipped, 2 deselected); CRM 12/12 test, typecheck/build PASS; lint zero errori, una direttiva eslint superflua segnalata.
+RESIDUI DIPENDENTI DA DATI/DISPOSITIVI:
+- Note reali e mapping: Vault /Users/cesare/Documents/VAULT contiene solo HOME.md e VAULT_RULES.md di sistema. Domanda inviata su documento approvato e Cliente/Progetto esatti. Nessuna nota fittizia o di sistema pubblicata.
+- Secondo Mac non disponibile. M10 offline in account macOS pulito non certificata. Non dichiarare M10 integralmente chiusa.
+- M9 e DMG italiani notarizzati in USER INSTALL preservati. Nessun recupero manuale ingestion, nessuna variazione globale storage CRM.
+OPERATIVITÀ: servizio Render ora segue codex/research-runtime, auto-deploy Off; main non modificato. CRM modifiche pubblicate via CLI, checkout locale conservato senza commit/push.
+EVIDENZE: progetto LIMEN, IMPLEMENTATION/2026-09-13_RESEARCH_RELEASE.md. Storico salute/flag: IMPLEMENTATION/2026-09-13_MEMAI_ATTIVAZIONE.md.

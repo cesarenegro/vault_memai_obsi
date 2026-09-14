@@ -1,0 +1,18 @@
+{
+  "date": "2026-09-13",
+  "checks": {
+    "pnpm_test": "PASS (including guards and 3 gateway tests)",
+    "sync_engine_latest": "12/12 PASS",
+    "pnpm_typecheck": "PASS; targeted desktop typecheck repeated after IPC change",
+    "pnpm_build": "PASS",
+    "crm_tsc": "PASS",
+    "crm_build": "PASS after use server correction",
+    "rust_release_tests": "36 lib + 18 main PASS",
+    "tauri_bundle": "PASS final candidate rebuilt and native UI rechecked"
+  },
+  "live_r2": "11 checks PASS; see r2-protocol.json",
+  "cloud_worker_deployed": false,
+  "native_configured_e2e": false,
+  "second_mac_tested": false,
+  "notarized_m10": false
+}

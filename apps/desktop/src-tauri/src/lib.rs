@@ -11,3 +11,5 @@ pub mod proposals;
 pub mod tunnel;
 
 pub mod knowledge;
+
+pub mod sync;
