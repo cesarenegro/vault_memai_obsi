@@ -1,5 +1,13 @@
 # TASK LIST — LIMEN Vault: M2–M9 locali; M10 parziale, Worker/CRM pubblicati e installer consegnato
 
+## Dossier per audit Claude — 14 settembre 2026
+
+- [x] Creato nella root `CLAUDE AUDIT - LIMEN CRM MEMAI.md`: architettura, walkthrough, integrazioni, artefatti notarizzati, evidenze, limiti e piano audit.
+- [x] Verificati in sola lettura: LIMEN remoto main 8c8d6a9; MEMAI remoto codex/research-runtime c7c47ee e main bce9d61. La precedente descrizione del push LIMEN bloccato è superata dal remoto attuale.
+- [x] Discrepanza ambienti identificata: CRM locale punta a staging; configurazione Vercel Production pii-crm punta a m3mai-backend.onrender.com. Nessuna configurazione modificata.
+- Documento creato localmente; nessun nuovo commit/push/deploy, nessun test funzionale ripetuto. Criteri M10 aperti invariati.
+
+
 PUBBLICATO E COLLAUDATO — salute MEMAI ok; Workbench Codex read attivo; ricerca reale completata con risposta italiana e 8 fonti, annullamento durante esecuzione PASS. Backend 9043ff5, Render dep-dajgdl0jo6nc73dp4lr0 Live. CRM dpl_CSZPgsq6uTaMspWnTZJFVmAtpg6R Ready su pii-crm.vercel.app. Pre-deploy: entrambi gli script PASS; schema u1c2d3e4f5a6 = head. Commit/push MEMAI autorizzati ed eseguiti su codex/research-runtime; nessun merge main.
 
 

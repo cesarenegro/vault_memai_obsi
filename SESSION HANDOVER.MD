@@ -1,3 +1,7 @@
+## Aggiornamento documentale 14 settembre 2026
+
+Dossier completo nella root: `CLAUDE AUDIT - LIMEN CRM MEMAI.md`. Lettura remota Git: LIMEN main 8c8d6a9 già presente su GitHub; MEMAI codex/research-runtime c7c47ee, main bce9d61. Configurazione Production Vercel pii-crm: MEMAI_API_URL=https://m3mai-backend.onrender.com; CRM locale .env.local punta a m3mai-backend-staging.onrender.com. Queste verifiche superano eventuali affermazioni storiche discordanti sotto. Nessuna configurazione cambiata, nessun nuovo commit/push/deploy.
+
 # Stato verificato — 13 settembre 2026, conclusione tecnica
 
 ## Produzione MEMAI e CRM
