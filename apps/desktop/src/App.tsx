@@ -42,6 +42,8 @@ import {
   CheckCircle2,
   XCircle,
   Cloud,
+  ChevronRight,
+  RotateCw,
 } from 'lucide-react';
 
 type NavTab =
@@ -479,8 +481,109 @@ export default function App() {
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
-      <main style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
+      {/* RIGHT CONTENT COLUMN */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+        {/* TOP NAVBAR WITH REFRESH BUTTON IN CENTER */}
+        <header
+          style={{
+            height: 52,
+            backgroundColor: '#ffffff',
+            borderBottom: '1px solid var(--limen-border-light)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 24px',
+            userSelect: 'none',
+            flexShrink: 0,
+            zIndex: 10,
+          }}
+        >
+          {/* LEFT: Current Section Breadcrumb */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+              {currentTab === 'home' && 'Panoramica'}
+              {currentTab === 'ask' && 'Chiedi al Vault'}
+              {currentTab === 'knowledge' && 'Conoscenza'}
+              {currentTab === 'sources' && 'Fonti originali (RAW)'}
+              {currentTab === 'search' && 'Ricerca'}
+              {currentTab === 'outputs' && 'Risposte AI salvate'}
+              {currentTab === 'proposals' && 'Revisione delle proposte'}
+              {currentTab === 'snapshots' && 'Copie locali'}
+              {currentTab === 'transfers' && 'Trasferimenti'}
+              {currentTab === 'system' && 'Sistema'}
+              {currentTab === 'settings' && 'Impostazioni'}
+            </span>
+            {vaultPath && (
+              <span style={{ fontSize: 11, color: '#64748b', backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: 4, fontFamily: 'monospace' }}>
+                {vaultPath.split('/').pop()}
+              </span>
+            )}
+          </div>
+
+          {/* CENTER: REFRESH BUTTON (RICHIESTO DALL'UTENTE) */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button
+              onClick={handleRecheck}
+              disabled={isProcessing || !vaultPath}
+              title="Aggiorna stato, file e dati del Vault"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 18px',
+                borderRadius: 20,
+                border: '1.5px solid #cbd5e1',
+                backgroundColor: isProcessing ? '#f1f5f9' : '#ffffff',
+                color: isProcessing ? '#94a3b8' : '#0f172a',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: isProcessing || !vaultPath ? 'not-allowed' : 'pointer',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                if (!isProcessing && vaultPath) {
+                  e.currentTarget.style.borderColor = '#0f172a';
+                  e.currentTarget.style.backgroundColor = '#f8fafc';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isProcessing && vaultPath) {
+                  e.currentTarget.style.borderColor = '#cbd5e1';
+                  e.currentTarget.style.backgroundColor = '#ffffff';
+                }
+              }}
+            >
+              <RotateCw size={15} className={isProcessing ? 'spin' : ''} color={isProcessing ? '#94a3b8' : '#0f172a'} />
+              <span>{isProcessing ? 'Aggiornamento...' : 'Aggiorna'}</span>
+            </button>
+          </div>
+
+          {/* RIGHT: Status Badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {vaultLoaded ? (
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '3px 9px',
+                  borderRadius: 12,
+                  backgroundColor: vaultState === 'READY' ? '#dcfce7' : '#fee2e2',
+                  color: vaultState === 'READY' ? '#15803d' : '#b91c1c',
+                  border: '1px solid',
+                  borderColor: vaultState === 'READY' ? '#bbf7d0' : '#fecaca',
+                }}
+              >
+                ● {labelIt(vaultState)}
+              </span>
+            ) : (
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>Nessun Vault</span>
+            )}
+          </div>
+        </header>
+
+        {/* MAIN CONTENT AREA */}
+        <main style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
         {/* BROWSER WARNING BANNER */}
         {!isTauriEnv && (
           <div
@@ -677,25 +780,148 @@ export default function App() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
                   <div className="limen-card" style={{ padding: 24 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 16px 0' }}>Accesso rapido</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                      {['Clienti', 'Progetti', 'Marchi', 'Posizionamento', 'Confezionamento', 'Metodi', 'Casi studio', 'Ricerca di mercato'].map((cat) => (
-                        <button
-                          key={cat}
-                          onClick={() => setCurrentTab('knowledge')}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                      <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Accesso rapido</h3>
+                      <span style={{ fontSize: 12, color: '#64748b' }}>Aree operative e cartelle del Vault</span>
+                    </div>
+
+                    {/* VAULT / RAW (20_RAW_SOURCES) CARD */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setCurrentTab('sources')}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setCurrentTab('sources'); }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '14px 16px',
+                        backgroundColor: '#f1f5f9',
+                        border: '1.5px solid #cbd5e1',
+                        borderRadius: 10,
+                        cursor: 'pointer',
+                        marginBottom: 16,
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#0f172a';
+                        e.currentTarget.style.backgroundColor = '#e2e8f0';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#cbd5e1';
+                        e.currentTarget.style.backgroundColor = '#f1f5f9';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div
                           style={{
-                            padding: '14px',
+                            backgroundColor: '#0f172a',
+                            color: '#ffffff',
+                            width: 38,
+                            height: 38,
+                            borderRadius: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <FolderArchive size={20} />
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+                              Vault / RAW
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontFamily: 'monospace',
+                                backgroundColor: '#e2e8f0',
+                                padding: '1px 6px',
+                                borderRadius: 4,
+                                color: '#334155',
+                                fontWeight: 600,
+                              }}
+                            >
+                              20_RAW_SOURCES
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                            Documenti originali, note grezze, brief e file di testo da compilare
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            padding: '4px 10px',
+                            borderRadius: 12,
+                            backgroundColor: sourceCount > 0 ? '#dbeafe' : '#f8fafc',
+                            color: sourceCount > 0 ? '#1e40af' : '#64748b',
+                            border: '1px solid',
+                            borderColor: sourceCount > 0 ? '#bfdbfe' : '#e2e8f0',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {sourceCount} {sourceCount === 1 ? 'fonte' : 'fonti'}
+                        </span>
+                        <ChevronRight size={18} color="#64748b" />
+                      </div>
+                    </div>
+
+                    {/* CARTELLE DELLA CONOSCENZA */}
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Cartelle della Conoscenza (Note Markdown)
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+                      {[
+                        { id: 'clients', folder: '01_CLIENTS' },
+                        { id: 'projects', folder: '02_PROJECTS' },
+                        { id: 'brands', folder: '03_BRANDS' },
+                        { id: 'positioning', folder: '04_POSITIONING' },
+                        { id: 'packaging', folder: '05_PACKAGING_KNOWLEDGE' },
+                        { id: 'methods', folder: '06_METHODS' },
+                        { id: 'case_studies', folder: '07_CASE_STUDIES' },
+                        { id: 'research', folder: '08_MARKET_RESEARCH' },
+                        { id: 'competitors', folder: '09_COMPETITORS' },
+                        { id: 'approved_outputs', folder: '10_APPROVED_OUTPUTS' },
+                      ].map((cat) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => {
+                            setSelectedCategory(cat.id);
+                            setCurrentTab('knowledge');
+                          }}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-start',
+                            padding: '10px 14px',
                             backgroundColor: '#f8fafc',
                             border: '1px solid #e2e8f0',
                             borderRadius: 8,
                             textAlign: 'left',
                             cursor: 'pointer',
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: '#0f172a',
+                            transition: 'all 0.1s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#94a3b8';
+                            e.currentTarget.style.backgroundColor = '#f1f5f9';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#e2e8f0';
+                            e.currentTarget.style.backgroundColor = '#f8fafc';
                           }}
                         >
-                          {cat}
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+                            {labelIt(cat.id)}
+                          </span>
+                          <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#64748b', marginTop: 2 }}>
+                            {cat.folder}/
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -1145,6 +1371,7 @@ export default function App() {
           </>
         )}
       </main>
+      </div>
     </div>
   );
 }
