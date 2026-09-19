@@ -1,0 +1,456 @@
+{
+  "benchmark": "A05 — Misura Diagnostica Semantica vs Lessicale vs Ibrida",
+  "timestamp_utc8": "2026-09-20T01:28:54.768423+08:00",
+  "model": "text-embedding-3-small",
+  "cache_source": "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/scratch/a05_v2_context_vault/00_SYSTEM/EMBEDDINGS_CACHE.json",
+  "indexed_documents": 120,
+  "indexed_passages": 167,
+  "total_queries": 40,
+  "semantic_mean_recall_at_10": 0.975,
+  "lexical_mean_recall_at_10": 0.65,
+  "hybrid_mean_recall_at_10": 0.95,
+  "zero_recall_count_semantic": 1,
+  "zero_recall_queries_semantic": [
+    "Q21"
+  ],
+  "zero_recall_count_lexical": 14,
+  "zero_recall_queries_lexical": [
+    "Q03",
+    "Q05",
+    "Q06",
+    "Q10",
+    "Q12",
+    "Q17",
+    "Q18",
+    "Q23",
+    "Q29",
+    "Q31",
+    "Q32",
+    "Q34",
+    "Q37",
+    "Q38"
+  ],
+  "zero_recall_count_hybrid": 2,
+  "zero_recall_queries_hybrid": [
+    "Q21",
+    "Q26"
+  ],
+  "semantic_hit_hybrid_miss_queries": [
+    "Q26"
+  ],
+  "hybrid_hit_semantic_miss_queries": [],
+  "decision_rule_verbatim": "Semantica da sola maggiore o uguale a 0,85: la semantica funziona, il problema è nella fusione. Il passo successivo diventa la taratura dei pesi, non il cambio di modello.\nSemantica da sola minore o uguale a 0,70: il problema è negli embedding o nel modello. Il passo successivo diventa il modello più grande o il testo indicizzato.\nValore intermedio: entrambe le cause concorrono; si riportano i numeri e si decide con l'utente.",
+  "diagnostic_verdict": "SEMANTICA_VALIDA_PROBLEMA_FUSIONE",
+  "diagnostic_conclusion": "La semantica da sola vale 0.975 (>= 0.85): la semantica funziona, il problema è nella fusione. Il passo successivo è la taratura dei pesi.",
+  "comparison_vs_v2_diagnostic": {
+    "baselineDiagnosticPath": "IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_V2_DIAGNOSTIC/per-query.jsonl",
+    "preFusionHybridMeanRecallAt10": 0.675,
+    "postFusionHybridMeanRecallAt10": 0.95,
+    "improvedQueriesCount": 32,
+    "improvedQueries": [
+      "Q01",
+      "Q02",
+      "Q03",
+      "Q05",
+      "Q06",
+      "Q07",
+      "Q08",
+      "Q09",
+      "Q10",
+      "Q11",
+      "Q12",
+      "Q13",
+      "Q14",
+      "Q15",
+      "Q17",
+      "Q18",
+      "Q20",
+      "Q23",
+      "Q24",
+      "Q25",
+      "Q28",
+      "Q29",
+      "Q30",
+      "Q31",
+      "Q32",
+      "Q34",
+      "Q35",
+      "Q36",
+      "Q37",
+      "Q38",
+      "Q39",
+      "Q40"
+    ],
+    "degradedQueriesCount": 5,
+    "degradedQueries": [
+      "Q04",
+      "Q16",
+      "Q21",
+      "Q26",
+      "Q33"
+    ],
+    "sameQueriesCount": 3,
+    "queryComparisons": [
+      {
+        "queryId": "Q01",
+        "expectedDocument": "doc_001",
+        "v2HybridRank": 7,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 3,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q02",
+        "expectedDocument": "doc_002",
+        "v2HybridRank": 9,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 1,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q03",
+        "expectedDocument": "doc_003",
+        "v2HybridRank": 23,
+        "v2HybridRecall": 0.0,
+        "newHybridRank": 1,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q04",
+        "expectedDocument": "doc_004",
+        "v2HybridRank": 2,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 3,
+        "newHybridRecall": 1.0,
+        "status": "DEGRADED"
+      },
+      {
+        "queryId": "Q05",
+        "expectedDocument": "doc_005",
+        "v2HybridRank": 41,
+        "v2HybridRecall": 0.0,
+        "newHybridRank": 2,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q06",
+        "expectedDocument": "doc_006",
+        "v2HybridRank": 13,
+        "v2HybridRecall": 0.0,
+        "newHybridRank": 2,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q07",
+        "expectedDocument": "doc_007",
+        "v2HybridRank": 5,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 1,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q08",
+        "expectedDocument": "doc_008",
+        "v2HybridRank": 2,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 1,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q09",
+        "expectedDocument": "doc_009",
+        "v2HybridRank": 4,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 1,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q10",
+        "expectedDocument": "doc_010",
+        "v2HybridRank": 8,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 4,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q11",
+        "expectedDocument": "doc_011",
+        "v2HybridRank": 4,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 2,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q12",
+        "expectedDocument": "doc_012",
+        "v2HybridRank": null,
+        "v2HybridRecall": 0.0,
+        "newHybridRank": 1,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q13",
+        "expectedDocument": "doc_013",
+        "v2HybridRank": 4,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 2,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q14",
+        "expectedDocument": "doc_014",
+        "v2HybridRank": 3,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 2,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q15",
+        "expectedDocument": "doc_015",
+        "v2HybridRank": 5,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 2,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q16",
+        "expectedDocument": "doc_016",
+        "v2HybridRank": 5,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 9,
+        "newHybridRecall": 1.0,
+        "status": "DEGRADED"
+      },
+      {
+        "queryId": "Q17",
+        "expectedDocument": "doc_017",
+        "v2HybridRank": 14,
+        "v2HybridRecall": 0.0,
+        "newHybridRank": 1,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q18",
+        "expectedDocument": "doc_018",
+        "v2HybridRank": 15,
+        "v2HybridRecall": 0.0,
+        "newHybridRank": 3,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q19",
+        "expectedDocument": "doc_019",
+        "v2HybridRank": 1,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 1,
+        "newHybridRecall": 1.0,
+        "status": "SAME"
+      },
+      {
+        "queryId": "Q20",
+        "expectedDocument": "doc_020",
+        "v2HybridRank": 2,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 1,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q21",
+        "expectedDocument": "doc_021",
+        "v2HybridRank": 6,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 26,
+        "newHybridRecall": 0.0,
+        "status": "DEGRADED"
+      },
+      {
+        "queryId": "Q22",
+        "expectedDocument": "doc_022",
+        "v2HybridRank": 2,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 2,
+        "newHybridRecall": 1.0,
+        "status": "SAME"
+      },
+      {
+        "queryId": "Q23",
+        "expectedDocument": "doc_023",
+        "v2HybridRank": 15,
+        "v2HybridRecall": 0.0,
+        "newHybridRank": 1,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q24",
+        "expectedDocument": "doc_024",
+        "v2HybridRank": 6,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 1,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q25",
+        "expectedDocument": "doc_025",
+        "v2HybridRank": 2,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 1,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q26",
+        "expectedDocument": "doc_026",
+        "v2HybridRank": 4,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 12,
+        "newHybridRecall": 0.0,
+        "status": "DEGRADED"
+      },
+      {
+        "queryId": "Q27",
+        "expectedDocument": "doc_027",
+        "v2HybridRank": 1,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 1,
+        "newHybridRecall": 1.0,
+        "status": "SAME"
+      },
+      {
+        "queryId": "Q28",
+        "expectedDocument": "doc_028",
+        "v2HybridRank": 5,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 2,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q29",
+        "expectedDocument": "doc_029",
+        "v2HybridRank": 23,
+        "v2HybridRecall": 0.0,
+        "newHybridRank": 2,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q30",
+        "expectedDocument": "doc_030",
+        "v2HybridRank": 6,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 4,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q31",
+        "expectedDocument": "doc_031",
+        "v2HybridRank": 27,
+        "v2HybridRecall": 0.0,
+        "newHybridRank": 1,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q32",
+        "expectedDocument": "doc_032",
+        "v2HybridRank": 12,
+        "v2HybridRecall": 0.0,
+        "newHybridRank": 2,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q33",
+        "expectedDocument": "doc_033",
+        "v2HybridRank": 3,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 7,
+        "newHybridRecall": 1.0,
+        "status": "DEGRADED"
+      },
+      {
+        "queryId": "Q34",
+        "expectedDocument": "doc_034",
+        "v2HybridRank": 31,
+        "v2HybridRecall": 0.0,
+        "newHybridRank": 4,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q35",
+        "expectedDocument": "doc_035",
+        "v2HybridRank": 7,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 5,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q36",
+        "expectedDocument": "doc_036",
+        "v2HybridRank": 8,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 2,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q37",
+        "expectedDocument": "doc_037",
+        "v2HybridRank": 11,
+        "v2HybridRecall": 0.0,
+        "newHybridRank": 7,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q38",
+        "expectedDocument": "doc_038",
+        "v2HybridRank": 12,
+        "v2HybridRecall": 0.0,
+        "newHybridRank": 5,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q39",
+        "expectedDocument": "doc_039",
+        "v2HybridRank": 7,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 6,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      },
+      {
+        "queryId": "Q40",
+        "expectedDocument": "doc_040",
+        "v2HybridRank": 3,
+        "v2HybridRecall": 1.0,
+        "newHybridRank": 2,
+        "newHybridRecall": 1.0,
+        "status": "IMPROVED"
+      }
+    ]
+  }
+}

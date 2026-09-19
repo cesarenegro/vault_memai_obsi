@@ -86,7 +86,7 @@ Tutti i comandi citati corrispondono a test ed eseguibili reali. Gli output grez
 | **A02** | Estrazione e normalizzazione su formati supportati | `extraction::tests::pdf_and_scans_use_native_extraction`<br>`extraction::tests::word_and_slides_are_literal`<br>`automation::tests::unicode_text_chunks_preserve_every_byte`<br>`automation::tests::complete_multi_format_pipeline_with_declared_fake_ai` | `cargo-test.log` | Code: 0<br>4.41s | **PASS** |
 | **A03** | Documenti lunghi e tabelle oltre 1.200 righe senza troncamento | `automation::tests::spreadsheets_keep_rows_beyond_api_limit_and_formulas`<br>`automation::tests::long_documents_are_split_without_manual_work`<br>`catalog::tests::test_chunk_text_to_passages_locators` | `cargo-test.log` | Code: 0<br>4.41s | **PASS** |
 | **A04** | Ricerca deterministica: 100% casi gold e passaggi | *Funzionalità verificata su singola nota*: `search::tests::search_passages_and_catalog_indexing`<br>`embeddings::tests::test_hybrid_fusion_ranks_exact_code_first`<br>`catalog::tests::test_lookup_by_path_beyond_50_documents_and_homonyms`<br>*Mancante*: Set gold congelato con misura di rank e copertura per query. | `cargo-test.log` | Code: 0<br>4.41s | **NON VERIFICATO**<br>(Aperto accanto ad A05/A15) |
-| **A05** | Semantica: 40 parafrasi / 100 doc, Recall@10 ≥ 0.90 con gold congelato | Esecuzione su 120 doc con modello reale `text-embedding-3-small`.<br>- Storico v1 (boilerplate sintetico): Recall@10 **0.475** (19/40).<br>- **Intervento 1 (Rilievo C5)**: Corpus V2 diversificato (120 doc, Jaccard coppia max **0.2154** ≤ 0.30, tag `v3.1.0-a05-corpus-v2-frozen`).<br>  - **Baseline V2** (motore immutato): Recall@10 **0.675** (27/40, mediano 1.000, lessicale 0.650).<br>  - **Context V2** (`embeddings.rs` contestualizzato con titolo, categoria, locator e invalidazione cache): Recall@10 **0.675** (27/40, mediano 1.000, 167 passaggi ricalcolati). | `A05/`<br>`A05_V2_BASELINE/`<br>`A05_V2_CONTEXT/` | Code: 0<br>5s | **NON SUPERATO**<br>(Soglia ≥ 0.90 non raggiunta; numero reale 0.675, gate APERTO) |
+| **A05** | Semantica: 40 parafrasi / 100 doc, Recall@10 ≥ 0.90 con gold congelato | Esecuzione su 120 doc con modello reale `text-embedding-3-small`.<br>- Storico v1: Recall@10 **0.475** (19/40).<br>- Baseline V2: Recall@10 **0.675** (27/40, Rilievo C8: la fusione annullava la semantica).<br>- **Post-Correzione C8 (Fusione Normalizzata Variant B, pesi 0.5 / 0.5)**: Recall@10 **0.950** (38/40 hit, recuperate tutte le 13 query precedentemente perse, soglia ≥ 0.90 superata). | `A05_FUSION_GOLD/` | Code: 0<br>10s | **PASS** |
 | **A06** | Ammissibilità prima del ranking (R3) | `ai::tests::test_eligibility_before_limits_regression_50_drafts_do_not_hide_approved_source`<br>`ai::index_policy_test::forged_approval_is_rejected`<br>`catalog::tests::test_proposals_stay_legacy_drafts_and_human_notes_preserved` | `cargo-test.log` | Code: 0<br>4.41s | **PASS** |
 | **A07** | Citazioni e UI: apertura passaggio/revisione/sha256 (R4, R6) | `ai::tests::test_citation_locators_and_tamper_detection`<br>`catalog::tests::test_verify_document_passage_integrity_all_cases`<br>`ai::tests::binary_raw_source_extracted_text_is_read_in_ai`<br>`catalog::tests::test_passage_integrity_and_tamper_detection`<br>*TypeScript*: `DocumentReaderModal - highlightMatches` | `cargo-test.log`<br>`document-reader.log` | Code: 0<br>4.41s / 15ms | **PASS** |
 | **A08** | Freshness e guasti isolati: modifica/rimozione file | `search::tests::test_search_detects_removed_and_modified_files_without_blocking`<br>`catalog::tests::test_document_pruning_on_file_deletion`<br>`catalog::tests::test_document_revision_bump_on_content_change`<br>`automation::tests::source_changes_and_deletion_invalidate_wiki_before_next_tick` | `cargo-test.log` | Code: 0<br>4.41s | **PASS** |
@@ -396,3 +396,37 @@ Evidenze salvate in `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_FUSION_DEV/`:
    - `test_hybrid_search_offline_graceful_fallback`: **PASS** (ripiego offline funzionante).
    - Suite Rust complessiva: **96/96 test passati**.
 
+### 9.5 Fase 3: Misura Singola sul Set Gold e Risultato Finale
+Con i parametri congelati (commit `2ec1996`) e applicati a `embeddings.rs`, è stata eseguita una **singola misura** sulle 40 query gold ufficiali (`tests/gold/A05_QUERIES.json`) sul corpus congelato V2 (`tests/scratch/a05_v2_context_vault`), riusando la cache di embedding esistente (167 passaggi) e leggendo la chiave OpenAI in sicurezza dal Portachiavi macOS dentro il processo (rilievo C6 rispettato).
+
+#### Risultati Comparati (Pre vs Post-Fusione su Gold 40 query)
+| Componente / Modalità | Baseline V2 Diagnostic (`3d88bc8`) | Post-Fusione Normalizzata (`A05_FUSION_GOLD`) | Delta |
+|:---|:---|:---|:---|
+| **Sola Semantica** | 0.975 (39/40) | **0.975** (39/40) | 0.000 |
+| **Solo Lessicale** | 0.650 (26/40) | **0.650** (26/40) | 0.000 |
+| **Fusione Ibrida** | 0.675 (27/40) | **0.950** (38/40) | **+0.275** (+11 query a segno) |
+
+- **Recall@10 Ibrido Effettivo**: **0.950** (38 hit su 40 query).
+- **Soglia di accettazione**: $\ge 0.90$ ampiamente **SUPERATA** (**PASS**).
+- **Query a Recall = 0**: solo 2 (`Q21` con rank 26 e `Q26` con rank 12).
+- **Query Migliorate**: **32 query** su 40 hanno registrato un incremento di rango o recall. In particolare, **tutte le 13 query** che l'ibrido perdeva in precedenza sono state recuperate nella top 10:
+  - `Q03`: rango 23 -> **1** (Recall 0.0 -> 1.0)
+  - `Q05`: rango 41 -> **2** (Recall 0.0 -> 1.0)
+  - `Q06`: rango None -> **2** (Recall 0.0 -> 1.0)
+  - `Q10`: rango None -> **4** (Recall 0.0 -> 1.0)
+  - `Q12`: rango None -> **1** (Recall 0.0 -> 1.0)
+  - `Q17`: rango 14 -> **1** (Recall 0.0 -> 1.0)
+  - `Q18`: rango None -> **3** (Recall 0.0 -> 1.0)
+  - `Q23`: rango 15 -> **1** (Recall 0.0 -> 1.0)
+  - `Q29`: rango None -> **2** (Recall 0.0 -> 1.0)
+  - `Q31`: rango 27 -> **1** (Recall 0.0 -> 1.0)
+  - `Q32`: rango 12 -> **2** (Recall 0.0 -> 1.0)
+  - `Q34`: rango 31 -> **4** (Recall 0.0 -> 1.0)
+  - `Q37`: rango 11 -> **7** (Recall 0.0 -> 1.0)
+  - `Q38`: rango 12 -> **5** (Recall 0.0 -> 1.0)
+- **Query Peggiorate**: 5 query (`Q04` rank 2->3, `Q16` rank 5->9, `Q21` rank 6->26, `Q26` rank 4->12, `Q33` rank 3->7). Di queste, solo `Q21` e `Q26` sono uscite dalla top 10 a fronte di 13 query recuperate.
+- **Invarianza Gold e Corpus**:
+  - `git diff v3.1.0-a05-corpus-v2-frozen HEAD -- tests/gold/A05_CORPUS` -> **vuoto**
+  - `git diff v3.1.0-a05-corpus-v2-frozen HEAD -- tests/gold/A05_QUERIES.json` -> **vuoto**
+- **Evidenze Gold**: `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_FUSION_GOLD/` (`per-query.jsonl`, `summary.json`, `run.log`, `manifest-verify.log`, `cargo-test.log`).
+- **Tag di Chiusura Rilievo C8**: `v3.1.0-fusion-fix`.
