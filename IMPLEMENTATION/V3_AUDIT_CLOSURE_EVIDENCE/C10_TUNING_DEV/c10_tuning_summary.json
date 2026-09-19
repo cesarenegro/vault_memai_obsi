@@ -1,0 +1,137 @@
+{
+  "benchmark": "A05 / C10 — Taratura Formule di Fusione su 30 Query DEV",
+  "timestamp_utc8": "2026-09-20T08:00:00+08:00",
+  "dataset": "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/gold/A05_DEV_QUERIES.json",
+  "total_queries": 30,
+  "configurations": [
+    {
+      "config_id": "F1_baseline",
+      "formula_name": "F1 (Attuale, media pesata 0.5/0.5)",
+      "k_parameter": null,
+      "formula_description": "0.5 * lex_norm + 0.5 * sem_norm + exact_bonus",
+      "total_dev_queries": 30,
+      "hits_count": 24,
+      "recall_at_10": 0.8,
+      "total_lex_none_queries": 11,
+      "lex_none_in_top10_count": 6,
+      "lex_none_in_top10_rate": 0.5454545454545454,
+      "zero_recall_queries": [
+        "DEV01",
+        "DEV08",
+        "DEV11",
+        "DEV16",
+        "DEV18",
+        "DEV28"
+      ]
+    },
+    {
+      "config_id": "F2_k0.10",
+      "formula_name": "F2 (max + k * min), k = 0.10",
+      "k_parameter": 0.1,
+      "formula_description": "max(lex_norm, sem_norm) + 0.10 * min(lex_norm, sem_norm) + exact_bonus",
+      "total_dev_queries": 30,
+      "hits_count": 28,
+      "recall_at_10": 0.9333333333333333,
+      "total_lex_none_queries": 11,
+      "lex_none_in_top10_count": 10,
+      "lex_none_in_top10_rate": 0.9090909090909091,
+      "zero_recall_queries": [
+        "DEV08",
+        "DEV18"
+      ]
+    },
+    {
+      "config_id": "F2_k0.20",
+      "formula_name": "F2 (max + k * min), k = 0.20",
+      "k_parameter": 0.2,
+      "formula_description": "max(lex_norm, sem_norm) + 0.20 * min(lex_norm, sem_norm) + exact_bonus",
+      "total_dev_queries": 30,
+      "hits_count": 28,
+      "recall_at_10": 0.9333333333333333,
+      "total_lex_none_queries": 11,
+      "lex_none_in_top10_count": 10,
+      "lex_none_in_top10_rate": 0.9090909090909091,
+      "zero_recall_queries": [
+        "DEV08",
+        "DEV18"
+      ]
+    },
+    {
+      "config_id": "F2_k0.30",
+      "formula_name": "F2 (max + k * min), k = 0.30",
+      "k_parameter": 0.3,
+      "formula_description": "max(lex_norm, sem_norm) + 0.30 * min(lex_norm, sem_norm) + exact_bonus",
+      "total_dev_queries": 30,
+      "hits_count": 28,
+      "recall_at_10": 0.9333333333333333,
+      "total_lex_none_queries": 11,
+      "lex_none_in_top10_count": 10,
+      "lex_none_in_top10_rate": 0.9090909090909091,
+      "zero_recall_queries": [
+        "DEV08",
+        "DEV18"
+      ]
+    },
+    {
+      "config_id": "F2_k0.40",
+      "formula_name": "F2 (max + k * min), k = 0.40",
+      "k_parameter": 0.4,
+      "formula_description": "max(lex_norm, sem_norm) + 0.40 * min(lex_norm, sem_norm) + exact_bonus",
+      "total_dev_queries": 30,
+      "hits_count": 27,
+      "recall_at_10": 0.9,
+      "total_lex_none_queries": 11,
+      "lex_none_in_top10_count": 9,
+      "lex_none_in_top10_rate": 0.8181818181818182,
+      "zero_recall_queries": [
+        "DEV08",
+        "DEV16",
+        "DEV18"
+      ]
+    },
+    {
+      "config_id": "F2_k0.50",
+      "formula_name": "F2 (max + k * min), k = 0.50",
+      "k_parameter": 0.5,
+      "formula_description": "max(lex_norm, sem_norm) + 0.50 * min(lex_norm, sem_norm) + exact_bonus",
+      "total_dev_queries": 30,
+      "hits_count": 27,
+      "recall_at_10": 0.9,
+      "total_lex_none_queries": 11,
+      "lex_none_in_top10_count": 9,
+      "lex_none_in_top10_rate": 0.8181818181818182,
+      "zero_recall_queries": [
+        "DEV08",
+        "DEV16",
+        "DEV18"
+      ]
+    },
+    {
+      "config_id": "F3_present_signals",
+      "formula_name": "F3 (media pesata solo su segnali presenti)",
+      "k_parameter": null,
+      "formula_description": "se un solo segnale: punteggio intero; se entrambi: media dei due + exact_bonus",
+      "total_dev_queries": 30,
+      "hits_count": 19,
+      "recall_at_10": 0.6333333333333333,
+      "total_lex_none_queries": 11,
+      "lex_none_in_top10_count": 10,
+      "lex_none_in_top10_rate": 0.9090909090909091,
+      "zero_recall_queries": [
+        "DEV02",
+        "DEV04",
+        "DEV05",
+        "DEV08",
+        "DEV10",
+        "DEV12",
+        "DEV18",
+        "DEV19",
+        "DEV21",
+        "DEV23",
+        "DEV30"
+      ]
+    }
+  ],
+  "winning_config": "F2_k0.30",
+  "selection_rationale": "Formula F2 vince con Recall@10 = 0.933 (28 hits su 30). Ha dimostrato elevata robustezza: 3 configurazioni su 5 (k=[0.1, 0.2, 0.3]) ottengono il punteggio massimo. Si adotta k=0.3."
+}

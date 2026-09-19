@@ -1,0 +1,25 @@
+{
+  "config_id": "F3_present_signals",
+  "formula_name": "F3 (media pesata solo su segnali presenti)",
+  "k_parameter": null,
+  "formula_description": "se un solo segnale: punteggio intero; se entrambi: media dei due + exact_bonus",
+  "total_dev_queries": 30,
+  "hits_count": 19,
+  "recall_at_10": 0.6333333333333333,
+  "total_lex_none_queries": 11,
+  "lex_none_in_top10_count": 10,
+  "lex_none_in_top10_rate": 0.9090909090909091,
+  "zero_recall_queries": [
+    "DEV02",
+    "DEV04",
+    "DEV05",
+    "DEV08",
+    "DEV10",
+    "DEV12",
+    "DEV18",
+    "DEV19",
+    "DEV21",
+    "DEV23",
+    "DEV30"
+  ]
+}

@@ -1,0 +1,27 @@
+=== A05 / C10 Fusion Tuning on 30 Development Queries ===
+Vault path:    "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/scratch/a05_v2_context_vault"
+Queries path:  "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/gold/A05_DEV_QUERIES.json"
+Output dir:    "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/C10_TUNING_DEV"
+Catalog loaded: 120 documents
+Embeddings cache loaded: 167 passages (model: text-embedding-3-small)
+OpenAI API key acquired securely from Keychain.
+Caricate 30 query di sviluppo da "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/gold/A05_DEV_QUERIES.json"
+Fetching embeddings for 30 dev queries in single batch...
+Batch dev embeddings received in 1.19s.
+
+Calcolo ricerche lessicali e semantiche grezze sulle 30 query di sviluppo...
+Query con lexicalRank: None sul set DEV (totale 11 su 30): ["DEV01", "DEV07", "DEV08", "DEV11", "DEV13", "DEV14", "DEV16", "DEV17", "DEV24", "DEV25", "DEV28"]
+
+=== Valutazione delle Formule ===
+F1 (Attuale, media pesata 0.5/0.5)  | Recall@10: 0.800 (24/30) | Lex-None in Top 10:  6/11 (54.5%) | Misses: ["DEV01", "DEV08", "DEV11", "DEV16", "DEV18", "DEV28"]
+F2 (max + k * min), k = 0.10        | Recall@10: 0.933 (28/30) | Lex-None in Top 10: 10/11 (90.9%) | Misses: ["DEV08", "DEV18"]
+F2 (max + k * min), k = 0.20        | Recall@10: 0.933 (28/30) | Lex-None in Top 10: 10/11 (90.9%) | Misses: ["DEV08", "DEV18"]
+F2 (max + k * min), k = 0.30        | Recall@10: 0.933 (28/30) | Lex-None in Top 10: 10/11 (90.9%) | Misses: ["DEV08", "DEV18"]
+F2 (max + k * min), k = 0.40        | Recall@10: 0.900 (27/30) | Lex-None in Top 10:  9/11 (81.8%) | Misses: ["DEV08", "DEV16", "DEV18"]
+F2 (max + k * min), k = 0.50        | Recall@10: 0.900 (27/30) | Lex-None in Top 10:  9/11 (81.8%) | Misses: ["DEV08", "DEV16", "DEV18"]
+F3 (media pesata solo su segnali presenti) | Recall@10: 0.633 (19/30) | Lex-None in Top 10: 10/11 (90.9%) | Misses: ["DEV02", "DEV04", "DEV05", "DEV08", "DEV10", "DEV12", "DEV18", "DEV19", "DEV21", "DEV23", "DEV30"]
+
+=== RISULTATO TARATURA SU 30 QUERY DEV ===
+Formula vincente: F2_k0.30
+Motivazione:      Formula F2 vince con Recall@10 = 0.933 (28 hits su 30). Ha dimostrato elevata robustezza: 3 configurazioni su 5 (k=[0.1, 0.2, 0.3]) ottengono il punteggio massimo. Si adotta k=0.3.
+Riepilogo generale salvato in "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/C10_TUNING_DEV/c10_tuning_summary.json"

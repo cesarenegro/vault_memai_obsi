@@ -1,0 +1,17 @@
+{
+  "config_id": "F2_k0.40",
+  "formula_name": "F2 (max + k * min), k = 0.40",
+  "k_parameter": 0.4,
+  "formula_description": "max(lex_norm, sem_norm) + 0.40 * min(lex_norm, sem_norm) + exact_bonus",
+  "total_dev_queries": 30,
+  "hits_count": 27,
+  "recall_at_10": 0.9,
+  "total_lex_none_queries": 11,
+  "lex_none_in_top10_count": 9,
+  "lex_none_in_top10_rate": 0.8181818181818182,
+  "zero_recall_queries": [
+    "DEV08",
+    "DEV16",
+    "DEV18"
+  ]
+}
