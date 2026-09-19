@@ -2,7 +2,7 @@
 
 Risolti e verificati tutti i rilievi dell'audit indipendente di Claude:
 - Consegna Notarizzata e Gatekeeper (A16): Nuova build 0.3.0 inviata ad Apple Notary con `--wait` (Accepted per app e DMG), ticket graffettati e convalidati; Gatekeeper verifica `accepted (source=Notarized Developer ID)` su `/Applications/LIMEN Vault v3.app` e `USER INSTALL/LIMEN-Vault-v3-arm64.dmg`. Checksum SHA-256 ricalcolati post-staple.
-- Matrice A01…A16 riscritta con test reali al 100% (93 test Rust superati, suite TypeScript passate a zero errori) e tutti i log grezzi allegati in `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/`. Gate A05 e A15 dichiarati aperti senza falsi passaggi.
+- Matrice A01…A16 riscritta con test reali al 100% (93 test Rust superati, suite TypeScript passate a zero errori) e tutti i log grezzi allegati in `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/`. A04 declassato a NON VERIFICATO (in attesa di set gold); Gate A05 e A15 dichiarati aperti senza falsi passaggi.
 - Corretta descrizione lettura chiave dal Portachiavi: `keychain::load()` a zero parametri.
 - Risolti i 3 punti aperti: chunking riconosce intestazioni `## Pagina N` e `## Slide N`; suddivisione paragrafi >1050 caratteri su confini di frase; sovrapposizione 150 caratteri tra passaggi; documentato formalmente lo scostamento architetturale JSON atomico vs SQLite.
 - Checkout congelato localmente con tag `v3.0.0-audit-closure`.

@@ -12,7 +12,7 @@ Stato: correzioni R1…R6 verificate da Claude; nuova build release 0.3.0 firmat
 
 - [x] Preparato [messaggio completo per AG](MESSAGGIO%20AG%20-%20CORREZIONI%20AUDIT%20LIMEN%20VAULT.md), con R1…R6, regressioni, criteri originali e consegna all’auditor.
 - [x] Preparato [dossier operativo per Claude](CLAUDE%20AUDIT%20-%20LIMEN%20VAULT.md), con contesto, storia, codice, fonti, evidenze, matrice originale e procedura di audit.
-- [x] R1: ripristinati i gate originali A01…A16 con nomi di test reali al 100% in `IMPLEMENTATION/2026-09-19_AUDIT_CLOSURE_REPORT_AG.md` e log grezzi allegati. A05 e A15 dichiarati aperti con trasparenza.
+- [x] R1: ripristinati i gate originali A01…A16 con nomi di test reali al 100% in `IMPLEMENTATION/2026-09-19_AUDIT_CLOSURE_REPORT_AG.md` e log grezzi allegati. A04 declassato a NON VERIFICATO (in attesa di set gold con copertura/rank misurati); A05 e A15 dichiarati aperti con trasparenza.
 - [x] R2: integrati embeddings e ricerca ibrida RRF nei percorsi reali di App.tsx e ai.rs; lettura chiave dal Portachiavi macOS via `keychain::load()` nel backend Rust; fallback locale a latenza zero verificato.
 - [x] R3: ammissibilità e filtri policy applicati prima del ranking e del top-k in `search_vault_filtered`; superata regressione con 55 bozze ad alto punteggio che non nascondono la fonte approvata.
 - [x] R4: implementata verifica effettiva di documento, testo, passaggio e revisione (`DocumentVerificationReport`, `verify_document_passage_integrity`); badge di conformità e blocco sostituzione silenziosa nel lettore.
