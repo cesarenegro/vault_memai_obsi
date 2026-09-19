@@ -1,0 +1,442 @@
+[
+  {
+    "queryId": "Q01",
+    "text": "Procedimenti ecologici finalizzati all abbattimento delle emissioni serra nei contenitori destinati alla grande distribuzione",
+    "relevantDocumentIds": [
+      "doc_001"
+    ],
+    "relevantPassageIds": [
+      "doc_001_p0"
+    ],
+    "relevantTargetExcerpt": "Linee guida per l ecodesign degli imballaggi secondari nei supermercati: calcolo carbon footprint e selezione materie prime sostenibili."
+  },
+  {
+    "queryId": "Q02",
+    "text": "Metodologie per massimizzare il coefficiente di riempimento dei pianali di carico nei viaggi intermodali marittimi",
+    "relevantDocumentIds": [
+      "doc_002"
+    ],
+    "relevantPassageIds": [
+      "doc_002_p0"
+    ],
+    "relevantTargetExcerpt": "Studio logistico sul tasso volumetrico dei pallet EUR1 all interno dei container ISO marini: schemi di accatastamento e riduzione spazi vuoti."
+  },
+  {
+    "queryId": "Q03",
+    "text": "Materiali multistrato capaci di impedire il passaggio dell ossigeno gassoso e dell umidita nei prodotti lievitati",
+    "relevantDocumentIds": [
+      "doc_003"
+    ],
+    "relevantPassageIds": [
+      "doc_003_p0"
+    ],
+    "relevantTargetExcerpt": "Specifiche film barriera EVOH accoppiato a PE per la salvaguardia della fragranza dei biscotti e delle torte confezionate industriali."
+  },
+  {
+    "queryId": "Q04",
+    "text": "Adempimenti prescritti dal regolamento europeo sugli scarti di confezionamento per favorire il recupero della materia",
+    "relevantDocumentIds": [
+      "doc_004"
+    ],
+    "relevantPassageIds": [
+      "doc_004_p0"
+    ],
+    "relevantTargetExcerpt": "Sintesi operativa PPWR 2025: requisiti di riciclabilita delle confezioni, quote obbligatorie di polimeri riciclati e divieto di formati monouso inutili."
+  },
+  {
+    "queryId": "Q05",
+    "text": "Tecnica a vibrazioni sonore ad alta frequenza per la chiusura ermetica di sacchetti termosensibili",
+    "relevantDocumentIds": [
+      "doc_005"
+    ],
+    "relevantPassageIds": [
+      "doc_005_p0"
+    ],
+    "relevantTargetExcerpt": "Impianto di saldatura a ultrasuoni per buste flessibili: il generatore piezoceramico trasmette oscillazioni elastiche che fondono lo strato interno senza surriscaldare il blister."
+  },
+  {
+    "queryId": "Q06",
+    "text": "Protocolli di laboratorio per collaudare urti accidentali e oscillazioni meccaniche subite dai colli delle vendite online",
+    "relevantDocumentIds": [
+      "doc_006"
+    ],
+    "relevantPassageIds": [
+      "doc_006_p0"
+    ],
+    "relevantTargetExcerpt": "Standard di simulazione trasporto ISTA 3A: caduta libera da altezza variabile e vibrazione sinusoidale casuale per pacchi destinati a corrieri espressi."
+  },
+  {
+    "queryId": "Q07",
+    "text": "Vernici colorate prive di solventi organici per la stampa flessografica a contatto con alimenti",
+    "relevantDocumentIds": [
+      "doc_007"
+    ],
+    "relevantPassageIds": [
+      "doc_007_p0"
+    ],
+    "relevantTargetExcerpt": "Inchiostri idrosolubili conformi GMP: formulazioni acquose per rotocalco su astucci cartacei a bassa migrazione e assenza di VOC volatili."
+  },
+  {
+    "queryId": "Q08",
+    "text": "Rilevazione analitica degli idrocarburi saturi e aromatici provenienti da fibre riciclate di cellulosa",
+    "relevantDocumentIds": [
+      "doc_008"
+    ],
+    "relevantPassageIds": [
+      "doc_008_p0"
+    ],
+    "relevantTargetExcerpt": "Metodo GC-FID per quantificare MOSH e MOAH nella carta: estrazione con solvente e verifica della barriera funzionale verso il cibo."
+  },
+  {
+    "queryId": "Q09",
+    "text": "Pellicole polimeriche di origine biologica biodegradabili negli impianti di digestione anaerobica",
+    "relevantDocumentIds": [
+      "doc_009"
+    ],
+    "relevantPassageIds": [
+      "doc_009_p0"
+    ],
+    "relevantTargetExcerpt": "Scheda tecnica biopolimero PLA-PBAT: degradazione secondo EN 13432, ideale per vaschette da asporto e stoviglie destinate alla frazione umida urbana."
+  },
+  {
+    "queryId": "Q10",
+    "text": "Sistemi optoelettronici con telecamere intelligenti per intercettare microfratture sulle giunzioni termosaldate",
+    "relevantDocumentIds": [
+      "doc_010"
+    ],
+    "relevantPassageIds": [
+      "doc_010_p0"
+    ],
+    "relevantTargetExcerpt": "Dispositivo di visione artificiale industriale: sensori CCD ad alta risoluzione analizzano il profilo termico delle termosaldature scartando i sacchetti difettosi a monte."
+  },
+  {
+    "queryId": "Q11",
+    "text": "Sostituti vegetali del polimero stirenico espanso per l imbottitura antiurto di elettrodomestici",
+    "relevantDocumentIds": [
+      "doc_011"
+    ],
+    "relevantPassageIds": [
+      "doc_011_p0"
+    ],
+    "relevantTargetExcerpt": "Gusci sagomati in fibra di mais e cellulosa soffiata: ammortizzazione ecologica in alternativa all EPS per imballaggi pesanti."
+  },
+  {
+    "queryId": "Q12",
+    "text": "Bracci antropomorfi ad alta cadenza per impilare scatole pesanti su bancali di legno",
+    "relevantDocumentIds": [
+      "doc_012"
+    ],
+    "relevantPassageIds": [
+      "doc_012_p0"
+    ],
+    "relevantTargetExcerpt": "Cella di pallettizzazione robotizzata con pinza pneumatica: movimentazione automatizzata di casse da 25 kg con frequenza di venti cicli al minuto."
+  },
+  {
+    "queryId": "Q13",
+    "text": "Transponder a radiofrequenza passivi inseriti nelle etichette per contrastare la falsificazione dei profumi",
+    "relevantDocumentIds": [
+      "doc_013"
+    ],
+    "relevantPassageIds": [
+      "doc_013_p0"
+    ],
+    "relevantTargetExcerpt": "Tag RFID UHF miniaturizzati integrati nel packaging di lusso: codice crittografico univoco per autenticazione nei punti vendita e inventario istantaneo."
+  },
+  {
+    "queryId": "Q14",
+    "text": "Meccanismi a doppia pressione per impedire l ingestione accidentale di composti caustici da parte di infanti",
+    "relevantDocumentIds": [
+      "doc_014"
+    ],
+    "relevantPassageIds": [
+      "doc_014_p0"
+    ],
+    "relevantTargetExcerpt": "Tappi child-resistant conformi ISO 8317: capsula push and turn che richiede spinta assiale combinata alla rotazione per accedere ai detergenti corrosivi."
+  },
+  {
+    "queryId": "Q15",
+    "text": "Riduzione dei micrometri di spessore delle bobine plastiche senza peggiorare la tenacia a trazione",
+    "relevantDocumentIds": [
+      "doc_015"
+    ],
+    "relevantPassageIds": [
+      "doc_015_p0"
+    ],
+    "relevantTargetExcerpt": "Down-gauging di film estensibile cast: resine metalloceniche che offrono allungamento all 300% riducendo i grammi per metro quadro."
+  },
+  {
+    "queryId": "Q16",
+    "text": "Composizioni monocomponente in polipropilene per agevolare il trattamento nei centri di rigenerazione plastica",
+    "relevantDocumentIds": [
+      "doc_016"
+    ],
+    "relevantPassageIds": [
+      "doc_016_p0"
+    ],
+    "relevantTargetExcerpt": "Buste stand-up pouch 100% all-PP: accoppiamento BOPP con CPP orientato, ideali per la raccolta differenziata e la lavorazione nelle filiere circolari."
+  },
+  {
+    "queryId": "Q17",
+    "text": "Apparecchiature per montare ed incollare contenitori pieghevoli in cartone ondulato ad alta velocita",
+    "relevantDocumentIds": [
+      "doc_017"
+    ],
+    "relevantPassageIds": [
+      "doc_017_p0"
+    ],
+    "relevantTargetExcerpt": "Formatrice automatica per scatole fustellate tipo fefco 0201: apertura del fustellato piano, piega delle alette inferiori ed erogazione di mastice termoindurente."
+  },
+  {
+    "queryId": "Q18",
+    "text": "Scaricamento elettrostatico atmosferico per aumentare l aggrappo delle sostanze adesive sui fogli sintetici",
+    "relevantDocumentIds": [
+      "doc_018"
+    ],
+    "relevantPassageIds": [
+      "doc_018_p0"
+    ],
+    "relevantTargetExcerpt": "Trattamento corona superficiale: generazione di plasma dielettrico per innalzare l energia superficiale oltre 42 dine consentendo la laminazione solventless."
+  },
+  {
+    "queryId": "Q19",
+    "text": "Saturazione dello spazio di testa con molecole di azoto per ritardare il deterioramento lipidico dei condimenti",
+    "relevantDocumentIds": [
+      "doc_019"
+    ],
+    "relevantPassageIds": [
+      "doc_019_p0"
+    ],
+    "relevantTargetExcerpt": "Flussaggio con N2 puro nei serbatoi di imbottigliamento: estromissione del gas ossidante per salvaguardare l aroma e prevenire difetti di acidita nei grassi."
+  },
+  {
+    "queryId": "Q20",
+    "text": "Diagnosi dei consumi elettrici dei compressori e delle stazioni di riscaldamento negli stabilimenti di soffiaggio",
+    "relevantDocumentIds": [
+      "doc_020"
+    ],
+    "relevantPassageIds": [
+      "doc_020_p0"
+    ],
+    "relevantTargetExcerpt": "Audit energetico per impianti di estrusione bottiglie in PET: monitoraggio potenza kilowattora assorbita dalle lampade infrarossi e calcolo rendimento termico."
+  },
+  {
+    "queryId": "Q21",
+    "text": "Rocchetti adesivi sprovvisti di supporto siliconato da gettare per azzerare i residui solidi",
+    "relevantDocumentIds": [
+      "doc_021"
+    ],
+    "relevantPassageIds": [
+      "doc_021_p0"
+    ],
+    "relevantTargetExcerpt": "Tecnologia di etichettatura linerless: nastri senza carta siliconata di scarto con spalmatura di silicone sul fronte per applicazione diretta su vassoi ortofrutta."
+  },
+  {
+    "queryId": "Q22",
+    "text": "Quantificazione della trasmissione delle molecole di H2O attraverso pellicole per pillole medicinali",
+    "relevantDocumentIds": [
+      "doc_022"
+    ],
+    "relevantPassageIds": [
+      "doc_022_p0"
+    ],
+    "relevantTargetExcerpt": "Misurazione WVTR in camera stagna: grammi di vapore penetrati nelle ventiquattro ore per saggiare la tenuta dei fogli accoppiati alluminio-pvc."
+  },
+  {
+    "queryId": "Q23",
+    "text": "Supporti grafici cromatici che virano di tonalita al variare della cronologia termica nei medicinali biologici",
+    "relevantDocumentIds": [
+      "doc_023"
+    ],
+    "relevantPassageIds": [
+      "doc_023_p0"
+    ],
+    "relevantTargetExcerpt": "Indicatori tempo-temperatura TTI basati su reazioni enzimatiche: modificazione cromatica irreversibile che allerta se la catena refrigerata e stata interrotta."
+  },
+  {
+    "queryId": "Q24",
+    "text": "Tracciatura trasparente dell origine responsabile del legname e della pasta da carta impiegata nei pieghevoli",
+    "relevantDocumentIds": [
+      "doc_024"
+    ],
+    "relevantPassageIds": [
+      "doc_024_p0"
+    ],
+    "relevantTargetExcerpt": "Certificazioni della catena di custodia FSC e PEFC: verifica documentale dei flussi di legno vergine ricavato da foreste gestite secondo principi di biodiversita."
+  },
+  {
+    "queryId": "Q25",
+    "text": "Sigillatura di casse pesanti con strisce di cellulosa trattate con colla vegetale idroattiva rinforzate da filamenti",
+    "relevantDocumentIds": [
+      "doc_025"
+    ],
+    "relevantPassageIds": [
+      "doc_025_p0"
+    ],
+    "relevantTargetExcerpt": "Nastro gommato armato con fili di fibra di vetro: adesivo a base di amido attivato con bagnatura che penetra nella pasta della cassa rendendo visibile ogni effrazione."
+  },
+  {
+    "queryId": "Q26",
+    "text": "Guaine avvolgibili ricavate da scarti plastici urbani post-consumo per stabilizzare i bancali",
+    "relevantDocumentIds": [
+      "doc_026"
+    ],
+    "relevantPassageIds": [
+      "doc_026_p0"
+    ],
+    "relevantTargetExcerpt": "Film termoretraibile con il 50% di polietilene PCR certificato: proprieta elastiche che mantengono la coesione del carico pallettizzato riducendo il fabbisogno di vergine."
+  },
+  {
+    "queryId": "Q27",
+    "text": "Procedimento a vapore pressurizzato per pastorizzare alimenti pronti in sacchetti multistrato",
+    "relevantDocumentIds": [
+      "doc_027"
+    ],
+    "relevantPassageIds": [
+      "doc_027_p0"
+    ],
+    "relevantTargetExcerpt": "Autoclave di sterilizzazione per buste retort pouches: ciclo a centoventi gradi con contropressione d aria per evitare l esplosione delle confezioni ermetiche."
+  },
+  {
+    "queryId": "Q28",
+    "text": "Trattamenti oleorepellenti privi di composti perfluorurati per scatole da asporto di cibi fritti",
+    "relevantDocumentIds": [
+      "doc_028"
+    ],
+    "relevantPassageIds": [
+      "doc_028_p0"
+    ],
+    "relevantTargetExcerpt": "Cartoncino greaseproof privo di PFAS: laccatura idrodispersa a base vegetale che arresta i trigliceridi caldi preservando la compostabilita del contenitore."
+  },
+  {
+    "queryId": "Q29",
+    "text": "Copertura protettiva trasparente che aderisce come una seconda pelle sulla superficie di tagli di carne bovina",
+    "relevantDocumentIds": [
+      "doc_029"
+    ],
+    "relevantPassageIds": [
+      "doc_029_p0"
+    ],
+    "relevantTargetExcerpt": "Confezionamento skin-pack sottovuoto: riscaldamento di un film superiore altamente deformabile che avvolge il filetto senza formare sacche d aria e previene l essudato."
+  },
+  {
+    "queryId": "Q30",
+    "text": "Rilevamento accelerometrico delle oscillazioni anomale per prevenire blocchi imprevisti nei nastri di trasporto",
+    "relevantDocumentIds": [
+      "doc_030"
+    ],
+    "relevantPassageIds": [
+      "doc_030_p0"
+    ],
+    "relevantTargetExcerpt": "Analisi spettrale delle vibrazioni sui cuscinetti dei convogliatori: sensori MEMS triassiali che monitorano frequenze tipiche di usura per pianificare la lubrificazione."
+  },
+  {
+    "queryId": "Q31",
+    "text": "Progettazione di contenitori cilindrici che permetta la scomposizione manuale immediata delle parti ferrose dalla struttura cartacea",
+    "relevantDocumentIds": [
+      "doc_031"
+    ],
+    "relevantPassageIds": [
+      "doc_031_p0"
+    ],
+    "relevantTargetExcerpt": "Barattoli compositi ad agevole disassemblaggio: fondo metallico aggraffato con linguetta a strappo che separa la flangia in alluminio dal cilindro di cartoncino per il conferimento nei cassonetti."
+  },
+  {
+    "queryId": "Q32",
+    "text": "Impianti a siringa dosatrice con ugelli a taglio netto per fluidi viscosi senza sbavature sulle imboccature",
+    "relevantDocumentIds": [
+      "doc_032"
+    ],
+    "relevantPassageIds": [
+      "doc_032_p0"
+    ],
+    "relevantTargetExcerpt": "Dosatori volumetrici a pistone con valvola rotante e taglia-goccia ad azionamento pneumatico per maionese e salse dense in vasetti di vetro."
+  },
+  {
+    "queryId": "Q33",
+    "text": "Cassette coibentate con placche a cambiamento di fase per la spedizione aerea di fiale termolabili",
+    "relevantDocumentIds": [
+      "doc_033"
+    ],
+    "relevantPassageIds": [
+      "doc_033_p0"
+    ],
+    "relevantTargetExcerpt": "Contenitori isotermici con pannelli sottovuoto VIP ed accumulatori PCM tarati a quattro gradi: mantenimento della temperatura controllata per novantasei ore di volo."
+  },
+  {
+    "queryId": "Q34",
+    "text": "Valutazione dinamica del carico di schiacciamento massimo che una scatola fustellata regge prima di deformarsi",
+    "relevantDocumentIds": [
+      "doc_034"
+    ],
+    "relevantPassageIds": [
+      "doc_034_p0"
+    ],
+    "relevantTargetExcerpt": "Prova di compressione verticale Box Compression Test BCT secondo ISO 12048: presse a piastre parallele registrano i kilonewton di cedimento delle pareti ondulate."
+  },
+  {
+    "queryId": "Q35",
+    "text": "Espulsione dell aria mediante introduzione di gas nobile prima della tappatura di barattoli di latte solubile",
+    "relevantDocumentIds": [
+      "doc_035"
+    ],
+    "relevantPassageIds": [
+      "doc_035_p0"
+    ],
+    "relevantTargetExcerpt": "Lavaggio con argon gassoso nella giostra di riempimento: abbattimento della concentrazione di O2 al di sotto dello zero virgola cinque percento per proteggere micronutrienti e vitamine."
+  },
+  {
+    "queryId": "Q36",
+    "text": "Recipienti spremibili realizzati interamente in polietilene alta densita riciclabile per creme emollienti",
+    "relevantDocumentIds": [
+      "doc_036"
+    ],
+    "relevantPassageIds": [
+      "doc_036_p0"
+    ],
+    "relevantTargetExcerpt": "Tubi cosmetici mono-HDPE con spalla e tappo nella medesima resina: saldabilita ottimale e totale riciclabilita nel circuito flaconi rigidi da raccolta urbana."
+  },
+  {
+    "queryId": "Q37",
+    "text": "Tappeti modulari sagomati in plastica lavabili con idropulitrici ad alta pressione per salumi affettati",
+    "relevantDocumentIds": [
+      "doc_037"
+    ],
+    "relevantPassageIds": [
+      "doc_037_p0"
+    ],
+    "relevantTargetExcerpt": "Nastri trasportatori igienici a maglie aperte in POM: conformi alle prescrizioni EHEDG, superfici prive di punti di ristagno facilmente detersibili con schiume sanificanti."
+  },
+  {
+    "queryId": "Q38",
+    "text": "Sensori fotonici ad elevata penetrazione per individuare microframmenti di filo di ferro e pietrisco nei cibi confezionati",
+    "relevantDocumentIds": [
+      "doc_038"
+    ],
+    "relevantPassageIds": [
+      "doc_038_p0"
+    ],
+    "relevantTargetExcerpt": "Ispezionatrice radiografica a raggi X in continuo: algoritmo di discriminazione di densita per identificare frammenti vetrosi, metallici e ossei all interno di vaschette sigillate."
+  },
+  {
+    "queryId": "Q39",
+    "text": "Soluzioni per favorire la rimozione dei coperchi plastici termosaldati per consumatori con limitata destrezza articolare",
+    "relevantDocumentIds": [
+      "doc_039"
+    ],
+    "relevantPassageIds": [
+      "doc_039_p0"
+    ],
+    "relevantTargetExcerpt": "Film pelabili ad apertura facilitata Easy-Peel: formulazione del sigillante con adesione controllata che consente lo strappo fluido e continuo senza lacerazione del film."
+  },
+  {
+    "queryId": "Q40",
+    "text": "Piani programmati per calibrare sonde termometriche e rettificare le barre di compressione termoformatrici",
+    "relevantDocumentIds": [
+      "doc_040"
+    ],
+    "relevantPassageIds": [
+      "doc_040_p0"
+    ],
+    "relevantTargetExcerpt": "Manuale di manutenzione preventiva delle piastre saldanti: rilievo termografico per verificare l uniformita della temperatura e sostituzione programmata delle coperture in teflon usurato."
+  }
+]

@@ -140,7 +140,7 @@ Stato: completato e verificato. Evidenza: [MA-10_RIPRISTINO_SNAPSHOT.md](IMPLEME
 
 Stato: suite eseguite integralmente sul checkout finale; matrice A01…A16 originale documentata in `IMPLEMENTATION/2026-09-19_AUDIT_CLOSURE_REPORT_AG.md`.
 
-- [x] A01–A04: acquisizione, estrazione, documenti lunghi e ricerca deterministica; 100% casi gold previsti (PASS).
+- [ ] A01–A03: acquisizione, estrazione, documenti lunghi (PASS); A04: ricerca deterministica casi gold (NON VERIFICATO, in attesa di set gold con copertura/rank misurati).
 - [ ] A05–A08: semantica reale (A05 APERTO su scala 100 doc), ammissibilità (A06 PASS), citazioni/revisioni (A07 PASS) e guasti isolati (A08 PASS).
 - [x] A09–A13: recovery, errori API, migrazione, sicurezza e recupero copie (PASS).
 - [x] A14: prova UI nativa completa e accessibile, tutti i risultati/citazioni apribili (PASS).

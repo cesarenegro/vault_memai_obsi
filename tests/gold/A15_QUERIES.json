@@ -1,0 +1,602 @@
+[
+  {
+    "queryId": "A15_Q001",
+    "text": "cartone_ondulato",
+    "term": "cartone_ondulato",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q002",
+    "text": "film_estensibile",
+    "term": "film_estensibile",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q003",
+    "text": "biopolimeri",
+    "term": "biopolimeri",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q004",
+    "text": "termoformatura",
+    "term": "termoformatura",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q005",
+    "text": "pallettizzazione",
+    "term": "pallettizzazione",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q006",
+    "text": "flussaggio_azoto",
+    "term": "flussaggio_azoto",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q007",
+    "text": "etichettatura_linerless",
+    "term": "etichettatura_linerless",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q008",
+    "text": "collaudi_ista",
+    "term": "collaudi_ista",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q009",
+    "text": "barriera_evoh",
+    "term": "barriera_evoh",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q010",
+    "text": "adesivi_hotmelt",
+    "term": "adesivi_hotmelt",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q011",
+    "text": "inchiostri_acqua",
+    "term": "inchiostri_acqua",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q012",
+    "text": "saldatura_ultrasuoni",
+    "term": "saldatura_ultrasuoni",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q013",
+    "text": "temperatura",
+    "term": "temperatura",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q014",
+    "text": "pressione",
+    "term": "pressione",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q015",
+    "text": "velocita",
+    "term": "velocita",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q016",
+    "text": "conformita",
+    "term": "conformita",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q017",
+    "text": "manutenzione",
+    "term": "manutenzione",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q018",
+    "text": "lotto",
+    "term": "lotto",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q019",
+    "text": "cliente",
+    "term": "cliente",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q020",
+    "text": "bancali",
+    "term": "bancali",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q021",
+    "text": "stoccaggio",
+    "term": "stoccaggio",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q022",
+    "text": "qualita",
+    "term": "qualita",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q023",
+    "text": "sicurezza",
+    "term": "sicurezza",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q024",
+    "text": "barre saldanti",
+    "term": "barre saldanti",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q025",
+    "text": "guarnizioni",
+    "term": "guarnizioni",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q026",
+    "text": "rendimento OEE",
+    "term": "rendimento OEE",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q027",
+    "text": "trattamento corona",
+    "term": "trattamento corona",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q028",
+    "text": "bagnabilita",
+    "term": "bagnabilita",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q029",
+    "text": "lineari",
+    "term": "lineari",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q030",
+    "text": "servomotori",
+    "term": "servomotori",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q031",
+    "text": "statistico",
+    "term": "statistico",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q032",
+    "text": "campionamento",
+    "term": "campionamento",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q033",
+    "text": "umidita",
+    "term": "umidita",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q034",
+    "text": "sovrapposizione",
+    "term": "sovrapposizione",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q035",
+    "text": "resistenze",
+    "term": "resistenze",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q036",
+    "text": "micrometro",
+    "term": "micrometro",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q037",
+    "text": "spessore",
+    "term": "spessore",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q038",
+    "text": "trazione",
+    "term": "trazione",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q039",
+    "text": "scorrimento",
+    "term": "scorrimento",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q040",
+    "text": "effrazione",
+    "term": "effrazione",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q041",
+    "text": "cartone_ondulato lotto CL-133",
+    "term": "cartone_ondulato lotto CL-133",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q042",
+    "text": "film_estensibile lotto CL-146",
+    "term": "film_estensibile lotto CL-146",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q043",
+    "text": "biopolimeri lotto CL-109",
+    "term": "biopolimeri lotto CL-109",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q044",
+    "text": "termoformatura lotto CL-122",
+    "term": "termoformatura lotto CL-122",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q045",
+    "text": "pallettizzazione lotto CL-135",
+    "term": "pallettizzazione lotto CL-135",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q046",
+    "text": "flussaggio_azoto lotto CL-148",
+    "term": "flussaggio_azoto lotto CL-148",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q047",
+    "text": "etichettatura_linerless lotto CL-111",
+    "term": "etichettatura_linerless lotto CL-111",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q048",
+    "text": "collaudi_ista lotto CL-124",
+    "term": "collaudi_ista lotto CL-124",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q049",
+    "text": "barriera_evoh lotto CL-137",
+    "term": "barriera_evoh lotto CL-137",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q050",
+    "text": "adesivi_hotmelt lotto CL-100",
+    "term": "adesivi_hotmelt lotto CL-100",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q051",
+    "text": "inchiostri_acqua lotto CL-113",
+    "term": "inchiostri_acqua lotto CL-113",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q052",
+    "text": "saldatura_ultrasuoni lotto CL-126",
+    "term": "saldatura_ultrasuoni lotto CL-126",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q053",
+    "text": "temperatura lotto CL-139",
+    "term": "temperatura lotto CL-139",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q054",
+    "text": "pressione lotto CL-102",
+    "term": "pressione lotto CL-102",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q055",
+    "text": "velocita lotto CL-115",
+    "term": "velocita lotto CL-115",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q056",
+    "text": "conformita lotto CL-128",
+    "term": "conformita lotto CL-128",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q057",
+    "text": "manutenzione lotto CL-141",
+    "term": "manutenzione lotto CL-141",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q058",
+    "text": "lotto lotto CL-104",
+    "term": "lotto lotto CL-104",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q059",
+    "text": "cliente lotto CL-117",
+    "term": "cliente lotto CL-117",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q060",
+    "text": "bancali lotto CL-130",
+    "term": "bancali lotto CL-130",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q061",
+    "text": "stoccaggio lotto CL-143",
+    "term": "stoccaggio lotto CL-143",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q062",
+    "text": "qualita lotto CL-106",
+    "term": "qualita lotto CL-106",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q063",
+    "text": "sicurezza lotto CL-119",
+    "term": "sicurezza lotto CL-119",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q064",
+    "text": "barre saldanti lotto CL-132",
+    "term": "barre saldanti lotto CL-132",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q065",
+    "text": "guarnizioni lotto CL-145",
+    "term": "guarnizioni lotto CL-145",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q066",
+    "text": "rendimento OEE lotto CL-108",
+    "term": "rendimento OEE lotto CL-108",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q067",
+    "text": "trattamento corona lotto CL-121",
+    "term": "trattamento corona lotto CL-121",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q068",
+    "text": "bagnabilita lotto CL-134",
+    "term": "bagnabilita lotto CL-134",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q069",
+    "text": "lineari lotto CL-147",
+    "term": "lineari lotto CL-147",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q070",
+    "text": "servomotori lotto CL-110",
+    "term": "servomotori lotto CL-110",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q071",
+    "text": "statistico lotto CL-123",
+    "term": "statistico lotto CL-123",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q072",
+    "text": "campionamento lotto CL-136",
+    "term": "campionamento lotto CL-136",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q073",
+    "text": "umidita lotto CL-149",
+    "term": "umidita lotto CL-149",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q074",
+    "text": "sovrapposizione lotto CL-112",
+    "term": "sovrapposizione lotto CL-112",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q075",
+    "text": "resistenze lotto CL-125",
+    "term": "resistenze lotto CL-125",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q076",
+    "text": "micrometro lotto CL-138",
+    "term": "micrometro lotto CL-138",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q077",
+    "text": "spessore lotto CL-101",
+    "term": "spessore lotto CL-101",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q078",
+    "text": "trazione lotto CL-114",
+    "term": "trazione lotto CL-114",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q079",
+    "text": "scorrimento lotto CL-127",
+    "term": "scorrimento lotto CL-127",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q080",
+    "text": "effrazione lotto CL-140",
+    "term": "effrazione lotto CL-140",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q081",
+    "text": "cartone_ondulato lotto CL-103",
+    "term": "cartone_ondulato lotto CL-103",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q082",
+    "text": "film_estensibile lotto CL-116",
+    "term": "film_estensibile lotto CL-116",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q083",
+    "text": "biopolimeri lotto CL-129",
+    "term": "biopolimeri lotto CL-129",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q084",
+    "text": "termoformatura lotto CL-142",
+    "term": "termoformatura lotto CL-142",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q085",
+    "text": "pallettizzazione lotto CL-105",
+    "term": "pallettizzazione lotto CL-105",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q086",
+    "text": "flussaggio_azoto lotto CL-118",
+    "term": "flussaggio_azoto lotto CL-118",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q087",
+    "text": "etichettatura_linerless lotto CL-131",
+    "term": "etichettatura_linerless lotto CL-131",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q088",
+    "text": "collaudi_ista lotto CL-144",
+    "term": "collaudi_ista lotto CL-144",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q089",
+    "text": "barriera_evoh lotto CL-107",
+    "term": "barriera_evoh lotto CL-107",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q090",
+    "text": "adesivi_hotmelt lotto CL-120",
+    "term": "adesivi_hotmelt lotto CL-120",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q091",
+    "text": "inchiostri_acqua lotto CL-133",
+    "term": "inchiostri_acqua lotto CL-133",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q092",
+    "text": "saldatura_ultrasuoni lotto CL-146",
+    "term": "saldatura_ultrasuoni lotto CL-146",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q093",
+    "text": "temperatura lotto CL-109",
+    "term": "temperatura lotto CL-109",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q094",
+    "text": "pressione lotto CL-122",
+    "term": "pressione lotto CL-122",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q095",
+    "text": "velocita lotto CL-135",
+    "term": "velocita lotto CL-135",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q096",
+    "text": "conformita lotto CL-148",
+    "term": "conformita lotto CL-148",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q097",
+    "text": "manutenzione lotto CL-111",
+    "term": "manutenzione lotto CL-111",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q098",
+    "text": "lotto lotto CL-124",
+    "term": "lotto lotto CL-124",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q099",
+    "text": "cliente lotto CL-137",
+    "term": "cliente lotto CL-137",
+    "limit": 10
+  },
+  {
+    "queryId": "A15_Q100",
+    "text": "bancali lotto CL-100",
+    "term": "bancali lotto CL-100",
+    "limit": 10
+  }
+]
