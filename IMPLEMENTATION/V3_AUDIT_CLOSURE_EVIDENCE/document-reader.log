@@ -1,0 +1,15 @@
+▶ DocumentReaderModal - highlightMatches
+  ✔ returns plain text when query is empty or undefined (0.421375ms)
+  ✔ highlights exact match with case insensitivity and React elements (0.530833ms)
+  ✔ normalizes diacritics and accents (caffè vs caffe) (0.110584ms)
+  ✔ handles multiple occurrences in long passages without XSS injection (0.128375ms)
+  ✔ preserves Unicode and emojis (0.123083ms)
+✔ DocumentReaderModal - highlightMatches (2.339042ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15.576292

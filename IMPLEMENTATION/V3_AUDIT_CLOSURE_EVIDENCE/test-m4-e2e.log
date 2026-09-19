@@ -1,0 +1,9 @@
+
+> @limen-vault/desktop@0.3.0 test:m4-e2e /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop
+> node --import tsx/esm tests/m4-native-e2e.test.ts
+
+PASS shared TS/Rust extraction, YAML, full provenance and unchanged sources
+PASS persistent revisions, human edits, preview listing, cross-runtime index
+PASS symlink confinement, RAW boundary, invalid UTF8, batch continuation, corrupt index, lock and denied writes
+PASS concurrent native processes: one revision, no lost index, retry succeeds
+M4 native E2E PASS

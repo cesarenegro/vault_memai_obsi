@@ -1,0 +1,27 @@
+
+> limen-vault-monorepo@0.1.0 typecheck /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN
+> pnpm --recursive run typecheck
+
+Scope: 11 of 12 workspace projects
+packages/ui typecheck$ tsc --noEmit
+packages/vault-schema typecheck$ tsc --noEmit
+packages/ui typecheck: Done
+packages/vault-schema typecheck: Done
+apps/web typecheck$ tsc --noEmit
+packages/vault-core typecheck$ tsc --noEmit
+packages/proposal-engine typecheck$ tsc --noEmit
+packages/proposal-engine typecheck: Done
+packages/vault-core typecheck: Done
+apps/web typecheck: Done
+apps/desktop typecheck$ tsc --noEmit
+packages/knowledge-compiler typecheck$ tsc --noEmit
+packages/search-engine typecheck$ tsc --noEmit
+packages/snapshot-engine typecheck$ tsc --noEmit
+packages/snapshot-engine typecheck: Done
+packages/knowledge-compiler typecheck: Done
+packages/sync-engine typecheck$ tsc --noEmit
+packages/search-engine typecheck: Done
+packages/sync-engine typecheck: Done
+apps/desktop typecheck: Done
+packages/ai-engine typecheck$ tsc --noEmit
+packages/ai-engine typecheck: Done

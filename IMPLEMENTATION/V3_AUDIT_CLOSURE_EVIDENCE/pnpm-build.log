@@ -1,0 +1,59 @@
+
+> limen-vault-monorepo@0.1.0 build /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN
+> pnpm --recursive run build
+
+Scope: 11 of 12 workspace projects
+packages/ui build$ tsc && cp src/styles.css dist/styles.css
+packages/vault-schema build$ tsc
+packages/ui build: Done
+packages/vault-schema build: Done
+apps/web build$ next build
+packages/proposal-engine build$ tsc
+packages/vault-core build$ tsc
+packages/proposal-engine build: Done
+packages/vault-core build: Done
+apps/web build:   ▲ Next.js 14.2.35
+apps/web build:    Creating an optimized production build ...
+apps/web build:  ✓ Compiled successfully
+apps/web build:    Linting and checking validity of types ...
+apps/web build:    Collecting page data ...
+apps/web build:    Generating static pages (0/7) ...
+apps/web build:    Generating static pages (1/7) 
+apps/web build:    Generating static pages (3/7) 
+apps/web build:    Generating static pages (5/7) 
+apps/web build:  ✓ Generating static pages (7/7)
+apps/web build:    Finalizing page optimization ...
+apps/web build:    Collecting build traces ...
+apps/web build: Route (app)                              Size     First Load JS
+apps/web build: ┌ ○ /                                    150 B          87.4 kB
+apps/web build: ├ ○ /_not-found                          872 B          88.1 kB
+apps/web build: ├ ○ /desktop-app                         150 B          87.4 kB
+apps/web build: ├ ○ /documentation                       150 B          87.4 kB
+apps/web build: └ ○ /system                              150 B          87.4 kB
+apps/web build: + First Load JS shared by all            87.2 kB
+apps/web build:   ├ chunks/5b8f0dd8-0b7e1dd47e2a464c.js  53.6 kB
+apps/web build:   ├ chunks/749-39e755d29f953c93.js       31.7 kB
+apps/web build:   └ other shared chunks (total)          1.86 kB
+apps/web build: ○  (Static)  prerendered as static content
+apps/web build: Done
+apps/desktop build$ tsc && vite build
+packages/knowledge-compiler build$ tsc
+packages/search-engine build$ tsc
+packages/snapshot-engine build$ tsc
+packages/knowledge-compiler build: Done
+packages/sync-engine build$ tsc
+packages/snapshot-engine build: Done
+packages/search-engine build: Done
+packages/sync-engine build: Done
+apps/desktop build: vite v6.4.3 building for production...
+apps/desktop build: transforming...
+apps/desktop build: ✓ 1602 modules transformed.
+apps/desktop build: rendering chunks...
+apps/desktop build: computing gzip size...
+apps/desktop build: dist/index.html                   0.40 kB │ gzip:  0.28 kB
+apps/desktop build: dist/assets/index-Bv4mE58D.css    2.86 kB │ gzip:  1.08 kB
+apps/desktop build: dist/assets/index-CumJfMNk.js   318.38 kB │ gzip: 89.66 kB
+apps/desktop build: ✓ built in 1.09s
+apps/desktop build: Done
+packages/ai-engine build$ tsc
+packages/ai-engine build: Done

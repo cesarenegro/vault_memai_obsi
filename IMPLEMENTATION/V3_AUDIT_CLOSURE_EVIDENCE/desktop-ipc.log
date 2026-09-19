@@ -1,0 +1,15 @@
+
+> @limen-vault/desktop@0.3.0 test /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop
+> node --import tsx/esm tests/desktop-ipc.test.ts
+
+🧪 Running Desktop Integration & IPC Parity Tests...
+  ✅ 1. Desktop creation response structure verified
+  ✅ 2. Open vault response structure verified
+  ✅ 3. Web preview mode fallback detection verified
+🎉 All Desktop integration tests passed cleanly!
+✅ Production IPC adapter: contracts, arguments, fallback, concurrent request rejection and error recovery
+✅ M3 production IPC adapter: contracts, commands/arguments, error propagation and browser rejection
+✅ M5 IPC/latest request: concurrent reads, newer results win, Vault invalidation, browser rejection and response validation
+✅ MA-01 Catalog IPC: list, sync, passages, original opening, browser rejection verified
+✅ MA-03 Automation file import IPC: choose, import, receipts, browser rejection verified
+✅ R2-R6 IPC: unpaged path lookup, passage integrity verification, verified text, hybrid search, Keychain sync verified

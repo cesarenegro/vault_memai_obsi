@@ -1,0 +1,5 @@
+
+> @limen-vault/desktop@0.3.0 test:native-parity /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop
+> node --import tsx/esm tests/native-parity.test.ts
+
+✅ Real TS/Rust parity: 10 YAML fixtures, 7 filesystem failures, missing path

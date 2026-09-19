@@ -1,0 +1,17 @@
+=== A15 Benchmark Execution Started at Sat Sep 19 09:38:14 UTC 2026 ===
+=== Running A15 Local Performance Benchmark ===
+Syncing catalog from vault: "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/scratch/a15_vault"
+Catalog synced: 1000 documents, 11000 passages
+Indexing vault for local search...
+Loaded 100 queries.
+Cold query latency: 102.75 ms
+Running 10 warm-up queries...
+Measuring 100 warm queries individually...
+Running concurrency test (20 queries during simulated background work)...
+
+=== A15 Summary ===
+Documents: 1000, Passages: 11000
+Warm p50: 163.38 ms | p95: 198.90 ms | p99: 254.13 ms
+Gate Status: PASS
+Evidence written to "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A15"
+=== A15 Benchmark Finished with exit code 0 (duration: 19s) ===

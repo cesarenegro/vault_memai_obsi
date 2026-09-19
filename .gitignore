@@ -19,6 +19,7 @@ UTENTI PASSWORD.TXT
 # System / OS
 .DS_Store
 *.log
+!IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/**/*.log
 
 # Local M2 build tools, baselines and QA artifacts
 .local/

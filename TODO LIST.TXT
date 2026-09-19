@@ -5,7 +5,7 @@ COORDINAMENTO — 19 settembre 2026
 - Claude: auditor indipendente designato per il verdetto finale sui sorgenti e sulle evidenze prodotte.
 
 STATO CHIUSURA AUDIT AG — 19 settembre 2026:
-- R1: Gate A01…A16 ripristinati con test reali al 100% e log grezzi allegati in V3_AUDIT_CLOSURE_EVIDENCE; A04 declassato a NON VERIFICATO (in attesa di set gold); A05 e A15 dichiarati aperti senza alterare le soglie.
+- R1: Gate A01…A16 ripristinati con test reali al 100% e log grezzi allegati in V3_AUDIT_CLOSURE_EVIDENCE; A04 declassato a NON VERIFICATO (in attesa di set gold); A05 eseguito con semantica reale (Recall@10 = 0.475, gate APERTO per mancato superamento soglia 0.90); A15 eseguito su scala 1.000 doc/11.000 passaggi (p95 calda 198.90 ms, PASS).
 - R2: Ricerca ibrida e embeddings collegati nei flussi reali UI/AI; caricamento chiave da Portachiavi macOS via keychain::load() in Rust; fallback locale a zero latenza.
 - R3: Ammissibilità prima del ranking e top-k in search_vault_filtered; superata regressione 55 bozze ad alto punteggio.
 - R4: Implementato DocumentVerificationReport e verify_document_passage_integrity; verifica crittografica e blocco sostituzione silenziosa nel lettore.

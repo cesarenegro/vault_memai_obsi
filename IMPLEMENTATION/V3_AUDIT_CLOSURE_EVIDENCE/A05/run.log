@@ -1,0 +1,58 @@
+=== A05 Benchmark Execution Started at Sat Sep 19 09:36:21 UTC 2026 ===
+=== Running A05 Semantic Retrieval Benchmark ===
+Syncing catalog from vault: "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/scratch/a05_vault"
+Catalog sync complete: 120 documents
+Total passages in catalog: 193
+Indexing vault for lexical search...
+Synchronizing embeddings via OpenAI API (model: text-embedding-3-small)...
+Embeddings synchronized in 10.72s. Total cached passages: 193, model: text-embedding-3-small
+Loaded 40 gold queries.
+[Q01] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Procedimenti ecologici finalizzati all abbattimento delle emissioni serra nei contenitori destinati alla grande distribuzione
+[Q02] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Metodologie per massimizzare il coefficiente di riempimento dei pianali di carico nei viaggi intermodali marittimi
+[Q03] Hybrid Recall@10: 1.00 | Lexical Recall@10: 1.00 | Query: Materiali multistrato capaci di impedire il passaggio dell ossigeno gassoso e dell umidita nei prodotti lievitati
+[Q04] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Adempimenti prescritti dal regolamento europeo sugli scarti di confezionamento per favorire il recupero della materia
+[Q05] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Tecnica a vibrazioni sonore ad alta frequenza per la chiusura ermetica di sacchetti termosensibili
+[Q06] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Protocolli di laboratorio per collaudare urti accidentali e oscillazioni meccaniche subite dai colli delle vendite online
+[Q07] Hybrid Recall@10: 1.00 | Lexical Recall@10: 0.00 | Query: Vernici colorate prive di solventi organici per la stampa flessografica a contatto con alimenti
+[Q08] Hybrid Recall@10: 1.00 | Lexical Recall@10: 1.00 | Query: Rilevazione analitica degli idrocarburi saturi e aromatici provenienti da fibre riciclate di cellulosa
+[Q09] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Pellicole polimeriche di origine biologica biodegradabili negli impianti di digestione anaerobica
+[Q10] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Sistemi optoelettronici con telecamere intelligenti per intercettare microfratture sulle giunzioni termosaldate
+[Q11] Hybrid Recall@10: 1.00 | Lexical Recall@10: 1.00 | Query: Sostituti vegetali del polimero stirenico espanso per l imbottitura antiurto di elettrodomestici
+[Q12] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Bracci antropomorfi ad alta cadenza per impilare scatole pesanti su bancali di legno
+[Q13] Hybrid Recall@10: 1.00 | Lexical Recall@10: 0.00 | Query: Transponder a radiofrequenza passivi inseriti nelle etichette per contrastare la falsificazione dei profumi
+[Q14] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Meccanismi a doppia pressione per impedire l ingestione accidentale di composti caustici da parte di infanti
+[Q15] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Riduzione dei micrometri di spessore delle bobine plastiche senza peggiorare la tenacia a trazione
+[Q16] Hybrid Recall@10: 1.00 | Lexical Recall@10: 0.00 | Query: Composizioni monocomponente in polipropilene per agevolare il trattamento nei centri di rigenerazione plastica
+[Q17] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Apparecchiature per montare ed incollare contenitori pieghevoli in cartone ondulato ad alta velocita
+[Q18] Hybrid Recall@10: 1.00 | Lexical Recall@10: 0.00 | Query: Scaricamento elettrostatico atmosferico per aumentare l aggrappo delle sostanze adesive sui fogli sintetici
+[Q19] Hybrid Recall@10: 1.00 | Lexical Recall@10: 0.00 | Query: Saturazione dello spazio di testa con molecole di azoto per ritardare il deterioramento lipidico dei condimenti
+[Q20] Hybrid Recall@10: 1.00 | Lexical Recall@10: 1.00 | Query: Diagnosi dei consumi elettrici dei compressori e delle stazioni di riscaldamento negli stabilimenti di soffiaggio
+[Q21] Hybrid Recall@10: 1.00 | Lexical Recall@10: 1.00 | Query: Rocchetti adesivi sprovvisti di supporto siliconato da gettare per azzerare i residui solidi
+[Q22] Hybrid Recall@10: 1.00 | Lexical Recall@10: 0.00 | Query: Quantificazione della trasmissione delle molecole di H2O attraverso pellicole per pillole medicinali
+[Q23] Hybrid Recall@10: 1.00 | Lexical Recall@10: 0.00 | Query: Supporti grafici cromatici che virano di tonalita al variare della cronologia termica nei medicinali biologici
+[Q24] Hybrid Recall@10: 1.00 | Lexical Recall@10: 0.00 | Query: Tracciatura trasparente dell origine responsabile del legname e della pasta da carta impiegata nei pieghevoli
+[Q25] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Sigillatura di casse pesanti con strisce di cellulosa trattate con colla vegetale idroattiva rinforzate da filamenti
+[Q26] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Guaine avvolgibili ricavate da scarti plastici urbani post-consumo per stabilizzare i bancali
+[Q27] Hybrid Recall@10: 1.00 | Lexical Recall@10: 1.00 | Query: Procedimento a vapore pressurizzato per pastorizzare alimenti pronti in sacchetti multistrato
+[Q28] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Trattamenti oleorepellenti privi di composti perfluorurati per scatole da asporto di cibi fritti
+[Q29] Hybrid Recall@10: 1.00 | Lexical Recall@10: 0.00 | Query: Copertura protettiva trasparente che aderisce come una seconda pelle sulla superficie di tagli di carne bovina
+[Q30] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Rilevamento accelerometrico delle oscillazioni anomale per prevenire blocchi imprevisti nei nastri di trasporto
+[Q31] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Progettazione di contenitori cilindrici che permetta la scomposizione manuale immediata delle parti ferrose dalla struttura cartacea
+[Q32] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Impianti a siringa dosatrice con ugelli a taglio netto per fluidi viscosi senza sbavature sulle imboccature
+[Q33] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Cassette coibentate con placche a cambiamento di fase per la spedizione aerea di fiale termolabili
+[Q34] Hybrid Recall@10: 1.00 | Lexical Recall@10: 1.00 | Query: Valutazione dinamica del carico di schiacciamento massimo che una scatola fustellata regge prima di deformarsi
+[Q35] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Espulsione dell aria mediante introduzione di gas nobile prima della tappatura di barattoli di latte solubile
+[Q36] Hybrid Recall@10: 1.00 | Lexical Recall@10: 0.00 | Query: Recipienti spremibili realizzati interamente in polietilene alta densita riciclabile per creme emollienti
+[Q37] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Tappeti modulari sagomati in plastica lavabili con idropulitrici ad alta pressione per salumi affettati
+[Q38] Hybrid Recall@10: 1.00 | Lexical Recall@10: 0.00 | Query: Sensori fotonici ad elevata penetrazione per individuare microframmenti di filo di ferro e pietrisco nei cibi confezionati
+[Q39] Hybrid Recall@10: 0.00 | Lexical Recall@10: 0.00 | Query: Soluzioni per favorire la rimozione dei coperchi plastici termosaldati per consumatori con limitata destrezza articolare
+[Q40] Hybrid Recall@10: 1.00 | Lexical Recall@10: 1.00 | Query: Piani programmati per calibrare sonde termometriche e rettificare le barre di compressione termoformatrici
+
+=== A05 Summary ===
+Mean Recall@10: 0.475
+Median Recall@10: 0.000
+Min Recall@10: 0.000
+Lexical Baseline Mean: 0.200
+Gate Status: FAIL
+Evidence written to "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05"
+=== A05 Benchmark Finished with exit code 0 (duration: 23s) ===

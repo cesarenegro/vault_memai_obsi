@@ -1,0 +1,5 @@
+
+> @limen-vault/desktop@0.3.0 test:m3-e2e /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop
+> node --import tsx/esm tests/m3-native-e2e.test.ts
+
+✅ Native M3 E2E/parity: create, persistence across processes, TS/native cross-verification, live counts, read-only, tamper/missing/added, schema/traversal, interrupted staging, 4 concurrent creations, permissions and symlinks

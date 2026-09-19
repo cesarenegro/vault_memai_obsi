@@ -1,0 +1,10 @@
+
+> @limen-vault/desktop@0.3.0 test:m5-e2e /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop
+> node --import tsx/esm tests/m5-native-e2e.test.ts
+
+PASS TS/Rust metadata, all filters, TF-IDF ranking, accents/emoji/CRLF, canonical folders, stable IDs and pagination
+PASS persistent shared v2 index, fractional mtime normalization, read-only queries and source bytes
+PASS stale source rejection, changed/deleted sources and unchanged incremental records
+PASS index/source symlink denial, permissions, corrupt index, lock, invalid frontmatter and explicit v1 rebuild
+PASS native process concurrency, persistent index and no staging/lock residue
+M5 native E2E PASS

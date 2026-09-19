@@ -1,0 +1,169 @@
+
+> limen-vault-monorepo@0.1.0 test /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN
+> pnpm --recursive run test && pnpm test:guards && pnpm test:sync-service
+
+Scope: 11 of 12 workspace projects
+packages/ui test$ echo 'ui tests pass'
+packages/vault-schema test$ echo 'vault-schema tests pass'
+packages/ui test: ui tests pass
+packages/vault-schema test: vault-schema tests pass
+packages/ui test: Done
+packages/vault-schema test: Done
+packages/vault-core test$ node --import tsx/esm tests/vault-core.test.ts && node --import tsx/esm tests/m2-regressions.test.ts
+packages/proposal-engine test$ node --import tsx/esm tests/proposal-engine.test.ts
+apps/web test$ echo 'web tests pass'
+apps/web test: web tests pass
+apps/web test: Done
+packages/proposal-engine test: ✔ AI Output Store — saves AI response into 80_AI_OUTPUTS with draft frontmatter and redacts keys (19.40525ms)
+packages/proposal-engine test: ✔ Proposal Engine — creates, lists, updates revisions, and rejects candidate proposals (6.787875ms)
+packages/proposal-engine test: ✔ Approver — human approval publishes proposal into approved category with status: approved and byte verification (4.675917ms)
+packages/proposal-engine test: ✔ Approver — detects byte conflict mismatch and target collisions (3.016541ms)
+packages/proposal-engine test: ✔ Approval rejects RAW destinations, missing hash, stale revision and rejected decision (2.354583ms)
+packages/proposal-engine test: ✔ Corrupt proposal index is rejected and preserved rather than reset silently (1.322667ms)
+packages/proposal-engine test: ℹ tests 6
+packages/proposal-engine test: ℹ suites 0
+packages/proposal-engine test: ℹ pass 6
+packages/proposal-engine test: ℹ fail 0
+packages/proposal-engine test: ℹ cancelled 0
+packages/proposal-engine test: ℹ skipped 0
+packages/proposal-engine test: ℹ todo 0
+packages/proposal-engine test: ℹ duration_ms 46.348667
+packages/proposal-engine test: Done
+packages/vault-core test: 🧪 Running Vault Core Unit Test Suite...
+packages/vault-core test:   ✅ 1. Vault creation and opening passed
+packages/vault-core test:   ✅ 2. Zero overwrite protection passed
+packages/vault-core test:   ✅ 3. Non-existent path detection passed
+packages/vault-core test:   ✅ 4. Incomplete vault structure detection passed
+packages/vault-core test:   ✅ 5. Corrupt manifest detection passed
+packages/vault-core test:   ✅ 6. Path traversal and prefix escape (vault-outside) protection passed
+packages/vault-core test:   ✅ 7. Symlink safety check passed
+packages/vault-core test:   ✅ 8. System file directory masquerading rejection passed
+packages/vault-core test:   ✅ 9. Multiline YAML frontmatter parsing passed
+packages/vault-core test:   ✅ 10. Invalid YAML syntax rejection passed
+packages/vault-core test:   ✅ 11. Read-only invariant (content, mtime, ctime) verified
+packages/vault-core test: 🎉 All Vault Core unit tests passed cleanly!
+packages/vault-core test: ✅ M2 regressions: 10 shared YAML fixtures, exact counts, symlinks, permissions, whole-tree read-only, template preflight and occupied target
+packages/vault-core test: Done
+apps/desktop test$ node --import tsx/esm tests/desktop-ipc.test.ts
+packages/search-engine test$ node --import tsx/esm tests/search-engine.test.ts
+packages/knowledge-compiler test$ node --import tsx/esm tests/knowledge-compiler.test.ts
+packages/snapshot-engine test$ node --import tsx/esm tests/snapshot-engine.test.ts && node --import tsx/esm tests/m3-regressions.test.ts
+apps/desktop test: 🧪 Running Desktop Integration & IPC Parity Tests...
+packages/snapshot-engine test: 🧪 Running Snapshot Engine Unit Test Suite (Milestone M3)...
+apps/desktop test:   ✅ 1. Desktop creation response structure verified
+apps/desktop test:   ✅ 2. Open vault response structure verified
+apps/desktop test:   ✅ 3. Web preview mode fallback detection verified
+apps/desktop test: 🎉 All Desktop integration tests passed cleanly!
+apps/desktop test: ✅ Production IPC adapter: contracts, arguments, fallback, concurrent request rejection and error recovery
+apps/desktop test: ✅ M3 production IPC adapter: contracts, commands/arguments, error propagation and browser rejection
+apps/desktop test: ✅ M5 IPC/latest request: concurrent reads, newer results win, Vault invalidation, browser rejection and response validation
+apps/desktop test: ✅ MA-01 Catalog IPC: list, sync, passages, original opening, browser rejection verified
+apps/desktop test: ✅ MA-03 Automation file import IPC: choose, import, receipts, browser rejection verified
+apps/desktop test: ✅ R2-R6 IPC: unpaged path lookup, passage integrity verification, verified text, hybrid search, Keychain sync verified
+packages/snapshot-engine test:   ✅ 1. Initial vault manifest integrity verification passed
+apps/desktop test: Done
+packages/sync-engine test$ node --import tsx/esm tests/sync-engine.test.ts
+packages/snapshot-engine test:   ✅ 2. Versioned local snapshot creation and verification passed
+packages/snapshot-engine test:   ✅ 3. Successive versioning without altering previous snapshots passed
+packages/snapshot-engine test:   ✅ 4a. Added file detection passed
+packages/snapshot-engine test:   ✅ 4b. Modified file detection passed
+packages/snapshot-engine test:   ✅ 4c. Missing file detection passed
+packages/snapshot-engine test:   ✅ 5. Anti-recursion protection passed
+packages/snapshot-engine test:   ✅ 6. Milestone M2 Vault Core regression test passed
+packages/snapshot-engine test: 🎉 All Snapshot Engine unit tests passed cleanly!
+packages/search-engine test: ✔ LocalSearchEngine — indexes vault notes and performs full-text queries (57.633459ms)
+packages/search-engine test: ✔ LocalSearchEngine — filters results by category, client, and tags (26.943958ms)
+packages/search-engine test: ✔ LocalSearchEngine — incremental re-indexing skips unchanged files (84.748ms)
+packages/search-engine test: ✔ M5 preserves source/index bytes on symlink, corrupt index and interrupted lock (53.724292ms)
+packages/search-engine test: ✔ M5 Unicode, status filters, stable IDs, pagination and stale source detection (51.402125ms)
+packages/search-engine test: ℹ tests 5
+packages/search-engine test: ℹ suites 0
+packages/search-engine test: ℹ pass 5
+packages/search-engine test: ℹ fail 0
+packages/search-engine test: ℹ cancelled 0
+packages/search-engine test: ℹ skipped 0
+packages/search-engine test: ℹ todo 0
+packages/search-engine test: ℹ duration_ms 278.883667
+packages/search-engine test: Done
+packages/knowledge-compiler test: ✔ KnowledgeCompiler — compiles markdown raw source into 90_PROPOSALS draft with status: draft (56.274917ms)
+packages/knowledge-compiler test: ✔ KnowledgeCompiler — de-duplication skips unchanged source files (31.749959ms)
+packages/knowledge-compiler test: ✔ KnowledgeCompiler — HTML sanitization removes scripts and dangerous attributes (35.794458ms)
+packages/knowledge-compiler test: ✔ KnowledgeCompiler — batchCompile aggregates report correctly and handles unsupported files (75.861541ms)
+packages/knowledge-compiler test: ✔ M4 preserves human revisions and separates identical basenames and case (66.99275ms)
+packages/knowledge-compiler test: ✔ M4 refuses symlinks, non-raw inputs, malformed index and occupied lock without writes (14.824667ms)
+packages/knowledge-compiler test: ✔ M4 batch continues after per-source failures and leaves no partial files (15.744125ms)
+packages/knowledge-compiler test: ℹ tests 7
+packages/knowledge-compiler test: ℹ suites 0
+packages/knowledge-compiler test: ℹ pass 7
+packages/knowledge-compiler test: ℹ fail 0
+packages/knowledge-compiler test: ℹ cancelled 0
+packages/knowledge-compiler test: ℹ skipped 0
+packages/knowledge-compiler test: ℹ todo 0
+packages/knowledge-compiler test: ℹ duration_ms 301.697584
+packages/knowledge-compiler test: Done
+packages/snapshot-engine test: ✅ M3 regressions: live counts, whole-tree read-only, tamper/missing/added, invalid manifest/id, symlinks, rollback at manifest write, permission errors and exclusive publication
+packages/snapshot-engine test: Done
+packages/sync-engine test: ✔ Canonical Manifest Hashing and Integrity (1.766709ms)
+packages/sync-engine test: ✔ SyncProfileManager — getOrCreateProfile and recordCommit (49.969875ms)
+packages/sync-engine test: ✔ LocalVaultInspector — Channel published vs private (42.0775ms)
+packages/sync-engine test: ✔ LocalVaultInspector — Concurrency & lock protection (19.144416ms)
+packages/sync-engine test: ✔ LocalVaultInspector — planUpload differential (18.733958ms)
+packages/sync-engine test: ✔ PublishedKnowledgeConsumer — search and buildAiContext (17.266375ms)
+packages/sync-engine test: ✔ Reject unresolved real M7 journal and similarly named unofficial categories (18.082833ms)
+packages/sync-engine test: ✔ Reject content corruption, enforce budget, and exclude unassigned client notes (41.6925ms)
+packages/sync-engine test: ✔ TransferClient — successful CAS upload and conflict detection (25.436333ms)
+packages/sync-engine test: ✔ TransferClient — downloadRelease and importAsNewVault (Milestone M10.3) (91.979666ms)
+packages/sync-engine test: ✔ TransferClient — downloadRelease integrity error and path traversal rejection (37.873208ms)
+packages/sync-engine test: ✔ Download rejects nonempty/symlink staging; import refuses arbitrary directories (27.63125ms)
+packages/sync-engine test: ✔ nested source directories are captured without following symlinks (16.024125ms)
+packages/sync-engine test: ℹ tests 13
+packages/sync-engine test: ℹ suites 0
+packages/sync-engine test: ℹ pass 13
+packages/sync-engine test: ℹ fail 0
+packages/sync-engine test: ℹ cancelled 0
+packages/sync-engine test: ℹ skipped 0
+packages/sync-engine test: ℹ todo 0
+packages/sync-engine test: ℹ duration_ms 413.483583
+packages/sync-engine test: Done
+packages/ai-engine test$ node --import tsx/esm tests/ai-engine.test.ts
+packages/ai-engine test: ✔ M5 integration: approved only, filters, stale hash and source immutability (31.041208ms)
+packages/ai-engine test: ✔ Context: first oversized document excluded, no fabricated approval, payload only in user message (0.312666ms)
+packages/ai-engine test: ✔ MCP: actual token required per call; grant isolation, traversal/write denial, revocation (27.260458ms)
+packages/ai-engine test: ✔ Read refuses symlink swaps and configuration paths (14.449416ms)
+packages/ai-engine test: ✔ Responses API: structured citations reject unknown IDs; no fallback citations or invented usage (0.73075ms)
+packages/ai-engine test: ✔ Missing key, HTTP errors, malformed response and cancellation fail explicitly (0.480166ms)
+packages/ai-engine test: ✔ Forged approved status in otherwise valid index cannot expose draft bytes (12.665459ms)
+packages/ai-engine test: ✔ BOM and Unicode preserve the exact bytes identified by the citation hash (18.484792ms)
+packages/ai-engine test: ✔ Automatic source registry enables retrieval without human approval and invalidates changed RAW (17.653917ms)
+packages/ai-engine test: ℹ tests 9
+packages/ai-engine test: ℹ suites 0
+packages/ai-engine test: ℹ pass 9
+packages/ai-engine test: ℹ fail 0
+packages/ai-engine test: ℹ cancelled 0
+packages/ai-engine test: ℹ skipped 0
+packages/ai-engine test: ℹ todo 0
+packages/ai-engine test: ℹ duration_ms 134.120208
+packages/ai-engine test: Done
+
+> limen-vault-monorepo@0.1.0 test:guards /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN
+> node --import tsx/esm tests/guards/prohibited-dependencies.test.ts
+
+🛡️  Running Prohibited Dependency Guard Test for LIMEN Vault...
+✅  PASS: Zero prohibited dependencies detected in apps/ and packages/.
+
+> limen-vault-monorepo@0.1.0 test:sync-service /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN
+> node --test services/vault-sync-api/worker.test.mjs
+
+✔ Gateway denies unknown identity and private channel without grant (31.273583ms)
+✔ Gateway verifies objects, idempotent commit, CAS conflict, pinned read and revoke (6.490416ms)
+✔ Gateway rejects cross tenant and path collision before writing (1.139208ms)
+✔ Gateway refuses a manifest committed through the other channel (0.816833ms)
+✔ Temporary storage failure is retryable without exposing internals (0.808708ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 88.25525

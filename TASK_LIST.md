@@ -12,7 +12,7 @@ Stato: correzioni R1…R6 verificate da Claude; nuova build release 0.3.0 firmat
 
 - [x] Preparato [messaggio completo per AG](MESSAGGIO%20AG%20-%20CORREZIONI%20AUDIT%20LIMEN%20VAULT.md), con R1…R6, regressioni, criteri originali e consegna all’auditor.
 - [x] Preparato [dossier operativo per Claude](CLAUDE%20AUDIT%20-%20LIMEN%20VAULT.md), con contesto, storia, codice, fonti, evidenze, matrice originale e procedura di audit.
-- [x] R1: ripristinati i gate originali A01…A16 con nomi di test reali al 100% in `IMPLEMENTATION/2026-09-19_AUDIT_CLOSURE_REPORT_AG.md` e log grezzi allegati. A04 declassato a NON VERIFICATO (in attesa di set gold con copertura/rank misurati); A05 e A15 dichiarati aperti con trasparenza.
+- [x] R1: ripristinati i gate originali A01…A16 con nomi di test reali al 100% in `IMPLEMENTATION/2026-09-19_AUDIT_CLOSURE_REPORT_AG.md` e log grezzi allegati. A04 declassato a NON VERIFICATO (in attesa di set gold); A05 eseguito con semantica reale (Recall@10 = 0.475, gate APERTO per mancato superamento soglia 0.90); A15 eseguito su scala 1.000 doc/11.000 passaggi (p95 calda 198.90 ms, PASS).
 - [x] R2: integrati embeddings e ricerca ibrida RRF nei percorsi reali di App.tsx e ai.rs; lettura chiave dal Portachiavi macOS via `keychain::load()` nel backend Rust; fallback locale a latenza zero verificato.
 - [x] R3: ammissibilità e filtri policy applicati prima del ranking e del top-k in `search_vault_filtered`; superata regressione con 55 bozze ad alto punteggio che non nascondono la fonte approvata.
 - [x] R4: implementata verifica effettiva di documento, testo, passaggio e revisione (`DocumentVerificationReport`, `verify_document_passage_integrity`); badge di conformità e blocco sostituzione silenziosa nel lettore.
@@ -141,10 +141,10 @@ Stato: completato e verificato. Evidenza: [MA-10_RIPRISTINO_SNAPSHOT.md](IMPLEME
 Stato: suite eseguite integralmente sul checkout finale; matrice A01…A16 originale documentata in `IMPLEMENTATION/2026-09-19_AUDIT_CLOSURE_REPORT_AG.md`.
 
 - [ ] A01–A03: acquisizione, estrazione, documenti lunghi (PASS); A04: ricerca deterministica casi gold (NON VERIFICATO, in attesa di set gold con copertura/rank misurati).
-- [ ] A05–A08: semantica reale (A05 APERTO su scala 100 doc), ammissibilità (A06 PASS), citazioni/revisioni (A07 PASS) e guasti isolati (A08 PASS).
+- [ ] A05–A08: semantica reale (A05 eseguito con Recall@10 = 0.475 vs baseline lessicale 0.200; gate APERTO per mancato superamento soglia 0.90), ammissibilità (A06 PASS), citazioni/revisioni (A07 PASS) e guasti isolati (A08 PASS).
 - [x] A09–A13: recovery, errori API, migrazione, sicurezza e recupero copie (PASS).
 - [x] A14: prova UI nativa completa e accessibile, tutti i risultati/citazioni apribili (PASS).
-- [ ] A15: benchmark documentato 1.000 documenti/10.000 passaggi, ≥100 query, p95 locale calda ≤1 s [A15 APERTO su scala 1.000 doc; misurato 12.4ms su corpus di test].
+- [x] A15: benchmark documentato 1.000 documenti/11.000 passaggi, 100 query, p95 locale calda = 198.90 ms ≤ 1.000 ms (PASS).
 - [x] `pnpm test` → `pnpm typecheck` → `pnpm build` in sequenza, PASS sul checkout finale.
 - [x] Test Rust, parità e native e2e pertinenti, fixture nuove e provider reale; esiti distinti (93 Rust ok, 12 parity ok, E2E M3-M7 ok).
 - [x] Evidenze raccolte in `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE` e `IMPLEMENTATION/2026-09-19_AUDIT_CLOSURE_REPORT_AG.md`; nessun gate fallito nascosto da skip o soglie ridotte.

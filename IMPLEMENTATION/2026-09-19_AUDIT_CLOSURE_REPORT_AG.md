@@ -86,7 +86,7 @@ Tutti i comandi citati corrispondono a test ed eseguibili reali. Gli output grez
 | **A02** | Estrazione e normalizzazione su formati supportati | `extraction::tests::pdf_and_scans_use_native_extraction`<br>`extraction::tests::word_and_slides_are_literal`<br>`automation::tests::unicode_text_chunks_preserve_every_byte`<br>`automation::tests::complete_multi_format_pipeline_with_declared_fake_ai` | `cargo-test.log` | Code: 0<br>4.41s | **PASS** |
 | **A03** | Documenti lunghi e tabelle oltre 1.200 righe senza troncamento | `automation::tests::spreadsheets_keep_rows_beyond_api_limit_and_formulas`<br>`automation::tests::long_documents_are_split_without_manual_work`<br>`catalog::tests::test_chunk_text_to_passages_locators` | `cargo-test.log` | Code: 0<br>4.41s | **PASS** |
 | **A04** | Ricerca deterministica: 100% casi gold e passaggi | *Funzionalità verificata su singola nota*: `search::tests::search_passages_and_catalog_indexing`<br>`embeddings::tests::test_hybrid_fusion_ranks_exact_code_first`<br>`catalog::tests::test_lookup_by_path_beyond_50_documents_and_homonyms`<br>*Mancante*: Set gold congelato con misura di rank e copertura per query. | `cargo-test.log` | Code: 0<br>4.41s | **NON VERIFICATO**<br>(Aperto accanto ad A05/A15) |
-| **A05** | Semantica: 40 parafrasi / 100 doc, Recall@10 ≥ 0.90 con gold congelato | Nessuna suite automatica soddisfa il requisito di 100 doc / 40 query gold in CI/CD offline.<br>*Unit test parziali superati*: `embeddings::tests::test_cosine_similarity`, `embeddings::tests::test_embeddings_cache_lifecycle`, `embeddings::tests::test_hybrid_search_offline_graceful_fallback`. | `cargo-test.log` | N/D | **APERTO**<br>(Non eseguito su scala 100 doc) |
+| **A05** | Semantica: 40 parafrasi / 100 doc, Recall@10 ≥ 0.90 con gold congelato | Esecuzione su 120 doc e 193 passaggi con modello reale `text-embedding-3-small` (chiave Portachiavi macOS). 40 query gold con verifica di zero sovrapposizione lessicale (40/40 PASS). Dataset congelato nel commit `446c86c` (`v3.0.0-benchmark-datasets-frozen`).<br>Recall@10 ibrida: **0.475** (19/40) vs baseline lessicale **0.200** (8/40). | `A05/run.log`<br>`A05/summary.json`<br>`A05/per-query.jsonl`<br>`A05/overlap-check.log`<br>`A05/manifest-verify.log` | Code: 0<br>23s | **NON SUPERATO**<br>(Soglia ≥ 0.90 non raggiunta; numero reale 0.475, gate APERTO) |
 | **A06** | Ammissibilità prima del ranking (R3) | `ai::tests::test_eligibility_before_limits_regression_50_drafts_do_not_hide_approved_source`<br>`ai::index_policy_test::forged_approval_is_rejected`<br>`catalog::tests::test_proposals_stay_legacy_drafts_and_human_notes_preserved` | `cargo-test.log` | Code: 0<br>4.41s | **PASS** |
 | **A07** | Citazioni e UI: apertura passaggio/revisione/sha256 (R4, R6) | `ai::tests::test_citation_locators_and_tamper_detection`<br>`catalog::tests::test_verify_document_passage_integrity_all_cases`<br>`ai::tests::binary_raw_source_extracted_text_is_read_in_ai`<br>`catalog::tests::test_passage_integrity_and_tamper_detection`<br>*TypeScript*: `DocumentReaderModal - highlightMatches` | `cargo-test.log`<br>`document-reader.log` | Code: 0<br>4.41s / 15ms | **PASS** |
 | **A08** | Freshness e guasti isolati: modifica/rimozione file | `search::tests::test_search_detects_removed_and_modified_files_without_blocking`<br>`catalog::tests::test_document_pruning_on_file_deletion`<br>`catalog::tests::test_document_revision_bump_on_content_change`<br>`automation::tests::source_changes_and_deletion_invalidate_wiki_before_next_tick` | `cargo-test.log` | Code: 0<br>4.41s | **PASS** |
@@ -96,7 +96,7 @@ Tutti i comandi citati corrispondono a test ed eseguibili reali. Gli output grez
 | **A12** | Sicurezza locale: traversal, symlink, sanitizzazione HTML | `vault::tests::capability_blocks_external_symlinks_and_broken_links`<br>`compiler::tests::test_rust_compiler_sanitizes_html`<br>`search::tests::index_symlink_never_overwrites_note`<br>`sync::tests::sync_capture_rejects_symlink_and_freezes_bytes`<br>`mcp::tests::http_auth_origin_and_revocation`<br>*Guard test*: `tests/guards/prohibited-dependencies.test.ts` | `cargo-test.log`<br>`pnpm-test.log` | Code: 0<br>4.41s / 4s | **PASS** |
 | **A13** | Protezione: snapshot e restore in cartella separata | `snapshots::tests::test_rust_snapshot_creation_and_integrity`<br>`snapshots::tests::test_snapshot_restore_to_separate_folder_verifies_hashes`<br>`snapshots::tests::snapshot_corruption_and_readonly`<br>`snapshots::tests::links_and_rollback_cannot_touch_outside`<br>`snapshots::tests::failure_at_manifest_write_cleans_only_staging` | `cargo-test.log` | Code: 0<br>4.41s | **PASS** |
 | **A14** | UX: tre aree, pulsante lime, conteggi, focus, reader | *Parità nativa*: `tests/native-parity.test.ts`<br>*IPC Desktop*: `tests/desktop-ipc.test.ts`<br>*E2E M3-M7*: `test:m3-e2e` ... `test:m7-e2e` | `native-parity.log`<br>`desktop-ipc.log`<br>`test-m3-e2e.log`..`m7` | Code: 0<br>2s / 1s / 4s | **PASS** |
-| **A15** | Prestazioni benchmark 1.000 doc / 10.000 passaggi, p95 ≤ 1s | Nessun benchmark di scala su 1.000 doc / 10.000 passaggi implementato nel repo.<br>Comando `test_benchmark_warm_search_latency` non esiste nel codice. | N/D | N/D | **APERTO**<br>(Non eseguito) |
+| **A15** | Prestazioni benchmark 1.000 doc / 10.000 passaggi, p95 ≤ 1s | Esecuzione su 1.000 doc e 11.000 passaggi, 100 query misurate (latenza provider esclusa).<br>Latenza a freddo: 102.75 ms.<br>Latenza a caldo (p95 interpolazione lineare): **198.90 ms** (soglia ≤ 1.000 ms). p50: 163.38 ms, p99: 254.13 ms. Concorrenza sotto importazione (20 query): p95 = 166.27 ms. Hardware: Apple M2, 8 GB RAM, macOS 26.3. | `A15/run.log`<br>`A15/summary.json`<br>`A15/latencies-warm.csv`<br>`A15/latencies-cold.csv`<br>`A15/latencies-during-import.csv` | Code: 0<br>19s | **PASS** |
 | **A16** | Consegna: Notarizzazione Apple, Stapler e Gatekeeper | Verifica su `/Applications/LIMEN Vault v3.app` e `/Users/cesare/Documents/STEFANO PARMA PII ALL/USER INSTALL/LIMEN-Vault-v3-arm64.dmg`:<br>`spctl -a -vvv -t exec` -> **accepted (source=Notarized Developer ID)**<br>`xcrun stapler validate` -> **The validate action worked!** | `installed-app-gatekeeper.log`<br>`installed-app-staple-validate.log`<br>`installed-dmg-gatekeeper.log`<br>`installed-dmg-staple-validate.log` | Code: 0<br>Apple Notary Accepted | **PASS** |
 
 ---
@@ -134,6 +134,54 @@ Tutti i comandi sono stati eseguiti con successo, producendo i rispettivi log gr
    - `test:m7-e2e` -> `test-m7-e2e.log` (Exit code: `0`, Durata: `1s`)
    - `test` (Desktop IPC) -> `desktop-ipc.log` (Exit code: `0`, Durata: `1s`)
    - `document-reader.test.ts` -> `document-reader.log` (Exit code: `0`, Durata: `0s`)
+
+### 5.1 Benchmark A05 — Semantica Misurata (Recall@10)
+Esecuzione dell'incarico in `MESSAGGIO AG - CHIUSURA A05 A15.md`:
+- **Corpus**: 120 documenti Markdown in `tests/gold/A05_CORPUS/` generati deterministicamente con seme `20260919` da `scripts/a05-generate-corpus.mjs`. 193 passaggi indicizzati con locators di pagina/paragrafo.
+- **Query Gold**: 40 query di parafrasi in `tests/gold/A05_QUERIES.json`.
+- **Controllo non sovrapposizione lessicale**: script `scripts/a05-check-overlap.mjs` eseguito su tutte le 40 query (normalizzazione, rimozione stopword italiane, intersezione lemmi vuota). Risultato: **40/40 superate (zero sovrapposizione lessicale)**. Log: `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05/overlap-check.log`.
+- **Congelamento**: dataset, manifest `A05_MANIFEST.sha256` e query congelati nel commit `446c86c` (tag `v3.0.0-benchmark-datasets-frozen`), strettamente precedente ai risultati.
+- **Provider**: modello reale `text-embedding-3-small` sincronizzato tramite chiave letta dal Portachiavi macOS (`sync_embeddings`). Nessuna chiave presente nei log.
+- **Risultati misurati**:
+  - **Recall@10 medio (Ibrida)**: **0.475** (19 hit su 40 query).
+  - **Recall@10 mediano**: 0.000.
+  - **Recall@10 minimo**: 0.000 (21 query con Recall@10 = 0).
+  - **Baseline lessicale media (Recall@10)**: **0.200** (8 hit su 40 query).
+  - **Contributo netto semantica**: +0.275 (+137.5% rispetto alla ricerca puramente lessicale).
+- **Esito**: **NON SUPERATO** (soglia richiesta ≥ 0.90; numero reale 0.475 registrato con trasparenza, gate lasciato APERTO).
+- **Evidenze archiviate**:
+  - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05/per-query.jsonl`
+  - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05/summary.json`
+  - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05/run.log`
+  - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05/overlap-check.log`
+  - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05/manifest-verify.log`
+
+### 5.2 Benchmark A15 — Prestazioni Ricerca Locale Calda
+Esecuzione dell'incarico in `MESSAGGIO AG - CHIUSURA A05 A15.md`:
+- **Corpus**: 1.000 documenti Markdown in `tests/gold/A15_CORPUS/` generati deterministicamente con seme `20260919` da `scripts/a15-generate-corpus.mjs`. Ciascun documento strutturato con 11 sezioni e marcatori `## Pagina 1`..`## Pagina 11`.
+- **Passaggi effettivi nel catalogo**: **11.000 passaggi** (soglia minima richiesta: 10.000 passaggi).
+- **Query**: 100 query distinte in `tests/gold/A15_QUERIES.json`.
+- **Hardware dichiarato**: Mac14,15 (Apple M2, 8 GB RAM, macOS 26.3), alimentatore AC collegato, carico standard di background.
+- **Ambito di misura**: solo percorso locale (latenza del provider OpenAI esclusa dalla metrica).
+- **Risultati misurati**:
+  - **Latenza a freddo (prima query dopo avvio)**: 102.75 ms.
+  - **Latenze a caldo (100 query, dopo 10 query warm-up non conteggiate)**:
+    - Minimo: 80.78 ms
+    - **p50 (mediana)**: 163.38 ms
+    - **p90**: 184.88 ms
+    - **p95**: **198.90 ms** (soglia del piano: ≤ 1.000 ms)
+    - **p99**: 254.13 ms
+    - Massimo: 260.50 ms
+    - Media: 151.79 ms
+    - *Formula percentile*: interpolazione lineare standard `rank = (P/100)*(N-1); result = low + frac*(high - low)`.
+  - **Prova di concorrenza sotto carico**: 20 query eseguite durante operazioni di riconciliazione filesystem -> p95 = **166.27 ms**.
+- **Esito**: **PASS** (1.000 doc, 11.000 passaggi, 100 query, p95 198.90 ms ≤ 1.000 ms).
+- **Evidenze archiviate**:
+  - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A15/latencies-warm.csv` (tutte le 100 latenze grezze)
+  - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A15/latencies-cold.csv` (misura a freddo)
+  - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A15/latencies-during-import.csv` (20 misure sotto concorrenza)
+  - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A15/summary.json`
+  - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A15/run.log`
 
 ---
 

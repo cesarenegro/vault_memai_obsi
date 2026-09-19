@@ -1,0 +1,26 @@
+{
+  "benchmark": "A15 — Prestazioni Ricerca Locale Calda",
+  "timestamp_utc8": "2026-09-19T17:38:33.657956+08:00",
+  "hardware": {
+    "model": "Mac14,15",
+    "chip": "Apple M2",
+    "memory_ram": "8 GB",
+    "os_version": "26.3",
+    "power_source": "AC Power Connected",
+    "active_load": "Standard background tasks only"
+  },
+  "indexed_documents": 1000,
+  "indexed_passages": 11000,
+  "total_queries": 100,
+  "cold_latency_ms": 102.755,
+  "warm_p50_ms": 163.38,
+  "warm_p90_ms": 184.883,
+  "warm_p95_ms": 198.897,
+  "warm_p99_ms": 254.13,
+  "warm_min_ms": 80.781,
+  "warm_max_ms": 260.495,
+  "warm_mean_ms": 151.787,
+  "concurrent_import_p95_ms": 166.274,
+  "percentile_formula": "Linear interpolation: rank = (P/100)*(N-1); result = low + frac*(high - low)",
+  "gate_status": "PASS"
+}

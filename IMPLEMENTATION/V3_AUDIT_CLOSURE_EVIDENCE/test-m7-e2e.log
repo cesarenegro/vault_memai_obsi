@@ -1,0 +1,9 @@
+
+> @limen-vault/desktop@0.3.0 test:m7-e2e /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop
+> node --import tsx/esm tests/m7-native-e2e.test.ts
+
+PASS TS/native workflow contract, output persistence, immutable revisions, approval, idempotence, RAW and search
+PASS actual process SIGKILL after journal/document/index; explicit recovery and exactly one publication
+PASS concurrent processes serialized; repeat operation does not duplicate revision
+PASS competing approvals publish exactly one file; denied destination preserves draft and recovers explicitly
+M7 native E2E PASS; fixtures retained at /var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-m7-e2e-YoUk6N

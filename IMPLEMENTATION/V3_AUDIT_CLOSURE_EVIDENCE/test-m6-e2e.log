@@ -1,0 +1,5 @@
+
+> @limen-vault/desktop@0.3.0 test:m6-e2e /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop
+> node --import tsx/esm tests/m6-native-e2e.test.ts
+
+PASS M6 native stdio: TS/M5 source parity, protocol lifecycle, real search/read, approval policy, isolation, traversal/write denial, no Node, unchanged source/index hashes.
