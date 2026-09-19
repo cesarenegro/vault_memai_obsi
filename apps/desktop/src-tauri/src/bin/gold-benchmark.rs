@@ -51,6 +51,55 @@ struct A05Summary {
     gate_status: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct A05DiagPerQuery {
+    #[serde(rename = "queryId")]
+    query_id: String,
+    #[serde(rename = "expectedDocument")]
+    expected_document: String,
+    #[serde(rename = "relevantDocumentIds")]
+    relevant_document_ids: Vec<String>,
+    #[serde(rename = "queryText")]
+    query_text: String,
+    #[serde(rename = "semanticRecallAt10")]
+    semantic_recall_at_10: f64,
+    #[serde(rename = "semanticRank")]
+    semantic_rank: Option<usize>,
+    #[serde(rename = "lexicalRecallAt10")]
+    lexical_recall_at_10: f64,
+    #[serde(rename = "lexicalRank")]
+    lexical_rank: Option<usize>,
+    #[serde(rename = "hybridRecallAt10")]
+    hybrid_recall_at_10: f64,
+    #[serde(rename = "hybridRank")]
+    hybrid_rank: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+struct A05DiagSummary {
+    benchmark: String,
+    timestamp_utc8: String,
+    model: String,
+    cache_source: String,
+    indexed_documents: usize,
+    indexed_passages: usize,
+    total_queries: usize,
+    semantic_mean_recall_at_10: f64,
+    lexical_mean_recall_at_10: f64,
+    hybrid_mean_recall_at_10: f64,
+    zero_recall_count_semantic: usize,
+    zero_recall_queries_semantic: Vec<String>,
+    zero_recall_count_lexical: usize,
+    zero_recall_queries_lexical: Vec<String>,
+    zero_recall_count_hybrid: usize,
+    zero_recall_queries_hybrid: Vec<String>,
+    semantic_hit_hybrid_miss_queries: Vec<String>,
+    hybrid_hit_semantic_miss_queries: Vec<String>,
+    decision_rule_verbatim: String,
+    diagnostic_verdict: String,
+    diagnostic_conclusion: String,
+}
+
 #[derive(Debug, Deserialize)]
 struct A15Query {
     #[serde(rename = "queryId")]
@@ -149,6 +198,26 @@ fn percentile(sorted: &[f64], pct: f64) -> f64 {
     sorted[low] + frac * (sorted[high] - sorted[low])
 }
 
+fn get_api_key_from_keychain() -> Result<String, String> {
+    if let Ok(Some(k)) = limen_vault::keychain::load() {
+        if !k.trim().is_empty() {
+            return Ok(k.trim().to_string());
+        }
+    }
+    // Headless/non-interactive CLI fallback on macOS
+    let output = std::process::Command::new("/usr/bin/security")
+        .args(["find-generic-password", "-s", "dev.arkai.limenvault.openai", "-a", "api-key", "-w"])
+        .output()
+        .map_err(|e| format!("Failed to query Keychain: {e}"))?;
+    if output.status.success() {
+        let key = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !key.is_empty() {
+            return Ok(key);
+        }
+    }
+    Err("OpenAI API key could not be retrieved from macOS Keychain".into())
+}
+
 fn run_a05(vault_path: &Path, queries_path: &Path, out_dir: &Path) -> Result<(), String> {
     println!("=== Running A05 Semantic Retrieval Benchmark ===");
     fs::create_dir_all(out_dir).map_err(|e| e.to_string())?;
@@ -167,13 +236,9 @@ fn run_a05(vault_path: &Path, queries_path: &Path, out_dir: &Path) -> Result<(),
     println!("Indexing vault for lexical search...");
     limen_vault::search::index_vault_search(vault_path)?;
 
-    // 3. Sync embeddings using Keychain key (or benchmark-specific key)
+    // 3. Sync embeddings using Keychain key
     println!("Synchronizing embeddings via OpenAI API (model: text-embedding-3-small)...");
-    let bench_api_key = limen_vault::keychain::load()
-        .ok()
-        .flatten()
-        .filter(|k| !k.trim().is_empty())
-        .or_else(|| std::env::var("OPENAI_API_KEY").ok().filter(|k| !k.trim().is_empty()));
+    let bench_api_key = get_api_key_from_keychain().ok();
     let effective_key_str = bench_api_key.as_deref().unwrap_or("");
 
     let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
@@ -490,10 +555,297 @@ fn run_a15(vault_path: &Path, queries_path: &Path, out_dir: &Path) -> Result<(),
     Ok(())
 }
 
+fn run_a05_diag(vault_path: &Path, queries_path: &Path, out_dir: &Path) -> Result<(), String> {
+    let start_time = Instant::now();
+    println!("=== Running A05 Semantic Diagnostic Benchmark (a05-diag) ===");
+    fs::create_dir_all(out_dir).map_err(|e| e.to_string())?;
+
+    // 1. Load catalog
+    println!("Loading catalog from vault: {:?}", vault_path);
+    let catalog = limen_vault::catalog::load_catalog(vault_path)?;
+    if catalog.documents.is_empty() {
+        return Err("Catalog is empty. Please ensure vault has indexed documents.".into());
+    }
+    let total_passages: usize = catalog.documents.values().map(|d| d.passages.len()).sum();
+    println!("Catalog loaded: {} documents, {} passages", catalog.documents.len(), total_passages);
+
+    // 2. Load pre-computed embeddings cache (NO RECOMPUTATION)
+    println!("Loading existing embeddings cache...");
+    let cache = limen_vault::embeddings::load_embeddings_cache(vault_path)?;
+    if cache.entries.len() < total_passages {
+        return Err(format!(
+            "Incomplete cache: found {} entries, catalog has {} passages. Recomputation forbidden.",
+            cache.entries.len(),
+            total_passages
+        ));
+    }
+    let cache_source_str = vault_path.join("00_SYSTEM/EMBEDDINGS_CACHE.json").to_string_lossy().to_string();
+    println!(
+        "Reusing pre-computed cache: {} passages (model: {}, source: {})",
+        cache.entries.len(),
+        cache.model,
+        cache_source_str
+    );
+
+    // 3. Ensure lexical search index is ready
+    println!("Indexing vault for lexical search...");
+    limen_vault::search::index_vault_search(vault_path)?;
+
+    // 4. Securely obtain API key from Keychain (in-process only, C6)
+    println!("Reading OpenAI API key from macOS Keychain (in-process)...");
+    let api_key = get_api_key_from_keychain()?;
+    println!("OpenAI API key acquired securely from Keychain.");
+
+    // 5. Load gold queries
+    let q_content = fs::read_to_string(queries_path).map_err(|e| e.to_string())?;
+    let queries: Vec<A05Query> = serde_json::from_str(&q_content).map_err(|e| e.to_string())?;
+    println!("Loaded {} gold queries from {:?}", queries.len(), queries_path);
+
+    let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
+
+    // 6. Batch fetch embeddings for the 40 queries from OpenAI (single batch call)
+    let query_texts: Vec<String> = queries.iter().map(|q| q.text.clone()).collect();
+    println!("Fetching embeddings for {} queries in a single batch from OpenAI...", query_texts.len());
+    let fetch_start = Instant::now();
+    let query_vectors = rt.block_on(limen_vault::embeddings::fetch_openai_embeddings(
+        &api_key,
+        &cache.model,
+        &query_texts,
+    ))?;
+    println!(
+        "Batch query embeddings received in {:.2}s ({} vectors).",
+        fetch_start.elapsed().as_secs_f64(),
+        query_vectors.len()
+    );
+    if query_vectors.len() != queries.len() {
+        return Err(format!("Expected {} query vectors, got {}", queries.len(), query_vectors.len()));
+    }
+
+    // 7. Evaluate queries across Semantic, Lexical, and Hybrid modalities
+    let mut per_query_records: Vec<A05DiagPerQuery> = Vec::new();
+    let mut sem_recalls: Vec<f64> = Vec::new();
+    let mut lex_recalls: Vec<f64> = Vec::new();
+    let mut hyb_recalls: Vec<f64> = Vec::new();
+
+    let mut zero_sem_queries: Vec<String> = Vec::new();
+    let mut zero_lex_queries: Vec<String> = Vec::new();
+    let mut zero_hyb_queries: Vec<String> = Vec::new();
+
+    let mut sem_hit_hyb_miss: Vec<String> = Vec::new();
+    let mut hyb_hit_sem_miss: Vec<String> = Vec::new();
+
+    println!("\nEvaluating queries across 3 modalities (pure semantic, pure lexical, hybrid)...");
+
+    for (idx, q) in queries.iter().enumerate() {
+        let expected_doc = q.relevant_document_ids.first().cloned().unwrap_or_default();
+        let query_vec = &query_vectors[idx];
+
+        let is_match = |cand_id: &str, cand_path: &str| -> bool {
+            q.relevant_document_ids.iter().any(|rel| cand_path.contains(rel) || cand_id == rel)
+        };
+
+        // --- Modality 1: Pure Semantic (Cosine similarity only, no lexical score, no exact match boost, no RRF) ---
+        let mut sem_candidates: Vec<(String, String, f32)> = Vec::new();
+        for doc in catalog.documents.values() {
+            if doc.passages.is_empty() {
+                continue;
+            }
+            let (score, _, _, _) = limen_vault::embeddings::rank_document_semantic(
+                &doc.document_id,
+                &doc.passages,
+                query_vec,
+                &cache,
+            );
+            sem_candidates.push((doc.document_id.clone(), doc.original_path.clone(), score));
+        }
+        sem_candidates.sort_by(|a, b| {
+            b.2.partial_cmp(&a.2)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.0.cmp(&b.0))
+        });
+
+        let mut sem_rank: Option<usize> = None;
+        for (rank_0, (doc_id, orig_path, _score)) in sem_candidates.iter().take(50).enumerate() {
+            if is_match(doc_id, orig_path) {
+                sem_rank = Some(rank_0 + 1);
+                break;
+            }
+        }
+        let sem_r10 = if sem_rank.map_or(false, |r| r <= 10) { 1.0 } else { 0.0 };
+
+        // --- Modality 2: Pure Lexical (via product hybrid_search_vault with use_semantic = false) ---
+        let sq_lex = limen_vault::search::SearchQuery {
+            term: Some(q.text.clone()),
+            limit: Some(50),
+            ..Default::default()
+        };
+        let res_lex = rt.block_on(limen_vault::embeddings::hybrid_search_vault(
+            vault_path,
+            sq_lex,
+            None,
+            false,
+        ))?;
+        let mut lex_rank: Option<usize> = None;
+        for (rank_0, item) in res_lex.iter().take(50).enumerate() {
+            if is_match(&item.id, &item.relative_path) {
+                lex_rank = Some(rank_0 + 1);
+                break;
+            }
+        }
+        let lex_r10 = if lex_rank.map_or(false, |r| r <= 10) { 1.0 } else { 0.0 };
+
+        // --- Modality 3: Hybrid (via product hybrid_search_vault with use_semantic = true) ---
+        let sq_hyb = limen_vault::search::SearchQuery {
+            term: Some(q.text.clone()),
+            limit: Some(50),
+            ..Default::default()
+        };
+        let res_hyb = rt.block_on(limen_vault::embeddings::hybrid_search_vault(
+            vault_path,
+            sq_hyb,
+            Some(api_key.clone()),
+            true,
+        ))?;
+        let mut hyb_rank: Option<usize> = None;
+        for (rank_0, item) in res_hyb.iter().take(50).enumerate() {
+            if is_match(&item.id, &item.relative_path) {
+                hyb_rank = Some(rank_0 + 1);
+                break;
+            }
+        }
+        let hyb_r10 = if hyb_rank.map_or(false, |r| r <= 10) { 1.0 } else { 0.0 };
+
+        sem_recalls.push(sem_r10);
+        lex_recalls.push(lex_r10);
+        hyb_recalls.push(hyb_r10);
+
+        if sem_r10 == 0.0 {
+            zero_sem_queries.push(q.query_id.clone());
+        }
+        if lex_r10 == 0.0 {
+            zero_lex_queries.push(q.query_id.clone());
+        }
+        if hyb_r10 == 0.0 {
+            zero_hyb_queries.push(q.query_id.clone());
+        }
+
+        if sem_r10 == 1.0 && hyb_r10 == 0.0 {
+            sem_hit_hyb_miss.push(q.query_id.clone());
+        }
+        if hyb_r10 == 1.0 && sem_r10 == 0.0 {
+            hyb_hit_sem_miss.push(q.query_id.clone());
+        }
+
+        println!(
+            "[{}] Target: {} | Sem Rank: {:?} (R@10: {:.0}) | Lex Rank: {:?} (R@10: {:.0}) | Hyb Rank: {:?} (R@10: {:.0})",
+            q.query_id, expected_doc, sem_rank, sem_r10, lex_rank, lex_r10, hyb_rank, hyb_r10
+        );
+
+        per_query_records.push(A05DiagPerQuery {
+            query_id: q.query_id.clone(),
+            expected_document: expected_doc,
+            relevant_document_ids: q.relevant_document_ids.clone(),
+            query_text: q.text.clone(),
+            semantic_recall_at_10: sem_r10,
+            semantic_rank: sem_rank,
+            lexical_recall_at_10: lex_r10,
+            lexical_rank: lex_rank,
+            hybrid_recall_at_10: hyb_r10,
+            hybrid_rank: hyb_rank,
+        });
+    }
+
+    // 8. Write per-query.jsonl
+    let jsonl_path = out_dir.join("per-query.jsonl");
+    let mut jsonl_file = fs::File::create(&jsonl_path).map_err(|e| e.to_string())?;
+    use std::io::Write;
+    for rec in &per_query_records {
+        let line = serde_json::to_string(rec).map_err(|e| e.to_string())?;
+        writeln!(jsonl_file, "{}", line).map_err(|e| e.to_string())?;
+    }
+
+    // 9. Compute means & apply reading rule
+    let sem_mean = sem_recalls.iter().sum::<f64>() / (sem_recalls.len() as f64);
+    let lex_mean = lex_recalls.iter().sum::<f64>() / (lex_recalls.len() as f64);
+    let hyb_mean = hyb_recalls.iter().sum::<f64>() / (hyb_recalls.len() as f64);
+
+    let decision_rule_verbatim = "Semantica da sola maggiore o uguale a 0,85: la semantica funziona, il problema è nella fusione. Il passo successivo diventa la taratura dei pesi, non il cambio di modello.\nSemantica da sola minore o uguale a 0,70: il problema è negli embedding o nel modello. Il passo successivo diventa il modello più grande o il testo indicizzato.\nValore intermedio: entrambe le cause concorrono; si riportano i numeri e si decide con l'utente.".to_string();
+
+    let (verdict, conclusion) = if sem_mean >= 0.85 {
+        (
+            "SEMANTICA_VALIDA_PROBLEMA_FUSIONE".to_string(),
+            format!(
+                "La semantica da sola vale {:.3} (>= 0.85): la semantica funziona, il problema è nella fusione. Il passo successivo è la taratura dei pesi.",
+                sem_mean
+            ),
+        )
+    } else if sem_mean <= 0.70 {
+        (
+            "PROBLEMA_EMBEDDING_O_MODELLO".to_string(),
+            format!(
+                "La semantica da sola vale {:.3} (<= 0.70): il problema è negli embedding o nel modello. Il passo successivo è il modello più grande o il testo indicizzato.",
+                sem_mean
+            ),
+        )
+    } else {
+        (
+            "CONCORSO_CAUSE_DECISIONE_UTENTE".to_string(),
+            format!(
+                "La semantica da sola vale {:.3} (valore intermedio 0.70 < x < 0.85): entrambe le cause concorrono. Si riportano i numeri e si decide con l'utente.",
+                sem_mean
+            ),
+        )
+    };
+
+    let summary = A05DiagSummary {
+        benchmark: "A05 — Misura Diagnostica Semantica vs Lessicale vs Ibrida".into(),
+        timestamp_utc8: get_utc8_timestamp(),
+        model: cache.model,
+        cache_source: cache_source_str,
+        indexed_documents: catalog.documents.len(),
+        indexed_passages: total_passages,
+        total_queries: queries.len(),
+        semantic_mean_recall_at_10: (sem_mean * 1000.0).round() / 1000.0,
+        lexical_mean_recall_at_10: (lex_mean * 1000.0).round() / 1000.0,
+        hybrid_mean_recall_at_10: (hyb_mean * 1000.0).round() / 1000.0,
+        zero_recall_count_semantic: zero_sem_queries.len(),
+        zero_recall_queries_semantic: zero_sem_queries,
+        zero_recall_count_lexical: zero_lex_queries.len(),
+        zero_recall_queries_lexical: zero_lex_queries,
+        zero_recall_count_hybrid: zero_hyb_queries.len(),
+        zero_recall_queries_hybrid: zero_hyb_queries,
+        semantic_hit_hybrid_miss_queries: sem_hit_hyb_miss,
+        hybrid_hit_semantic_miss_queries: hyb_hit_sem_miss,
+        decision_rule_verbatim,
+        diagnostic_verdict: verdict,
+        diagnostic_conclusion: conclusion,
+    };
+
+    let summary_path = out_dir.join("summary.json");
+    fs::write(&summary_path, serde_json::to_string_pretty(&summary).unwrap()).map_err(|e| e.to_string())?;
+
+    let elapsed = start_time.elapsed();
+    println!("\n=== A05 Diagnostic Summary ===");
+    println!("Semantic Mean Recall@10: {:.3}", summary.semantic_mean_recall_at_10);
+    println!("Lexical Mean Recall@10:  {:.3}", summary.lexical_mean_recall_at_10);
+    println!("Hybrid Mean Recall@10:   {:.3}", summary.hybrid_mean_recall_at_10);
+    println!("Semantic Zero-Recall:    {}", summary.zero_recall_count_semantic);
+    println!("Lexical Zero-Recall:     {}", summary.zero_recall_count_lexical);
+    println!("Hybrid Zero-Recall:      {}", summary.zero_recall_count_hybrid);
+    println!("Semantic Hits Demoted by Fusion (Sem=1, Hyb=0): {:?}", summary.semantic_hit_hybrid_miss_queries);
+    println!("Hybrid Rescued by Lexical (Hyb=1, Sem=0):       {:?}", summary.hybrid_hit_semantic_miss_queries);
+    println!("Diagnostic Verdict:      {}", summary.diagnostic_verdict);
+    println!("Diagnostic Conclusion:   {}", summary.diagnostic_conclusion);
+    println!("Total Duration:          {:.2}s", elapsed.as_secs_f64());
+    println!("Evidence written to {:?}", out_dir);
+
+    Ok(())
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 5 {
-        eprintln!("Usage: gold-benchmark <a05|a15> <vault_path> <queries_path> <out_dir>");
+        eprintln!("Usage: gold-benchmark <a05|a05-diag|a15> <vault_path> <queries_path> <out_dir>");
         std::process::exit(1);
     }
 
@@ -509,6 +861,12 @@ fn main() {
                 std::process::exit(1);
             }
         }
+        "a05-diag" => {
+            if let Err(e) = run_a05_diag(vault_path, queries_path, out_dir) {
+                eprintln!("A05 Diagnostic Benchmark Error: {e}");
+                std::process::exit(1);
+            }
+        }
         "a15" => {
             if let Err(e) = run_a15(vault_path, queries_path, out_dir) {
                 eprintln!("A15 Benchmark Error: {e}");
@@ -516,7 +874,7 @@ fn main() {
             }
         }
         _ => {
-            eprintln!("Unknown mode: {mode}. Use 'a05' or 'a15'");
+            eprintln!("Unknown mode: {mode}. Use 'a05', 'a05-diag', or 'a15'");
             std::process::exit(1);
         }
     }

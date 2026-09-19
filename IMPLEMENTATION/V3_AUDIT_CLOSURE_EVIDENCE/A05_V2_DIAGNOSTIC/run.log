@@ -1,0 +1,68 @@
+=== Running A05 Semantic Diagnostic Benchmark (a05-diag) ===
+Loading catalog from vault: "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/scratch/a05_v2_context_vault"
+Catalog loaded: 120 documents, 167 passages
+Loading existing embeddings cache...
+Reusing pre-computed cache: 167 passages (model: text-embedding-3-small, source: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/scratch/a05_v2_context_vault/00_SYSTEM/EMBEDDINGS_CACHE.json)
+Indexing vault for lexical search...
+Reading OpenAI API key from macOS Keychain (in-process)...
+OpenAI API key acquired securely from Keychain.
+Loaded 40 gold queries from "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/gold/A05_QUERIES.json"
+Fetching embeddings for 40 queries in a single batch from OpenAI...
+Batch query embeddings received in 2.81s (40 vectors).
+
+Evaluating queries across 3 modalities (pure semantic, pure lexical, hybrid)...
+[Q01] Target: doc_001 | Sem Rank: Some(2) (R@10: 1) | Lex Rank: Some(7) (R@10: 1) | Hyb Rank: Some(7) (R@10: 1)
+[Q02] Target: doc_002 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(9) (R@10: 1) | Hyb Rank: Some(9) (R@10: 1)
+[Q03] Target: doc_003 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(23) (R@10: 0) | Hyb Rank: Some(23) (R@10: 0)
+[Q04] Target: doc_004 | Sem Rank: Some(2) (R@10: 1) | Lex Rank: Some(2) (R@10: 1) | Hyb Rank: Some(2) (R@10: 1)
+[Q05] Target: doc_005 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(41) (R@10: 0) | Hyb Rank: Some(41) (R@10: 0)
+[Q06] Target: doc_006 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: None (R@10: 0) | Hyb Rank: Some(13) (R@10: 0)
+[Q07] Target: doc_007 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(5) (R@10: 1) | Hyb Rank: Some(5) (R@10: 1)
+[Q08] Target: doc_008 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(2) (R@10: 1) | Hyb Rank: Some(2) (R@10: 1)
+[Q09] Target: doc_009 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(4) (R@10: 1) | Hyb Rank: Some(4) (R@10: 1)
+[Q10] Target: doc_010 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: None (R@10: 0) | Hyb Rank: Some(8) (R@10: 1)
+[Q11] Target: doc_011 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(4) (R@10: 1) | Hyb Rank: Some(4) (R@10: 1)
+[Q12] Target: doc_012 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: None (R@10: 0) | Hyb Rank: None (R@10: 0)
+[Q13] Target: doc_013 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(4) (R@10: 1) | Hyb Rank: Some(4) (R@10: 1)
+[Q14] Target: doc_014 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(3) (R@10: 1) | Hyb Rank: Some(3) (R@10: 1)
+[Q15] Target: doc_015 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(5) (R@10: 1) | Hyb Rank: Some(5) (R@10: 1)
+[Q16] Target: doc_016 | Sem Rank: Some(8) (R@10: 1) | Lex Rank: Some(5) (R@10: 1) | Hyb Rank: Some(5) (R@10: 1)
+[Q17] Target: doc_017 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(14) (R@10: 0) | Hyb Rank: Some(14) (R@10: 0)
+[Q18] Target: doc_018 | Sem Rank: Some(2) (R@10: 1) | Lex Rank: None (R@10: 0) | Hyb Rank: Some(15) (R@10: 0)
+[Q19] Target: doc_019 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(1) (R@10: 1) | Hyb Rank: Some(1) (R@10: 1)
+[Q20] Target: doc_020 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(2) (R@10: 1) | Hyb Rank: Some(2) (R@10: 1)
+[Q21] Target: doc_021 | Sem Rank: Some(24) (R@10: 0) | Lex Rank: Some(6) (R@10: 1) | Hyb Rank: Some(6) (R@10: 1)
+[Q22] Target: doc_022 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(2) (R@10: 1) | Hyb Rank: Some(2) (R@10: 1)
+[Q23] Target: doc_023 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(15) (R@10: 0) | Hyb Rank: Some(15) (R@10: 0)
+[Q24] Target: doc_024 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(6) (R@10: 1) | Hyb Rank: Some(6) (R@10: 1)
+[Q25] Target: doc_025 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(2) (R@10: 1) | Hyb Rank: Some(2) (R@10: 1)
+[Q26] Target: doc_026 | Sem Rank: Some(9) (R@10: 1) | Lex Rank: Some(4) (R@10: 1) | Hyb Rank: Some(4) (R@10: 1)
+[Q27] Target: doc_027 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(1) (R@10: 1) | Hyb Rank: Some(1) (R@10: 1)
+[Q28] Target: doc_028 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(5) (R@10: 1) | Hyb Rank: Some(5) (R@10: 1)
+[Q29] Target: doc_029 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: None (R@10: 0) | Hyb Rank: Some(23) (R@10: 0)
+[Q30] Target: doc_030 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(6) (R@10: 1) | Hyb Rank: Some(6) (R@10: 1)
+[Q31] Target: doc_031 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(27) (R@10: 0) | Hyb Rank: Some(27) (R@10: 0)
+[Q32] Target: doc_032 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(12) (R@10: 0) | Hyb Rank: Some(12) (R@10: 0)
+[Q33] Target: doc_033 | Sem Rank: Some(5) (R@10: 1) | Lex Rank: Some(3) (R@10: 1) | Hyb Rank: Some(3) (R@10: 1)
+[Q34] Target: doc_034 | Sem Rank: Some(3) (R@10: 1) | Lex Rank: Some(31) (R@10: 0) | Hyb Rank: Some(31) (R@10: 0)
+[Q35] Target: doc_035 | Sem Rank: Some(2) (R@10: 1) | Lex Rank: Some(7) (R@10: 1) | Hyb Rank: Some(7) (R@10: 1)
+[Q36] Target: doc_036 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(8) (R@10: 1) | Hyb Rank: Some(8) (R@10: 1)
+[Q37] Target: doc_037 | Sem Rank: Some(5) (R@10: 1) | Lex Rank: Some(11) (R@10: 0) | Hyb Rank: Some(11) (R@10: 0)
+[Q38] Target: doc_038 | Sem Rank: Some(3) (R@10: 1) | Lex Rank: Some(12) (R@10: 0) | Hyb Rank: Some(12) (R@10: 0)
+[Q39] Target: doc_039 | Sem Rank: Some(4) (R@10: 1) | Lex Rank: Some(7) (R@10: 1) | Hyb Rank: Some(7) (R@10: 1)
+[Q40] Target: doc_040 | Sem Rank: Some(1) (R@10: 1) | Lex Rank: Some(3) (R@10: 1) | Hyb Rank: Some(3) (R@10: 1)
+
+=== A05 Diagnostic Summary ===
+Semantic Mean Recall@10: 0.975
+Lexical Mean Recall@10:  0.650
+Hybrid Mean Recall@10:   0.675
+Semantic Zero-Recall:    1
+Lexical Zero-Recall:     14
+Hybrid Zero-Recall:      13
+Semantic Hits Demoted by Fusion (Sem=1, Hyb=0): ["Q03", "Q05", "Q06", "Q12", "Q17", "Q18", "Q23", "Q29", "Q31", "Q32", "Q34", "Q37", "Q38"]
+Hybrid Rescued by Lexical (Hyb=1, Sem=0):       ["Q21"]
+Diagnostic Verdict:      SEMANTICA_VALIDA_PROBLEMA_FUSIONE
+Diagnostic Conclusion:   La semantica da sola vale 0.975 (>= 0.85): la semantica funziona, il problema è nella fusione. Il passo successivo è la taratura dei pesi.
+Total Duration:          32.76s
+Evidence written to "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_V2_DIAGNOSTIC"
+Exit Code: 0

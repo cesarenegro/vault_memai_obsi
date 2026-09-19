@@ -185,7 +185,41 @@ Esecuzione puntuale di [MESSAGGIO AG - INTERVENTO 1 TESTO INDICIZZATO.md](file:/
 7. **Presa d'Atto Rilievo C6 (Esposizione Credenziali in Shell)**:
    Si prende atto del rilievo di sicurezza ad alta gravità: la chiave API è comparsa in chiaro nella riga di comando per superare il blocco della finestra di dialogo del Portachiavi macOS nei processi senza TTY. È stata eliminata qualunque istruzione CLI contenente credenziali in chiaro. Si segnala all'utente l'opportunità di provvedere alla rotazione / revoca della chiave API dal pannello OpenAI.
 
-### 5.3 Benchmark A15 — Prestazioni Ricerca Locale Calda
+### 5.3 Misura Diagnostica della Sola Componente Semantica su A05 (`a05-diag`)
+Esecuzione dell'incarico in [MESSAGGIO AG - MISURA DIAGNOSTICA SEMANTICA A05.md](file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/MESSAGGIO%20AG%20-%20MISURA%20DIAGNOSTICA%20SEMANTICA%20A05.md):
+
+1. **Obiettivo e Regola di Lettura (Fissata a priori)**:
+   - *Regola immutabile*:
+     - Semantica da sola $\ge 0,85$: la semantica funziona, il problema è nella fusione $\to$ passo successivo: taratura dei pesi della fusione.
+     - Semantica da sola $\le 0,70$: il problema è negli embedding o nel modello $\to$ passo successivo: modello più grande o testo indicizzato.
+     - Valore intermedio: entrambe le cause concorrono $\to$ si riportano i dati e si decide con l'utente.
+   - *Perimetro*: zero modifiche al codice di prodotto (`src/embeddings.rs`, `src/search.rs`, etc., 0 righe di diff). Sola estensione in `apps/desktop/src-tauri/src/bin/gold-benchmark.rs` (`a05-diag`). Riuso della cache di 167 passaggi calcolata per `A05_V2_CONTEXT`. Lettura chiave OpenAI da Portachiavi in-process (Rilievo C6 rigorosamente rispettato, zero parametri o token su CLI).
+
+2. **Risultati di Misura (Stessa corsa, stessi vettori, 40 query)**:
+   - **Recall@10 Sola Semantica (ordinamento puro per similarità coseno)**: **0.975** (39 hit su 40 query; 1 sola a zero).
+   - **Recall@10 Solo Lessicale**: **0.650** (26 hit su 40 query; 14 a zero).
+   - **Recall@10 Ibrido (fusione RRF)**: **0.675** (27 hit su 40 query; 13 a zero).
+
+3. **Analisi dei Ranghi e Diagnosi della Fusione**:
+   - In 31 query su 40, la sola componente semantica colloca il documento atteso esattamente a **Rango 1**.
+   - In 39 query su 40, la sola componente semantica colloca il documento atteso entro la **Top 10** (Rango 1..9).
+   - **13 query trovate dalla semantica ma distrutte dalla fusione ibrida** (`semantic_recall_at_10 = 1.0`, `hybrid_recall_at_10 = 0.0`):
+     `["Q03", "Q05", "Q06", "Q12", "Q17", "Q18", "Q23", "Q29", "Q31", "Q32", "Q34", "Q37", "Q38"]`.
+     Per queste query, il documento atteso era al rango semantico 1, 2, 3 o 5, ma l'assenza o la retrocessione lessicale nella formula RRF ne ha causato lo sprofondamento oltre la decima posizione (fino a rango 11..41 o `null`).
+   - **1 sola query salvata dal lessicale** (`hybrid_recall_at_10 = 1.0`, `semantic_recall_at_10 = 0.0`):
+     `["Q21"]` (rango semantico 24, rango lessicale 6, rango ibrido 6).
+
+4. **Verdetto Diagnostico**:
+   - **`SEMANTICA_VALIDA_PROBLEMA_FUSIONE`**
+   - *Conclusione applicata dalla regola*: La semantica da sola vale 0.975 ( $\ge 0.85$ ): **la semantica funziona e il modello `text-embedding-3-small` è pienamente idoneo; il problema è interamente nella fusione RRF / pesi**. Il passo successivo è la taratura dei pesi della fusione.
+
+5. **Evidenze Archiviate**:
+   - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_V2_DIAGNOSTIC/per-query.jsonl`
+   - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_V2_DIAGNOSTIC/summary.json`
+   - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_V2_DIAGNOSTIC/run.log`
+   - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_V2_DIAGNOSTIC/manifest-verify.log`
+
+### 5.4 Benchmark A15 — Prestazioni Ricerca Locale Calda
 Esecuzione dell'incarico in `MESSAGGIO AG - CHIUSURA A05 A15.md`:
 - **Corpus**: 1.000 documenti Markdown in `tests/gold/A15_CORPUS/` generati deterministicamente con seme `20260919` da `scripts/a15-generate-corpus.mjs`. Ciascun documento strutturato con 11 sezioni e marcatori `## Pagina 1`..`## Pagina 11`.
 - **Passaggi effettivi nel catalogo**: **11.000 passaggi** (soglia minima richiesta: 10.000 passaggi).
@@ -304,5 +338,6 @@ Per prevenire qualsiasi disallineamento durante la revisione, l'intero stato del
 - **`v3.0.0-audit-closure-complete`** (commit `eaa8413`): Chiusura delle misure A05 (storico v1) e A15 (11.000 passaggi, p95 198.90 ms).
 - **`v3.1.0-a05-corpus-v2-frozen`** (commit `87e41df`): Risoluzione Rilievo C5; congelamento corpus diversificato A05 V2 (120 doc, max Jaccard 0.2154 <= 0.30, 40 query zero overlap).
 - **`v3.1.0-embed-context`** (commit `b7ab5c6`): Misura baseline V2 (0.675), implementazione contestualizzazione passaggi in `embeddings.rs`, unit test ed evidenze comparate post-modifica (0.675, delta 0.000).
+- **`v3.1.0-a05-diagnostic`**: Misura diagnostica comparata della componente semantica pura (0.975), lessicale pura (0.650) e ibrida RRF (0.675) con tabella dei ranghi per tutte le 40 query; verdetto: `SEMANTICA_VALIDA_PROBLEMA_FUSIONE`.
 
 **Nessun push remoto**: In conformità alle direttive di sicurezza, nessun commit o artefatto è stato inviato a repository remoti o servizi esterni.
