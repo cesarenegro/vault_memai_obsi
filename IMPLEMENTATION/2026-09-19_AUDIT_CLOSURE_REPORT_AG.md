@@ -437,11 +437,58 @@ Con i parametri congelati (commit `2ec1996`) e applicati a `embeddings.rs`, è s
   - `Q26`: rango baseline 4 $\rightarrow$ **12** (uscita dalla top 10, regressione)
   - `Q33`: rango baseline 3 $\rightarrow$ **7** (rimane in top 10)
 - **Query Complessivamente Migliorate**: **32 query su 40** (le 13 recuperate + 19 query con avanzamento di rango nella top 10, inclusa `Q10` che partiva da rango 8 ed è avanzata a rango 4).
-- **Query con Rango e Recall Invariati**: **3 query** (`Q08` rank 1$\rightarrow$1; `Q19` rank 1$\rightarrow$1; `Q27` rank 1$\rightarrow$1).
+- **Query con Rango e Recall Invariati**: **3 query** (`Q19` rank 1$\rightarrow$1; `Q22` rank 2$\rightarrow$2; `Q27` rank 1$\rightarrow$1).
+
+#### Tabella Comparativa Integrale delle 40 Query Gold (Baseline `3d88bc8` vs Post-Fusione `4c33068`)
+
+| Query ID | Doc Target | Rango Sem. | Rango Less. | Rango Ibrido Baseline (`3d88bc8`) | Rango Ibrido Finale (`4c33068`) | Esito Top 10 | Delta Rango |
+|:---|:---|:---|:---|:---|:---|:---|:---|
+| **Q01** | `doc_001` | 2 | 7 | 7 | **3** | Migliorata | +4 |
+| **Q02** | `doc_002` | 1 | 9 | 9 | **1** | Migliorata | +8 |
+| **Q03** | `doc_003` | 1 | 23 | 23 | **1** | **RECUPERATA** | +22 |
+| **Q04** | `doc_004` | 2 | 2 | 2 | **3** | Peggiorata | -1 |
+| **Q05** | `doc_005` | 1 | 41 | 41 | **2** | **RECUPERATA** | +39 |
+| **Q06** | `doc_006` | 1 | None | 13 | **2** | **RECUPERATA** | +11 |
+| **Q07** | `doc_007` | 1 | 5 | 5 | **1** | Migliorata | +4 |
+| **Q08** | `doc_008` | 1 | 2 | 2 | **1** | Migliorata | +1 |
+| **Q09** | `doc_009` | 1 | 4 | 4 | **1** | Migliorata | +3 |
+| **Q10** | `doc_010` | 1 | None | 8 | **4** | Migliorata | +4 |
+| **Q11** | `doc_011` | 1 | 4 | 4 | **2** | Migliorata | +2 |
+| **Q12** | `doc_012` | 1 | None | None | **1** | **RECUPERATA** | - |
+| **Q13** | `doc_013` | 1 | 4 | 4 | **2** | Migliorata | +2 |
+| **Q14** | `doc_014` | 1 | 3 | 3 | **2** | Migliorata | +1 |
+| **Q15** | `doc_015` | 1 | 5 | 5 | **2** | Migliorata | +3 |
+| **Q16** | `doc_016` | 8 | 5 | 5 | **9** | Peggiorata | -4 |
+| **Q17** | `doc_017` | 1 | 14 | 14 | **1** | **RECUPERATA** | +13 |
+| **Q18** | `doc_018` | 2 | None | 15 | **3** | **RECUPERATA** | +12 |
+| **Q19** | `doc_019` | 1 | 1 | 1 | **1** | Invariata | 0 |
+| **Q20** | `doc_020` | 1 | 2 | 2 | **1** | Migliorata | +1 |
+| **Q21** | `doc_021` | 24 | 6 | 6 | **26** | **PERSA (REGRESSIONE)** | -20 |
+| **Q22** | `doc_022` | 1 | 2 | 2 | **2** | Invariata | 0 |
+| **Q23** | `doc_023` | 1 | 15 | 15 | **1** | **RECUPERATA** | +14 |
+| **Q24** | `doc_024` | 1 | 6 | 6 | **1** | Migliorata | +5 |
+| **Q25** | `doc_025` | 1 | 2 | 2 | **1** | Migliorata | +1 |
+| **Q26** | `doc_026` | 9 | 4 | 4 | **12** | **PERSA (REGRESSIONE)** | -8 |
+| **Q27** | `doc_027` | 1 | 1 | 1 | **1** | Invariata | 0 |
+| **Q28** | `doc_028` | 1 | 5 | 5 | **2** | Migliorata | +3 |
+| **Q29** | `doc_029` | 1 | None | 23 | **2** | **RECUPERATA** | +21 |
+| **Q30** | `doc_030` | 1 | 6 | 6 | **4** | Migliorata | +2 |
+| **Q31** | `doc_031` | 1 | 27 | 27 | **1** | **RECUPERATA** | +26 |
+| **Q32** | `doc_032` | 1 | 12 | 12 | **2** | **RECUPERATA** | +10 |
+| **Q33** | `doc_033` | 5 | 3 | 3 | **7** | Peggiorata | -4 |
+| **Q34** | `doc_034` | 3 | 31 | 31 | **4** | **RECUPERATA** | +27 |
+| **Q35** | `doc_035` | 2 | 7 | 7 | **5** | Migliorata | +2 |
+| **Q36** | `doc_036` | 1 | 8 | 8 | **2** | Migliorata | +6 |
+| **Q37** | `doc_037` | 5 | 11 | 11 | **7** | **RECUPERATA** | +4 |
+| **Q38** | `doc_038` | 3 | 12 | 12 | **5** | **RECUPERATA** | +7 |
+| **Q39** | `doc_039` | 4 | 7 | 7 | **6** | Migliorata | +1 |
+| **Q40** | `doc_040` | 1 | 3 | 3 | **2** | Migliorata | +1 |
+
 - **Invarianza Gold e Corpus**:
   - `git diff v3.1.0-a05-corpus-v2-frozen HEAD -- tests/gold/A05_CORPUS` $\rightarrow$ **vuoto**
   - `git diff v3.1.0-a05-corpus-v2-frozen HEAD -- tests/gold/A05_QUERIES.json` $\rightarrow$ **vuoto**
 - **Evidenze Gold**: `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_FUSION_GOLD/` (`per-query.jsonl`, `summary.json`, `run.log`, `manifest-verify.log`, `cargo-test.log`).
+- **Documento di Diagnosi Analitica Dettagliata**: [A05_DIAGNOSI_Q21_Q26.md](file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_DIAGNOSI_Q21_Q26.md)
 - **Tag di Chiusura Rilievo C8**: `v3.1.0-fusion-fix` (sul commit del benchmark `4c33068`).
 
 ### 9.6 Diagnosi Analitica Dettagliata di Q21 e Q26 sui Dati Grezzi
