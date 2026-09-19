@@ -443,3 +443,66 @@ Con i parametri congelati (commit `2ec1996`) e applicati a `embeddings.rs`, è s
   - `git diff v3.1.0-a05-corpus-v2-frozen HEAD -- tests/gold/A05_QUERIES.json` $\rightarrow$ **vuoto**
 - **Evidenze Gold**: `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_FUSION_GOLD/` (`per-query.jsonl`, `summary.json`, `run.log`, `manifest-verify.log`, `cargo-test.log`).
 - **Tag di Chiusura Rilievo C8**: `v3.1.0-fusion-fix` (sul commit del benchmark `4c33068`).
+
+### 9.6 Diagnosi Analitica Dettagliata di Q21 e Q26 sui Dati Grezzi
+
+In riscontro alla richiesta di diagnosi indipendente senza modifica del codice di prodotto, sono stati estratti direttamente dai file grezzi di benchmark e dall'indice del vault (`tests/scratch/a05_v2_context_vault`) i parametri di ranking, i punteggi prima della normalizzazione e i valori di bonus per le due query uscite dalla top 10.
+
+#### 1. Dati Grezzi di Q21
+- **Query**: `"Rocchetti adesivi sprovvisti di supporto siliconato da gettare per azzerare i residui solidi"`
+- **Documento Atteso**: `doc_021` (`05_PACKAGING_KNOWLEDGE/doc_021.md`)
+- **Punteggi Target prima della normalizzazione**:
+  - Punteggio lessicale grezzo (`base_score`): **4.7000** (rango lessicale = **6** su 18 match lessicali totali)
+  - Punteggio semantico grezzo (`sem_sim`): **0.4236** (rango semantico = **24** su 120 documenti)
+- **Valori estremi per la query (138 candidati intermedi)**:
+  - `min_lex`: **0.000000**, `max_lex`: **24.090000** (escursione: **24.090000**)
+  - `min_sem`: **0.000000**, `max_sem`: **0.508415** (escursione: **0.508415**)
+- **Valori normalizzati e bonus del target**:
+  - `lex_norm`: **0.0000** (componente valutata separatamente dall'id), `sem_norm`: **0.8332**, `exact_bonus`: **0.00**
+  - Punteggio fuso finale: **0.4166** $\rightarrow$ **Rango ibrido finale: 26** (uscita dalla top 10).
+- **Verifica del bonus codice esatto**:
+  - `is_exact_code`: **false** (la query contiene spazi).
+  - `exact_bonus`: **0.00** sia per il target sia per **tutti i 25 documenti** che lo scavalcano.
+- **Competitori che scavalcano il target**:
+  - 23 documenti semantici con similarità superiore (0.4252..0.5084, score fuso 0.4182..0.5000), guidati da `doc_087` (sem 0.5084, fused 0.5000) e `doc_062` (sem 0.5066, fused 0.4982).
+  - 2 candidati lessicali con match lessicale forte su "adesivi" e "siliconata" (`doc_087` con lex 24.0900, fused 0.5000; `doc_062` con lex 21.6800, fused 0.4500).
+
+#### 2. Dati Grezzi di Q26
+- **Query**: `"Guaine avvolgibili ricavate da scarti plastici urbani post-consumo per stabilizzare i bancali"`
+- **Documento Atteso**: `doc_026` (`05_PACKAGING_KNOWLEDGE/doc_026.md`)
+- **Punteggi Target prima della normalizzazione**:
+  - Punteggio lessicale grezzo (`base_score`): **8.7000** (rango lessicale = **4**)
+  - Punteggio semantico grezzo (`sem_sim`): **0.4514** (rango semantico = **9**)
+- **Valori estremi per la query (134 candidati intermedi)**:
+  - `min_lex`: **0.000000**, `max_lex`: **19.390000** (escursione: **19.390000**)
+  - `min_sem`: **0.000000**, `max_sem`: **0.497034** (escursione: **0.497034**)
+- **Valori normalizzati e bonus del target**:
+  - `lex_norm`: **0.0000**, `sem_norm`: **0.9081**, `exact_bonus`: **0.00**
+  - Punteggio fuso finale: **0.4540** $\rightarrow$ **Rango ibrido finale: 12** (uscita dalla top 10).
+- **Verifica del bonus codice esatto**:
+  - `is_exact_code`: **false** (la query contiene spazi).
+  - `exact_bonus`: **0.00** sia per il target sia per **tutti gli 11 documenti** che lo scavalcano.
+- **Competitori che scavalcano il target (Ranks 1..11)**:
+  1. `doc_077` (Sem Norm 1.0000, Fused **0.5000**)
+  2. `doc_077` (Lex Norm 1.0000, Raw Lex 19.3900 su "Guaine", Fused **0.5000**)
+  3. `doc_114` (Lex Norm 1.0000, Raw Lex 19.3900 su "Guaine", Fused **0.5000**)
+  4. `doc_117` (Sem Norm 0.9608, Fused **0.4804**)
+  5. `doc_011` (Sem Norm 0.9434, Fused **0.4717**)
+  6. `doc_009` (Sem Norm 0.9308, Fused **0.4654**)
+  7. `doc_082` (Lex Norm 0.9288, Raw Lex 18.0100 su "scarti plastici", Fused **0.4644**)
+  8. `doc_031` (Sem Norm 0.9225, Fused **0.4613**)
+  9. `doc_001` (Sem Norm 0.9159, Fused **0.4579**)
+  10. `doc_072` (Sem Norm 0.9142, Fused **0.4571**)
+  11. `doc_078` (Sem Norm 0.9130, Fused **0.4565**)
+  12. **`doc_026` (Target)** (Sem Norm 0.9081, Fused **0.4540**)
+
+#### 3. Esito della Verifica delle Due Ipotesi
+1. **Ipotesi 1 — Il bonus 0,20 sul codice esatto premia documenti sbagliati**:
+   - **SMENTITA**: Per entrambe le query Q21 e Q26, `is_exact_code` è `false` (in quanto query in linguaggio naturale con spazi) e `matches_term` è `false` per tutti i documenti (nessun titolo o snippet include l'intera frase della query). Di conseguenza, `exact_bonus` è identicamente **0.00** sia per il documento atteso sia per tutti i concorrenti. Il bonus sui codici non ha avuto alcun ruolo nella regressione.
+2. **Ipotesi 2 — La normalizzazione min-max amplifica il rumore lessicale quando l'escursione è stretta**:
+   - **SMENTITA nella premessa, ma CHIARIFICATRICE nella dinamica**: L'escursione lessicale non è affatto stretta (24.09 su Q21 e 19.39 su Q26, con `min_lex = 0.0`).
+   - La dinamica reale emersa dall'ispezione dei dati è:
+     - **Disallineamento degli ID**: L'indice lessicale produce ID di 68 caratteri (`doc_<sha256>`), mentre il catalogo produce ID di 20 caratteri (`doc_<sha256[..16]>`). Nella fusione `embeddings.rs:589-606`, le due collezioni non fanno coalescenza per ID e competono come voci indipendenti pesate a 0.5 max.
+     - **Su Q21**: Nella baseline V2 con RRF, il termine `base_score * 0.01` manteneva artificialmente il documento al rango 6 grazie al solo match lessicale, mascherando una semantica debole (rango 24). Con la fusione normalizzata, i 23 documenti semantici superiori e i match lessicali più forti hanno ricollocato il target al rango 26, fedele alla reale bassa pertinenza semantica del vettore.
+     - **Su Q26**: Il target era al limite della top 10 nella semantica pura (rango 9). L'inserimento di 3 competitori puramente lessicali che contenevano parole chiave della query ("Guaine", "scarti plastici") con score lessicale elevato (18.01–19.39 normalizzati a ~0.5000) ha inserito 3 posizioni davanti al target, facendolo scivolare da rango 9 a rango 12.
+
