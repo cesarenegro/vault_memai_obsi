@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
 
-const QUERIES_PATH = path.join(ROOT, 'tests/gold/A05_QUERIES.json');
+const QUERIES_PATH = process.argv[2] ? path.resolve(process.argv[2]) : path.join(ROOT, 'tests/gold/A05_QUERIES.json');
 const CORPUS_DIR = path.join(ROOT, 'tests/gold/A05_CORPUS');
 
 export const ITALIAN_STOPWORDS = new Set([

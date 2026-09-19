@@ -1,0 +1,332 @@
+[
+  {
+    "queryId": "DEV01",
+    "text": "Membrane flessibili ad alta impermeabilita gassosa per mantenere inalterata la freschezza degli alimenti secchi zuccherati",
+    "relevantDocumentIds": [
+      "doc_003"
+    ],
+    "relevantPassageIds": [
+      "doc_003_p0"
+    ],
+    "relevantTargetExcerpt": "Specifiche film barriera EVOH accoppiato a PE per la salvaguardia della fragranza dei biscotti e delle torte confezionate industriali."
+  },
+  {
+    "queryId": "DEV02",
+    "text": "Apparecchi con trasduttori piezoelettrici per unire lembi polimerici evitando shock calorici ai principi attivi racchiusi",
+    "relevantDocumentIds": [
+      "doc_005"
+    ],
+    "relevantPassageIds": [
+      "doc_005_p0"
+    ],
+    "relevantTargetExcerpt": "Impianto di saldatura a ultrasuoni per buste flessibili: il generatore piezoceramico trasmette oscillazioni elastiche che fondono lo strato interno senza surriscaldare il blister."
+  },
+  {
+    "queryId": "DEV03",
+    "text": "Procedure sperimentali per verificare la tenuta meccanica delle spedizioni postali sottoposte a scuotimenti e lanci verticali",
+    "relevantDocumentIds": [
+      "doc_006"
+    ],
+    "relevantPassageIds": [
+      "doc_006_p0"
+    ],
+    "relevantTargetExcerpt": "Standard di simulazione trasporto ISTA 3A: caduta libera da altezza variabile e vibrazione sinusoidale casuale per pacchi destinati a corrieri espressi."
+  },
+  {
+    "queryId": "DEV04",
+    "text": "Sistemi meccatronici a braccio articolato per accatastare fardelli pesanti a ritmo elevato sulle piattaforme logistiche",
+    "relevantDocumentIds": [
+      "doc_012"
+    ],
+    "relevantPassageIds": [
+      "doc_012_p0"
+    ],
+    "relevantTargetExcerpt": "Cella di pallettizzazione robotizzata con pinza pneumatica: movimentazione automatizzata di casse da 25 kg con frequenza di venti cicli al minuto."
+  },
+  {
+    "queryId": "DEV05",
+    "text": "Linee meccanizzate per sagomare contenitori prismatici pieghevoli stendendo resine adesive a caldo sui lembi di chiusura",
+    "relevantDocumentIds": [
+      "doc_017"
+    ],
+    "relevantPassageIds": [
+      "doc_017_p0"
+    ],
+    "relevantTargetExcerpt": "Formatrice automatica per scatole fustellate tipo fefco 0201: apertura del fustellato piano, piega delle alette inferiori ed erogazione di mastice termoindurente."
+  },
+  {
+    "queryId": "DEV06",
+    "text": "Scarica elettrica ionizzante per incrementare la bagnabilita e la tensione adesiva delle pellicole sintetiche estruse",
+    "relevantDocumentIds": [
+      "doc_018"
+    ],
+    "relevantPassageIds": [
+      "doc_018_p0"
+    ],
+    "relevantTargetExcerpt": "Trattamento corona superficiale: generazione di plasma dielettrico per innalzare l energia superficiale oltre 42 dine consentendo la laminazione solventless."
+  },
+  {
+    "queryId": "DEV07",
+    "text": "Sensori biochimici che manifestano un mutamento visibile indelebile in seguito allo scongelamento accidentale dei prodotti deperibili",
+    "relevantDocumentIds": [
+      "doc_023"
+    ],
+    "relevantPassageIds": [
+      "doc_023_p0"
+    ],
+    "relevantTargetExcerpt": "Indicatori tempo-temperatura TTI basati su reazioni enzimatiche: modificazione cromatica irreversibile che allerta se la catena refrigerata e stata interrotta."
+  },
+  {
+    "queryId": "DEV08",
+    "text": "Impaccamento a depressione pneumatica dove una guaina termoplastica calda fascia perfettamente bistecche e tessuti muscolari",
+    "relevantDocumentIds": [
+      "doc_029"
+    ],
+    "relevantPassageIds": [
+      "doc_029_p0"
+    ],
+    "relevantTargetExcerpt": "Confezionamento skin-pack sottovuoto: riscaldamento di un film superiore altamente deformabile che avvolge il filetto senza formare sacche d aria e previene l essudato."
+  },
+  {
+    "queryId": "DEV09",
+    "text": "Recipienti tubolari ibridi dotati di un lembo a trazione per staccare la piastra basale prima della raccolta differenziata",
+    "relevantDocumentIds": [
+      "doc_031"
+    ],
+    "relevantPassageIds": [
+      "doc_031_p0"
+    ],
+    "relevantTargetExcerpt": "Barattoli compositi ad agevole disassemblaggio: fondo metallico aggraffato con linguetta a strappo che separa la flangia in alluminio dal cilindro di cartoncino per il conferimento nei cassonetti."
+  },
+  {
+    "queryId": "DEV10",
+    "text": "Macchine di riempimento a cilindro tuffante con ugello a chiusura istantanea per condimenti pastosi in barattoli trasparenti",
+    "relevantDocumentIds": [
+      "doc_032"
+    ],
+    "relevantPassageIds": [
+      "doc_032_p0"
+    ],
+    "relevantTargetExcerpt": "Dosatori volumetrici a pistone con valvola rotante e taglia-goccia ad azionamento pneumatico per maionese e salse dense in vasetti di vetro."
+  },
+  {
+    "queryId": "DEV11",
+    "text": "Indagini di laboratorio per stimare lo sforzo assiale di schiacciamento sopportabile dagli imballi durante lo stoccaggio a catasta",
+    "relevantDocumentIds": [
+      "doc_034"
+    ],
+    "relevantPassageIds": [
+      "doc_034_p0"
+    ],
+    "relevantTargetExcerpt": "Prova di compressione verticale Box Compression Test BCT secondo ISO 12048: presse a piastre parallele registrano i kilonewton di cedimento delle pareti ondulate."
+  },
+  {
+    "queryId": "DEV12",
+    "text": "Cinghie mobili articolate in resina poliacetalica progettate per agevolare il lavaggio chimico antibatterico nelle linee carni",
+    "relevantDocumentIds": [
+      "doc_037"
+    ],
+    "relevantPassageIds": [
+      "doc_037_p0"
+    ],
+    "relevantTargetExcerpt": "Nastri trasportatori igienici a maglie aperte in POM: conformi alle prescrizioni EHEDG, superfici prive di punti di ristagno facilmente detersibili con schiume sanificanti."
+  },
+  {
+    "queryId": "DEV13",
+    "text": "Rilevatori a radiazione ionizzante in grado di scorgere impurita dense scheggiate o inclusioni dure dentro vassoi alimentari ermetici",
+    "relevantDocumentIds": [
+      "doc_038"
+    ],
+    "relevantPassageIds": [
+      "doc_038_p0"
+    ],
+    "relevantTargetExcerpt": "Ispezionatrice radiografica a raggi X in continuo: algoritmo di discriminazione di densita per identificare frammenti vetrosi, metallici e ossei all interno di vaschette sigillate."
+  },
+  {
+    "queryId": "DEV14",
+    "text": "Lamiere metalliche ferrose placcate con strati sottili protettivi destinate alla produzione di scatole per pomodori e fagioli",
+    "relevantDocumentIds": [
+      "doc_041"
+    ],
+    "relevantPassageIds": [
+      "doc_041_p0"
+    ],
+    "relevantTargetExcerpt": "La fabbricazione di barattoli in tre pezzi per legumi e pelati impiega acciaio a basso tenore di carbonio laminato a freddo con rivestimento di stagno."
+  },
+  {
+    "queryId": "DEV15",
+    "text": "Grandi sacche tessute dissipative provviste di filamenti conduttivi per trasferire a terra le tensioni durante lo svuotamento",
+    "relevantDocumentIds": [
+      "doc_042"
+    ],
+    "relevantPassageIds": [
+      "doc_042_p0"
+    ],
+    "relevantTargetExcerpt": "Lo scarico rapido di granuli polimerici o pigmenti fini crea cariche elettrostatiche che in atmosfere esplosive innescherebbero scintille disastrose."
+  },
+  {
+    "queryId": "DEV16",
+    "text": "Impianti robotizzati che piegano la sagoma ondulata vergine a ridosso delle bottiglie raggruppate formando un involucro compatto",
+    "relevantDocumentIds": [
+      "doc_043"
+    ],
+    "relevantPassageIds": [
+      "doc_043_p0"
+    ],
+    "relevantTargetExcerpt": "Le incartonatrici wraparound prelevano il foglio di cartone piatto dal magazzino avvolgendolo direttamente attorno al gruppo ordinato di prodotti."
+  },
+  {
+    "queryId": "DEV17",
+    "text": "Bustine adsorbenti a base di particelle porose vetrose per sottrarre vapore acqueo dai contenitori di microelettronica",
+    "relevantDocumentIds": [
+      "doc_044"
+    ],
+    "relevantPassageIds": [
+      "doc_044_p0"
+    ],
+    "relevantTargetExcerpt": "La protezione dei circuiti stampati e degli apparati ottici durante lo stoccaggio richiede il controllo rigoroso dell umidita residua interna."
+  },
+  {
+    "queryId": "DEV18",
+    "text": "Gusci sagomati in metallo leggero per macchine infusione in grado di resistere a spinte fluidodinamiche notevoli senza fessurarsi",
+    "relevantDocumentIds": [
+      "doc_045"
+    ],
+    "relevantPassageIds": [
+      "doc_045_p0"
+    ],
+    "relevantTargetExcerpt": "L erogazione del caffe espresso in capsule richiede recipienti capaci di sopportare pressioni idrauliche fino a venti bar senza deformazioni."
+  },
+  {
+    "queryId": "DEV19",
+    "text": "Dispositivi diagnostici basati sull assorbimento fotonico per intercettare particelle non metalliche pericolose sfuggite ai rilevatori magnetici",
+    "relevantDocumentIds": [
+      "doc_046"
+    ],
+    "relevantPassageIds": [
+      "doc_046_p0"
+    ],
+    "relevantTargetExcerpt": "La presenza di frammenti di vetro o lische calcificate rappresenta un pericolo che sfugge completamente ai normali metal detector elettromagnetici."
+  },
+  {
+    "queryId": "DEV20",
+    "text": "Attrezzature enologiche per congelare l apice delle caraffe ed eliminare i sedimenti fermentativi prima della rabboccatura zuccherina",
+    "relevantDocumentIds": [
+      "doc_047"
+    ],
+    "relevantPassageIds": [
+      "doc_047_p0"
+    ],
+    "relevantTargetExcerpt": "La fase finale di confezionamento dello spumante metodo classico richiede l espulsione del ghiacciolo contenente i lieviti esausti dal collo della bottiglia."
+  },
+  {
+    "queryId": "DEV21",
+    "text": "Boccette farmaceutiche ad altissima inerzia chimica per polveri iniettabili onde scongiurare il rilascio di ioni basici",
+    "relevantDocumentIds": [
+      "doc_048"
+    ],
+    "relevantPassageIds": [
+      "doc_048_p0"
+    ],
+    "relevantTargetExcerpt": "I medicinali per infusione e i composti liofilizzati esigono contenitori con una resistenza idrolitica elevatissima per evitare la delaminazione del vetro."
+  },
+  {
+    "queryId": "DEV22",
+    "text": "Tranciatura idrodinamica ad altissimo getto fluido cinetico per ritagliare profili elastometrici di tenuta senza bruciature",
+    "relevantDocumentIds": [
+      "doc_049"
+    ],
+    "relevantPassageIds": [
+      "doc_049_p0"
+    ],
+    "relevantTargetExcerpt": "La sagomatura di guarnizioni industriali in gomma densa, grafite armata o PTFE espanso esige tagli ortogonali privi di bave termiche o distorsioni."
+  },
+  {
+    "queryId": "DEV23",
+    "text": "Rilevatori sonori ad alta frequenza per allineare le sponde di rotoli polimerici traslucidi durante il trascinamento continuo",
+    "relevantDocumentIds": [
+      "doc_050"
+    ],
+    "relevantPassageIds": [
+      "doc_050_p0"
+    ],
+    "relevantTargetExcerpt": "Lo sbandamento laterale del film plastico trasparente durante lo svolgimento dalle bobine madri provoca disallineamenti di stampa e grinze diagonali."
+  },
+  {
+    "queryId": "DEV24",
+    "text": "Resine termofusibili sintetiche catalizzate per incollaggi ultraveloci che garantiscono sigillature tenaci senza carbonizzazioni negli erogatori",
+    "relevantDocumentIds": [
+      "doc_051"
+    ],
+    "relevantPassageIds": [
+      "doc_051_p0"
+    ],
+    "relevantTargetExcerpt": "Le linee di astucciamento moderne applicano gocce di colla fusa a oltre centosessanta gradi con tempi di pressatura inferiori al secondo."
+  },
+  {
+    "queryId": "DEV25",
+    "text": "Bilance automatiche in transito rapido dotate di deflettori pneumatici per deviare i pezzi con tara o grammature difformi",
+    "relevantDocumentIds": [
+      "doc_052"
+    ],
+    "relevantPassageIds": [
+      "doc_052_p0"
+    ],
+    "relevantTargetExcerpt": "Il rispetto dei quantitativi nominali dichiarati sulle confezioni per legge metrologica esige il controllo ponderale al cento percento della produzione."
+  },
+  {
+    "queryId": "DEV26",
+    "text": "Rulli d acciaio magnetizzati che trattengono lamierini incisi per sagomare autoadesivi preservando intatto il nastro cerato inferiore",
+    "relevantDocumentIds": [
+      "doc_053"
+    ],
+    "relevantPassageIds": [
+      "doc_053_p0"
+    ],
+    "relevantTargetExcerpt": "La produzione di etichette adesive in rotolo richiede la fustellatura precisa del frontale stampato senza intaccare il liner siliconato sottostante."
+  },
+  {
+    "queryId": "DEV27",
+    "text": "Confezionatrici orizzontali in cui il rotolo scorre dal basso verso l alto per fasciare ortaggi irregolari senza sporcare i saldatori",
+    "relevantDocumentIds": [
+      "doc_054"
+    ],
+    "relevantPassageIds": [
+      "doc_054_p0"
+    ],
+    "relevantTargetExcerpt": "Il confezionamento di broccoli, porri o sedano senza vassoietto rigido crea difficolta sulle normali macchine a saldatura inferiore a causa dei residui terrosi."
+  },
+  {
+    "queryId": "DEV28",
+    "text": "Fasci luminosi coerenti ad altissima energia per unire atermicamente fogli conduttori metallici nei moduli di accumulo trazione",
+    "relevantDocumentIds": [
+      "doc_055"
+    ],
+    "relevantPassageIds": [
+      "doc_055_p0"
+    ],
+    "relevantTargetExcerpt": "L assemblaggio dei pacchi batteria per autoveicoli elettrici prevede la giunzione di dozzine di sottili lamine di rame anodico e alluminio catodico."
+  },
+  {
+    "queryId": "DEV29",
+    "text": "Fogli di cellulosa ad elevata tenacita microforati per contenere pagnotte fragranti disperdendo l umore acqueo interno",
+    "relevantDocumentIds": [
+      "doc_056"
+    ],
+    "relevantPassageIds": [
+      "doc_056_p0"
+    ],
+    "relevantTargetExcerpt": "I sacchetti per il pane caldo e i prodotti da forno richiedono supporti cartacei resistenti al peso ma traspiranti per mantenere la crosta croccante."
+  },
+  {
+    "queryId": "DEV30",
+    "text": "Campi magnetici variabili che riscaldano diaframmi metallici per tappare ermeticamente boccette di emulsioni di bellezza",
+    "relevantDocumentIds": [
+      "doc_057"
+    ],
+    "relevantPassageIds": [
+      "doc_057_p0"
+    ],
+    "relevantTargetExcerpt": "La presenza di un sigillo sotto-tappo garantisce al consumatore l integrita del prodotto cosmetico e ne impedisce lo sversamento accidentale nei trasporti."
+  }
+]
