@@ -709,7 +709,11 @@ pub async fn hybrid_search_vault_with_vector(
             0.0
         };
 
-        let fused_score = 0.5 * lex_norm + 0.5 * sem_norm + exact_bonus;
+        // C10 formula (F2, k = 0.20): max(lex_norm, sem_norm) + 0.20 * min(lex_norm, sem_norm) + exact_bonus
+        // Ensures documents with a single strong signal (e.g. semantic-only with lex_norm = 0)
+        // preserve their score and rank above mediocre dual-signal documents, while continuing
+        // to reward multi-modal concurrence. Selected via dev tuning on 30 queries (Recall@10 = 0.933).
+        let fused_score = lex_norm.max(sem_norm) + 0.20 * lex_norm.min(sem_norm) + exact_bonus;
         c.item.score = fused_score;
         fused_candidates.push(FusedCandidate { item: c.item, fused_score });
     }
@@ -1154,5 +1158,100 @@ mod tests {
         assert_eq!(res[0].relative_path, "20_RAW_SOURCES/doc_both.txt", "Doc Both MUST be Rank 1");
         // Its score must strictly exceed Doc LexOnly and Doc SemOnly
         assert!(res[0].score > res[1].score, "Doc Both score ({}) must be > Rank 2 score ({})", res[0].score, res[1].score);
+    }
+
+    #[test]
+    fn test_hybrid_fusion_high_sem_pure_beats_mediocre_dual_signals() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path();
+        fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        fs::create_dir_all(path.join("20_RAW_SOURCES")).unwrap();
+
+        // Query terms: "alfa beta"
+        // 1. Doc High Lex: matches both terms "alfa" and "beta" repeatedly -> max lexical score (lex_norm = 1.0)
+        fs::write(
+            path.join("20_RAW_SOURCES/doc_high_lex.txt"),
+            "Trattamento speciale alfa beta con elementi alfa beta e parametri alfa beta concentrati.",
+        ).unwrap();
+
+        // 2. Doc Mediocre Dual: matches only ONE term "alfa" in longer text (lex_norm ~ 0.50), and moderate semantic similarity (0.50)
+        fs::write(
+            path.join("20_RAW_SOURCES/doc_mediocre_dual.txt"),
+            "Specifiche tecniche ordinarie di produzione industriale per componenti alfa senza altre caratteristiche rilevanti.",
+        ).unwrap();
+
+        // 3. Doc High Sem: matches NEITHER "alfa" nor "beta" (lex_norm = 0.0), but high semantic similarity (0.95)
+        fs::write(
+            path.join("20_RAW_SOURCES/doc_high_sem.txt"),
+            "Dispositivo criogenico avanzato per isolamento termico in camere pressurizzate.",
+        ).unwrap();
+
+        let _ = crate::catalog::sync_catalog_from_vault(path).unwrap();
+        crate::catalog::process_pending_extractions(path).unwrap();
+        let cat = crate::catalog::load_catalog(path).unwrap();
+        search::index_vault_search(path).unwrap();
+
+        let mut cache = EmbeddingsCache {
+            version: 1,
+            model: DEFAULT_EMBEDDINGS_MODEL.into(),
+            dimensions: 3,
+            entries: BTreeMap::new(),
+            last_updated_at: now_iso(),
+        };
+
+        // Query vector: [1.0, 0.0, 0.0]
+        // Doc High Sem: sim = 0.95
+        // Doc Mediocre Dual: sim = 0.50
+        // Doc High Lex: sim = 0.0
+        for doc in cat.documents.values() {
+            let vec = if doc.original_path.contains("doc_high_sem.txt") {
+                vec![0.95, 0.312, 0.0]
+            } else if doc.original_path.contains("doc_mediocre_dual.txt") {
+                vec![0.50, 0.866, 0.0]
+            } else {
+                vec![0.0, 1.0, 0.0]
+            };
+            for p in &doc.passages {
+                cache.entries.insert(
+                    p.passage_id.clone(),
+                    PassageEmbeddingEntry {
+                        passage_id: p.passage_id.clone(),
+                        document_id: doc.document_id.clone(),
+                        relative_path: doc.original_path.clone(),
+                        locator: p.locator.clone(),
+                        sha256: p.sha256.clone(),
+                        embedded_text_sha256: Some(p.sha256.clone()),
+                        model: DEFAULT_EMBEDDINGS_MODEL.into(),
+                        dimensions: 3,
+                        vector: vec.clone(),
+                        updated_at: now_iso(),
+                    },
+                );
+            }
+        }
+        save_embeddings_cache(path, &mut cache).unwrap();
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let res = rt.block_on(hybrid_search_vault_with_vector(
+            path,
+            SearchQuery {
+                term: Some("alfa beta".into()),
+                limit: Some(10),
+                ..Default::default()
+            },
+            Some(vec![1.0, 0.0, 0.0]),
+            true,
+        )).unwrap();
+
+        assert!(res.len() >= 2, "Expected at least 2 documents in results");
+        let high_sem_idx = res.iter().position(|r| r.relative_path.contains("doc_high_sem.txt")).expect("doc_high_sem must be present");
+        let mediocre_dual_idx = res.iter().position(|r| r.relative_path.contains("doc_mediocre_dual.txt")).expect("doc_mediocre_dual must be present");
+
+        // Under C10 formula (F2, k=0.20):
+        // doc_high_sem score: max(0.0, sem_norm) + 0.20 * min(0.0, sem_norm) ~ 1.00
+        // doc_mediocre_dual score: max(lex_norm, sem_norm) + 0.20 * min(lex_norm, sem_norm) + bonus ~ 0.55 + 0.10 + 0.05 = 0.70 < 1.00
+        // doc_high_sem MUST strictly outrank doc_mediocre_dual
+        assert!(high_sem_idx < mediocre_dual_idx, "doc_high_sem (rank {}) must beat doc_mediocre_dual (rank {})", high_sem_idx + 1, mediocre_dual_idx + 1);
+        assert!(res[high_sem_idx].score > res[mediocre_dual_idx].score, "doc_high_sem score ({}) must be > doc_mediocre_dual score ({})", res[high_sem_idx].score, res[mediocre_dual_idx].score);
     }
 }

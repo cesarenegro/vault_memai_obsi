@@ -159,7 +159,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for (idx, q) in queries.into_iter().enumerate() {
         let q_vec = query_vectors[idx].clone();
-        let expected_doc = q.relevant_document_ids.first().cloned().unwrap_or_default();
+        let _expected_doc = q.relevant_document_ids.first().cloned().unwrap_or_default();
 
         let is_match = |cand_id: &str, cand_path: &str| -> bool {
             q.relevant_document_ids.iter().any(|rel| cand_path.contains(rel) || cand_id == rel)
