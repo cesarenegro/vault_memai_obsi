@@ -8,6 +8,8 @@ tags: [limen-vault, troubleshooting, glossario]
 
 Torna all'indice: [[00_INDICE]]
 
+**Novità v3:** il percorso quotidiano è automatico, descritto in [[07_AUTOMAZIONE_DOCUMENTI]]. Le lezioni su compilazione e approvazione sotto sono esercizi manuali facoltativi.
+
 ## Messaggi dell'app e cosa fare
 
 Messaggi tradotti presenti in `apps/desktop/src/locale.tsx`:
@@ -44,7 +46,7 @@ Messaggi tradotti presenti in `apps/desktop/src/locale.tsx`:
 | Ricerca vuota | Indice aggiornato? Filtri? Campo `client`/`project` nella nota? | Togli filtri, AGGIORNA INDICE DI RICERCA |
 | Invio a OpenAI disabilitato | Anteprima senza fonti | Approva/indica note, aggiorna indice, nuova anteprima |
 | OpenAI non risponde | Rete, chiave, modello, credito | Leggi il dettaglio; il lavoro locale continua |
-| Fonte *Non supportata* | Formato PDF/Word ecc. | Converti in `.md`, `.txt` o `.html` |
+| Fonte non supportata dalla compilazione manuale | PDF/Word | Usa **CARICA DOCUMENTI** con automazione attiva |
 | APPROVA respinta | Destinazione fuori categoria, già esistente, non `.md`, in RAW, o revisione cambiata | Correggi percorso; riapri la proposta |
 | *Differenze rilevate* in Panoramica | Elenco file modificati/mancanti/aggiunti | Se le modifiche sono tue è normale |
 | Copia *Danneggiata* / *Incompleta* | — | Non usarla come copia valida; creane una nuova |
@@ -59,7 +61,7 @@ Messaggi tradotti presenti in `apps/desktop/src/locale.tsx`:
 ## Cose da non fare
 
 - Non scrivere a mano in `00_SYSTEM`, `80_AI_OUTPUTS`, `90_PROPOSALS`.
-- Non spostare file nelle cartelle `01`–`10` per aggirare l'approvazione.
+- Lascia a LIMEN la gestione delle note automatiche; non alterare registri o stati per aggirare i controlli.
 - Non tradurre nomi di cartelle o proprietà.
 - Non cancellare file di stato, journal o cartelle `.pending-*` / `.limen-download-*` per "far sparire" un errore.
 - Non aprire una staging di download parziale come Vault.

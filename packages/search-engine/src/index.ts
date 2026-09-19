@@ -13,6 +13,21 @@ export interface SearchQuery {
   offset?: number;
 }
 
+export interface SearchMatchingPassage {
+  passageId: string;
+  locator: string;
+  snippet: string;
+  score: number;
+}
+
+export interface SearchPassageRecord {
+  passage_id: string;
+  locator: string;
+  sha256: string;
+  text: string;
+  tokens: string[];
+}
+
 export interface SearchResultItem {
   id: string;
   title: string;
@@ -26,6 +41,9 @@ export interface SearchResultItem {
   score: number;
   updatedAt?: string;
   sha256: string;
+  matchingLocator?: string;
+  matchingPassageId?: string;
+  passages?: SearchMatchingPassage[];
 }
 
 export interface IndexStatusReport {
@@ -53,6 +71,7 @@ export interface SearchDocumentRecord {
   updated_at: string;
   tokens: string[]; // tokenized term frequencies or raw tokens
   content_preview: string;
+  passages?: SearchPassageRecord[];
 }
 
 export interface SearchIndexData {

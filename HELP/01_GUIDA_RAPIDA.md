@@ -4,37 +4,20 @@ type: help
 tags: [limen-vault, quickstart]
 ---
 
-# Guida rapida (10 passi)
+# Guida rapida v3
 
-Torna all'indice: [[00_INDICE]]
+Torna all’indice: [[00_INDICE]]
 
-1. **Avvia l'app** LIMEN Vault 0.2.0 dalla cartella Applicazioni dell'utente.
-   Se vedi "Modalità anteprima nel browser" non sei nell'app nativa: le operazioni sui file non sono disponibili.
-2. **Scegli il Vault.** Nella schermata *Benvenuto in LIMEN Vault*, campo **Percorso del Vault (cartella locale)**:
-   - Vault già esistente (es. `/Users/cesare/Documents/VAULT`) → **APRI VAULT ESISTENTE**.
-   - Vault nuovo, in una cartella inesistente o vuota → **CREA NUOVO VAULT**.
-3. **Controlla la Panoramica.** Lo stato atteso è *Pronto*. Guarda le quattro schede: File Markdown, Fonti originali, File delle proposte, Integrità SHA-256.
-4. **Apri in Obsidian** (pulsante sotto il menu). Al primo utilizzo Obsidian chiede di registrare la cartella: *Open folder as vault* → seleziona la cartella → torna in LIMEN e premi di nuovo **Apri in Obsidian**.
-5. **Scrivi le note in Obsidian** nella cartella giusta (`01_CLIENTS`, `02_PROJECTS`, …). Documenti grezzi in `20_RAW_SOURCES`.
-6. **Aggiorna l'indice**: sezione **Ricerca** → **AGGIORNA INDICE DI RICERCA**. Va rifatto dopo ogni modifica, salvataggio AI o approvazione.
-7. **Configura OpenAI** (facoltativo): **Impostazioni** → campo *Chiave API OpenAI* → **SALVA CHIAVE** → **VERIFICA PORTACHIAVI**.
-8. **Fai una domanda**: **Chiedi al Vault** → modello → domanda → **ANTEPRIMA FONTI** → controlla → **INVIA A OPENAI LE FONTI MOSTRATE**.
-9. **Approva la conoscenza**: **Proposte** → apri la proposta → indica la destinazione `.md` → spunta la conferma → **APPROVA REVISIONE MOSTRATA**.
-10. **Metti al sicuro**: **Copie locali** → **CREA COPIA LOCALE**. Per il CRM: **Trasferimenti** → **Pubblica conoscenza**.
+1. Apri **LIMEN Vault v3** e apri il Vault esistente oppure creane uno nuovo in una cartella vuota.
+2. Controlla che lo stato sia **Pronto**.
+3. Una volta sola: salva la chiave API in **Impostazioni**; in **Fonti** indica il modello e premi **ATTIVA AUTOMAZIONE**.
+4. Premi **CARICA DOCUMENTI** e scegli i file grezzi. Non convertirli prima.
+5. Lascia l’app aperta: LIMEN converte, normalizza, classifica, collega, indicizza e genera le wiki.
+6. Consulta **Avanzamento e documenti**; i risultati sono in **Conoscenza**, **Ricerca** e **Chiedi al Vault**.
+7. Per una domanda, prepara **ANTEPRIMA FONTI** e invia le fonti mostrate.
+8. Usa **Copie locali** per conservare una copia. La pubblicazione CRM è un’azione distinta.
 
-```mermaid
-flowchart TD
-  S[Avvio app] --> V{Vault esiste?}
-  V -- Sì --> O[APRI VAULT ESISTENTE]
-  V -- No --> N[CREA NUOVO VAULT]
-  O --> P[Panoramica: stato Pronto]
-  N --> P
-  P --> W[Scrivi in Obsidian]
-  W --> R[Ricerca: AGGIORNA INDICE DI RICERCA]
-  R --> Q[Chiedi al Vault]
-  Q --> A[Proposte: approva]
-  A --> C[Copie locali / Trasferimenti]
-```
+La configurazione autorizza le chiamate automatiche a OpenAI per classificazione e wiki. Conversione/OCR avvengono sul Mac. L’app riprende la coda alla riapertura. Errori e limiti sono descritti in [[07_AUTOMAZIONE_DOCUMENTI]].
 
 ## Dove va ogni file
 

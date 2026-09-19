@@ -3,6 +3,10 @@ use std::path::Path;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     match args.get(1).map(String::as_str) {
+        Some("auto-config") => output(limen_vault::automation::configure(Path::new(&args[2]), serde_json::from_str(&args[3]).expect("Config JSON"))),
+        Some("auto-run") => output(limen_vault::automation::run(Path::new(&args[2]))),
+        Some("auto-status") => output(limen_vault::automation::status(Path::new(&args[2]))),
+        Some("auto-key-status") => output(limen_vault::keychain::load().map(|k| k.is_some())),
         Some("m7-interrupt") => output(limen_vault::proposals::execute_with_checkpoint(Path::new(&args[2]), serde_json::from_str(&args[3]).expect("M7 JSON"), |stage| { if std::env::var("LIMEN_TEST_KILL_STAGE").ok().as_deref()==Some(stage) { unsafe { libc::raise(libc::SIGKILL); } } })),
         Some("knowledge") => output(limen_vault::knowledge::list(Path::new(&args[2]),&args[3])),
         Some("m7") => output(limen_vault::proposals::execute(Path::new(&args[2]), serde_json::from_str(&args[3]).expect("M7 JSON"))),

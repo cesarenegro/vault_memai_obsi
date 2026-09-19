@@ -8,8 +8,8 @@ tags: [limen-vault, reference]
 
 Torna all'indice: [[00_INDICE]]
 
-Il menu laterale contiene undici sezioni, in quest'ordine (da `App.tsx`):
-Panoramica · Chiedi al Vault · Conoscenza · Fonti · Ricerca · Risposte AI · Proposte · Copie locali · Trasferimenti · Sistema · Impostazioni.
+Il menu laterale contiene dodici sezioni, in quest'ordine (da `App.tsx`):
+Panoramica · Chiedi al Vault · Conoscenza · Fonti · Ricerca · Risposte AI · Proposte · Copie locali · Trasferimenti · Sistema · Guida & Aiuto · Impostazioni.
 Accanto ad alcune voci compaiono le sigle **M6**, **M3**, **M10**: sono i codici interni delle fasi di sviluppo, non indicano stati o errori.
 
 ---
@@ -84,16 +84,9 @@ Barra categorie: Clienti (`01_CLIENTS`), Progetti (`02_PROJECTS`), Marchi (`03_B
 
 ## Fonti
 
-| Elemento | Funzione |
-| --- | --- |
-| **AGGIORNA FONTI** | Rilegge `20_RAW_SOURCES` |
-| Colonne | Percorso della fonte · Estensione · Dimensione · Stato · Azione |
-| Stato *Da compilare* / *Compilata* / *Modificata* / *Non supportata* | Nessuna compilazione / compilazione registrata / fonte cambiata dopo la compilazione / formato non gestito |
-| **Compila bozza** | Compila una fonte |
-| **COMPILA TUTTE LE FONTI** | Compila l'elenco; *Riepilogo compilazione* separa i risultati |
+**CARICA DOCUMENTI** apre il selettore nativo macOS. **Configurazione dell’automazione** contiene modello, **ATTIVA AUTOMAZIONE** e **METTI IN PAUSA**. **Avanzamento e documenti** mostra esiti e destinazioni; **RIPROVA LE ECCEZIONI RISOLTE** riapre i tentativi dopo la correzione del problema.
 
-Formati supportati (`compiler.rs`): `.md`, `.markdown`, `.txt`, `.html`, `.htm`. PDF, Word ecc. non sono compilati.
-Le bozze vanno in `90_PROPOSALS` con `status: draft`.
+Conversione, categorie, collegamenti, indice e wiki sono automatici: formati e limiti in [[07_AUTOMAZIONE_DOCUMENTI]]. La tabella manuale sottostante è facoltativa e gestisce Markdown/testo/HTML, con bozze in `90_PROPOSALS`; non rappresenta l’intero elenco dei documenti automatici.
 
 ---
 
@@ -101,7 +94,7 @@ Le bozze vanno in `90_PROPOSALS` con `status: draft`.
 
 | Elemento | Funzione |
 | --- | --- |
-| **AGGIORNA INDICE DI RICERCA** | Ricostruisce l'indice locale (non si aggiorna da solo) |
+| **AGGIORNA INDICE DI RICERCA** | Ricostruisce l'indice locale (il ciclo automatico lo aggiorna dopo le elaborazioni) |
 | Stato indice | Numero documenti e data dell'ultima indicizzazione |
 | Campo principale | Parole, titoli, proprietà, etichette |
 | Filtri | Tutte le categorie · Filtra per cliente · Filtra per progetto · Filtra per etichette (separate da virgole) · Filtra per stato (Approvata, Bozza, In revisione, Archiviata) |
@@ -212,7 +205,7 @@ La riga *Servizi remoti* è un testo fisso: **non** controlla MEMAI, CRM o R2. P
 | Mostra il token di collegamento — mantienilo riservato | Rivela il token |
 | **REVOCA MCP** | Ferma l'endpoint e invalida il token |
 
-Strumenti esposti (`mcp.rs`): `list_vaults`, `search_vault`, `read_document`. Nient'altro: sola lettura, solo note approvate e indicizzate. Il riavvio dell'app spegne l'MCP.
+Strumenti esposti (`mcp.rs`): `list_vaults`, `search_vault`, `read_document`. Nient'altro: sola lettura, note approvate e note/wiki automatiche correnti e indicizzate. Il riavvio dell'app spegne l'MCP.
 
 **ChatGPT Business · tunnel privato** (facoltativo)
 
@@ -232,3 +225,7 @@ Il tunnel non si avvia da solo all'apertura dell'app; alla chiusura dell'app vie
 ## Menu nativi macOS
 
 Voci descritte nel manuale UI del 13 settembre 2026 (menu standard macOS, non ricontrollate nel codice): LIMEN Vault (Informazioni, Servizi, Nascondi, Esci) · File (Chiudi finestra) · Modifica (Annulla, Ripeti, Taglia, Copia, Incolla, Seleziona tutto — solo per il testo) · Vista (Schermo intero) · Finestra · Aiuto.
+
+## Guida & Aiuto
+
+Guida integrata offline con ricerca nei titoli/riepiloghi, indice dei capitoli e sezione Fonti automatica. I file HELP e il manuale nel pacchetto completano la consultazione.

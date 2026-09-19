@@ -71,7 +71,7 @@ export function ProposalPanel({ vaultPath, kind }: { vaultPath: string; kind: 'o
           {kind === 'output' ? 'Risposte AI salvate' : 'Revisione delle proposte'}
         </h3>
         <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.5, margin: 0 }}>
-          Le modifiche restano locali. L’inserimento nella conoscenza richiede l’approvazione della revisione mostrata. Dopo le modifiche aggiorna l’indice di ricerca; le differenze rispetto al manifesto restano visibili.
+          Le proposte sono bozze del percorso manuale: puoi leggerle, correggerle e approvarle prima di inserirle nella conoscenza. Il flusso automatico in Fonti crea invece note e wiki senza richiedere questa revisione per ogni file. AGGIORNA rilegge l’elenco; non approva né elabora documenti. Dopo modifiche manuali aggiorna l’indice di ricerca.
         </p>
       </div>
 

@@ -1,0 +1,17 @@
+[
+  {
+    "file": "documento.pdf",
+    "expected_marker": "LIMEN-PDF-529",
+    "found": true
+  },
+  {
+    "file": "scansione.pdf",
+    "expected_marker": "LIMEN-OCR-861",
+    "found": true
+  },
+  {
+    "file": "scansione.png",
+    "expected_marker": "LIMEN-OCR-861",
+    "found": true
+  }
+]

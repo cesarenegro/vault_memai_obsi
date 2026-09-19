@@ -1,0 +1,8 @@
+{
+  "version": "0.3.0",
+  "product": "LIMEN Vault v3",
+  "guide_match": true,
+  "manual_match": true,
+  "help_files_match": 8,
+  "application_shortcut": true
+}

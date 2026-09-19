@@ -1,0 +1,102 @@
+{
+  "vault": "/var/folders/0h/_bd3ktm50zs9g5bbgxch_zkr0000gn/T/limen-v3-ui-kl3uxk04/Vault",
+  "source_results": [
+    {
+      "name": "documento.docx",
+      "status": "ready",
+      "original_unchanged": true,
+      "marker_found": "LIMEN-DOCX-742",
+      "parts": 1
+    },
+    {
+      "name": "documento.pdf",
+      "status": "ready",
+      "original_unchanged": true,
+      "marker_found": "LIMEN-PDF-FINE",
+      "parts": 1
+    },
+    {
+      "name": "presentazione.pptx",
+      "status": "ready",
+      "original_unchanged": true,
+      "marker_found": "LIMEN-PPTX-318",
+      "parts": 1
+    },
+    {
+      "name": "scansione.pdf",
+      "status": "ready",
+      "original_unchanged": true,
+      "marker_found": "LIMEN-OCR-861",
+      "parts": 1
+    },
+    {
+      "name": "scansione.png",
+      "status": "ready",
+      "original_unchanged": true,
+      "marker_found": "LIMEN-OCR-861",
+      "parts": 1
+    },
+    {
+      "name": "tabella.xlsx",
+      "status": "ready",
+      "original_unchanged": true,
+      "marker_found": "LIMEN-XLSX-1201",
+      "parts": 16
+    },
+    {
+      "name": "testo.txt",
+      "status": "ready",
+      "original_unchanged": true,
+      "marker_found": "LIMEN-TXT-104",
+      "parts": 1
+    }
+  ],
+  "wiki_results": [
+    {
+      "job": "wiki:162033564ed94e7cf140d7ce184f481f633568b10de50108700e1b931b27bd57:0",
+      "status": "ready",
+      "attempts": 1,
+      "error": null,
+      "output": "01_CLIENTS/auto-wiki-bbbab0cd29387c617fe5ef7b1cc2de10404ce4fdd42449fcf5d2a4f4d4140504.md"
+    },
+    {
+      "job": "wiki:4dc8b2b3e466adaa2114596001db7622d34fd03430623dc81d8d45dfaca9661c:0",
+      "status": "ready",
+      "attempts": 1,
+      "error": null,
+      "output": "08_MARKET_RESEARCH/auto-wiki-9c363e146bbb5c633c1161df0d81969bb21e2513825b2e3caf2c50f097eac732.md"
+    },
+    {
+      "job": "wiki:7d765a6c2428b089d182c87ae9751c896ea652a351691f7dc3f8ca3f5d706291:0",
+      "status": "error",
+      "attempts": 3,
+      "error": "OpenAI HTTP 429",
+      "output": null
+    },
+    {
+      "job": "wiki:7d765a6c2428b089d182c87ae9751c896ea652a351691f7dc3f8ca3f5d706291:1",
+      "status": "ready",
+      "attempts": 1,
+      "error": null,
+      "output": "08_MARKET_RESEARCH/auto-wiki-c8f2cb9bc8178291ba56575ebe22fb54659895aa0430632252afa64b6a8528cd.md"
+    },
+    {
+      "job": "wiki:7d765a6c2428b089d182c87ae9751c896ea652a351691f7dc3f8ca3f5d706291:2",
+      "status": "ready",
+      "attempts": 1,
+      "error": null,
+      "output": "08_MARKET_RESEARCH/auto-wiki-398e13107c65c47fbe23812658cbb912e1aed7f82270d760d93ce03e5500a739.md"
+    }
+  ],
+  "automatic_index_updated": true,
+  "ui_ready_sources": 7,
+  "ui_ready_wikis": 4,
+  "ui_search_DOCX_results": 2,
+  "ui_rag_preview_sources": 2,
+  "ui_rag_include_drafts": false,
+  "ui_help_without_vault": true,
+  "ui_help_search_wiki": true,
+  "test_vault_paused": true,
+  "full_batch_complete": false,
+  "residual": "One wiki stopped at three attempts; final error OpenAI HTTP 429. Earlier invalid citation rejected; no fourth attempt."
+}

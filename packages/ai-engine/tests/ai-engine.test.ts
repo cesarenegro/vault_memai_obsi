@@ -11,3 +11,20 @@ test('Responses API: structured citations reject unknown IDs; no fallback citati
 test('Missing key, HTTP errors, malformed response and cancellation fail explicitly',async()=>{await assert.rejects(new OpenAIAdapter().askKnowledge({provider:'openai',prompt:'x'}),/key/);const selector=new ContextSelector({async queryDocuments(){return[{id:'a',relativePath:'01_CLIENTS/a.md',title:'a',category:'client',status:'approved',sha256:'a'.repeat(64),content:'a'}]}});const o={provider:'openai' as const,prompt:'x',model:'test',vaultPath:'.'};for(const status of [401,429,500]){const a=new OpenAIAdapter('test',async()=>({statusCode:status,body:'private server content'}));a.setContextSelector(selector);await assert.rejects(a.askKnowledge(o),new RegExp(`HTTP ${status}`));}const c=new AbortController();c.abort();const a=new OpenAIAdapter('test',async()=>({statusCode:200,body:'{}'}));a.setContextSelector(selector);await assert.rejects(a.askKnowledge({...o,signal:c.signal}),/cancelled/);});
 test('Forged approved status in otherwise valid index cannot expose draft bytes',async()=>{const v=fixture();try{await new LocalSearchEngine().indexVault(v);const file=path.join(v,'00_SYSTEM/SEARCH_INDEX.json');const index=JSON.parse(fs.readFileSync(file,'utf8'));const d=index.documents['01_CLIENTS/draft.md'];d.status='approved';fs.writeFileSync(file,JSON.stringify(index));assert.throws(()=>readDocument(v,d.id,d.sha256),/metadata differs/);}finally{fs.rmSync(v,{recursive:true,force:true});}});
 test('BOM and Unicode preserve the exact bytes identified by the citation hash',async()=>{const v=fixture();try{const file=path.join(v,'01_CLIENTS/approved.md');fs.writeFileSync(file,'\ufeff'+fs.readFileSync(file,'utf8'));await new LocalSearchEngine().indexVault(v);const r=await new ContextSelector().selectContext(v,{provider:'openai',prompt:'Acme'});assert.equal(r.sources.length,1);assert.equal(digest(r.sources[0].content),r.sources[0].sha256);}finally{fs.rmSync(v,{recursive:true,force:true});}});
+test('Automatic source registry enables retrieval without human approval and invalidates changed RAW',async()=>{
+ const v=fixture();try{
+  fs.mkdirSync(path.join(v,'20_RAW_SOURCES'));
+  const raw='20_RAW_SOURCES/raw.txt',relative='01_CLIENTS/auto-source-fixture.md';
+  const body='---\nid: auto-test\ntitle: Acme automatic\ntype: client\nstatus: review\ntags: [limen-auto, source]\n---\nAcme automatic source\n';
+  fs.writeFileSync(path.join(v,raw),'Acme original');fs.writeFileSync(path.join(v,relative),body);
+  const job={status:'ready',output:relative,outputHash:digest(body),parts:{[relative]:digest(body)},dependencies:{[raw]:digest('Acme original')}};
+  fs.writeFileSync(path.join(v,'00_SYSTEM/AUTO_KNOWLEDGE.json'),JSON.stringify({version:1,jobs:{[raw]:job}}));
+  await new LocalSearchEngine().indexVault(v);
+  const r=await new ContextSelector().selectContext(v,{provider:'openai',prompt:'Acme'});
+  const source=r.sources.find(s=>s.relativePath===relative);assert.ok(source);assert.equal(source.status,'review');
+  assert.equal(r.sources.filter(s=>s.status==='review').length,1);
+  fs.writeFileSync(path.join(v,raw),'Acme changed');
+  assert.throws(()=>readDocument(v,source.id,source.sha256!,true));
+  assert.ok(!(await new ContextSelector().selectContext(v,{provider:'openai',prompt:'Acme',includeRawAndDrafts:true})).sources.some(s=>s.relativePath===relative));
+ }finally{fs.rmSync(v,{recursive:true,force:true});}
+});

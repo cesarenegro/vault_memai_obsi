@@ -1,0 +1,26 @@
+{
+  "date": "2026-09-18",
+  "vault": "/Users/cesare/Documents/VAULT",
+  "scope": "Read-only metadata and inventory, no provider requests or user-document mutation",
+  "raw_files": 56,
+  "automation_config_present": false,
+  "automation_state_present": false,
+  "knowledge_by_folder": {
+    "01_CLIENTS": 0,
+    "02_PROJECTS": 0,
+    "03_BRANDS": 0,
+    "04_POSITIONING": 0,
+    "05_PACKAGING_KNOWLEDGE": 0,
+    "06_METHODS": 0,
+    "07_CASE_STUDIES": 1,
+    "08_MARKET_RESEARCH": 0,
+    "09_COMPETITORS": 0,
+    "10_APPROVED_OUTPUTS": 0
+  },
+  "index": {
+    "documents": 58,
+    "approved": 1,
+    "proposals": 57,
+    "automatic": 0
+  }
+}

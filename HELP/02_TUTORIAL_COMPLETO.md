@@ -8,6 +8,8 @@ tags: [limen-vault, tutorial]
 
 Torna all'indice: [[00_INDICE]]
 
+**Novità v3:** il percorso quotidiano è automatico, descritto in [[07_AUTOMAZIONE_DOCUMENTI]]. Le lezioni su compilazione e approvazione sotto sono esercizi manuali facoltativi.
+
 Durata: dipende dalle note che scrivi; nessuna stima fissa.
 Obiettivo: attraversare **tutte** le sezioni dell'app su un Vault che puoi buttare via,
 senza toccare il Vault reale `/Users/cesare/Documents/VAULT`.
@@ -94,7 +96,7 @@ Se non trovi nulla: togli i filtri, riaggiorna l'indice, verifica che il file es
 
 ## Lezione 5 — Da documento grezzo a bozza compilata
 
-1. Nel Finder copia un file `.md`, `.markdown`, `.txt`, `.html` o `.htm` in `VAULT-PROVA/20_RAW_SOURCES/` (esempio: `brief-demo.txt`). L'app non ha un pulsante di caricamento.
+1. Nel Finder copia un file `.md`, `.markdown`, `.txt`, `.html` o `.htm` in `VAULT-PROVA/20_RAW_SOURCES/` (esempio: `brief-demo.txt`). Puoi anche usare CARICA DOCUMENTI; qui mantieni l’automazione in pausa per esercitarti sul percorso manuale.
 2. **Fonti** → **AGGIORNA FONTI**. La riga mostra lo stato *Da compilare*.
 3. Premi **Compila bozza** sulla riga (oppure **COMPILA TUTTE LE FONTI**).
 4. Leggi il *Riepilogo compilazione* (compilate, invariate, non supportate, errori).
@@ -126,7 +128,7 @@ Prerequisiti: una chiave API OpenAI e l'indice aggiornato.
 1. **Impostazioni** → *Chiave API OpenAI* → **SALVA CHIAVE** (macOS può chiedere l'autorizzazione al Portachiavi) → **VERIFICA PORTACHIAVI**.
 2. **Chiedi al Vault** → *Modello OpenAI*: scrivi l'identificativo di un modello attivo nel tuo account (l'app non lo verifica prima dell'invio).
 3. Domanda (max 2.000 caratteri): `Che packaging richiede Cliente Demo?`
-4. Lascia **non spuntata** *Includi bozze indicizzate e note non approvate* per usare solo note approvate.
+4. Lascia **non spuntata** *Includi bozze indicizzate e note non approvate* per usare note approvate e note/wiki automatiche correnti.
 5. **ANTEPRIMA FONTI** → apri le fonti mostrate e controllale.
 6. Entro 5 minuti (l'anteprima scade dopo 300 secondi nel codice `ai.rs`) premi **INVIA A OPENAI LE FONTI MOSTRATE**.
 7. Leggi la risposta e apri le citazioni.

@@ -1,19 +1,20 @@
 ---
-title: "LIMEN Vault 0.2.0 — Guida e Help"
+title: "LIMEN Vault v3 (0.3.0) — Guida e Help"
 type: help
 created_at: "2026-09-16"
 tags: [limen-vault, help, tutorial]
 ---
 
-# LIMEN Vault 0.2.0 — Guida, Help e Tutorial
+# LIMEN Vault v3 (0.3.0) — Guida, Help e Tutorial
 
-Documentazione per l'utente dell'app macOS **LIMEN Vault 0.2.0** (Tauri, interfaccia italiana).
+Documentazione per l'utente dell'app macOS **LIMEN Vault v3 (0.3.0)** (Tauri, interfaccia italiana).
 Tutti i nomi di pulsanti, sezioni e messaggi sono stati ricontrollati sul codice sorgente
-(`apps/desktop/src/*.tsx`, `apps/desktop/src-tauri/src/*.rs`) il 16 settembre 2026.
+(`apps/desktop/src/*.tsx`, `apps/desktop/src-tauri/src/*.rs`) il 18 settembre 2026.
 
 | File | A cosa serve | Quando leggerlo |
 | --- | --- | --- |
-| [[01_GUIDA_RAPIDA]] | Partire in 10 passi | Primo giorno |
+| [[07_AUTOMAZIONE_DOCUMENTI]] | Caricare originali, ottenere note e wiki | Uso quotidiano |
+| [[01_GUIDA_RAPIDA]] | Partire in 8 passi | Primo giorno |
 | [[02_TUTORIAL_COMPLETO]] | Esercitazione guidata su un Vault di prova, dall'apertura alla pubblicazione | Formazione |
 | [[03_HELP_SCHERMATE]] | Riferimento di ogni sezione: campi, pulsanti, stati | Quando un pulsante non è chiaro |
 | [[04_WORKFLOW]] | Tutti i flussi di lavoro con diagrammi Mermaid | Per capire "cosa viene prima di cosa" |
@@ -46,6 +47,6 @@ flowchart LR
 
 ## Tre regole da ricordare sempre
 
-1. **LIMEN legge, Obsidian scrive.** Le note si scrivono in Obsidian; LIMEN consulta, compila, cerca, verifica e approva.
-2. **L'AI non scrive mai nella conoscenza approvata.** Può scrivere solo in `80_AI_OUTPUTS` e `90_PROPOSALS`. Una nota entra in `01`–`10` solo dopo la tua approvazione esplicita in **Proposte**.
-3. **Approvare non vuol dire pubblicare.** Per rendere una nota visibile nel CRM serve **Trasferimenti → Pubblica conoscenza**.
+1. **Carica gli originali: LIMEN organizza.** Dopo la configurazione, conversione, normalizzazione, classificazione, collegamenti, indice e wiki sono automatici.
+2. **Automatico non significa approvato da una persona.** Le note generate nelle categorie 01–09 restano `review`, sono consultabili con provenienza verificata e non sovrascrivono le modifiche umane.
+3. **Approvare non significa pubblicare.** Il CRM riceve soltanto la selezione pubblicata esplicitamente; il caricamento RAW non pubblica nulla.

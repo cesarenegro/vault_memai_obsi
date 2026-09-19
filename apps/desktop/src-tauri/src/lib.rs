@@ -13,3 +13,8 @@ pub mod tunnel;
 pub mod knowledge;
 
 pub mod sync;
+
+pub mod automation;
+pub mod extraction;
+pub mod catalog;
+pub mod embeddings;

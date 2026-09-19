@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {SafeDir,parseYamlFrontmatter} from '@limen-vault/vault-core';
+import {SafeDir,parseYamlFrontmatter,isAutomationPath,isCurrentAutomationDocument} from '@limen-vault/vault-core';
 import {KnowledgeCategorySchema} from '@limen-vault/vault-schema';
 import type {KnowledgeCategory} from '@limen-vault/vault-schema';
 import type {SearchEngineContract,SearchQuery,SearchResultItem,IndexStatusReport,SearchDocumentRecord,SearchIndexData} from './index.js';
@@ -32,7 +32,11 @@ export class LocalSearchEngine implements SearchEngineContract{
  async getIndexStatus(vaultPath:string):Promise<IndexStatusReport>{const r=SafeDir.open(vaultPath);try{const s=r.dir('00_SYSTEM');try{return status(readIndex(s));}finally{s.close();}}finally{r.close();}}
  async indexVault(vaultPath:string):Promise<IndexStatusReport>{
   const root=SafeDir.open(vaultPath);let sys:SafeDir|undefined,lock:SafeDir|undefined;
-  try{sys=root.dir('00_SYSTEM');sys.mkdir('.search-lock');lock=sys.dir('.search-lock');const old=readIndex(sys);
+  try{sys=root.dir('00_SYSTEM');
+   try{sys.mkdir('.search-lock');}catch{
+    const previous=sys.dir('.search-lock');try{const owner=JSON.parse(previous.read('owner.json'));if(!Number.isInteger(owner.pid)||owner.pid<2)throw new Error('Invalid search lock owner');let dead=false;try{process.kill(owner.pid,0);}catch(e){dead=(e as NodeJS.ErrnoException).code==='ESRCH';}if(!dead)throw new Error('Search lock held by active process');previous.unlinkFile('owner.json');sys.removeOwned('.search-lock',previous);}finally{previous.close();}sys.mkdir('.search-lock');
+   }
+   lock=sys.dir('.search-lock');lock.writeNew('owner.json',JSON.stringify({pid:process.pid}));const old=readIndex(sys);
    const data:SearchIndexData={version:2,last_indexed_at:'',documents:{}};
    const walk=(dir:SafeDir,rel:string,cat:string,depth:number)=>{if(depth>64)throw new Error('Directory depth exceeds 64');
     for(const name of dir.names()){if(name.startsWith('.'))continue;const full=`${rel}/${name}`;const fd=dir.open(name);let st;try{st=fs.fstatSync(fd);}finally{fs.closeSync(fd);}
@@ -44,7 +48,7 @@ export class LocalSearchEngine implements SearchEngineContract{
    };
    const names=root.names();for(const [dir,cat]of Object.entries(spec.categories)){if(!names.includes(dir))continue;const child=root.dir(dir);try{walk(child,dir,cat,0);}finally{child.close();}}
    data.last_indexed_at=new Date().toISOString();saveIndex(sys,data);return status(data);
-  }finally{if(lock&&sys){try{sys.removeOwned('.search-lock',lock);}finally{lock.close();}}sys?.close();root.close();}
+  }finally{if(lock&&sys){try{lock.unlinkFile('owner.json');sys.removeOwned('.search-lock',lock);}finally{lock.close();}}sys?.close();root.close();}
  }
  async search(vaultPath:string,query:SearchQuery):Promise<SearchResultItem[]>{
   const limit=query.limit??50,offset=query.offset??0;
@@ -56,7 +60,7 @@ export class LocalSearchEngine implements SearchEngineContract{
    const docs=Object.values(data.documents),terms=[...new Set(tokenizeText(query.term??''))].sort(compare);
    if(query.term?.trim()&&!terms.length)return [];
    const df=new Map(terms.map(t=>[t,docs.filter(d=>d.tokens.includes(t)).length]));const results:SearchResultItem[]=[];
-   for(const doc of docs){if(query.category&&doc.category!==query.category)continue;
+   for(const doc of docs){if(isAutomationPath(doc.relative_path)&&!isCurrentAutomationDocument(vaultPath,doc.relative_path,doc.sha256))continue;if(query.category&&doc.category!==query.category)continue;
     if((['client','project','status']as const).some(k=>query[k]&&normalizeText(doc[k]??'')!==normalizeText(query[k]!)))continue;
     if(query.tags?.some(t=>!doc.tags.map(normalizeText).includes(normalizeText(t))))continue;
     let score=terms.length?0:1;const tf=computeTermFrequencies(doc.tokens),title=tokenizeText(doc.title),tags=doc.tags.flatMap(tokenizeText);

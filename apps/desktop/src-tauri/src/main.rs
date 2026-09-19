@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod compiler;
-mod search;
+use limen_vault::search;
 mod snapshots;
 mod vault;
 
@@ -11,6 +11,40 @@ use std::{
 };
 use tauri::Manager;
 use vault::*;
+
+#[tauri::command]
+async fn automation_status(vault_path:String)->Result<limen_vault::automation::Report,String>{tauri::async_runtime::spawn_blocking(move||limen_vault::automation::status(Path::new(&vault_path))).await.map_err(|e|e.to_string())?}
+#[tauri::command]
+async fn automation_configure(vault_path:String,config:limen_vault::automation::Config)->Result<limen_vault::automation::Report,String>{tauri::async_runtime::spawn_blocking(move||limen_vault::automation::configure(Path::new(&vault_path),config)).await.map_err(|e|e.to_string())?}
+#[tauri::command]
+async fn automation_run(vault_path:String)->Result<limen_vault::automation::Report,String>{tauri::async_runtime::spawn_blocking(move||limen_vault::automation::run(Path::new(&vault_path))).await.map_err(|e|e.to_string())?}
+#[tauri::command]
+async fn automation_retry(vault_path:String)->Result<limen_vault::automation::Report,String>{tauri::async_runtime::spawn_blocking(move||limen_vault::automation::retry(Path::new(&vault_path))).await.map_err(|e|e.to_string())?}
+#[tauri::command]
+async fn automation_choose_files(vault_path:String,app:tauri::AppHandle)->Result<Vec<limen_vault::automation::ImportReceipt>,String>{
+    use tauri_plugin_dialog::DialogExt;
+    tauri::async_runtime::spawn_blocking(move||{
+        let selected=app.dialog().file().set_title("Carica documenti in LIMEN").blocking_pick_files().unwrap_or_default();
+        let vault = Path::new(&vault_path);
+        let mut paths = Vec::new();
+        for file in selected {
+            let path_buf = file.into_path().map_err(|e|e.to_string())?;
+            paths.push(path_buf);
+        }
+        let path_refs: Vec<&Path> = paths.iter().map(|p| p.as_path()).collect();
+        Ok(limen_vault::automation::import_paths(vault, &path_refs))
+    }).await.map_err(|e|e.to_string())?
+}
+
+#[tauri::command]
+async fn automation_import_files(vault_path: String, paths: Vec<String>) -> Result<Vec<limen_vault::automation::ImportReceipt>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let vault = Path::new(&vault_path);
+        let path_bufs: Vec<std::path::PathBuf> = paths.into_iter().map(std::path::PathBuf::from).collect();
+        let path_refs: Vec<&Path> = path_bufs.iter().map(|p| p.as_path()).collect();
+        Ok(limen_vault::automation::import_paths(vault, &path_refs))
+    }).await.map_err(|e| e.to_string())?
+}
 
 #[tauri::command]
 async fn tunnel_start(config: limen_vault::tunnel::Config, app:tauri::AppHandle, state:tauri::State<'_,limen_vault::tunnel::TunnelState>)->Result<serde_json::Value,String>{let state=state.inner().clone();let resources=app.path().resource_dir().map_err(|e|e.to_string())?;let data=app.path().app_data_dir().map_err(|e|e.to_string())?;tauri::async_runtime::spawn_blocking(move||state.start(config,&resources,&data)).await.map_err(|e|e.to_string())?}
@@ -59,7 +93,13 @@ fn create_vault(
 
 #[tauri::command]
 fn open_vault(target_path: String) -> OpenVaultResponse {
-    vault::open(Path::new(&target_path))
+    let p = Path::new(&target_path);
+    let res = vault::open(p);
+    if res.validation.is_valid {
+        let _ = limen_vault::catalog::sync_catalog(p);
+        let _ = limen_vault::catalog::process_pending_extractions(p);
+    }
+    res
 }
 
 #[tauri::command]
@@ -95,6 +135,20 @@ async fn list_snapshots(target_path: String) -> Result<Vec<SnapshotItemResponse>
     tauri::async_runtime::spawn_blocking(move || snapshots::list_snapshots(Path::new(&target_path)))
         .await
         .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn snapshot_restore(
+    vault_path: String,
+    snapshot_id: String,
+    destination_path: Option<String>,
+) -> Result<snapshots::SnapshotRestoreReport, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let dest_buf = destination_path.as_deref().map(Path::new);
+        snapshots::restore_snapshot(Path::new(&vault_path), &snapshot_id, dest_buf)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -248,6 +302,7 @@ fn main() {
     }
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .menu(|app| {
             use tauri::menu::{Menu, MenuItemKind};
             // Keep native menu roles and keyboard shortcuts; localize labels only.
@@ -287,7 +342,8 @@ fn main() {
         .manage(std::sync::Arc::new(limen_vault::sync::State::default()))
         .manage(limen_vault::mcp::McpState::default())
         .manage(limen_vault::tunnel::TunnelState::default())
-        .invoke_handler(tauri::generate_handler![sync_revoke_publication,sync_select_notes,sync_list_releases,sync_get_status,sync_save_config,sync_save_key,sync_disconnect,sync_test_connection,sync_plan_transfer,sync_execute_transfer,sync_cancel_transfer,
+        .manage(std::sync::Arc::new(limen_vault::automation::AutomationScheduler::default()))
+        .invoke_handler(tauri::generate_handler![automation_status,automation_configure,automation_run,automation_retry,automation_choose_files,automation_import_files,sync_revoke_publication,sync_select_notes,sync_list_releases,sync_get_status,sync_save_config,sync_save_key,sync_disconnect,sync_test_connection,sync_plan_transfer,sync_execute_transfer,sync_cancel_transfer,
             get_default_vault_path,
             create_vault,
             open_vault,
@@ -297,6 +353,7 @@ fn main() {
             verify_vault_integrity,
             create_snapshot,
             list_snapshots,
+            snapshot_restore,
             list_raw_sources,
             list_proposals,
             m7_execute,
@@ -306,7 +363,9 @@ fn main() {
             index_vault_search,
             search_vault,
             get_search_index_status,
-            ai_key_status,ai_save_key,ai_delete_key,ai_preview,ai_ask,ai_cancel,ai_read_source,mcp_start,mcp_stop,mcp_status
+            ai_list_models,search_read_document,ai_key_status,ai_save_key,ai_delete_key,ai_preview,ai_ask,ai_cancel,ai_read_source,mcp_start,mcp_stop,mcp_status,
+            catalog_sync,catalog_list_documents,catalog_process_extractions,catalog_get_document,catalog_get_by_path,catalog_verify_document_passage,catalog_read_verified_text,catalog_read_text,catalog_read_passage,catalog_open_original,catalog_reveal_in_finder,catalog_get_summary,
+            embeddings_get_status,embeddings_sync_vault,search_vault_hybrid
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -387,6 +446,15 @@ mod tests {
 }
 
 #[tauri::command]
+async fn ai_list_models()->Result<Vec<String>,String>{
+ let key=tauri::async_runtime::spawn_blocking(limen_vault::keychain::load).await.map_err(|_|"Portachiavi non disponibile")??.filter(|k|!k.is_empty()).ok_or("Configura la chiave API OpenAI in Impostazioni per vedere i modelli disponibili")?;
+ limen_vault::ai::list_models(key).await
+}
+#[tauri::command]
+async fn search_read_document(vault_path:String,document_id:String,sha256:String)->Result<String,String>{
+ tauri::async_runtime::spawn_blocking(move||limen_vault::search::read_indexed_document(Path::new(&vault_path),&document_id,&sha256).map(|(_,text)|text)).await.map_err(|_|"Lettura documento interrotta")?
+}
+#[tauri::command]
 async fn ai_key_status()->Result<bool,String>{tauri::async_runtime::spawn_blocking(||limen_vault::keychain::load().map(|v|v.is_some())).await.map_err(|_|"Keychain worker failed")?}
 #[tauri::command]
 async fn ai_save_key(key:String)->Result<(),String>{tauri::async_runtime::spawn_blocking(move||limen_vault::keychain::save(&key)).await.map_err(|_|"Keychain worker failed")?}
@@ -441,3 +509,188 @@ async fn sync_select_notes(app:tauri::AppHandle,state:tauri::State<'_,std::sync:
 
 #[tauri::command]
 async fn sync_revoke_publication(app:tauri::AppHandle)->Result<serde_json::Value,String>{let p=app.path().app_data_dir().map_err(|e|e.to_string())?;tauri::async_runtime::spawn_blocking(move||limen_vault::sync::revoke_publication(&p)).await.map_err(|e|e.to_string())?}
+
+#[tauri::command]
+async fn catalog_sync(vault_path: String) -> Result<limen_vault::catalog::CatalogSummary, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::catalog::sync_catalog_from_vault(Path::new(&vault_path))?;
+        limen_vault::catalog::catalog_summary(Path::new(&vault_path))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn catalog_list_documents(
+    vault_path: String,
+    options: Option<limen_vault::catalog::CatalogListOptions>,
+) -> Result<limen_vault::catalog::CatalogListResponse, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::catalog::list_documents(Path::new(&vault_path), options.unwrap_or_default())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn catalog_process_extractions(vault_path: String) -> Result<usize, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::catalog::process_pending_extractions(Path::new(&vault_path))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn catalog_get_document(
+    vault_path: String,
+    document_id: String,
+) -> Result<limen_vault::catalog::DocumentRecord, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::catalog::get_document(Path::new(&vault_path), &document_id)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn catalog_get_by_path(
+    vault_path: String,
+    rel_path: String,
+) -> Result<limen_vault::catalog::DocumentRecord, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::catalog::get_document_by_path(Path::new(&vault_path), &rel_path)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn catalog_verify_document_passage(
+    vault_path: String,
+    document_id: String,
+    passage_id: Option<String>,
+    expected_hash: Option<String>,
+    expected_revision: Option<u64>,
+) -> Result<limen_vault::catalog::DocumentVerificationReport, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::catalog::verify_document_passage_integrity(
+            Path::new(&vault_path),
+            &document_id,
+            passage_id.as_deref(),
+            expected_hash.as_deref(),
+            expected_revision,
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn catalog_read_verified_text(
+    vault_path: String,
+    document_id: String,
+    expected_revision: Option<u64>,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::catalog::read_verified_document_text(
+            Path::new(&vault_path),
+            &document_id,
+            expected_revision,
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn catalog_read_text(vault_path: String, document_id: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::catalog::read_document_text(Path::new(&vault_path), &document_id)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn catalog_read_passage(
+    vault_path: String,
+    document_id: String,
+    passage_id: String,
+) -> Result<limen_vault::catalog::DocumentPassage, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::catalog::read_passage(Path::new(&vault_path), &document_id, &passage_id)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn catalog_open_original(vault_path: String, document_id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::catalog::open_original(Path::new(&vault_path), &document_id)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn catalog_reveal_in_finder(vault_path: String, document_id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::catalog::reveal_in_finder(Path::new(&vault_path), &document_id)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn catalog_get_summary(
+    vault_path: String,
+) -> Result<limen_vault::catalog::CatalogSummary, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::catalog::catalog_summary(Path::new(&vault_path))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn embeddings_get_status(
+    vault_path: String,
+) -> Result<limen_vault::embeddings::EmbeddingsStatusReport, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::embeddings::embeddings_status(Path::new(&vault_path))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn embeddings_sync_vault(
+    vault_path: String,
+    api_key: Option<String>,
+    model: Option<String>,
+) -> Result<limen_vault::embeddings::EmbeddingsStatusReport, String> {
+    limen_vault::embeddings::sync_embeddings(
+        Path::new(&vault_path),
+        api_key.as_deref().unwrap_or(""),
+        model.as_deref(),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn search_vault_hybrid(
+    vault_path: String,
+    query: search::SearchQuery,
+    api_key: Option<String>,
+    use_semantic: Option<bool>,
+) -> Result<Vec<search::SearchResultItem>, String> {
+    limen_vault::embeddings::hybrid_search_vault(
+        Path::new(&vault_path),
+        query,
+        api_key,
+        use_semantic.unwrap_or(true),
+    )
+    .await
+}

@@ -29,8 +29,8 @@ fn call(path:&std::path::Path,vault_id:&str,drafts:bool,p:&Value)->Result<Value,
  for key in ["category","client","project"]{if a.get(key).is_some_and(|v|!v.is_string()||v.as_str().unwrap().len()>200){return Err("Invalid filter".into())}}
  let tags:Option<Vec<String>>=a.get("tags").map(|v|serde_json::from_value(v.clone())).transpose().map_err(|_|"Invalid tags")?;
  if tags.as_ref().is_some_and(|t|t.len()>20||t.iter().any(|x|x.len()>200)){return Err("Too many tags".into())}
- let rows=search::search_vault(path,search::SearchQuery{term:Some(string("term")?),category:a.get("category").and_then(Value::as_str).map(str::to_owned),client:a.get("client").and_then(Value::as_str).map(str::to_owned),project:a.get("project").and_then(Value::as_str).map(str::to_owned),tags,status:if drafts{None}else{Some("approved".into())},limit:Some(50),offset:None})?;
- let rows:Vec<_>=rows.into_iter().filter(|r|ai::eligible(&r.relative_path,&r.category,r.status.as_deref(),drafts)).take(10).collect();
+ let rows=search::search_vault(path,search::SearchQuery{term:Some(string("term")?),category:a.get("category").and_then(Value::as_str).map(str::to_owned),client:a.get("client").and_then(Value::as_str).map(str::to_owned),project:a.get("project").and_then(Value::as_str).map(str::to_owned),tags,status:None,limit:Some(50),offset:None})?;
+ let rows:Vec<_>=rows.into_iter().filter(|r|ai::eligible(&r.relative_path,&r.category,r.status.as_deref(),drafts)||crate::automation::is_current(path,&r.relative_path,&r.sha256)).take(10).collect();
  for r in &rows {ai::read_source(path,&r.id,&r.sha256,drafts)?;}
  Ok(json!(rows))
 }

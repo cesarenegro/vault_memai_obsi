@@ -17,7 +17,10 @@ I diagrammi usano Mermaid e si vedono direttamente in Obsidian.
 ```mermaid
 stateDiagram-v2
   [*] --> Grezzo: file in 20_RAW_SOURCES
-  Grezzo --> Bozza: Fonti / Compila bozza
+  Grezzo --> NoteAutomatiche: Conversione e classificazione
+  NoteAutomatiche --> Wiki: Sintesi con fonti
+  Wiki --> RicercaAI: Indicizzazione
+  Grezzo --> Bozza: Compilazione manuale facoltativa
   [*] --> RispostaAI: Chiedi al Vault / SALVA RISPOSTA COME BOZZA
   RispostaAI --> Proposta: Risposte AI / CREA PROPOSTA
   Bozza --> Proposta: Proposte / IMPORTA BOZZA MOSTRATA
@@ -35,7 +38,9 @@ stateDiagram-v2
 flowchart LR
   U((Utente in Obsidian)) --> K[01-10 Conoscenza]
   U --> R[20_RAW_SOURCES]
-  C[Compilatore] --> P[90_PROPOSALS]
+  AUTO[Automazione attivata] --> N[01-09 Note e wiki, status review]
+  AUTO -. legge .-> R
+  C[Compilatore manuale] --> P[90_PROPOSALS]
   AI[OpenAI] --> O[80_AI_OUTPUTS]
   AP{Approvazione umana in Proposte} --> K
   P --> AP
@@ -89,13 +94,13 @@ flowchart LR
   D --> E[Cerca con parole e filtri]
 ```
 
-## W4 — Da documento grezzo a conoscenza approvata
+## W4 — Percorso manuale facoltativo da testo a conoscenza approvata
 
 ```mermaid
 flowchart TD
   A[Copia .md .txt .html in 20_RAW_SOURCES dal Finder] --> B[Fonti > AGGIORNA FONTI]
   B --> C{Stato}
-  C -- Non supportata --> C1[Converti in formato supportato]
+  C -- Non supportata --> C1[Usa caricamento automatico per PDF e Office]
   C -- Da compilare / Modificata --> D[Compila bozza o COMPILA TUTTE LE FONTI]
   D --> E[Bozza in 90_PROPOSALS, status draft]
   E --> F[Proposte > Importa una bozza compilata > categoria > IMPORTA BOZZA MOSTRATA]
@@ -262,7 +267,7 @@ sequenceDiagram
   L->>T: avvio
   T-->>L: Tunnel locale pronto
   U->>G: verifica dal client ChatGPT
-  G->>T: letture di note approvate e indicizzate
+  G->>T: letture di note approvate e automatiche correnti indicizzate
   U->>L: ARRESTA TUNNEL BUSINESS
   U->>G: scollega il plugin (revoca remota)
 ```
@@ -272,7 +277,21 @@ sequenceDiagram
 ```mermaid
 flowchart LR
   A[ARRESTA TUNNEL, chiudi LIMEN] --> B[Installa nuova versione dal DMG]
-  B --> C[Versione precedente conservata in Applicazioni/LIMEN - versioni precedenti]
+  B --> C[Copia LIMEN Vault v3 in Applicazioni conservando la versione precedente]
   C --> D[Avvia, APRI VAULT ESISTENTE, verifica Pronto]
 ```
 Il Vault resta fuori dall'app. Rimuovere l'app non cancella il Vault né le chiavi nel Portachiavi.
+
+## W16 — Flusso quotidiano automatico
+
+```mermaid
+flowchart LR
+  U[Carica originali] --> R[RAW: originale integro]
+  R --> E[Estrazione e OCR locali]
+  E --> C[Classificazione AI]
+  C --> N[Note Markdown nelle categorie]
+  N --> W[Wiki con fonti e collegamenti]
+  W --> I[Indice e ricerca AI]
+```
+
+Una configurazione iniziale autorizza le chiamate automatiche; LIMEN deve restare aperta. Dettagli: [[07_AUTOMAZIONE_DOCUMENTI]].

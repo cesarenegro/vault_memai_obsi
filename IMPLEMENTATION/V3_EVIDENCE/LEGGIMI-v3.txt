@@ -1,0 +1,21 @@
+LIMEN Vault v3 — macOS Apple Silicon
+Versione interna 0.3.0. Requisito: macOS 26.3 o successivo.
+
+Apri LIMEN Vault v3.app. Per installarla, trascinala nella cartella Applications
+indicata nel DMG, oppure copiala nella tua cartella Applicazioni.
+La v3 ha un nome distinto: conserva la precedente app e chiudila prima di avviare
+la nuova. I dati restano nella cartella del Vault, esterna all’app.
+
+Apri il Vault esistente con APRI VAULT ESISTENTE; non ricrearlo.
+La sezione Guida & Aiuto contiene le istruzioni offline. In questo pacchetto
+sono presenti anche Manuale LIMEN v3.txt, Guida utente LIMEN v3.md e HELP v3.
+
+Novità: caricamento dei documenti grezzi, conversione e OCR sul Mac,
+normalizzazione, classificazione, cartelle, collegamenti, ricerca e wiki.
+Per il flusso automatico configura la chiave API in Impostazioni, poi modello
+e ATTIVA AUTOMAZIONE in Fonti. L’app deve rimanere aperta; le chiamate API
+per classificazione e wiki sono a consumo. Gli originali vengono conservati.
+
+Il caricamento non pubblica i documenti nel CRM. Le note automatiche si distinguono
+dalle note approvate da una persona. La firma/notarizzazione non certifica
+la correttezza dei risultati generati dall’AI.

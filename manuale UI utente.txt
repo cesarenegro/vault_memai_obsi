@@ -1,13 +1,11 @@
 LIMEN VAULT — MANUALE DELL’INTERFACCIA UTENTE
-Edizione italiana · 13 settembre 2026 · versione applicativa 0.2.0
+Edizione italiana · 18 settembre 2026 · LIMEN Vault v3 (0.3.0)
 
-Questo manuale descrive LIMEN Vault 0.2.0 con interfaccia italiana.
-Il programma viene installato in:
-/Users/cesare/Applications/LIMEN Vault 0.2.0.app
-Il nuovo installer italiano aggiorna anche una precedente 0.2.0 in inglese.
-Chiudi LIMEN prima dell’aggiornamento. La versione precedente viene conservata in
-Applicazioni/LIMEN - versioni precedenti; i dati del Vault rimangono intatti.
-Lo stato della distribuzione e le verifiche effettive sono registrati in TASK_LIST.md.
+Apri LIMEN Vault v3.app dal pacchetto consegnato. Puoi copiarla in Applicazioni.
+La v3 mantiene lo stesso formato del Vault; riapri la cartella esistente senza
+ricrearla. Le versioni precedenti e i relativi documenti restano separati.
+HELP è disponibile nel menu laterale Guida & Aiuto anche senza rete.
+Il pacchetto include questa guida, la guida estesa e la cartella HELP.
 
 1. CHE COS’È LIMEN E CHE COSA SERVE
 
@@ -47,7 +45,7 @@ Se appare “Modalità anteprima nel browser”, stai usando l’anteprima web: 
 programma macOS per le operazioni sui file. Le funzioni native non sono disponibili
 in quell’anteprima.
 
-Dopo l’apertura, il menu laterale contiene undici sezioni. Il pulsante “Apri in
+Dopo l’apertura, il menu laterale contiene dodici sezioni, inclusa Guida & Aiuto. Il pulsante “Apri in
 Obsidian” compare anche sotto il menu e nel riepilogo del Vault. Richiede Obsidian
 rilevato sul Mac. Al primo collegamento può essere necessario selezionare la cartella
 nel selettore di Obsidian; torna poi in LIMEN e ripeti l’apertura. Il selettore di
@@ -80,7 +78,7 @@ Procedura:
 1) Nel campo del modello indica l’identificativo di un modello API disponibile
    nel tuo account. LIMEN non garantisce disponibilità o accesso in base al nome.
 2) Scrivi la domanda, fino a 2.000 caratteri.
-3) Lascia deselezionata l’inclusione delle bozze se vuoi usare solo note approvate.
+3) Lascia deselezionata l’inclusione delle bozze per usare note approvate e note/wiki automatiche correnti.
    Se selezioni la casella, possono entrare bozze indicizzate e note non approvate;
    le fonti originali RAW restano escluse.
 4) Premi ANTEPRIMA FONTI. Apri le singole fonti per controllare testo, percorso,
@@ -118,30 +116,60 @@ Premi AGGIORNA CONOSCENZA dopo modifiche fatte in Obsidian. Una categoria vuota
 mostra un messaggio esplicito, non contenuti dimostrativi.
 Questa schermata consulta i documenti; per scriverli usa Obsidian.
 
-6. FONTI
+6. FONTI — AUTOMAZIONE DOCUMENTI E WIKI
 
-È l’elenco dei documenti originali sotto 20_RAW_SOURCES. Inserisci lì documenti
-Markdown, testo o HTML. L’interfaccia non offre un pulsante di caricamento file:
-usa il filesystem del Mac. La compilazione estrae testo e produce bozze locali;
-non è un servizio automatico di interpretazione AI di qualunque formato.
+Configurazione iniziale
 
-Premi AGGIORNA FONTI per rileggere l’elenco. La tabella mostra percorso, estensione,
-dimensione e stato. “Da compilare” significa che non esiste una compilazione
-corrente; “Compilata” indica una compilazione registrata; “Modificata” indica che
-la fonte non corrisponde più alla versione compilata.
+Apri Impostazioni, salva la chiave API OpenAI e verifica il Portachiavi. In Fonti → Configurazione dell’automazione indica un modello API disponibile nel tuo account e premi ATTIVA AUTOMAZIONE. L’attivazione autorizza l’invio automatico del testo estratto a OpenAI per classificazione e sintesi wiki, con consumo API. La chiave resta nel Portachiavi del Mac.
 
-“Compila bozza” elabora una singola fonte. COMPILA TUTTE LE FONTI elabora l’elenco.
-Il riepilogo distingue compilate, invariate, non supportate ed errori: un errore
-individuale non significa che tutte le altre fonti siano fallite.
-Le bozze vengono create in 90_PROPOSALS con status: draft. Le fonti originali
-sono conservate. Per revisionare e approvare passa a Proposte e importa la bozza.
+Uso quotidiano: carica soltanto gli originali
+
+1. Apri il Vault e vai in Fonti.
+2. Premi CARICA DOCUMENTI e seleziona uno o più file nel selettore macOS. In alternativa depositali in 20_RAW_SOURCES.
+3. Lascia LIMEN aperta: controlla nuovi file e modifiche ogni 15 secondi, elabora la coda e aggiorna la ricerca. Puoi usare le altre sezioni durante il lavoro.
+4. In Avanzamento e documenti trovi stato, errori e destinazione delle note. Consulta i risultati in Conoscenza, Ricerca e Chiedi al Vault.
+
+Non servono conversione in Markdown, scelta della cartella, compilazione o approvazione manuali per ciascun documento. Chiudendo l’app il lavoro si interrompe; riaprendo lo stesso Vault riprende dalla coda salvata. Dopo METTI IN PAUSA non partono nuovi cicli automatici.
+
+Dove vengono salvati i risultati
+
+| Contenuto | Destinazione |
+| --- | --- |
+| Originali integri | 20_RAW_SOURCES/ |
+| Note estratte e normalizzate | Cartella pertinente da 01_CLIENTS a 09_COMPETITORS |
+| Wiki tematiche con citazioni | Stesse categorie, raggruppate per cliente e progetto |
+| Registro elaborazioni e indice | 00_SYSTEM/ |
+
+Sono veri file .md, leggibili in Obsidian. I prefissi auto-source- e auto-wiki- distinguono note e wiki; il titolo leggibile compare nelle proprietà e nell’app. Cliente e progetto sono proprietà delle note: LIMEN non crea automaticamente sottocartelle per ciascuno. Se non riesce a classificare un documento usa la categoria Ricerca; i riferimenti cliente/progetto vengono accettati solo se compaiono nel testo e non sono automaticamente identificativi CRM.
+
+I documenti lunghi vengono divisi in parti collegate da una nota indice. Note e wiki mantengono riferimenti alle fonti. Se una fonte cambia o scompare, le versioni precedenti vengono escluse dal retrieval; i file rimangono conservati. Una modifica manuale a una nota generata viene preservata e segnalata, non sovrascritta.
+
+Formati, privacy e limiti
+
+- PDF testuali o scansionati; immagini PNG, JPEG, WebP, GIF, TIFF e HEIC: estrazione/OCR sul Mac.
+- Word DOC/DOCX, ODT/RTF, presentazioni PPTX: estrazione sul Mac, comprese le immagini Office supportate per OCR.
+- Fogli XLS/XLSX/XLSB/ODS: celle e formule estratte localmente.
+- Markdown, TXT, HTML, CSV/TSV, JSON, XML, YAML ed EML: lettura locale del testo.
+- OpenAI riceve il testo estratto per classificare e generare wiki. L’OCR può sbagliare caratteri; le wiki sono sintesi AI, non certificazioni umane.
+
+Massimo 32 MB per file, PDF fino a 500 pagine, timeout OCR 180 secondi e limite del testo estratto 16 MB per Office/fogli/PDF. File corrotti o protetti, formati sconosciuti e presentazioni legacy .ppt vengono segnalati; non si dichiara il supporto a qualsiasi file binario.
+
+Le note automatiche conservano status: review ma sono consultabili dall’AI e dai collegamenti MCP quando il registro conferma che sono aggiornate. Sono distinguibili dalle note approvate da una persona. Le altre bozze richiedono ancora l’opzione di inclusione. La pubblicazione CRM resta esplicita e richiede note approvate.
+
+Errori e ripresa
+
+La coda e gli originali rimangono nel Vault se manca la connessione o la chiave. Dopo tre tentativi per revisione LIMEN interrompe i tentativi su quel documento; dopo aver risolto la causa usa RIPROVA LE ECCEZIONI RISOLTE. Errori di accesso API o modello mettono in pausa l’automazione: correggi la configurazione e riattivala. Non cancellare registri o note per nascondere un errore.
+
+Compilazione manuale facoltativa
+
+La tabella manuale sottostante gestisce Markdown, testo e HTML. Compila bozza e COMPILA TUTTE LE FONTI creano bozze in 90_PROPOSALS per il percorso Proposte. L’assenza di PDF o Word in quella tabella non significa che il caricamento automatico sia fallito: consulta Avanzamento e documenti.
 
 7. RICERCA
 
 Cerca nel testo e nei metadati tramite un indice locale.
 Premi AGGIORNA INDICE DI RICERCA la prima volta e dopo aggiunte o modifiche alle
-note, salvataggi AI o approvazioni. L’indice non va considerato sempre aggiornato
-in automatico. Lo stato mostra data e numero dei documenti indicizzati.
+note, salvataggi AI o approvazioni. Per le elaborazioni automatiche l’indice viene aggiornato dal ciclo; per le
+modifiche manuali resta disponibile il comando di aggiornamento. Lo stato mostra data e numero dei documenti indicizzati.
 
 Inserisci parole nel campo principale. Puoi combinare categoria, cliente, progetto,
 etichette separate da virgole e stato. I filtri usano i metadati delle note:
@@ -272,7 +300,7 @@ Collegamenti AI:
 
 MCP in sola lettura:
 ATTIVA MCP LOCALE espone il collegamento per client configurati, limitato alle note
-approvate e indicizzate del Vault corrente. Controlla indirizzo e ID Vault.
+approvate e alle note/wiki automatiche correnti indicizzate del Vault corrente. Controlla indirizzo e ID Vault.
 Il token è riservato. REVOCA MCP invalida il collegamento e il token corrente.
 Il riavvio dell’app disattiva il collegamento: non considerarlo un servizio sempre acceso.
 
@@ -298,7 +326,7 @@ Modifica: Annulla, Ripeti, Taglia, Copia, Incolla, Seleziona tutto, secondo il
 controllo di testo selezionato. Non sono comandi di annullamento della pubblicazione.
 Vista: Schermo intero.
 Finestra: Riduci a icona, Ingrandisci, Chiudi finestra.
-Aiuto: menu nativo; questo manuale è un file separato.
+Guida & Aiuto: sezione integrata con ricerca e capitoli; i manuali sono anche file separati.
 Le voci aggiunte dal sistema operativo o da altre app seguono la lingua di macOS.
 
 15. WORKFLOW COMPLETI
@@ -394,7 +422,7 @@ Vault non valido: controlla percorso e messaggi di validazione; apri un Vault LI
 strutturato correttamente, senza sovrascrivere la cartella esistente.
 Nessuna nota: verifica la categoria e i file reali; i file di sistema non sono conoscenza.
 Ricerca vuota: rimuovi filtri non necessari e aggiorna l’indice.
-AI senza fonti: verifica presenza, indicizzazione e approvazione delle note.
+AI senza fonti: verifica indice, note approvate o note automatiche correnti.
 AI non disponibile: controlla chiave, modello, rete e messaggio; il locale resta utilizzabile.
 Cloud non configurato: richiedi il codice all’amministratore; non cambiare bucket a caso.
 NO_PUBLICATION nel CRM: serve una pubblicazione approvata completata per il Vault collegato.

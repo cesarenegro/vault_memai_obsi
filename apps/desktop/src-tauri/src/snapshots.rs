@@ -482,6 +482,104 @@ pub fn list_snapshots(path: &Path) -> Result<Vec<SnapshotItemResponse>, String> 
     Ok(out)
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SnapshotRestoreReport {
+    pub snapshot_id: String,
+    pub destination_path: String,
+    pub files_restored: usize,
+    pub bytes_restored: u64,
+    pub integrity_verified: bool,
+    pub restored_at: String,
+}
+
+pub fn restore_snapshot(
+    vault_path: &Path,
+    snapshot_id: &str,
+    destination_path: Option<&Path>,
+) -> Result<SnapshotRestoreReport, String> {
+    component(snapshot_id)?;
+    let check = verify_snapshot_integrity(vault_path, snapshot_id);
+    if !check.is_integrity_valid {
+        return Err(format!(
+            "Impossibile ripristinare: la copia locale è corrotta o incompleta ({:?})",
+            check.errors
+        ));
+    }
+
+    let default_dest = vault_path
+        .parent()
+        .unwrap_or(vault_path)
+        .join(format!("{}_RECUPERO_{}", vault_path.file_name().unwrap_or_default().to_string_lossy(), snapshot_id));
+    let target_dest = destination_path.unwrap_or(&default_dest);
+
+    if target_dest == vault_path {
+        return Err("Il ripristino richiede una cartella di destinazione separata per evitare sovrascritture distruttive".into());
+    }
+
+    let snap_dir = vault_path.join("00_SYSTEM/SNAPSHOTS").join(snapshot_id);
+    let manifest_bytes = std::fs::read(snap_dir.join("snapshot_manifest.json"))
+        .map_err(|e| format!("Lettura manifesto snapshot fallita: {e}"))?;
+    let manifest_val: Value = serde_json::from_slice(&manifest_bytes)
+        .map_err(|e| format!("Parsing manifesto snapshot fallito: {e}"))?;
+    let files = manifest_val["files"]
+        .as_array()
+        .ok_or("Formato file nel manifesto non valido")?;
+
+    std::fs::create_dir_all(target_dest)
+        .map_err(|e| format!("Creazione cartella di destinazione fallita: {e}"))?;
+
+    let mut files_restored = 0;
+    let mut bytes_restored = 0u64;
+
+    for file_entry in files {
+        let rel_path = file_entry["path"].as_str().ok_or("Percorso file mancante")?;
+        let expected_sha = file_entry["sha256"].as_str().ok_or("Hash mancante")?;
+
+        let src_file = snap_dir.join(rel_path);
+        let dst_file = target_dest.join(rel_path);
+
+        if let Some(parent) = dst_file.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+
+        let content = std::fs::read(&src_file).map_err(|e| format!("Lettura da snapshot fallita: {e}"))?;
+        let actual_sha = compute_sha256(&content);
+        if actual_sha != expected_sha {
+            return Err(format!("Corruzione file rilevata durante il recupero: {rel_path}"));
+        }
+
+        std::fs::write(&dst_file, &content).map_err(|e| format!("Scrittura file recuperato fallita: {e}"))?;
+        files_restored += 1;
+        bytes_restored += content.len() as u64;
+    }
+
+    // Create a valid 00_SYSTEM/VAULT_MANIFEST.json in restored vault
+    let sys_dir = target_dest.join("00_SYSTEM");
+    std::fs::create_dir_all(&sys_dir).map_err(|e| e.to_string())?;
+    let now = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let recovered_manifest = json!({
+        "schema_version": 1,
+        "vault_id": format!("recovered-{}", snapshot_id),
+        "vault_name": format!("Vault recuperato da {}", snapshot_id),
+        "created_at": now,
+        "updated_at": now,
+        "files": files
+    });
+    std::fs::write(
+        sys_dir.join("VAULT_MANIFEST.json"),
+        serde_json::to_vec_pretty(&recovered_manifest).map_err(|e| e.to_string())?,
+    ).map_err(|e| e.to_string())?;
+
+    Ok(SnapshotRestoreReport {
+        snapshot_id: snapshot_id.to_string(),
+        destination_path: target_dest.to_string_lossy().to_string(),
+        files_restored,
+        bytes_restored,
+        integrity_verified: true,
+        restored_at: now,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -662,5 +760,27 @@ mod tests {
             original
         );
         assert_eq!(names(&c).unwrap().len(), 4);
+    }
+
+    #[test]
+    fn test_snapshot_restore_to_separate_folder_verifies_hashes() {
+        let (t, p) = fixture();
+        let snap = create_snapshot(&p, Some("Pre-restore test".into())).unwrap();
+        assert_eq!(snap.integrity_status, "valid");
+
+        // Target separate directory
+        let dest = t.path().join("recovered_vault");
+        let rep = restore_snapshot(&p, &snap.id, Some(&dest)).unwrap();
+        assert!(rep.integrity_verified);
+        assert!(rep.files_restored >= 2);
+        assert!(dest.join("00_SYSTEM/HOME.md").exists());
+        assert!(dest.join("00_SYSTEM/VAULT_MANIFEST.json").exists());
+
+        // Verify recovered vault has valid manifest and matching files
+        let rec_integrity = verify_manifest_integrity(&dest);
+        assert!(rec_integrity.is_integrity_valid);
+
+        // Verify restoring to the same active vault folder is refused (no destructive overwrite)
+        assert!(restore_snapshot(&p, &snap.id, Some(&p)).is_err());
     }
 }

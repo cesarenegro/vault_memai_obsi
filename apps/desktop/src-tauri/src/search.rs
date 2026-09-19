@@ -44,6 +44,21 @@ pub struct SearchQuery {
     pub offset: Option<usize>,
 }
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SearchPassageRecord {
+    pub passage_id: String,
+    pub locator: String,
+    pub sha256: String,
+    pub text: String,
+    pub tokens: Vec<String>,
+}
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SearchMatchingPassage {
+    pub passage_id: String,
+    pub locator: String,
+    pub snippet: String,
+    pub score: f64,
+}
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SearchResultItem {
     pub id: String,
     pub title: String,
@@ -57,6 +72,12 @@ pub struct SearchResultItem {
     pub score: f64,
     pub updated_at: Option<String>,
     pub sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub matching_locator: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub matching_passage_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub passages: Vec<SearchMatchingPassage>,
 }
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IndexStatusReport {
@@ -89,6 +110,8 @@ pub struct SearchDocumentRecord {
     pub updated_at: String,
     pub tokens: Vec<String>,
     pub content_preview: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub passages: Vec<SearchPassageRecord>,
 }
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SearchIndexData {
@@ -102,7 +125,7 @@ fn id(p: &str) -> String {
 fn relative(p: &str) -> Result<(), String> {
     let parts: Vec<_> = p.split('/').collect();
     if parts.len() < 2
-        || !spec().categories.contains_key(parts[0])
+        || (!spec().categories.contains_key(parts[0]) && parts[0] != "20_RAW_SOURCES")
         || parts
             .iter()
             .any(|s| s.is_empty() || *s == "." || *s == ".." || s.contains(['\\', '\0']))
@@ -112,7 +135,7 @@ fn relative(p: &str) -> Result<(), String> {
     Ok(())
 }
 fn valid_status(s: &str) -> bool {
-    ["draft", "review", "approved", "archived"].contains(&s)
+    ["draft", "review", "approved", "archived", "auto", "legacy_draft"].contains(&s)
 }
 fn valid_category(s: &str) -> bool {
     spec().categories.values().any(|v| v == s) || s == "raw_source"
@@ -123,7 +146,7 @@ fn validate(data: &SearchIndexData) -> Result<(), String> {
     }
     for (p, d) in &data.documents {
         relative(p)?;
-        if d.id != id(p)
+        if (d.id != id(p) && !d.id.starts_with("doc_"))
             || d.relative_path != *p
             || d.sha256.len() != 64
             || !d
@@ -192,6 +215,7 @@ impl Drop for Lock<'_> {
         if let Ok(d) = child(self.system, ".search-lock") {
             if let (Ok(a), Ok(b)) = (d.dir_metadata(), self.opened.dir_metadata()) {
                 if a.ino() == b.ino() && a.dev() == b.dev() {
+                    let _ = self.opened.remove_file("owner.json");
                     let _ = self.system.remove_dir(".search-lock");
                 }
             }
@@ -397,8 +421,24 @@ fn parse(
     let date = chrono::DateTime::from_timestamp_millis(mtime as i64)
         .ok_or("Invalid mtime")?
         .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let doc_id = id(p);
+    let chunked = crate::catalog::chunk_text_to_passages(&doc_id, &body);
+    let passages: Vec<SearchPassageRecord> = chunked
+        .into_iter()
+        .map(|cp| {
+            let tokens = tokenize_text(&cp.text);
+            SearchPassageRecord {
+                passage_id: cp.passage_id,
+                locator: cp.locator,
+                sha256: cp.sha256,
+                text: cp.text,
+                tokens,
+            }
+        })
+        .collect();
+
     Ok(SearchDocumentRecord {
-        id: id(p),
+        id: doc_id,
         note_id: val("id"),
         relative_path: p.into(),
         sha256: sha,
@@ -414,6 +454,7 @@ fn parse(
         updated_at: val("updated_at").unwrap_or(date),
         tokens: tokenize_text(&format!("{title} {body} {}", tags.join(" "))),
         content_preview: body,
+        passages,
     })
 }
 fn walk(
@@ -466,13 +507,17 @@ fn walk(
 pub fn index_vault_search(path: &Path) -> Result<IndexStatusReport, String> {
     let r = root(path)?;
     let s = child(&r, "00_SYSTEM")?;
-    s.create_dir(".search-lock").map_err(|e| {
-        format!("Search lock unavailable; active operation or interrupted run: {e}")
-    })?;
-    let _lock = Lock {
-        system: &s,
-        opened: child(&s, ".search-lock")?,
-    };
+    if s.create_dir(".search-lock").is_err() {
+        let previous=child(&s,".search-lock")?;
+        let owner:Value=serde_json::from_slice(&read(&previous,"owner.json")?).map_err(err)?;
+        let pid=owner["pid"].as_u64().filter(|p|*p>1&&*p<=i32::MAX as u64).ok_or("Search lock owner invalid")? as i32;
+        if unsafe{libc::kill(pid,0)}==0||std::io::Error::last_os_error().raw_os_error()!=Some(libc::ESRCH){return Err("Search lock held by an active process".into())}
+        previous.remove_file("owner.json").map_err(err)?;
+        s.remove_dir(".search-lock").map_err(err)?;
+        s.create_dir(".search-lock").map_err(err)?;
+    }
+    let _lock = Lock {system:&s,opened:child(&s,".search-lock")?};
+    write_new(&_lock.opened,"owner.json",json!({"pid":std::process::id()}).to_string().as_bytes())?;
     let old = load(&s)?;
     let mut docs = BTreeMap::new();
     let entries = names(&r)?;
@@ -481,6 +526,66 @@ pub fn index_vault_search(path: &Path) -> Result<IndexStatusReport, String> {
             walk(&child(&r, cat)?, cat, kind, 0, old.as_ref(), &mut docs)?;
         }
     }
+
+    // Sync catalog so new, modified, or removed raw sources are updated
+    let _ = crate::catalog::sync_catalog(path);
+
+    // Index catalog raw sources (20_RAW_SOURCES) if VAULT_CATALOG.json exists
+    if let Ok(catalog) = crate::catalog::load_catalog(path) {
+        for doc in catalog.documents.values() {
+            if doc.original_path.starts_with("20_RAW_SOURCES/") && doc.extraction_status == crate::catalog::ExtractionStatus::Ready && !doc.passages.is_empty() {
+                let p = doc.original_path.clone();
+                let cached = old
+                    .as_ref()
+                    .filter(|i| i.version == VERSION)
+                    .and_then(|i| i.documents.get(&p));
+                let search_doc = if let Some(c) = cached.filter(|c| c.sha256 == doc.content_hash) {
+                    c.clone()
+                } else {
+                    let passages: Vec<SearchPassageRecord> = doc.passages.iter().map(|pass| {
+                        SearchPassageRecord {
+                            passage_id: pass.passage_id.clone(),
+                            locator: pass.locator.clone(),
+                            sha256: pass.sha256.clone(),
+                            text: pass.text.clone(),
+                            tokens: tokenize_text(&pass.text),
+                        }
+                    }).collect();
+
+                    let mut all_tokens = tokenize_text(&format!("{} {}", doc.file_name, doc.tags.join(" ")));
+                    for pass in &passages {
+                        all_tokens.extend(pass.tokens.clone());
+                    }
+                    all_tokens.sort();
+                    all_tokens.dedup();
+
+                    let preview = passages.first().map(|pass| pass.text.chars().take(500).collect::<String>()).unwrap_or_default();
+
+                    SearchDocumentRecord {
+                        id: doc.document_id.clone(),
+                        note_id: None,
+                        relative_path: p.clone(),
+                        sha256: doc.content_hash.clone(),
+                        mtime_ms: 0,
+                        title: doc.file_name.clone(),
+                        category: doc.category.clone().unwrap_or_else(|| "raw_source".to_string()),
+                        client: doc.client.clone(),
+                        project: doc.project.clone(),
+                        brand: None,
+                        tags: doc.tags.clone(),
+                        status: Some(doc.editorial_status.clone()),
+                        created_at: doc.imported_at.clone(),
+                        updated_at: doc.updated_at.clone(),
+                        tokens: all_tokens,
+                        content_preview: preview,
+                        passages,
+                    }
+                };
+                docs.insert(p, search_doc);
+            }
+        }
+    }
+
     let data = SearchIndexData {
         version: VERSION,
         last_indexed_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
@@ -490,6 +595,17 @@ pub fn index_vault_search(path: &Path) -> Result<IndexStatusReport, String> {
     Ok(status(Some(&data)))
 }
 pub fn search_vault(path: &Path, q: SearchQuery) -> Result<Vec<SearchResultItem>, String> {
+    search_vault_filtered::<fn(&SearchDocumentRecord) -> bool>(path, q, None)
+}
+
+pub fn search_vault_filtered<F>(
+    path: &Path,
+    q: SearchQuery,
+    filter_fn: Option<F>,
+) -> Result<Vec<SearchResultItem>, String>
+where
+    F: Fn(&SearchDocumentRecord) -> bool,
+{
     let limit = q.limit.unwrap_or(50);
     let offset = q.offset.unwrap_or(0);
     if limit > 200
@@ -501,6 +617,7 @@ pub fn search_vault(path: &Path, q: SearchQuery) -> Result<Vec<SearchResultItem>
         return Err("Invalid search query/pagination".into());
     }
     let r = root(path)?;
+    let _sys = child(&r, "00_SYSTEM")?;
     let data = load(&child(&r, "00_SYSTEM")?)?
         .filter(|d| d.version == VERSION)
         .ok_or("Search index missing or outdated; re-index required")?;
@@ -526,6 +643,12 @@ pub fn search_vault(path: &Path, q: SearchQuery) -> Result<Vec<SearchResultItem>
         .collect();
     let mut results = Vec::new();
     for d in data.documents.values() {
+        if crate::automation::managed(&d.relative_path) && !crate::automation::is_current(path,&d.relative_path,&d.sha256){continue;}
+        if let Some(ref f) = filter_fn {
+            if !f(d) {
+                continue;
+            }
+        }
         if q.category
             .as_ref()
             .is_some_and(|c| !c.is_empty() && *c != d.category)
@@ -555,29 +678,99 @@ pub fn search_vault(path: &Path, q: SearchQuery) -> Result<Vec<SearchResultItem>
             continue;
         }
         let mut score = if terms.is_empty() { 1.0 } else { 0.0 };
-        let title = tokenize_text(&d.title);
-        let tags = tokenize_text(&d.tags.join(" "));
+        let title_tokens = tokenize_text(&d.title);
+        let tags_tokens = tokenize_text(&d.tags.join(" "));
         for t in &terms {
             let tf = d.tokens.iter().filter(|x| *x == t).count() as f64;
             let idf =
-                ((data.documents.len() + 1) as f64 / (*df.get(t).unwrap() + 1) as f64).ln() + 1.0;
+                ((data.documents.len() + 1) as f64 / (*df.get(t).unwrap_or(&0) + 1) as f64).ln() + 1.0;
             score += tf * idf;
-            if title.contains(t) {
+            if title_tokens.contains(t) {
                 score += 10.0;
             }
-            if tags.contains(t) {
+            if tags_tokens.contains(t) {
                 score += 5.0;
             }
         }
-        if score <= 0.0 {
-            continue;
+
+        // Passages matching and locator detection
+        let mut matching_passages = Vec::new();
+        let mut best_passage_locator = None;
+        let mut best_passage_id = None;
+        let mut best_passage_snippet = None;
+        let mut best_passage_score = 0.0;
+
+        let dynamic_passages: Vec<SearchPassageRecord>;
+        let passages_ref = if !d.passages.is_empty() {
+            &d.passages
+        } else {
+            dynamic_passages = crate::catalog::chunk_text_to_passages(&d.id, &d.content_preview)
+                .into_iter()
+                .map(|p| SearchPassageRecord {
+                    passage_id: p.passage_id,
+                    locator: p.locator,
+                    sha256: p.sha256,
+                    text: p.text.clone(),
+                    tokens: tokenize_text(&p.text),
+                })
+                .collect();
+            &dynamic_passages
+        };
+
+        for p in passages_ref {
+            let mut p_score = 0.0;
+            for t in &terms {
+                let p_tf = p.tokens.iter().filter(|x| *x == t).count() as f64;
+                if p_tf > 0.0 {
+                    let idf = ((data.documents.len() + 1) as f64 / (*df.get(t).unwrap_or(&0) + 1) as f64).ln() + 1.0;
+                    p_score += p_tf * idf;
+                }
+            }
+            if let Some(ref term) = q.term {
+                let norm_term = normalize_text(term);
+                let norm_p = normalize_text(&p.text);
+                if norm_p.contains(&norm_term) {
+                    p_score += 15.0;
+                }
+            }
+            if p_score > 0.0 {
+                let snippet = extract_snippet(&p.text, &terms, 180);
+                matching_passages.push(SearchMatchingPassage {
+                    passage_id: p.passage_id.clone(),
+                    locator: p.locator.clone(),
+                    snippet: snippet.clone(),
+                    score: (p_score * 100.0).round() / 100.0,
+                });
+                if p_score > best_passage_score {
+                    best_passage_score = p_score;
+                    best_passage_locator = Some(p.locator.clone());
+                    best_passage_id = Some(p.passage_id.clone());
+                    best_passage_snippet = Some(snippet);
+                }
+            }
         }
+
+        if score <= 0.0 {
+            if best_passage_score > 0.0 {
+                score = best_passage_score;
+            } else {
+                continue;
+            }
+        }
+
         if compute_sha256(&read_path(&r, &d.relative_path)?) != d.sha256 {
             return Err(format!(
                 "Search index stale: {}; re-index required",
                 d.relative_path
             ));
         }
+
+        let snippet = best_passage_snippet.unwrap_or_else(|| {
+            extract_snippet(&d.content_preview, &terms, 180)
+        });
+
+        matching_passages.sort_by(|a, b| b.score.total_cmp(&a.score));
+
         results.push(SearchResultItem {
             id: d.id.clone(),
             title: d.title.clone(),
@@ -587,10 +780,13 @@ pub fn search_vault(path: &Path, q: SearchQuery) -> Result<Vec<SearchResultItem>
             project: d.project.clone(),
             tags: d.tags.clone(),
             status: d.status.clone(),
-            snippet: extract_snippet(&d.content_preview, &terms, 180),
+            snippet,
             score: (score * 100.0).round() / 100.0,
             updated_at: Some(d.updated_at.clone()),
             sha256: d.sha256.clone(),
+            matching_locator: best_passage_locator,
+            matching_passage_id: best_passage_id,
+            passages: matching_passages,
         });
     }
     results.sort_by(|a, b| {
@@ -662,9 +858,68 @@ mod tests {
             "# SAFE"
         );
     }
+    #[test]
+    fn search_passages_and_catalog_indexing() {
+        let t = tempfile::tempdir().unwrap();
+        for d in ["00_SYSTEM", "01_CLIENTS", "20_RAW_SOURCES"] {
+            fs::create_dir(t.path().join(d)).unwrap();
+        }
+        let note = "---\ntitle: Multi Paragraph Note\nclient: BetaCorp\nstatus: approved\n---\n# Introduzione\nPrimo paragrafo con informazioni generali.\n\nSecondo paragrafo con specifiche su algoritmo QuantumLeap e architettura distribuita.";
+        fs::write(t.path().join("01_CLIENTS/note.md"), note).unwrap();
+
+        // Index note
+        let rep = index_vault_search(t.path()).unwrap();
+        assert_eq!(rep.total_indexed, 1);
+
+        // Search for QuantumLeap
+        let res = search_vault(t.path(), SearchQuery {
+            term: Some("QuantumLeap".into()),
+            ..Default::default()
+        }).unwrap();
+        assert_eq!(res.len(), 1);
+        assert!(res[0].matching_locator.is_some());
+        assert!(res[0].matching_passage_id.is_some());
+        assert!(res[0].snippet.contains("QuantumLeap"));
+        assert!(!res[0].passages.is_empty());
+    }
+
+    #[test]
+    fn test_search_detects_removed_and_modified_files_without_blocking() {
+        let t = tempfile::tempdir().unwrap();
+        fs::create_dir(t.path().join("00_SYSTEM")).unwrap();
+        fs::create_dir(t.path().join("01_CLIENTS")).unwrap();
+
+        let file_path = t.path().join("01_CLIENTS/doc.md");
+        fs::write(&file_path, "---\ntitle: Progetto Alfa\nstatus: approved\n---\nVersione Iniziale di prova Alfa.").unwrap();
+
+        index_vault_search(t.path()).unwrap();
+        let res1 = search_vault(t.path(), SearchQuery {
+            term: Some("Iniziale".into()),
+            ..Default::default()
+        }).unwrap();
+        assert_eq!(res1.len(), 1);
+
+        // 1. Modify content on disk -> reindexing updates search without blocking
+        fs::write(&file_path, "---\ntitle: Progetto Alfa\nstatus: approved\n---\nVersione Rinnovata con dettagli Delta.").unwrap();
+        index_vault_search(t.path()).unwrap();
+        let res2 = search_vault(t.path(), SearchQuery {
+            term: Some("Delta".into()),
+            ..Default::default()
+        }).unwrap();
+        assert_eq!(res2.len(), 1);
+
+        // 2. Remove file from disk -> reindexing detects removal
+        fs::remove_file(&file_path).unwrap();
+        index_vault_search(t.path()).unwrap();
+        let res3 = search_vault(t.path(), SearchQuery {
+            term: Some("Delta".into()),
+            ..Default::default()
+        }).unwrap();
+        assert_eq!(res3.len(), 0);
+    }
 }
 
-/// Read the exact indexed bytes through a pinned directory, for AI/MCP citations.
+/// Read the exact indexed bytes or extracted text through a pinned directory, for AI/MCP citations.
 pub fn read_indexed_document(path: &Path, document_id: &str, expected: &str) -> Result<(SearchDocumentRecord, String), String> {
     let r=root(path)?;
     let data=load(&child(&r,"00_SYSTEM")?)?.filter(|d|d.version==VERSION).ok_or("Search index missing or outdated")?;
@@ -672,6 +927,26 @@ pub fn read_indexed_document(path: &Path, document_id: &str, expected: &str) -> 
     if d.sha256!=expected {return Err("Source changed; select again".into())}
     relative(&d.relative_path)?;
     let parts:Vec<_>=d.relative_path.split('/').collect();
+
+    // SPECIAL HANDLING FOR 20_RAW_SOURCES (PDF, DOCX, binary sources)
+    if parts[0] == "20_RAW_SOURCES" {
+        let mut dir=r;
+        for part in &parts[..parts.len()-1]{dir=child(&dir,part)?;}
+        let (bytes,_)=read_file(&dir,parts[parts.len()-1])?;
+        if compute_sha256(&bytes)!=expected{return Err("Source changed; re-index required".into())}
+
+        // Return extracted plain text rather than binary bytes
+        let content = if !d.passages.is_empty() {
+            d.passages.iter().map(|p| p.text.as_str()).collect::<Vec<_>>().join("\n\n")
+        } else {
+            crate::catalog::read_document_text(path, &d.id).unwrap_or_else(|_| d.content_preview.clone())
+        };
+        if content.trim().is_empty() {
+            return Err("Extracted text empty for raw source".into());
+        }
+        return Ok((d.clone(), content));
+    }
+
     let mut dir=r;
     for part in &parts[..parts.len()-1]{dir=child(&dir,part)?;}
     let (bytes,_)=read_file(&dir,parts[parts.len()-1])?;

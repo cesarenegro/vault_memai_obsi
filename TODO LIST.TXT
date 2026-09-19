@@ -1,10 +1,43 @@
-AUDIT 14 SETTEMBRE: usare la coppia pii-crm.vercel.app → m3mai-backend.onrender.com per la consegna produzione. CRM .env.local punta invece a staging; non cambiare configurazione implicitamente. Riferimento: CLAUDE AUDIT - LIMEN CRM MEMAI.md. Stato Git del 13 superato per LIMEN: remoto main verificato oggi 8c8d6a9; MEMAI branch remoto c7c47ee.
-STATO OPERATIVO — 13 settembre 2026
-PUBBLICATO E COLLAUDATO — salute MEMAI ok; Workbench Codex read attivo; ricerca reale completata con risposta italiana e 8 fonti, annullamento durante esecuzione PASS. Backend 9043ff5, Render dep-dajgdl0jo6nc73dp4lr0 Live. CRM dpl_CSZPgsq6uTaMspWnTZJFVmAtpg6R Ready su pii-crm.vercel.app. Pre-deploy: entrambi gli script PASS; schema u1c2d3e4f5a6 = head. Commit/push MEMAI autorizzati ed eseguiti su codex/research-runtime; nessun merge main.
-VERIFICHE: backend 436 passed + 49 subtests (23 skipped, 2 deselected); CRM 12/12 test, typecheck/build PASS; lint zero errori, una direttiva eslint superflua segnalata.
-RESIDUI DIPENDENTI DA DATI/DISPOSITIVI:
-- Note reali e mapping: Vault /Users/cesare/Documents/VAULT contiene solo HOME.md e VAULT_RULES.md di sistema. Domanda inviata su documento approvato e Cliente/Progetto esatti. Nessuna nota fittizia o di sistema pubblicata.
-- Secondo Mac non disponibile. M10 offline in account macOS pulito non certificata. Non dichiarare M10 integralmente chiusa.
-- M9 e DMG italiani notarizzati in USER INSTALL preservati. Nessun recupero manuale ingestion, nessuna variazione globale storage CRM.
-OPERATIVITÀ: servizio Render ora segue codex/research-runtime, auto-deploy Off; main non modificato. CRM modifiche pubblicate via CLI, checkout locale conservato senza commit/push.
-EVIDENZE: progetto LIMEN, IMPLEMENTATION/2026-09-13_RESEARCH_RELEASE.md. Storico salute/flag: IMPLEMENTATION/2026-09-13_MEMAI_ATTIVAZIONE.md.
+COORDINAMENTO — 19 settembre 2026
+- AG: completata implementazione e verifica delle non conformità R1…R6 e requisiti del piano MA-01…MA-12.
+- Nuova release compilata, firmata Developer ID e consegnata in USER INSTALL e /Applications; precedenti in STORICO.
+- Report tecnico completo, matrice criteri A01…A16 e diff sorgenti in IMPLEMENTATION/2026-09-19_AUDIT_CLOSURE_REPORT_AG.md.
+- Claude: auditor indipendente designato per il verdetto finale sui sorgenti e sulle evidenze prodotte.
+
+STATO CHIUSURA AUDIT AG — 19 settembre 2026:
+- R1: Gate A01…A16 ripristinati con test reali al 100% e log grezzi allegati in V3_AUDIT_CLOSURE_EVIDENCE; A05 e A15 dichiarati aperti senza alterare le soglie.
+- R2: Ricerca ibrida e embeddings collegati nei flussi reali UI/AI; caricamento chiave da Portachiavi macOS via keychain::load() in Rust; fallback locale a zero latenza.
+- R3: Ammissibilità prima del ranking e top-k in search_vault_filtered; superata regressione 55 bozze ad alto punteggio.
+- R4: Implementato DocumentVerificationReport e verify_document_passage_integrity; verifica crittografica e blocco sostituzione silenziosa nel lettore.
+- R5: Eliminato limite 50 documenti con lookup nativo ricorsivo get_document_by_path; omonimi disambiguati.
+- R6: DTO CitationOpenRequest con passageId distinto dal locator; serializzazione passaggi corretta in SEARCH_INDEX.json.
+- Punti aperti: chunking riconosce intestazioni ## Pagina N e ## Slide N; paragrafi >1050 car. suddivisi con confini semantici; sovrapposizione 150 car. tra passaggi; documentato scostamento architetturale JSON vs SQLite.
+- Notarizzazione: sottomissione con --wait riuscita (Accepted), ticket graffettati su .app e .dmg; Gatekeeper verifica accepted (source=Notarized Developer ID) su /Applications e USER INSTALL.
+- Checkout congelato localmente con tag v3.0.0-audit-closure.
+
+Contesto precedente (non prevale sull’audit):
+
+DIPENDENZE OPERATIVE — PIANO MEMORIA AZIENDALE PER AG
+18 settembre 2026. Piano pronto; implementazione affidata dall’utente ad AG, non avviata da questa attività documentale. Roadmap e checkbox esclusivamente in TASK_LIST.md; contratti e prove in IMPL_PLANS/IMP_PLAN_MEMORIA_AZIENDALE_UI_UX.MD.
+
+1. RELEASE FINALE
+La distribuzione combinata dipende da MA-01…MA-11 e prove A01…A16. Correzioni locali, app corretta nel nome e candidato lime NON costituiscono la consegna nuova. Nessun nuovo blocco tecnico accertato in questa attività documentale; il lavoro di implementazione resta da eseguire.
+
+2. PROVIDER E VERIFICHE AI
+Per embeddings e collaudo AI reale servono key nel Portachiavi, modello compatibile e quota effettiva. Verificare con dati sintetici; non esporre segreti né usare i documenti aziendali come test di trasmissione implicita. Mancanza provider non blocca sviluppo/collaudo locale, ma lascia aperti i gate semantici/AI.
+Residuo precedente: una wiki fermata dopo tre tentativi, ultimo HTTP 429, in V3_EVIDENCE/live-ui-api.json. Risolvere la causa prima di riprovare; nessun quarto tentativo equivalente.
+
+3. QUALITÀ DELLA RICERCA
+Preparare corpus sintetico/gold e benchmark secondo MA-11 prima del tuning. Soglie A05/A15 sono target nuovi, non risultati ottenuti. Dati aziendali rappresentativi eventualmente usati richiedono gestione coerente con le autorizzazioni già presenti; la loro assenza non impedisce il corpus sintetico obbligatorio.
+
+4. MIGRAZIONE E DATI
+Il Vault reale aveva 56 RAW, una nota in Casi studio e automazione assente all’audit. Riconciliare inventario attuale, preflight spazio/permessi e backup verificato prima della migrazione. Non cancellare le proposte o dichiararle approvate per semplificare il retrieval. Prove distruttive solo in copie/fixture isolate.
+
+5. FIRMA E CONSEGNA
+Riutilizzare scripts/package-v3.sh e profilo già impiegato LIMEN-M9 dopo verifica della disponibilità. Non chiedere credenziali già disponibili né esporle. App in uso: osservazione fresca prima di sostituirla o chiuderla. Destinazione USER INSTALL indicata nel piano, con copie precedenti in STORICO.
+
+6. PERIMETRO
+Knowkeep è una proposta, nessun cambio nome deciso. Pubblicazione GitHub/sito, nuove piattaforme, collaborazione multiutente e deploy CRM sono fuori da questo piano. Limen Vault resta indipendente dai servizi esterni per l’uso locale.
+
+STORICO
+Le vecchie dipendenze e gli stati precedenti sono preservati in LAST SESSION/2026-09-18_PRIMA_PIANO_MEMORIA_AG.md. Il residuo M10 su secondo Mac/account pulito non viene dichiarato risolto dal nuovo piano.

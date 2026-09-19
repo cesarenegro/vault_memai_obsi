@@ -5,7 +5,12 @@ use serde_json::{json,Value};
 use std::{path::Path,io::Read};
 const FOLDERS:[&str;10]=["01_CLIENTS","02_PROJECTS","03_BRANDS","04_POSITIONING","05_PACKAGING_KNOWLEDGE","06_METHODS","07_CASE_STUDIES","08_MARKET_RESEARCH","09_COMPETITORS","10_APPROVED_OUTPUTS"];
 fn err(e:impl std::fmt::Display)->String{e.to_string()}
-pub fn list(path:&Path,folder:&str)->Result<Vec<Value>,String>{if !FOLDERS.contains(&folder){return Err("Unsupported knowledge category".into())}let dir=child(&root(path)?,folder)?;let mut items=Vec::new();let mut bytes=0;walk(&dir,folder,0,&mut items,&mut bytes)?;Ok(items)}
+pub fn list(path:&Path,folder:&str)->Result<Vec<Value>,String>{
+ if folder!="all"&&!FOLDERS.contains(&folder){return Err("Unsupported knowledge category".into())}
+ let root=root(path)?;let mut items=Vec::new();let mut bytes=0;
+ for f in FOLDERS.iter().filter(|f|folder=="all"||**f==folder){walk(&child(&root,f)?,f,0,&mut items,&mut bytes)?;}
+ Ok(items)
+}
 fn walk(dir:&Dir,prefix:&str,depth:usize,items:&mut Vec<Value>,total:&mut usize)->Result<(),String>{
  if depth>32{return Err("Knowledge directory depth limit".into())}
  for name in names(dir)?{if name.starts_with('.') {continue}let relative=format!("{prefix}/{name}");let meta=dir.symlink_metadata(&name).map_err(err)?;
@@ -17,7 +22,7 @@ fn walk(dir:&Dir,prefix:&str,depth:usize,items:&mut Vec<Value>,total:&mut usize)
  let mut data=Vec::new();std::io::Read::by_ref(&mut file).take(512*1024+1).read_to_end(&mut data).map_err(err)?;
  let after=file.metadata().map_err(err)?;if data.len()>512*1024||before.len()!=after.len()||before.modified().map_err(err)?!=after.modified().map_err(err)?{return Err("Knowledge document changed during read".into())}
  *total+=data.len();if *total>8*1024*1024{return Err("Category preview exceeds 8 MiB".into())}let hash=compute_sha256(&data);let text=String::from_utf8(data).map_err(err)?;let fm=frontmatter(&text)?;
- items.push(json!({"relativePath":relative,"title":fm.as_ref().and_then(|f|f["title"].as_str()).unwrap_or(&name),"status":fm.as_ref().and_then(|f|f["status"].as_str()).unwrap_or("unspecified"),"sha256":hash,"markdown":text}));
+ items.push(json!({"relativePath":relative,"title":fm.as_ref().and_then(|f|f["title"].as_str()).unwrap_or(&name),"status":fm.as_ref().and_then(|f|f["status"].as_str()).unwrap_or("unspecified"),"sha256":hash,"automationKind":fm.as_ref().and_then(|f|f["automation_kind"].as_str()),"markdown":text}));
  }Ok(())
 }
 #[cfg(test)]mod tests{use super::*;use std::fs;

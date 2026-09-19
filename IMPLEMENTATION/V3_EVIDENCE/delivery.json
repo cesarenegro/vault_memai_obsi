@@ -1,0 +1,27 @@
+{
+  "destination": "/Users/cesare/Documents/STEFANO PARMA PII ALL/USER INSTALL",
+  "items": [
+    "LIMEN Vault v3.app",
+    "LIMEN-Vault-v3-arm64.dmg",
+    "HELP v3",
+    "Guida utente LIMEN v3.md",
+    "Manuale LIMEN v3.txt",
+    "LEGGIMI-v3.txt"
+  ],
+  "sha256": {
+    "LIMEN-Vault-v3-arm64.dmg": "3b66042a756649c47304208e0a4fdae569a89f0ee34412b0286e52c016d5b3c7",
+    "Guida utente LIMEN v3.md": "1ccbf36c705f34b35e56063bfa495ca474cfdc24c4ef1d561bb02d73b8e4270d",
+    "Manuale LIMEN v3.txt": "a04f80d771b61500ad4cfd07a629c68f24d6392f566445a789109c58f845f8a0",
+    "LEGGIMI-v3.txt": "5c11a19c203005bd935dbbcbafe22af77a5022d5ba8f0abca6c5483668d6aa67"
+  },
+  "previous_dmg_unchanged": {
+    "LIMEN-Vault-0.2.0-arm64.dmg": "69ed92c0ad9c3c02c70a4222d6ef4c4979b05674f7168ccce330d7ea9d061ca9",
+    "Installa-LIMEN-Vault-0.2.0-arm64.dmg": "157e915e1262f1e7c2979477d90873b899c9064c31cf87e0d94e0fcf65c81288"
+  },
+  "app_notary": "966ae51a-9f81-4527-9335-1dbfcfb4d48e",
+  "dmg_notary": "6a8ec9bb-2ef7-4006-b7e8-5ecf372727f1",
+  "dmg_boot_ui_verified": true,
+  "help_offline_ui_verified": true,
+  "delivered_app_boot_ui_verified": true,
+  "delivered_help_open": true
+}

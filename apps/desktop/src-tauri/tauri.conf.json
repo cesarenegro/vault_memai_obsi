@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
-  "productName": "LIMEN Vault",
-  "version": "0.2.0",
+  "productName": "LIMEN Vault v3",
+  "version": "0.3.0",
   "identifier": "dev.arkai.limenvault",
   "build": {
     "frontendDist": "../dist",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "LIMEN Vault",
+        "title": "LIMEN Vault v3",
         "width": 1280,
         "height": 840,
         "resizable": true,
@@ -32,7 +32,11 @@
     ],
     "resources": {
       "../../../vault-template/": "vault-template/",
-      "resources/mcp/": "mcp/"
+      "resources/mcp/": "mcp/",
+      "../../../HELP/": "documentation/HELP/",
+      "../../../docs/GUIDA_UTENTE_LIMEN.md": "documentation/GUIDA_UTENTE_LIMEN.md",
+      "../../../manuale UI utente.txt": "documentation/manuale UI utente.txt",
+      "resources/native/": "native/"
     },
     "icon": [
       "icons/32x32.png",

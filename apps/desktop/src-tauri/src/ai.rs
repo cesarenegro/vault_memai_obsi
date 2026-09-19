@@ -1,4 +1,4 @@
-use crate::{search::{self,SearchQuery},snapshots::compute_sha256};
+use crate::search::{self,SearchQuery};
 use serde::{Deserialize,Serialize};
 use serde_json::{json,Value};
 use std::{collections::{BTreeMap,BTreeSet},path::{Path,PathBuf},sync::{atomic::{AtomicBool,Ordering},Arc,Mutex},time::{Duration,Instant}};
@@ -7,7 +7,21 @@ use std::{collections::{BTreeMap,BTreeSet},path::{Path,PathBuf},sync::{atomic::{
 pub struct Options {pub prompt:String, pub model:String, #[serde(default)]pub include_drafts:bool, #[serde(default)]pub source_ids:Vec<String>,pub category:Option<String>,pub client:Option<String>,pub project:Option<String>,pub tags:Option<Vec<String>>}
 #[derive(Debug,Clone,Serialize,Deserialize)]
 #[serde(rename_all="camelCase")]
-pub struct Source {pub document_id:String,pub relative_path:String,pub title:String,pub category:String,pub status:Option<String>,pub sha256:String,pub content:String}
+pub struct Source {
+    pub document_id: String,
+    pub relative_path: String,
+    pub title: String,
+    pub category: String,
+    pub status: Option<String>,
+    pub sha256: String,
+    pub content: String,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub locator: Option<String>,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub passage_id: Option<String>,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub revision: Option<u64>,
+}
 #[derive(Clone,Serialize)]
 #[serde(rename_all="camelCase")]
 pub struct Preview {pub ticket:String,pub sources:Vec<Source>,pub context_bytes:usize}
@@ -17,23 +31,58 @@ pub struct AiState {pub pending:Mutex<BTreeMap<String,Pending>>,pub active:Mutex
 pub fn random_token()->Result<String,String>{let mut b=[0u8;32];getrandom::fill(&mut b).map_err(|_|"Random generator unavailable")?;Ok(b.iter().map(|b|format!("{b:02x}")).collect())}
 pub fn eligible(path:&str,category:&str,status:Option<&str>,drafts:bool)->bool{
  let parts:Vec<_>=path.split('/').collect();
- let valid=parts.len()>1&&parts.iter().all(|s|!s.starts_with('.')&&!s.contains(['\\','\0']))&&path.to_lowercase().ends_with(".md")&&!parts.iter().any(|s|{let s=s.to_lowercase();["secret","secrets","credentials","password","passwords"].iter().any(|p|s==*p||s.starts_with(&format!("{p}.")))});
- valid && (drafts || (status==Some("approved")&&!matches!(category,"proposal"|"ai_output")))
+ let valid_structure=parts.len()>1&&parts.iter().all(|s|!s.starts_with('.')&&!s.contains(['\\','\0']))&&!parts.iter().any(|s|{let s=s.to_lowercase();["secret","secrets","credentials","password","passwords"].iter().any(|p|s==*p||s.starts_with(&format!("{p}.")))});
+ if !valid_structure { return false; }
+ if parts[0] == "20_RAW_SOURCES" {
+  return drafts || status==Some("approved") || status==Some("auto") || status.is_none();
+ }
+ let valid_md=path.to_lowercase().ends_with(".md");
+ valid_md && (drafts || (status==Some("approved")&&!matches!(category,"proposal"|"ai_output")))
 }
 pub fn read_source(path:&Path,id:&str,hash:&str,drafts:bool)->Result<Source,String>{
  let (d,content)=search::read_indexed_document(path,id,hash)?;
- if !eligible(&d.relative_path,&d.category,d.status.as_deref(),drafts){return Err("Document access denied".into())}
- Ok(Source{document_id:d.id,relative_path:d.relative_path,title:d.title,category:d.category,status:d.status,sha256:d.sha256,content})
+ if crate::automation::managed(&d.relative_path)&&!crate::automation::is_current(path,&d.relative_path,hash){return Err("Generated source obsolete or modified".into())}
+ if !eligible(&d.relative_path,&d.category,d.status.as_deref(),drafts)&&!crate::automation::is_current(path,&d.relative_path,&d.sha256){return Err("Document access denied".into())}
+ let rev = crate::catalog::get_document(path, id).ok().map(|doc| doc.revision);
+ Ok(Source{document_id:d.id,relative_path:d.relative_path,title:d.title,category:d.category,status:d.status,sha256:d.sha256,content,locator:None,passage_id:None,revision:rev})
 }
 pub fn select(path:&Path,o:&Options)->Result<Vec<Source>,String>{
  if o.prompt.trim().is_empty()||o.prompt.chars().count()>2000||o.model.len()>100||o.source_ids.len()>50{return Err("Invalid AI options".into())}
- let rows=search::search_vault(path,SearchQuery{term:Some(o.prompt.clone()),category:o.category.clone(),client:o.client.clone(),project:o.project.clone(),tags:o.tags.clone(),status:if o.include_drafts{None}else{Some("approved".into())},limit:Some(50),offset:None})?;
+ 
+ // Apply eligibility and source_ids filters BEFORE any limit or top-k selection (Gate A06 & R3)
+ let include_drafts = o.include_drafts;
+ let source_ids = o.source_ids.clone();
+ let path_buf = path.to_path_buf();
+ let filter = move |d: &search::SearchDocumentRecord| {
+  let is_eligible = eligible(&d.relative_path, &d.category, d.status.as_deref(), include_drafts)
+      || crate::automation::is_current(&path_buf, &d.relative_path, &d.sha256);
+  let id_ok = source_ids.is_empty() || source_ids.contains(&d.id);
+  is_eligible && id_ok
+ };
+
+ let rows=search::search_vault_filtered(path,SearchQuery{term:Some(o.prompt.clone()),category:o.category.clone(),client:o.client.clone(),project:o.project.clone(),tags:o.tags.clone(),status:None,limit:Some(200),offset:None}, Some(filter))?;
  let mut sources=Vec::new();let mut size=0;
  for r in rows {
-  if !eligible(&r.relative_path,&r.category,r.status.as_deref(),o.include_drafts)||(!o.source_ids.is_empty()&&!o.source_ids.contains(&r.id)){continue}
-  let s=read_source(path,&r.id,&r.sha256,o.include_drafts)?;
+  let mut s=read_source(path,&r.id,&r.sha256,o.include_drafts)?;
+  s.locator = r.matching_locator.clone();
+  s.passage_id = r.matching_passage_id.clone();
+
+  // Passage budget: if content is long, extract the relevant passage so whole long documents are never dropped
+  if s.content.len() > 3000 {
+   if let Some(ref pid) = r.matching_passage_id {
+    if let Ok(p) = crate::catalog::read_passage(path, &r.id, pid) {
+     s.content = format!("[{}] {}", p.locator, p.text);
+     s.locator = Some(p.locator);
+    } else {
+     s.content.truncate(3000);
+    }
+   } else {
+    s.content.truncate(3000);
+   }
+  }
+
   let bytes=serde_json::to_vec(&s).map_err(|_|"Invalid source")?.len();
-  if size+bytes>16000{continue}size+=bytes;sources.push(s);if sources.len()==10{break}
+  if size+bytes>24000{continue}size+=bytes;sources.push(s);if sources.len()==10{break}
  }
  Ok(sources)
 }
@@ -62,12 +111,32 @@ pub fn parse_response(r:Value,sources:&[Source])->Result<Value,String>{
  let a:Value=serde_json::from_str(texts[0]["text"].as_str().ok_or("Missing answer")?).map_err(|_|"Invalid answer JSON")?;
  if a["answer"].as_str().is_none_or(|s|s.trim().is_empty()){return Err("Empty answer".into())}
  let mut ids=BTreeSet::new();for id in a["citation_ids"].as_array().ok_or("Missing citations")?{let id=id.as_str().ok_or("Invalid citation")?;if !sources.iter().any(|s|s.document_id==id){return Err("Unknown citation rejected".into())}ids.insert(id);}
- let cites:Vec<_>=sources.iter().filter(|s|ids.contains(s.document_id.as_str())).map(|s|json!({"documentId":s.document_id,"relativePath":s.relative_path,"title":s.title,"category":s.category,"status":s.status,"sha256":s.sha256})).collect();
+ let cites:Vec<_>=sources.iter().filter(|s|ids.contains(s.document_id.as_str())).map(|s|{
+  let cite_str = match &s.locator {
+   Some(loc) => format!("[[{}#{}]]", s.relative_path, loc),
+   None => format!("[[{}]]", s.relative_path),
+  };
+  json!({
+   "documentId":s.document_id,
+   "relativePath":s.relative_path,
+   "title":s.title,
+   "category":s.category,
+   "status":s.status,
+   "sha256":s.sha256,
+   "locator":s.locator,
+   "passageId":s.passage_id,
+   "revision":s.revision,
+   "citationString":cite_str,
+  })
+ }).collect();
  Ok(json!({"answer":a["answer"],"provider":"openai","model":r["model"],"citations":cites,"tokensUsed":r["usage"]["total_tokens"].as_u64()}))
 }
 pub async fn ask(p:Pending,key:String,cancel:Arc<AtomicBool>)->Result<Value,String>{
  if p.options.model.trim().is_empty(){return Err("Select an API model".into())}
- for s in &p.sources {let current=read_source(&p.path,&s.document_id,&s.sha256,p.options.include_drafts)?;if compute_sha256(current.content.as_bytes())!=s.sha256{return Err("Source changed since preview".into())}}
+ for s in &p.sources {
+  let current=read_source(&p.path,&s.document_id,&s.sha256,p.options.include_drafts)?;
+  if current.sha256 != s.sha256 { return Err("Source changed since preview".into()); }
+ }
  if cancel.load(Ordering::SeqCst){return Err("Request cancelled".into())}
  let client=reqwest::Client::builder().https_only(true).redirect(reqwest::redirect::Policy::none()).connect_timeout(Duration::from_secs(10)).timeout(Duration::from_secs(30)).build().map_err(|_|"HTTP client unavailable")?;
  let work=async {
@@ -80,19 +149,180 @@ pub async fn ask(p:Pending,key:String,cancel:Arc<AtomicBool>)->Result<Value,Stri
  let cancelled=async {loop{if cancel.load(Ordering::SeqCst){break}tokio::time::sleep(Duration::from_millis(50)).await;}};
  let data=tokio::select!{r=work=>r?,_=cancelled=>return Err("Request cancelled".into())};
 
- for s in &p.sources{read_source(&p.path,&s.document_id,&s.sha256,p.options.include_drafts)?;}
+ for s in &p.sources {
+  let current=read_source(&p.path,&s.document_id,&s.sha256,p.options.include_drafts)?;
+  if current.sha256 != s.sha256 { return Err("Source changed during request".into()); }
+ }
  parse_response(serde_json::from_slice(&data).map_err(|_|"Invalid provider JSON")?,&p.sources)
+}
+
+pub async fn list_models(key: String) -> Result<Vec<String>, String> {
+ let client=reqwest::Client::builder().https_only(true).redirect(reqwest::redirect::Policy::none()).connect_timeout(Duration::from_secs(10)).timeout(Duration::from_secs(30)).build().map_err(|_|"Connessione OpenAI non disponibile")?;
+ let mut response=client.get("https://api.openai.com/v1/models").bearer_auth(key).send().await.map_err(|_|"Impossibile caricare i modelli: controlla la connessione e riprova")?;
+ if !response.status().is_success(){return Err(match response.status().as_u16(){401|403=>"La chiave API non consente di leggere i modelli. Verifica la chiave e i permessi in Impostazioni.".into(),429=>"OpenAI ha limitato le richieste. Attendi prima di aggiornare i modelli.".into(),code=>format!("Elenco modelli non disponibile: OpenAI HTTP {code}")})}
+ let mut bytes=Vec::new();
+ while let Some(chunk)=response.chunk().await.map_err(|_|"Lettura dei modelli interrotta")?{if bytes.len()+chunk.len()>1024*1024{return Err("Elenco modelli troppo grande".into())}bytes.extend_from_slice(&chunk);}
+ parse_models(serde_json::from_slice(&bytes).map_err(|_|"Elenco modelli non valido")?)
+}
+fn is_chat_model(id: &str) -> bool {
+    let lower = id.to_lowercase();
+    if lower.contains("whisper")
+        || lower.contains("dall-e")
+        || lower.contains("tts")
+        || lower.contains("embedding")
+        || lower.contains("moderation")
+        || lower.contains("realtime")
+        || lower.contains("audio")
+        || lower.contains("babbage")
+        || lower.contains("davinci")
+    {
+        return false;
+    }
+    lower.starts_with("gpt-")
+        || lower.starts_with("o1")
+        || lower.starts_with("o3")
+        || lower.starts_with("o4")
+        || lower.starts_with("chatgpt")
+        || lower.contains("turbo")
+}
+
+fn parse_models(value:Value)->Result<Vec<String>,String>{
+ let rows=value["data"].as_array().ok_or("Elenco modelli non valido")?;
+ let mut models=BTreeSet::new();
+ for row in rows {
+  let id=row["id"].as_str().filter(|s|!s.is_empty()&&s.len()<=100&&!s.chars().any(char::is_control)).ok_or("Nome modello non valido")?;
+  if is_chat_model(id) {
+   models.insert(id.to_owned());
+  }
+ }
+ Ok(models.into_iter().collect())
+}
+#[cfg(test)]
+mod model_tests {
+ use super::*;
+ #[test] fn models_are_validated_and_deduplicated(){assert_eq!(parse_models(json!({"data":[{"id":"gpt-4.1"},{"id":"o3"},{"id":"gpt-4.1"},{"id":"tts-1"},{"id":"text-embedding-3-small"}]})).unwrap(),vec!["gpt-4.1","o3"]);assert!(parse_models(json!({"error":"denied"})).is_err());assert!(parse_models(json!({"data":[{"id":"bad\nname"}]})).is_err());}
 }
 
 #[cfg(test)]
 mod tests {
  use super::*;use std::fs;
+ use crate::snapshots::compute_sha256;
  pub fn fixture()->tempfile::TempDir {let t=tempfile::tempdir().unwrap();fs::create_dir(t.path().join("00_SYSTEM")).unwrap();fs::create_dir(t.path().join("01_CLIENTS")).unwrap();for status in ["approved","draft","review","archived"]{fs::write(t.path().join(format!("01_CLIENTS/{status}.md")),format!("---\nid: {status}\ntitle: Acme {status}\nstatus: {status}\nclient: Acme\nproject: Apollo\ntags: [tech]\n---\nAcme coffee è😀.\n")).unwrap();}search::index_vault_search(t.path()).unwrap();t}
  fn options()->Options{Options{prompt:"Acme".into(),model:"test-model".into(),include_drafts:false,source_ids:vec![],category:None,client:None,project:None,tags:None}}
  #[test] fn approved_policy_and_context_hash(){let t=fixture();let before=fs::read(t.path().join("00_SYSTEM/SEARCH_INDEX.json")).unwrap();let mut o=options();let s=select(t.path(),&o).unwrap();assert_eq!(s.len(),1);assert_eq!(s[0].status.as_deref(),Some("approved"));assert_eq!(compute_sha256(s[0].content.as_bytes()),s[0].sha256);o.include_drafts=true;assert_eq!(select(t.path(),&o).unwrap().len(),4);o.client=Some("Other".into());assert!(select(t.path(),&o).unwrap().is_empty());assert_eq!(fs::read(t.path().join("00_SYSTEM/SEARCH_INDEX.json")).unwrap(),before);}
  #[test] fn source_stale_symlink_and_preview_cancel(){let t=fixture();let state=AiState::default();let p=state.preview(t.path().into(),options()).unwrap();state.cancel(&p.ticket);assert!(state.begin(&p.ticket).is_err());let s=&p.sources[0];fs::write(t.path().join(&s.relative_path),"changed").unwrap();assert!(read_source(t.path(),&s.document_id,&s.sha256,false).is_err());fs::remove_file(t.path().join(&s.relative_path)).unwrap();std::os::unix::fs::symlink("/etc/passwd",t.path().join(&s.relative_path)).unwrap();assert!(read_source(t.path(),&s.document_id,&s.sha256,false).is_err());}
  #[test] fn citation_ids_and_incomplete_rejected(){let t=fixture();let s=select(t.path(),&options()).unwrap();let response=|ids:Vec<String>|json!({"status":"completed","model":"actual-model","output":[{"type":"message","content":[{"type":"output_text","text":json!({"answer":"Coffee","citation_ids":ids}).to_string()}]}]});let r=parse_response(response(vec![s[0].document_id.clone()]),&s).unwrap();assert_eq!(r["model"],"actual-model");assert_eq!(r["citations"].as_array().unwrap().len(),1);assert!(r["tokensUsed"].is_null());assert!(parse_response(response(vec!["fake".into()]),&s).is_err());assert_eq!(parse_response(response(vec![]),&s).unwrap()["citations"],json!([]));assert!(parse_response(json!({"status":"incomplete"}),&s).is_err());}
  #[test] fn preview_bounds_and_untrusted_data_role(){let t=fixture();let mut o=options();o.prompt="x".repeat(2001);assert!(select(t.path(),&o).is_err());let s=select(t.path(),&options()).unwrap();let b=request_body(&options(),&s);assert_eq!(b["store"],false);assert!(!b["input"][0]["content"].as_str().unwrap().contains(&s[0].content));assert!(b["input"][1]["content"].as_str().unwrap().contains("Acme"));}
+ #[test] fn binary_raw_source_extracted_text_is_read_in_ai(){
+  let t=tempfile::tempdir().unwrap();
+  fs::create_dir(t.path().join("00_SYSTEM")).unwrap();
+  fs::create_dir(t.path().join("20_RAW_SOURCES")).unwrap();
+  // Create raw binary file with non-UTF8 bytes
+  let raw_bytes=b"%PDF-1.4\xff\xfe\xca\xfe\xba\xbe";
+  fs::write(t.path().join("20_RAW_SOURCES/documento.pdf"),raw_bytes).unwrap();
+
+  // Sync catalog and add extracted passages
+  let mut cat=crate::catalog::sync_catalog_from_vault(t.path()).unwrap();
+  let doc=cat.documents.values_mut().find(|d|d.original_path=="20_RAW_SOURCES/documento.pdf").unwrap();
+  doc.extraction_status=crate::catalog::ExtractionStatus::Ready;
+  doc.editorial_status="auto".into();
+  doc.passages.push(crate::catalog::DocumentPassage{
+   passage_id:format!("{}_p0",doc.document_id),
+   locator:"Pagina 1".into(),
+   text:"Estratto PDF: procedura di audit aziendale e conformità 2026.".into(),
+   char_count:62,
+   sha256:crate::snapshots::compute_sha256(b"Estratto PDF: procedura di audit aziendale e conformita 2026."),
+  });
+  crate::catalog::save_catalog(t.path(),&mut cat).unwrap();
+
+  // Index vault search
+  search::index_vault_search(t.path()).unwrap();
+
+  // Verify eligible
+  assert!(eligible("20_RAW_SOURCES/documento.pdf","source",Some("auto"),false));
+
+  // Read source via AI
+  let doc_id=crate::catalog::make_document_id("20_RAW_SOURCES/documento.pdf");
+  let raw_hash=crate::snapshots::compute_sha256(raw_bytes);
+  let source=read_source(t.path(),&doc_id,&raw_hash,false).unwrap();
+  assert_eq!(source.document_id,doc_id);
+  assert!(source.content.contains("audit aziendale"));
+  assert_eq!(source.sha256,raw_hash);
+ }
+ #[test] fn test_citation_locators_and_tamper_detection(){
+  let t=tempfile::tempdir().unwrap();
+  fs::create_dir(t.path().join("00_SYSTEM")).unwrap();
+  fs::create_dir(t.path().join("20_RAW_SOURCES")).unwrap();
+  let raw_bytes=b"%PDF-1.4 sample pdf content for citation test";
+  fs::write(t.path().join("20_RAW_SOURCES/contratto.pdf"),raw_bytes).unwrap();
+
+  let mut cat=crate::catalog::sync_catalog_from_vault(t.path()).unwrap();
+  let doc=cat.documents.values_mut().find(|d|d.original_path=="20_RAW_SOURCES/contratto.pdf").unwrap();
+  doc.extraction_status=crate::catalog::ExtractionStatus::Ready;
+  doc.editorial_status="auto".into();
+  doc.passages.clear();
+  doc.passages.push(crate::catalog::DocumentPassage{
+   passage_id:format!("{}_p0",doc.document_id),
+   locator:"Articolo 4".into(),
+   text:"Estratto PDF: Clausola contrattuale fornitura e garanzie.".into(),
+   char_count:57,
+   sha256:crate::snapshots::compute_sha256(b"Estratto PDF: Clausola contrattuale fornitura e garanzie."),
+  });
+  crate::catalog::save_catalog(t.path(),&mut cat).unwrap();
+  search::index_vault_search(t.path()).unwrap();
+
+  let o=Options{prompt:"fornitura".into(),model:"test-model".into(),include_drafts:false,source_ids:vec![],category:None,client:None,project:None,tags:None};
+   let s=select(t.path(),&o).unwrap();
+   assert_eq!(s.len(),1);
+   assert_eq!(s[0].locator.as_deref(),Some("Articolo 4"));
+
+  // Test parse_response outputs citation with locator and [[path#locator]]
+  let response=|ids:Vec<String>|json!({"status":"completed","model":"gpt-4o","output":[{"type":"message","content":[{"type":"output_text","text":json!({"answer":"Clausola garantita","citation_ids":ids}).to_string()}]}]});
+  let parsed=parse_response(response(vec![s[0].document_id.clone()]),&s).unwrap();
+  let cit=&parsed["citations"].as_array().unwrap()[0];
+  assert_eq!(cit["locator"].as_str(),Some("Articolo 4"));
+  assert_eq!(cit["citationString"].as_str(),Some("[[20_RAW_SOURCES/contratto.pdf#Articolo 4]]"));
+
+  // Test double-hash verification: if file on disk is modified, read_source fails
+  fs::write(t.path().join("20_RAW_SOURCES/contratto.pdf"),b"tampered bytes").unwrap();
+  assert!(read_source(t.path(),&s[0].document_id,&s[0].sha256,false).is_err());
+ }
+ #[test] fn test_eligibility_before_limits_regression_50_drafts_do_not_hide_approved_source(){
+  let t=tempfile::tempdir().unwrap();
+  fs::create_dir(t.path().join("00_SYSTEM")).unwrap();
+  fs::create_dir(t.path().join("01_CLIENTS")).unwrap();
+  fs::create_dir(t.path().join("90_PROPOSALS")).unwrap();
+
+  // Create 55 draft proposals with strong keyword match
+  for i in 1..=55 {
+   let path = format!("90_PROPOSALS/proposal_{:02}.md", i);
+   let content = format!("---\ntitle: Proposal {}\nstatus: draft\ntype: proposal\n---\nSoftware architecture and enterprise strategy.\n", i);
+   fs::write(t.path().join(path), content).unwrap();
+  }
+
+  // Create 1 approved client document with matching keyword
+  let client_content = "---\ntitle: Acme Strategy\nstatus: approved\ntype: client\nclient: Acme\n---\nSoftware architecture and enterprise strategy.\n";
+  fs::write(t.path().join("01_CLIENTS/acme.md"), client_content).unwrap();
+
+  search::index_vault_search(t.path()).unwrap();
+
+  // Query without drafts: the 55 drafts MUST NOT hide or starve the 1 approved note!
+  let o = Options {
+   prompt: "Software architecture".into(),
+   model: "gpt-4o-mini".into(),
+   include_drafts: false,
+   source_ids: vec![],
+   category: None,
+   client: None,
+   project: None,
+   tags: None,
+  };
+
+  let sources = select(t.path(), &o).unwrap();
+  assert_eq!(sources.len(), 1, "The single approved document must be returned even with 55 higher/competing drafts");
+  assert_eq!(sources[0].relative_path, "01_CLIENTS/acme.md");
+  assert_eq!(sources[0].status.as_deref(), Some("approved"));
+ }
 }
 #[cfg(test)]
 mod index_policy_test {
