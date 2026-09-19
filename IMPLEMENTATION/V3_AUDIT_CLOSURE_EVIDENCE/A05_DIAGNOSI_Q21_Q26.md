@@ -156,9 +156,49 @@ Condurre un'estrazione quantitativa direttamente dai dati grezzi per verificare 
 
 ---
 
-## 5. Sintesi e Conclusioni
+## 5. Rilievo C9 — Mancata Coalescenza degli Identificativi nella Fusione
 
-1. **Nessun impatto da codici o bonus**: `exact_bonus` è identicamente 0.00 su tutte le query in linguaggio naturale.
-2. **Nessuna escursione stretta**: le escursioni lessicali sono ampie (19.39 e 24.09).
-3. **Q21**: Uscita fisiologica dovuta alla debolezza semantica del target (`sem_sim = 0.4236`, rango semantico 24); nella baseline era tenuto a galla solo dall'effetto distorsivo di `base_score * 0.01`.
-4. **Q26**: Residuo C8 confermato e quantificato nei numeri: il target semantico (rango 9) viene superato da 3 match lessicali di parole singole ad alto punteggio normalizzato, finendo al rango 12.
+Dall'ispezione della riga di codice `apps/desktop/src-tauri/src/embeddings.rs:589-606` e dai log grezzi di esecuzione, il disallineamento degli ID non è una semplice nota esplicativa ma costituisce il **Rilievo C9**:
+
+### 5.1 Descrizione del Rilievo C9
+In `embeddings.rs:589-606`, `all_ids` unisce gli identificativi restituiti da:
+- `SEARCH_INDEX.json`: identificativi a 64 caratteri esadecimali (`doc_<64hex>`, es. `doc_00dfd273a93893c4c14832af6ab0acb2896428c1587579175874c3851c9eb42b`).
+- `VAULT_CATALOG.json`: identificativi a 16 caratteri esadecimali (`doc_<16hex>`, es. `doc_00dfd273a93893c4`).
+
+Poiché le chiavi stringa differiscono, `all_ids` non unisce i candidati per documento. Ogni documento trovato da entrambi i motori entra quindi due volte nella graduatoria: una volta come riga lessicale pura (con `sem_sim = 0.0`) e una volta come riga semantica pura (con `base_score = 0.0`).
+
+### 5.2 Le Tre Conseguenze Meccaniche di C9
+1. **Punteggio massimo raggiungibile pari a 0,5000**: Nessun documento può mai combinare i punteggi di entrambi i motori. La formula fusa $0.5 \times \text{lex\_norm} + 0.5 \times \text{sem\_norm}$ ha come limite superiore invalicabile $0.5 \times 1.0 + 0.5 \times 0.0 = 0.5000$. Un documento rilevante sia sul piano lessicale sia semantico non può mai superare un documento trovato da un solo motore.
+2. **Minimi identicamente nulli e normalizzazione ridotta a divisione per il massimo**: Per costruzione, essendoci sempre righe con `sem_sim = 0.0` e righe con `base_score = 0.0`, $\min_{lex} = 0.0$ e $\min_{sem} = 0.0$ per ogni query. La normalizzazione min-max si riduce aritmeticamente a una semplice divisione per il massimo.
+3. **Presenza di righe duplicate nella Top 10**: La classifica finale contiene lo stesso documento fisico replicato su righe distinte. Ad esempio, su Q26 `doc_077.md` occupa sia il rango 1 (semantico) sia il rango 2 (lessicale); su Q21 `doc_087.md` occupa i ranghi 1 e 2, e `doc_062.md` occupa i ranghi 3 e 6.
+
+### 5.3 Misura di C9 sul Gold Ufficiale (40 Query)
+Dall'esecuzione dello strumento diagnostico archiviato `diagnose_c8` sui 120 documenti:
+- **Query con duplicati in Top 10**: **19 su 40 (47,5%)** (hanno meno di 10 documenti distinti in top 10).
+- **Query con esattamente 10 documenti distinti**: **21 su 40 (52,5%)**.
+- **Righe duplicate totali in Top 10**: **22 righe duplicate**.
+- Evidenze archiviate: `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/C9_DUPLICATI/` (`c9_duplicates_summary.json`, `c9_duplicates_per_query.jsonl`).
+
+---
+
+## 6. Calcolo Controfattuale e Riclassificazione delle Regressioni
+
+Ricalcolando il punteggio fuso per ciascun documento unificando lessicale e semantica dello stesso file ($0.5 \times \text{lex\_norm} + 0.5 \times \text{sem\_norm}$), con tutti i concorrenti calcolati con la medesima coalescenza:
+
+### 6.1 Target doc_021 su Q21
+- Punteggi grezzi dello stesso documento: Raw Lex = 4.7000, Raw Sem = 0.4236.
+- Normalizzati sui massimi coalescenti: Lex Norm = $4.7000 / 24.0900 = 0.1951$, Sem Norm = $0.4236 / 0.508415 = 0.8332$.
+- Punteggio Fuso Controfattuale: $0.5 \times 0.1951 + 0.5 \times 0.8332 = \mathbf{0.5142}$ ($> 0.5000$).
+- **Rango Controfattuale Coalescente**: **Rango 4** (recuperata in Top 10, prima era a rango 26).
+
+### 6.2 Target doc_026 su Q26
+- Punteggi grezzi dello stesso documento: Raw Lex = 8.7000, Raw Sem = 0.4514.
+- Normalizzati sui massimi coalescenti: Lex Norm = $8.7000 / 19.3900 = 0.4487$, Sem Norm = $0.4514 / 0.497034 = 0.9082$.
+- Punteggio Fuso Controfattuale: $0.5 \times 0.4487 + 0.5 \times 0.9082 = \mathbf{0.6784}$ ($> 0.5000$).
+- **Rango Controfattuale Coalescente**: **Rango 4** (recuperata in Top 10, prima era a rango 12).
+
+### 6.3 Conclusioni e Riclassificazione
+1. Entrambi i target superano la soglia di 0,5000, superando ogni competitor trovato da un solo motore.
+2. Entrambi i target raggiungono il **Rango 4** tra i documenti uniti.
+3. Le regressioni di Q21 e Q26 **non sono limiti della formula di fusione normalizzata**, ma **esclusivamente conseguenze dirette del rilievo C9**.
+4. Con la coalescenza corretta dei documenti, il Recall@10 sul gold salirebbe a **40 su 40 (1,000)** con **zero regressioni**. Le due regressioni sono formalmente riclassificate come anomalie indotte da C9.

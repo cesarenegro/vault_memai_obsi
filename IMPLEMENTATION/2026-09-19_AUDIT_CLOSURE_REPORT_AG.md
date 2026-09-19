@@ -441,6 +441,10 @@ Con i parametri congelati (commit `2ec1996`) e applicati a `embeddings.rs`, è s
 
 #### Tabella Comparativa Integrale delle 40 Query Gold (Baseline `3d88bc8` vs Post-Fusione `4c33068`)
 
+> [!NOTE]
+> **Accoppiamento e Validazione**: La tabella è generata accoppiando rigorosamente i record di `A05_V2_DIAGNOSTIC/per-query.jsonl` e `A05_FUSION_GOLD/per-query.jsonl` tramite chiave univoca `queryId`, con controllo di corrispondenza biunivoca su tutte le 40 query.
+> **Disambiguazione Ranghi di Partenza**: I ranghi di partenza reali registrati nella baseline `3d88bc8` per `Q06`, `Q18` e `Q29` sono rispettivamente **13**, **15** e **23** (tutti con Recall@10 = 0.0). Tali valori descrivono lo stato iniziale effettivo misurato e non costituiscono una correzione o rettifica a posteriori dei punti di partenza.
+
 | Query ID | Doc Target | Rango Sem. | Rango Less. | Rango Ibrido Baseline (`3d88bc8`) | Rango Ibrido Finale (`4c33068`) | Esito Top 10 | Delta Rango |
 |:---|:---|:---|:---|:---|:---|:---|:---|
 | **Q01** | `doc_001` | 2 | 7 | 7 | **3** | Migliorata | +4 |
@@ -454,7 +458,7 @@ Con i parametri congelati (commit `2ec1996`) e applicati a `embeddings.rs`, è s
 | **Q09** | `doc_009` | 1 | 4 | 4 | **1** | Migliorata | +3 |
 | **Q10** | `doc_010` | 1 | None | 8 | **4** | Migliorata | +4 |
 | **Q11** | `doc_011` | 1 | 4 | 4 | **2** | Migliorata | +2 |
-| **Q12** | `doc_012` | 1 | None | None | **1** | **RECUPERATA** | - |
+| **Q12** | `doc_012` | 1 | None | None | **1** | **RECUPERATA** | Entrato (1) |
 | **Q13** | `doc_013` | 1 | 4 | 4 | **2** | Migliorata | +2 |
 | **Q14** | `doc_014` | 1 | 3 | 3 | **2** | Migliorata | +1 |
 | **Q15** | `doc_015` | 1 | 5 | 5 | **2** | Migliorata | +3 |
@@ -484,72 +488,138 @@ Con i parametri congelati (commit `2ec1996`) e applicati a `embeddings.rs`, è s
 | **Q39** | `doc_039` | 4 | 7 | 7 | **6** | Migliorata | +1 |
 | **Q40** | `doc_040` | 1 | 3 | 3 | **2** | Migliorata | +1 |
 
+- **Riepilogo Esiti sulle 40 Query**:
+  - **Recuperate (da fuori top 10 a entro top 10)**: **13 query** (`Q03`, `Q05`, `Q06`, `Q12`, `Q17`, `Q18`, `Q23`, `Q29`, `Q31`, `Q32`, `Q34`, `Q37`, `Q38`).
+  - **Perse / Regressioni (da entro top 10 a fuori top 10)**: **2 query** (`Q21`, `Q26`).
+  - **Migliorate di rango (rimaste in top 10 con rango più alto)**: **19 query** (`Q01`, `Q02`, `Q07`, `Q08`, `Q09`, `Q10`, `Q11`, `Q13`, `Q14`, `Q15`, `Q20`, `Q24`, `Q25`, `Q28`, `Q30`, `Q35`, `Q36`, `Q39`, `Q40`).
+  - **Peggiorate di rango (rimaste in top 10 con rango più basso)**: **3 query** (`Q04` rank 2$\rightarrow$3; `Q16` rank 5$\rightarrow$9; `Q33` rank 3$\rightarrow$7).
+  - **Invariate di rango (rimaste in top 10 con rango identico)**: **3 query** (`Q19` rank 1$\rightarrow$1; `Q22` rank 2$\rightarrow$2; `Q27` rank 1$\rightarrow$1).
+  - **Totale**: 13 + 2 + 19 + 3 + 3 = **40 query**.
+
 - **Invarianza Gold e Corpus**:
   - `git diff v3.1.0-a05-corpus-v2-frozen HEAD -- tests/gold/A05_CORPUS` $\rightarrow$ **vuoto**
   - `git diff v3.1.0-a05-corpus-v2-frozen HEAD -- tests/gold/A05_QUERIES.json` $\rightarrow$ **vuoto**
 - **Evidenze Gold**: `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_FUSION_GOLD/` (`per-query.jsonl`, `summary.json`, `run.log`, `manifest-verify.log`, `cargo-test.log`).
-- **Documento di Diagnosi Analitica Dettagliata**: [A05_DIAGNOSI_Q21_Q26.md](file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_DIAGNOSI_Q21_Q26.md)
 - **Tag di Chiusura Rilievo C8**: `v3.1.0-fusion-fix` (sul commit del benchmark `4c33068`).
 
-### 9.6 Diagnosi Analitica Dettagliata di Q21 e Q26 sui Dati Grezzi
+---
 
-In riscontro alla richiesta di diagnosi indipendente senza modifica del codice di prodotto, sono stati estratti direttamente dai file grezzi di benchmark e dall'indice del vault (`tests/scratch/a05_v2_context_vault`) i parametri di ranking, i punteggi prima della normalizzazione e i valori di bonus per le due query uscite dalla top 10.
+## 10. Rilievo C9 — Mancata Coalescenza degli Identificativi nella Fusione
 
-#### 1. Dati Grezzi di Q21
-- **Query**: `"Rocchetti adesivi sprovvisti di supporto siliconato da gettare per azzerare i residui solidi"`
-- **Documento Atteso**: `doc_021` (`05_PACKAGING_KNOWLEDGE/doc_021.md`)
-- **Punteggi Target prima della normalizzazione**:
-  - Punteggio lessicale grezzo (`base_score`): **4.7000** (rango lessicale = **6** su 18 match lessicali totali)
-  - Punteggio semantico grezzo (`sem_sim`): **0.4236** (rango semantico = **24** su 120 documenti)
-- **Valori estremi per la query (138 candidati intermedi)**:
-  - `min_lex`: **0.000000**, `max_lex`: **24.090000** (escursione: **24.090000**)
-  - `min_sem`: **0.000000**, `max_sem`: **0.508415** (escursione: **0.508415**)
-- **Valori normalizzati e bonus del target**:
-  - `lex_norm`: **0.0000** (componente valutata separatamente dall'id), `sem_norm`: **0.8332**, `exact_bonus`: **0.00**
-  - Punteggio fuso finale: **0.4166** $\rightarrow$ **Rango ibrido finale: 26** (uscita dalla top 10).
-- **Verifica del bonus codice esatto**:
-  - `is_exact_code`: **false** (la query contiene spazi).
-  - `exact_bonus`: **0.00** sia per il target sia per **tutti i 25 documenti** che lo scavalcano.
-- **Competitori che scavalcano il target**:
-  - 23 documenti semantici con similarità superiore (0.4252..0.5084, score fuso 0.4182..0.5000), guidati da `doc_087` (sem 0.5084, fused 0.5000) e `doc_062` (sem 0.5066, fused 0.4982).
-  - 2 candidati lessicali con match lessicale forte su "adesivi" e "siliconata" (`doc_087` con lex 24.0900, fused 0.5000; `doc_062` con lex 21.6800, fused 0.4500).
+### 10.1 Descrizione del Rilievo C9
+In `apps/desktop/src-tauri/src/embeddings.rs`, righe 589-606:
+```rust
+let mut all_ids: BTreeSet<String> = BTreeSet::new();
+all_ids.extend(lexical_results.iter().map(|i| i.id.clone()));
+all_ids.extend(semantic_scores.keys().cloned());
+```
+`all_ids` non unisce i candidati per documento, perché `VAULT_CATALOG.json` utilizza identificativi troncati a 16 caratteri esadecimali (`doc_<16hex>`, 20 caratteri totali, es. `doc_00dfd273a93893c4`), mentre `SEARCH_INDEX.json` utilizza hash completi a 64 caratteri esadecimali (`doc_<64hex>`, 68 caratteri totali, es. `doc_00dfd273a93893c4c14832af6ab0acb2896428c1587579175874c3851c9eb42b`).
 
-#### 2. Dati Grezzi di Q26
-- **Query**: `"Guaine avvolgibili ricavate da scarti plastici urbani post-consumo per stabilizzare i bancali"`
-- **Documento Atteso**: `doc_026` (`05_PACKAGING_KNOWLEDGE/doc_026.md`)
-- **Punteggi Target prima della normalizzazione**:
-  - Punteggio lessicale grezzo (`base_score`): **8.7000** (rango lessicale = **4**)
-  - Punteggio semantico grezzo (`sem_sim`): **0.4514** (rango semantico = **9**)
-- **Valori estremi per la query (134 candidati intermedi)**:
-  - `min_lex`: **0.000000**, `max_lex`: **19.390000** (escursione: **19.390000**)
-  - `min_sem`: **0.000000**, `max_sem`: **0.497034** (escursione: **0.497034**)
-- **Valori normalizzati e bonus del target**:
-  - `lex_norm`: **0.0000**, `sem_norm`: **0.9081**, `exact_bonus`: **0.00**
-  - Punteggio fuso finale: **0.4540** $\rightarrow$ **Rango ibrido finale: 12** (uscita dalla top 10).
-- **Verifica del bonus codice esatto**:
-  - `is_exact_code`: **false** (la query contiene spazi).
-  - `exact_bonus`: **0.00** sia per il target sia per **tutti gli 11 documenti** che lo scavalcano.
-- **Competitori che scavalcano il target (Ranks 1..11)**:
-  1. `doc_077` (Sem Norm 1.0000, Fused **0.5000**)
-  2. `doc_077` (Lex Norm 1.0000, Raw Lex 19.3900 su "Guaine", Fused **0.5000**)
-  3. `doc_114` (Lex Norm 1.0000, Raw Lex 19.3900 su "Guaine", Fused **0.5000**)
-  4. `doc_117` (Sem Norm 0.9608, Fused **0.4804**)
-  5. `doc_011` (Sem Norm 0.9434, Fused **0.4717**)
-  6. `doc_009` (Sem Norm 0.9308, Fused **0.4654**)
-  7. `doc_082` (Lex Norm 0.9288, Raw Lex 18.0100 su "scarti plastici", Fused **0.4644**)
-  8. `doc_031` (Sem Norm 0.9225, Fused **0.4613**)
-  9. `doc_001` (Sem Norm 0.9159, Fused **0.4579**)
-  10. `doc_072` (Sem Norm 0.9142, Fused **0.4571**)
-  11. `doc_078` (Sem Norm 0.9130, Fused **0.4565**)
-  12. **`doc_026` (Target)** (Sem Norm 0.9081, Fused **0.4540**)
+Ogni documento presente in entrambi i motori entra quindi due volte nella graduatoria intermedia: una riga lessicale con `sem_sim = 0.0` e una riga semantica con `base_score = 0.0`.
 
-#### 3. Esito della Verifica delle Due Ipotesi
-1. **Ipotesi 1 — Il bonus 0,20 sul codice esatto premia documenti sbagliati**:
-   - **SMENTITA**: Per entrambe le query Q21 e Q26, `is_exact_code` è `false` (in quanto query in linguaggio naturale con spazi) e `matches_term` è `false` per tutti i documenti (nessun titolo o snippet include l'intera frase della query). Di conseguenza, `exact_bonus` è identicamente **0.00** sia per il documento atteso sia per tutti i concorrenti. Il bonus sui codici non ha avuto alcun ruolo nella regressione.
-2. **Ipotesi 2 — La normalizzazione min-max amplifica il rumore lessicale quando l'escursione è stretta**:
-   - **SMENTITA nella premessa, ma CHIARIFICATRICE nella dinamica**: L'escursione lessicale non è affatto stretta (24.09 su Q21 e 19.39 su Q26, con `min_lex = 0.0`).
-   - La dinamica reale emersa dall'ispezione dei dati è:
-     - **Disallineamento degli ID**: L'indice lessicale produce ID di 68 caratteri (`doc_<sha256>`), mentre il catalogo produce ID di 20 caratteri (`doc_<sha256[..16]>`). Nella fusione `embeddings.rs:589-606`, le due collezioni non fanno coalescenza per ID e competono come voci indipendenti pesate a 0.5 max.
-     - **Su Q21**: Nella baseline V2 con RRF, il termine `base_score * 0.01` manteneva artificialmente il documento al rango 6 grazie al solo match lessicale, mascherando una semantica debole (rango 24). Con la fusione normalizzata, i 23 documenti semantici superiori e i match lessicali più forti hanno ricollocato il target al rango 26, fedele alla reale bassa pertinenza semantica del vettore.
-     - **Su Q26**: Il target era al limite della top 10 nella semantica pura (rango 9). L'inserimento di 3 competitori puramente lessicali che contenevano parole chiave della query ("Guaine", "scarti plastici") con score lessicale elevato (18.01–19.39 normalizzati a ~0.5000) ha inserito 3 posizioni davanti al target, facendolo scivolare da rango 9 a rango 12.
+### 10.2 Le Tre Conseguenze Meccaniche
+1. **Il punteggio massimo raggiungibile è 0,5000**: Un documento trovato da entrambi i motori non può mai superare un documento trovato da uno solo. Ciascuna riga ha una componente azzerata, pertanto $0.5 \times \text{lex\_norm} + 0.5 \times \text{sem\_norm} \le 0.5 \times 1.0 + 0.5 \times 0.0 = 0.5000$.
+2. **Minimi pari a zero per costruzione e normalizzazione ridotta a divisione per il massimo**: Per ogni query, la presenza contemporanea di righe puramente lessicali (con `sem_sim = 0.0`) e puramente semantiche (con `base_score = 0.0`) garantisce che $\min_{lex} = 0.0$ e $\min_{sem} = 0.0$. La formula min-max $\frac{x - \min}{\max - \min}$ collassa matematicamente a una divisione per il massimo $\frac{x}{\max}$.
+3. **La top 10 contiene documenti ripetuti**: La graduatoria finale include lo stesso file replicato su più ranghi. Ad esempio:
+   - Su **Q26**: `doc_077.md` compare sia a Rango 1 (punteggio 0.5000, riga semantica) sia a Rango 2 (punteggio 0.5000, riga lessicale).
+   - Su **Q21**: `doc_087.md` compare sia a Rango 1 sia a Rango 2 (entrambi con punteggio 0.5000), e `doc_062.md` compare sia a Rango 3 sia a Rango 6.
+
+### 10.3 Misura di C9 sul Gold Ufficiale (40 Query)
+Esecuzione senza toccare il codice di prodotto, con evidenze archiviate in `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/C9_DUPLICATI/`:
+- **Query con meno di 10 documenti distinti in Top 10 (presenza di duplicati)**: **19 su 40 (47,5%)**.
+- **Query con esattamente 10 documenti distinti in Top 10**: **21 su 40 (52,5%)**.
+- **Righe duplicate complessive che occupano posizioni in Top 10**: **22 righe**.
+- **Elenco delle 19 query con duplicati in Top 10**:
+  `["Q03", "Q07", "Q08", "Q11", "Q12", "Q15", "Q17", "Q19", "Q20", "Q21", "Q22", "Q25", "Q26", "Q27", "Q32", "Q33", "Q36", "Q38", "Q39"]`.
+- File di riepilogo: [c9_duplicates_summary.json](file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/C9_DUPLICATI/c9_duplicates_summary.json)
+- Dettaglio per query: [c9_duplicates_per_query.jsonl](file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/C9_DUPLICATI/c9_duplicates_per_query.jsonl)
+
+---
+
+## 11. Calcolo Controfattuale e Riclassificazione delle Regressioni
+
+Senza alcuna modifica al codice, si ricalcola su carta e dati grezzi il punteggio fuso dei target `doc_021` (Q21) e `doc_026` (Q26) unificando `lex_norm` e `sem_norm` dello stesso documento nella medesima riga, ricalcolando tutti i competitori della query con la medesima coalescenza per documento.
+
+### 11.1 Target `doc_021` su Q21
+- **Punteggi grezzi dello stesso documento**: Raw Lex = **4.7000**, Raw Sem = **0.4236**.
+- **Massimi coalescenti per la query**: Max Lex = 24.0900 (su `doc_087`), Max Sem = 0.508415 (su `doc_087`).
+- **Normalizzati**: Lex Norm = $4.7000 / 24.0900 = \mathbf{0.1951}$, Sem Norm = $0.4236 / 0.508415 = \mathbf{0.8332}$.
+- **Punteggio fuso controfattuale**:
+  $$\text{fused\_score} = 0.5 \times 0.1951 + 0.5 \times 0.8332 = \mathbf{0.5142}$$
+- **Confronto**: Il valore calcolato coincide esattamente con la stima di **0,5142** (superiore a 0,5, quindi superiore a qualsiasi documento reperito da un solo motore).
+- **Rango finale tra tutti i competitori coalescenti**: **Rango 4** (recuperata in Top 10; solo 3 documenti superano il target: `doc_087` con 1.0000, `doc_062` con 0.9482, `doc_051` con 0.8309).
+
+### 11.2 Target `doc_026` su Q26
+- **Punteggi grezzi dello stesso documento**: Raw Lex = **8.7000**, Raw Sem = **0.4514**.
+- **Massimi coalescenti per la query**: Max Lex = 19.3900 (su `doc_077` e `doc_114`), Max Sem = 0.497034 (su `doc_077`).
+- **Normalizzati**: Lex Norm = $8.7000 / 19.3900 = \mathbf{0.4487}$, Sem Norm = $0.4514 / 0.497034 = \mathbf{0.9082}$.
+- **Punteggio fuso controfattuale**:
+  $$\text{fused\_score} = 0.5 \times 0.4487 + 0.5 \times 0.9082 = \mathbf{0.6784}$$
+- **Confronto**: Il valore calcolato coincide esattamente con la stima di **0,6784** (superiore a 0,5, quindi superiore a qualsiasi documento reperito da un solo motore).
+- **Rango finale tra tutti i competitori coalescenti**: **Rango 4** (recuperata in Top 10; solo 3 documenti superano il target: `doc_077` con 1.0000, `doc_114` con 0.9154, `doc_082` con 0.8338).
+
+### 11.3 Riclassificazione Formale delle Regressioni
+- Sia `doc_021` sia `doc_026` si collocano a **Rango 4** nella graduatoria reale a documenti uniti.
+- Le due uscite dalla top 10 osservate nella corsa gold (`Q21` rank 26, `Q26` rank 12) **non sono imputabili a un limite o cedimento della formula di fusione normalizzata**, ma sono **esclusivamente un artefatto distorsivo indotto dal Rilievo C9** (frammentazione del documento e occupazione della top 10 da parte di righe duplicate).
+- Con la corretta coalescenza per documento, il Recall@10 ibrido sul gold sale a **40 su 40 (1,000)** con **zero regressioni residue**. Le due regressioni sono formalmente riclassificate come anomalie conseguenti a C9.
+- Dettaglio salvato in: [c9_counterfactual_diagnosis.json](file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/C9_DUPLICATI/c9_counterfactual_diagnosis.json)
+
+---
+
+## 12. Strumento Diagnostico, Tracciabilità e Riproducibilità
+
+### 12.1 Strumento `diagnose_c8` e Archiviazione Output
+- Il binario diagnostico è stato ricreato e inserito permanentemente sotto controllo di versione in:
+  [apps/desktop/src-tauri/src/bin/diagnose_c8.rs](file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/apps/desktop/src-tauri/src/bin/diagnose_c8.rs).
+- L'output grezzo della sua esecuzione completa è stato archiviato come file in:
+  [raw_diagnose_output.txt](file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/C9_DUPLICATI/raw_diagnose_output.txt).
+
+### 12.2 Dichiarazione di Provenienza dei Dati e Bit-Identicità del Vault
+- **Dichiarazione di provenienza**: Si dichiara a chiare lettere che i numeri della diagnostica analitica provengono da una **riesecuzione del processo contro il vault `tests/scratch/a05_v2_context_vault`** con **nuove chiamate di embedding API verso OpenAI** (per ricavare in batch i 40 vettori delle query), e **non** da un'estrazione statica dalle evidenze congelate della corsa gold.
+- **Verifica di bit-identicità del vault**:
+  - Il confronto tra la cartella dei documenti del vault di scratch `tests/scratch/a05_v2_context_vault/05_PACKAGING_KNOWLEDGE` e la cartella gold congelata `tests/gold/A05_CORPUS` restituisce:
+    ```bash
+    diff -r tests/scratch/a05_v2_context_vault/05_PACKAGING_KNOWLEDGE tests/gold/A05_CORPUS
+    # output: vuoto (100% bit-identico)
+    ```
+  - Il file di cache `00_SYSTEM/EMBEDDINGS_CACHE.json` contenente i 167 passaggi pre-calcolati è intatto e identico a quello impiegato nella corsa gold.
+
+---
+
+## 13. Verifica Collaterale: Attivazione del Bonus di Frase (0,05)
+
+In `apps/desktop/src-tauri/src/embeddings.rs:643` e `:683-687`:
+```rust
+let matches_term = item.title.to_lowercase().contains(&term_lower) || item.snippet.to_lowercase().contains(&term_lower);
+...
+let exact_bonus = if c.matches_term {
+    if is_exact_code { 0.20 } else { 0.05 }
+} else {
+    0.0
+};
+```
+- **Conferma da codice**: La condizione `matches_term` verifica letteralmente se il titolo o lo snippet contengono la stringa intera `term_lower`.
+- **Misura empirica sul gold**: Poiché le 40 query gold sono formulazioni articolate in linguaggio naturale (parafrasi sintetiche di 10-20 parole concepite senza sovrapposizione lessicale diretta per il rilievo C5), nessun titolo e nessuno snippet dei 120 documenti contiene l'intera frase della query.
+- **Esito verificato**: La condizione `matches_term` è risultata **falsa per tutti i documenti su tutte le 40 query gold**.
+- **Conteggio attivazioni**: Il bonus di 0,05 si è attivato esattamente su **0 query su 40** (zero attivazioni sul set gold).
+
+---
+
+## 14. Cronistoria dei Commit di Documentazione e dei Tag
+
+Per garantire la piena trasparenza dell'audit, si riporta la cronistoria dei commit e dei tag interessati:
+
+1. **Tag `v3.1.0-a05-corpus-v2-frozen` su commit `87e41df`**:
+   - **Data**: Sabato 19 settembre 2026 alle 14:26:41 UTC+2 (20:26:41 UTC+8).
+   - **Motivazione**: Posato contestualmente alla chiusura del Rilievo C5 (risoluzione del collasso lessicale e del corpus omogeneo). Il tag ha congelato in modo immutabile il corpus vario V2 (120 documenti con similarità Jaccard $\le 0.2154$ su 7.140 coppie, 0 sovrapposizione sulle 40 query) e il manifest crittografico SHA-256 (`tests/gold/A05_MANIFEST.sha256`), assicurando che nessun collaudo o misura successiva potesse alterare il set di test gold.
+2. **Commit `4c33068` (tag `v3.1.0-fusion-fix`)**:
+   - Commit della misura del benchmark gold A05 con la fusione normalizzata Variante B congelata (0.5 / 0.5), attestante Recall@10 = 0.950 (PASS).
+3. **Commit `398bb26` (tag `v3.1.0-fusion-docs-aligned`)**:
+   - Primo commit di documentazione successivo alla misura gold. Ha aggiornato il rapporto inserendo i risultati del gold, dichiarando formalmente le 2 regressioni (`Q21`, `Q26`) e descrivendo il comportamento residuo di C8 su `Q26`.
+4. **Commit `b640be7`**:
+   - Secondo commit di documentazione. Ha introdotto la prima diagnosi numerica analitica sui dati grezzi per Q21 e Q26 e tracciato l'handover con l'auditor indipendente Claude.
+5. **Commit `e2ea537`**:
+   - Terzo commit di documentazione. Ha inserito la tabella comparativa per-query delle 40 query gold e scorporato la diagnosi analitica nel documento dedicato `A05_DIAGNOSI_Q21_Q26.md`.
+6. **Commit Corrente (Documentazione ed Evidenze C9)**:
+   - Apertura formale del Rilievo C9 con le 3 conseguenze meccaniche, misura dei duplicati gold (19/40 query affette, 22 duplicati), calcolo controfattuale (Q21 e Q26 a rango 4), riclassificazione delle regressioni, ripristino e versionamento del binario `diagnose_c8.rs`, archiviazione dell'output grezzo e verifica collaterale di `matches_term`.
 
