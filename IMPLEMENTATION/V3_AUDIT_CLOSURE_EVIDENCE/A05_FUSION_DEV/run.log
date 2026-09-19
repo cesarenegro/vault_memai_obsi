@@ -1,0 +1,25 @@
+=== Running A05 Fusion Tuning on Dev Queries (a05-tune) ===
+Loading catalog from vault: "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/scratch/a05_v2_context_vault"
+Catalog loaded: 120 documents, 167 passages
+Loaded pre-computed cache: 167 passages (model: text-embedding-3-small)
+Loaded 30 development queries from "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/gold/A05_DEV_QUERIES.json"
+Fetching embeddings for 30 dev queries in a single batch...
+Batch dev query embeddings received in 3.57s.
+
+=== Dev Evaluation Results across Configurations (30 queries) ===
+baseline_current         | Mean R@10: 0.367 | Hits: 11/30 | Zeroes: 19 ["DEV01", "DEV02", "DEV03", "DEV04", "DEV05", "DEV07", "DEV08", "DEV11", "DEV13", "DEV14", "DEV16", "DEV17", "DEV18", "DEV19", "DEV21", "DEV23", "DEV24", "DEV25", "DEV28"]
+VariantA_rrf_0.5_0.5     | Mean R@10: 0.900 | Hits: 27/30 | Zeroes:  3 ["DEV08", "DEV16", "DEV18"]
+VariantA_rrf_0.4_0.6     | Mean R@10: 0.900 | Hits: 27/30 | Zeroes:  3 ["DEV08", "DEV09", "DEV18"]
+VariantA_rrf_0.3_0.7     | Mean R@10: 0.900 | Hits: 27/30 | Zeroes:  3 ["DEV08", "DEV09", "DEV18"]
+VariantA_rrf_0.2_0.8     | Mean R@10: 0.900 | Hits: 27/30 | Zeroes:  3 ["DEV08", "DEV09", "DEV18"]
+VariantA_rrf_0.1_0.9     | Mean R@10: 0.900 | Hits: 27/30 | Zeroes:  3 ["DEV08", "DEV09", "DEV18"]
+VariantB_norm_0.5_0.5    | Mean R@10: 0.933 | Hits: 28/30 | Zeroes:  2 ["DEV08", "DEV18"]
+VariantB_norm_0.4_0.6    | Mean R@10: 0.900 | Hits: 27/30 | Zeroes:  3 ["DEV08", "DEV09", "DEV18"]
+VariantB_norm_0.3_0.7    | Mean R@10: 0.900 | Hits: 27/30 | Zeroes:  3 ["DEV08", "DEV09", "DEV18"]
+VariantB_norm_0.2_0.8    | Mean R@10: 0.900 | Hits: 27/30 | Zeroes:  3 ["DEV08", "DEV09", "DEV18"]
+VariantB_norm_0.1_0.9    | Mean R@10: 0.900 | Hits: 27/30 | Zeroes:  3 ["DEV08", "DEV09", "DEV18"]
+
+Best configuration on DEV: VariantB_norm_0.5_0.5 (Mean Recall@10: 0.933)
+Evidence written to "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_FUSION_DEV"
+Total Dev Tuning Duration: 163.05s
+Exit Code: 0

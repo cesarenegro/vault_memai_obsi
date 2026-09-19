@@ -467,6 +467,44 @@ pub async fn hybrid_search_vault(
     api_key: Option<String>,
     use_semantic: bool,
 ) -> Result<Vec<SearchResultItem>, String> {
+    if !use_semantic {
+        return hybrid_search_vault_with_vector(vault_path, q, None, false).await;
+    }
+
+    let term = match &q.term {
+        Some(t) if !t.trim().is_empty() => t.trim(),
+        _ => return hybrid_search_vault_with_vector(vault_path, q, None, false).await,
+    };
+
+    let cache = match load_embeddings_cache(vault_path) {
+        Ok(c) if !c.entries.is_empty() => c,
+        _ => return hybrid_search_vault_with_vector(vault_path, q, None, false).await, // Graceful offline fallback
+    };
+
+    let effective_key = match api_key.as_deref() {
+        Some(k) if !k.trim().is_empty() => Some(k.to_string()),
+        _ => crate::keychain::load().ok().flatten().filter(|k| !k.trim().is_empty()),
+    };
+
+    let query_vector = match effective_key.as_deref() {
+        Some(key) if !key.is_empty() => {
+            match fetch_openai_embeddings(key, &cache.model, &[term.to_string()]).await {
+                Ok(mut vecs) => vecs.pop(),
+                Err(_) => None, // Graceful fallback on network/quota error
+            }
+        }
+        _ => None,
+    };
+
+    hybrid_search_vault_with_vector(vault_path, q, query_vector, true).await
+}
+
+pub async fn hybrid_search_vault_with_vector(
+    vault_path: &Path,
+    q: SearchQuery,
+    query_vector: Option<Vec<f32>>,
+    use_semantic: bool,
+) -> Result<Vec<SearchResultItem>, String> {
     let limit = q.limit.unwrap_or(50);
     let offset = q.offset.unwrap_or(0);
 
@@ -489,23 +527,6 @@ pub async fn hybrid_search_vault(
     let cache = match load_embeddings_cache(vault_path) {
         Ok(c) if !c.entries.is_empty() => c,
         _ => return Ok(lexical_results.into_iter().skip(offset).take(limit).collect()), // Graceful offline fallback
-    };
-
-    // 3. Obtain API key: use provided or load directly from Keychain in backend (R2)
-    let effective_key = match api_key.as_deref() {
-        Some(k) if !k.trim().is_empty() => Some(k.to_string()),
-        _ => crate::keychain::load().ok().flatten().filter(|k| !k.trim().is_empty()),
-    };
-
-    // 4. Compute query embedding vector (or fallback to lexical if key absent or network fails)
-    let query_vector = match effective_key.as_deref() {
-        Some(key) if !key.is_empty() => {
-            match fetch_openai_embeddings(key, &cache.model, &[term.to_string()]).await {
-                Ok(mut vecs) => vecs.pop(),
-                Err(_) => None, // Graceful fallback on network/quota error
-            }
-        }
-        _ => None,
     };
 
     let q_vec = match query_vector {
@@ -558,50 +579,27 @@ pub async fn hybrid_search_vault(
         }
     }
 
-    // 5. Hybrid fusion using Reciprocal Rank Fusion (RRF) with exact-match boost
-    // RRF score = 1.0 / (60 + rank_lex) + 1.0 / (60 + rank_sem) + exact_match_bonus
+    // 5. Hybrid fusion using min-max normalized combination (Variant B, w_lex=0.5, w_sem=0.5)
     let term_lower = term.to_lowercase();
-    let is_exact_code = term.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') && term.len() >= 3;
-
-    // Ranks from lexical
-    let mut lex_rank_map: BTreeMap<String, usize> = BTreeMap::new();
-    for (i, item) in lexical_results.iter().enumerate() {
-        lex_rank_map.insert(item.id.clone(), i + 1);
-    }
-
-    // Sort semantic candidates to establish semantic rank
-    let mut sem_sorted: Vec<(String, f32)> = semantic_scores.iter().map(|(id, (sim, _, _, _))| (id.clone(), *sim)).collect();
-    sem_sorted.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    let mut sem_rank_map: BTreeMap<String, usize> = BTreeMap::new();
-    for (i, (id, _)) in sem_sorted.iter().enumerate() {
-        sem_rank_map.insert(id.clone(), i + 1);
-    }
+    let is_exact_code = (term.contains('-') || term.contains('_') || term.chars().any(|c| c.is_ascii_digit()))
+        && term.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        && term.len() >= 3;
 
     // Union of all candidate IDs from lexical and semantic
     let mut all_ids: BTreeSet<String> = BTreeSet::new();
-    all_ids.extend(lex_rank_map.keys().cloned());
-    all_ids.extend(sem_rank_map.keys().cloned());
+    all_ids.extend(lexical_results.iter().map(|i| i.id.clone()));
+    all_ids.extend(semantic_scores.keys().cloned());
 
-    struct FusedCandidate {
+    struct IntermediateCandidate {
         item: SearchResultItem,
-        fused_score: f64,
+        base_score: f64,
+        sem_sim: f64,
+        matches_term: bool,
     }
 
-    let mut fused_candidates: Vec<FusedCandidate> = Vec::new();
+    let mut intermediate: Vec<IntermediateCandidate> = Vec::new();
 
     for id in all_ids {
-        let lex_rank = lex_rank_map.get(&id).copied();
-        let sem_rank = sem_rank_map.get(&id).copied();
-
-        let rrf_lex = match lex_rank {
-            Some(r) => 1.0 / (60.0 + r as f64),
-            None => 0.0,
-        };
-        let rrf_sem = match sem_rank {
-            Some(r) => 1.0 / (60.0 + r as f64),
-            None => 0.0,
-        };
-
         // Find or build SearchResultItem
         let (mut item, base_score) = if let Some(lex_item) = lexical_results.iter().find(|i| i.id == id) {
             (lex_item.clone(), lex_item.score)
@@ -641,15 +639,56 @@ pub async fn hybrid_search_vault(
             }
         }
 
-        // Exact code/phrase match bonus
-        let mut exact_bonus = 0.0;
-        if item.title.to_lowercase().contains(&term_lower) || item.snippet.to_lowercase().contains(&term_lower) {
-            exact_bonus += if is_exact_code { 0.15 } else { 0.05 };
-        }
+        let sem_sim = semantic_scores.get(&id).map(|s| s.0 as f64).unwrap_or(0.0);
+        let matches_term = item.title.to_lowercase().contains(&term_lower) || item.snippet.to_lowercase().contains(&term_lower);
 
-        let fused_score = rrf_lex * 0.5 + rrf_sem * 0.5 + exact_bonus + (base_score * 0.01);
-        item.score = fused_score;
-        fused_candidates.push(FusedCandidate { item, fused_score });
+        intermediate.push(IntermediateCandidate {
+            item,
+            base_score,
+            sem_sim,
+            matches_term,
+        });
+    }
+
+    // Min-Max normalization bounds for this query across retrieved candidates
+    let min_lex = intermediate.iter().map(|c| c.base_score).fold(f64::INFINITY, f64::min);
+    let max_lex = intermediate.iter().map(|c| c.base_score).fold(f64::NEG_INFINITY, f64::max);
+    let min_sem = intermediate.iter().map(|c| c.sem_sim).fold(f64::INFINITY, f64::min);
+    let max_sem = intermediate.iter().map(|c| c.sem_sim).fold(f64::NEG_INFINITY, f64::max);
+
+    struct FusedCandidate {
+        item: SearchResultItem,
+        fused_score: f64,
+    }
+
+    let mut fused_candidates: Vec<FusedCandidate> = Vec::new();
+
+    for mut c in intermediate {
+        let lex_norm = if max_lex > min_lex {
+            (c.base_score - min_lex) / (max_lex - min_lex)
+        } else if c.base_score > 0.0 {
+            1.0
+        } else {
+            0.0
+        };
+
+        let sem_norm = if max_sem > min_sem {
+            (c.sem_sim - min_sem) / (max_sem - min_sem)
+        } else if c.sem_sim > 0.0 {
+            1.0
+        } else {
+            0.0
+        };
+
+        let exact_bonus = if c.matches_term {
+            if is_exact_code { 0.20 } else { 0.05 }
+        } else {
+            0.0
+        };
+
+        let fused_score = 0.5 * lex_norm + 0.5 * sem_norm + exact_bonus;
+        c.item.score = fused_score;
+        fused_candidates.push(FusedCandidate { item: c.item, fused_score });
     }
 
     // Sort descending by fused score
@@ -868,5 +907,90 @@ mod tests {
 
         assert!(!res.is_empty());
         assert_eq!(res[0].relative_path, "20_RAW_SOURCES/doc_a.txt");
+    }
+
+    #[test]
+    fn test_hybrid_fusion_pure_semantic_enters_top_ten() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path();
+        fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        fs::create_dir_all(path.join("20_RAW_SOURCES")).unwrap();
+
+        // 1. Create 5 documents that match lexical search for "packaging"
+        for i in 1..=5 {
+            let doc_text = format!("Specifiche per soluzioni di packaging standard modello numerato {}.", i);
+            fs::write(path.join(format!("20_RAW_SOURCES/lex_doc_{:02}.txt", i)), doc_text).unwrap();
+        }
+
+        // 2. Create 1 document that has ZERO lexical match for "packaging", but high semantic relevance
+        let sem_text = "Involucro a tenuta stagna per liquidi criogenici con barriera termica sottovuoto.";
+        fs::write(path.join("20_RAW_SOURCES/pure_sem_doc.txt"), sem_text).unwrap();
+
+        let _ = crate::catalog::sync_catalog_from_vault(path).unwrap();
+        crate::catalog::process_pending_extractions(path).unwrap();
+        let cat = crate::catalog::load_catalog(path).unwrap();
+        search::index_vault_search(path).unwrap();
+
+        // Find document_id of pure_sem_doc
+        let pure_sem_doc_id = cat.documents.values()
+            .find(|d| d.original_path.contains("pure_sem_doc.txt"))
+            .map(|d| d.document_id.clone())
+            .expect("pure_sem_doc must be in catalog");
+
+        // 3. Build embeddings cache where pure_sem_doc has high similarity vector [1.0, 0.0, 0.0]
+        // and lexical docs have orthogonal vector [0.0, 1.0, 0.0]
+        let mut cache = EmbeddingsCache {
+            version: 1,
+            model: DEFAULT_EMBEDDINGS_MODEL.into(),
+            dimensions: 3,
+            entries: BTreeMap::new(),
+            last_updated_at: now_iso(),
+        };
+
+        for doc in cat.documents.values() {
+            let vec = if doc.document_id == pure_sem_doc_id {
+                vec![1.0, 0.0, 0.0]
+            } else {
+                vec![0.0, 1.0, 0.0]
+            };
+            for p in &doc.passages {
+                cache.entries.insert(
+                    p.passage_id.clone(),
+                    PassageEmbeddingEntry {
+                        passage_id: p.passage_id.clone(),
+                        document_id: doc.document_id.clone(),
+                        relative_path: doc.original_path.clone(),
+                        locator: p.locator.clone(),
+                        sha256: p.sha256.clone(),
+                        embedded_text_sha256: Some(p.sha256.clone()),
+                        model: DEFAULT_EMBEDDINGS_MODEL.into(),
+                        dimensions: 3,
+                        vector: vec.clone(),
+                        updated_at: now_iso(),
+                    },
+                );
+            }
+        }
+        save_embeddings_cache(path, &mut cache).unwrap();
+
+        // 4. Query for "packaging" with query_vector = [1.0, 0.0, 0.0]
+        // Pure semantic doc has 0.0 lexical score, but 1.0 cosine similarity
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let res = rt.block_on(hybrid_search_vault_with_vector(
+            path,
+            SearchQuery {
+                term: Some("packaging".into()),
+                limit: Some(10),
+                ..Default::default()
+            },
+            Some(vec![1.0, 0.0, 0.0]),
+            true, // use_semantic = true
+        )).unwrap();
+
+        // Verify pure semantic document enters top 10
+        let found_rank = res.iter().position(|r| r.id == pure_sem_doc_id);
+        assert!(found_rank.is_some(), "Document found only by semantics (zero lexical score) MUST enter top 10!");
+        let rank = found_rank.unwrap() + 1;
+        assert!(rank <= 10, "Pure semantic document rank ({}) must be <= 10", rank);
     }
 }

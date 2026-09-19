@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
+use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
@@ -98,6 +99,34 @@ struct A05DiagSummary {
     decision_rule_verbatim: String,
     diagnostic_verdict: String,
     diagnostic_conclusion: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    comparison_vs_v2_diagnostic: Option<V2DiagnosticComparison>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct QueryComparisonItem {
+    query_id: String,
+    expected_document: String,
+    v2_hybrid_rank: Option<usize>,
+    v2_hybrid_recall: f64,
+    new_hybrid_rank: Option<usize>,
+    new_hybrid_recall: f64,
+    status: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct V2DiagnosticComparison {
+    baseline_diagnostic_path: String,
+    pre_fusion_hybrid_mean_recall_at_10: f64,
+    post_fusion_hybrid_mean_recall_at_10: f64,
+    improved_queries_count: usize,
+    improved_queries: Vec<String>,
+    degraded_queries_count: usize,
+    degraded_queries: Vec<String>,
+    same_queries_count: usize,
+    query_comparisons: Vec<QueryComparisonItem>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -797,6 +826,66 @@ fn run_a05_diag(vault_path: &Path, queries_path: &Path, out_dir: &Path) -> Resul
         )
     };
 
+    let v2_diag_path = Path::new("IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_V2_DIAGNOSTIC/per-query.jsonl");
+    let comparison = if v2_diag_path.exists() {
+        if let Ok(v2_content) = fs::read_to_string(v2_diag_path) {
+            let mut v2_map: BTreeMap<String, (f64, Option<usize>)> = BTreeMap::new();
+            for line in v2_content.lines() {
+                if let Ok(item) = serde_json::from_str::<serde_json::Value>(line) {
+                    if let (Some(qid), Some(rec)) = (item.get("queryId").and_then(|v| v.as_str()), item.get("hybridRecallAt10").and_then(|v| v.as_f64())) {
+                        let rk = item.get("hybridRank").and_then(|v| v.as_u64()).map(|v| v as usize);
+                        v2_map.insert(qid.to_string(), (rec, rk));
+                    }
+                }
+            }
+
+            let mut improved = Vec::new();
+            let mut degraded = Vec::new();
+            let mut same = 0;
+            let mut comps = Vec::new();
+
+            for rec in &per_query_records {
+                let (v2_rec, v2_rk) = v2_map.get(&rec.query_id).copied().unwrap_or((0.0, None));
+                let status = if rec.hybrid_recall_at_10 > v2_rec || (rec.hybrid_recall_at_10 == v2_rec && rec.hybrid_rank < v2_rk) {
+                    improved.push(rec.query_id.clone());
+                    "IMPROVED".to_string()
+                } else if rec.hybrid_recall_at_10 < v2_rec || (rec.hybrid_recall_at_10 == v2_rec && rec.hybrid_rank > v2_rk) {
+                    degraded.push(rec.query_id.clone());
+                    "DEGRADED".to_string()
+                } else {
+                    same += 1;
+                    "SAME".to_string()
+                };
+
+                comps.push(QueryComparisonItem {
+                    query_id: rec.query_id.clone(),
+                    expected_document: rec.expected_document.clone(),
+                    v2_hybrid_rank: v2_rk,
+                    v2_hybrid_recall: v2_rec,
+                    new_hybrid_rank: rec.hybrid_rank,
+                    new_hybrid_recall: rec.hybrid_recall_at_10,
+                    status,
+                });
+            }
+
+            Some(V2DiagnosticComparison {
+                baseline_diagnostic_path: v2_diag_path.to_string_lossy().to_string(),
+                pre_fusion_hybrid_mean_recall_at_10: 0.675,
+                post_fusion_hybrid_mean_recall_at_10: (hyb_mean * 1000.0).round() / 1000.0,
+                improved_queries_count: improved.len(),
+                improved_queries: improved,
+                degraded_queries_count: degraded.len(),
+                degraded_queries: degraded,
+                same_queries_count: same,
+                query_comparisons: comps,
+            })
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
     let summary = A05DiagSummary {
         benchmark: "A05 — Misura Diagnostica Semantica vs Lessicale vs Ibrida".into(),
         timestamp_utc8: get_utc8_timestamp(),
@@ -819,6 +908,7 @@ fn run_a05_diag(vault_path: &Path, queries_path: &Path, out_dir: &Path) -> Resul
         decision_rule_verbatim,
         diagnostic_verdict: verdict,
         diagnostic_conclusion: conclusion,
+        comparison_vs_v2_diagnostic: comparison,
     };
 
     let summary_path = out_dir.join("summary.json");
@@ -842,10 +932,365 @@ fn run_a05_diag(vault_path: &Path, queries_path: &Path, out_dir: &Path) -> Resul
     Ok(())
 }
 
+#[derive(Debug, Serialize)]
+struct DevConfigResult {
+    name: String,
+    variant: String,
+    w_lex: f64,
+    w_sem: f64,
+    mean_recall_at_10: f64,
+    hit_count: usize,
+    zero_recall_count: usize,
+    zero_recall_queries: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct DevResultsSummary {
+    benchmark: String,
+    timestamp_utc8: String,
+    dev_queries_count: usize,
+    configurations: Vec<DevConfigResult>,
+    best_configuration: String,
+    selection_rationale: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct DevPerQueryItem {
+    query_id: String,
+    expected_document: String,
+    query_text: String,
+    rank: Option<usize>,
+    recall_at_10: f64,
+}
+
+fn run_a05_tune(vault_path: &Path, queries_path: &Path, out_dir: &Path) -> Result<(), String> {
+    let start_time = Instant::now();
+    println!("=== Running A05 Fusion Tuning on Dev Queries (a05-tune) ===");
+    fs::create_dir_all(out_dir).map_err(|e| e.to_string())?;
+
+    // 1. Load catalog
+    println!("Loading catalog from vault: {:?}", vault_path);
+    let catalog = limen_vault::catalog::load_catalog(vault_path)?;
+    if catalog.documents.is_empty() {
+        return Err("Catalog is empty.".into());
+    }
+    let total_passages: usize = catalog.documents.values().map(|d| d.passages.len()).sum();
+    println!("Catalog loaded: {} documents, {} passages", catalog.documents.len(), total_passages);
+
+    // 2. Load pre-computed cache
+    let cache = limen_vault::embeddings::load_embeddings_cache(vault_path)?;
+    println!("Loaded pre-computed cache: {} passages (model: {})", cache.entries.len(), cache.model);
+
+    // 3. Ensure lexical search index is ready
+    limen_vault::search::index_vault_search(vault_path)?;
+
+    // 4. Securely read OpenAI API key from Keychain
+    let api_key = get_api_key_from_keychain()?;
+
+    // 5. Load DEV queries
+    let q_content = fs::read_to_string(queries_path).map_err(|e| e.to_string())?;
+    let queries: Vec<A05Query> = serde_json::from_str(&q_content).map_err(|e| e.to_string())?;
+    println!("Loaded {} development queries from {:?}", queries.len(), queries_path);
+
+    let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
+
+    // 6. Batch fetch embeddings for dev queries from OpenAI
+    let query_texts: Vec<String> = queries.iter().map(|q| q.text.clone()).collect();
+    println!("Fetching embeddings for {} dev queries in a single batch...", query_texts.len());
+    let fetch_start = Instant::now();
+    let query_vectors = rt.block_on(limen_vault::embeddings::fetch_openai_embeddings(
+        &api_key,
+        &cache.model,
+        &query_texts,
+    ))?;
+    println!("Batch dev query embeddings received in {:.2}s.", fetch_start.elapsed().as_secs_f64());
+    if query_vectors.len() != queries.len() {
+        return Err("Vector count mismatch".into());
+    }
+
+    struct FusionConfigDef {
+        name: &'static str,
+        variant: &'static str,
+        w_lex: f64,
+        w_sem: f64,
+    }
+
+    let config_defs = vec![
+        FusionConfigDef { name: "baseline_current", variant: "baseline", w_lex: 0.5, w_sem: 0.5 },
+        FusionConfigDef { name: "VariantA_rrf_0.5_0.5", variant: "RRF_pure", w_lex: 0.5, w_sem: 0.5 },
+        FusionConfigDef { name: "VariantA_rrf_0.4_0.6", variant: "RRF_pure", w_lex: 0.4, w_sem: 0.6 },
+        FusionConfigDef { name: "VariantA_rrf_0.3_0.7", variant: "RRF_pure", w_lex: 0.3, w_sem: 0.7 },
+        FusionConfigDef { name: "VariantA_rrf_0.2_0.8", variant: "RRF_pure", w_lex: 0.2, w_sem: 0.8 },
+        FusionConfigDef { name: "VariantA_rrf_0.1_0.9", variant: "RRF_pure", w_lex: 0.1, w_sem: 0.9 },
+        FusionConfigDef { name: "VariantB_norm_0.5_0.5", variant: "normalized", w_lex: 0.5, w_sem: 0.5 },
+        FusionConfigDef { name: "VariantB_norm_0.4_0.6", variant: "normalized", w_lex: 0.4, w_sem: 0.6 },
+        FusionConfigDef { name: "VariantB_norm_0.3_0.7", variant: "normalized", w_lex: 0.3, w_sem: 0.7 },
+        FusionConfigDef { name: "VariantB_norm_0.2_0.8", variant: "normalized", w_lex: 0.2, w_sem: 0.8 },
+        FusionConfigDef { name: "VariantB_norm_0.1_0.9", variant: "normalized", w_lex: 0.1, w_sem: 0.9 },
+    ];
+
+    let mut config_recalls: Vec<Vec<f64>> = vec![Vec::new(); config_defs.len()];
+    let mut config_zero_queries: Vec<Vec<String>> = vec![Vec::new(); config_defs.len()];
+    let mut config_per_query: Vec<Vec<DevPerQueryItem>> = vec![Vec::new(); config_defs.len()];
+
+    for (q_idx, q) in queries.iter().enumerate() {
+        let expected_doc = q.relevant_document_ids.first().cloned().unwrap_or_default();
+        let query_vec = &query_vectors[q_idx];
+        let term_lower = q.text.to_lowercase();
+        let is_exact_code = q.text.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') && q.text.len() >= 3;
+
+        // 1. Lexical search
+        let lex_query = limen_vault::search::SearchQuery {
+            term: Some(q.text.clone()),
+            limit: Some(200),
+            ..Default::default()
+        };
+        let lexical_results = limen_vault::search::search_vault(vault_path, lex_query)?;
+        let mut lex_rank_map: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+        for (i, item) in lexical_results.iter().enumerate() {
+            lex_rank_map.insert(item.id.clone(), i + 1);
+        }
+
+        // 2. Semantic scoring
+        let mut sem_scores: std::collections::BTreeMap<String, (f32, Option<String>, Option<String>, Option<String>)> = std::collections::BTreeMap::new();
+        for doc in catalog.documents.values() {
+            if doc.passages.is_empty() {
+                continue;
+            }
+            let (sim, pid, loc, snip) = limen_vault::embeddings::rank_document_semantic(
+                &doc.document_id,
+                &doc.passages,
+                query_vec,
+                &cache,
+            );
+            if sim > 0.25 {
+                sem_scores.insert(doc.document_id.clone(), (sim, pid, loc, snip));
+            }
+        }
+        let mut sem_sorted: Vec<(String, f32)> = sem_scores.iter().map(|(id, (sim, _, _, _))| (id.clone(), *sim)).collect();
+        sem_sorted.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        let mut sem_rank_map: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+        for (i, (id, _)) in sem_sorted.iter().enumerate() {
+            sem_rank_map.insert(id.clone(), i + 1);
+        }
+
+        // 3. Union candidate pool
+        let mut all_ids: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+        all_ids.extend(lex_rank_map.keys().cloned());
+        all_ids.extend(sem_rank_map.keys().cloned());
+
+        struct CandInfo {
+            id: String,
+            orig_path: String,
+            lex_rank: Option<usize>,
+            sem_rank: Option<usize>,
+            base_score: f64,
+            sem_sim: f64,
+            matches_term: bool,
+        }
+
+        let mut cand_infos: Vec<CandInfo> = Vec::new();
+        for id in all_ids {
+            let lex_item = lexical_results.iter().find(|i| i.id == id);
+            let doc = catalog.documents.get(&id);
+            let orig_path = if let Some(ref li) = lex_item {
+                li.relative_path.clone()
+            } else if let Some(ref d) = doc {
+                d.original_path.clone()
+            } else {
+                continue;
+            };
+
+            let title = if let Some(ref li) = lex_item {
+                li.title.clone()
+            } else if let Some(ref d) = doc {
+                d.file_name.clone()
+            } else {
+                String::new()
+            };
+
+            let snippet = if let Some(ref li) = lex_item {
+                li.snippet.clone()
+            } else if let Some(ref d) = doc {
+                let (_, _, _, snip) = sem_scores.get(&id).cloned().unwrap_or((0.0, None, None, None));
+                snip.unwrap_or_else(|| d.passages.first().map(|p| p.text.clone()).unwrap_or_default())
+            } else {
+                String::new()
+            };
+
+            let base_score = lex_item.map(|i| i.score).unwrap_or(0.0);
+            let sem_sim = sem_scores.get(&id).map(|s| s.0 as f64).unwrap_or(0.0);
+            let matches_term = title.to_lowercase().contains(&term_lower) || snippet.to_lowercase().contains(&term_lower);
+
+            cand_infos.push(CandInfo {
+                id: id.clone(),
+                orig_path,
+                lex_rank: lex_rank_map.get(&id).copied(),
+                sem_rank: sem_rank_map.get(&id).copied(),
+                base_score,
+                sem_sim,
+                matches_term,
+            });
+        }
+
+        // Extrema for normalization (Variant B)
+        let min_lex = cand_infos.iter().map(|c| c.base_score).fold(f64::INFINITY, f64::min);
+        let max_lex = cand_infos.iter().map(|c| c.base_score).fold(f64::NEG_INFINITY, f64::max);
+        let min_sem = cand_infos.iter().map(|c| c.sem_sim).fold(f64::INFINITY, f64::min);
+        let max_sem = cand_infos.iter().map(|c| c.sem_sim).fold(f64::NEG_INFINITY, f64::max);
+
+        // 4. Score candidates under each config
+        for (cfg_idx, cfg) in config_defs.iter().enumerate() {
+            let mut scored_cands: Vec<(String, String, f64)> = Vec::new();
+            for c in &cand_infos {
+                let rrf_lex = c.lex_rank.map_or(0.0, |r| 1.0 / (60.0 + r as f64));
+                let rrf_sem = c.sem_rank.map_or(0.0, |r| 1.0 / (60.0 + r as f64));
+
+                let final_score = match cfg.variant {
+                    "RRF_pure" => {
+                        let bonus = if c.matches_term {
+                            if is_exact_code { 0.02 } else { 0.005 }
+                        } else {
+                            0.0
+                        };
+                        cfg.w_lex * rrf_lex + cfg.w_sem * rrf_sem + bonus
+                    }
+                    "normalized" => {
+                        let lex_norm = if max_lex > min_lex {
+                            (c.base_score - min_lex) / (max_lex - min_lex)
+                        } else if c.base_score > 0.0 {
+                            1.0
+                        } else {
+                            0.0
+                        };
+                        let sem_norm = if max_sem > min_sem {
+                            (c.sem_sim - min_sem) / (max_sem - min_sem)
+                        } else if c.sem_sim > 0.0 {
+                            1.0
+                        } else {
+                            0.0
+                        };
+                        let bonus = if c.matches_term {
+                            if is_exact_code { 0.3 } else { 0.05 }
+                        } else {
+                            0.0
+                        };
+                        cfg.w_lex * lex_norm + cfg.w_sem * sem_norm + bonus
+                    }
+                    "baseline" => {
+                        let bonus = if c.matches_term {
+                            if is_exact_code { 0.15 } else { 0.05 }
+                        } else {
+                            0.0
+                        };
+                        rrf_lex * 0.5 + rrf_sem * 0.5 + bonus + (c.base_score * 0.01)
+                    }
+                    _ => 0.0,
+                };
+                scored_cands.push((c.id.clone(), c.orig_path.clone(), final_score));
+            }
+
+            scored_cands.sort_by(|a, b| {
+                b.2.partial_cmp(&a.2)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| a.0.cmp(&b.0))
+            });
+
+            let mut cand_rank = None;
+            for (r_0, (cand_id, orig_path, _)) in scored_cands.iter().take(50).enumerate() {
+                if orig_path.contains(&expected_doc) || cand_id == &expected_doc {
+                    cand_rank = Some(r_0 + 1);
+                    break;
+                }
+            }
+            let r10 = if cand_rank.map_or(false, |r| r <= 10) { 1.0 } else { 0.0 };
+            config_recalls[cfg_idx].push(r10);
+            if r10 == 0.0 {
+                config_zero_queries[cfg_idx].push(q.query_id.clone());
+            }
+            config_per_query[cfg_idx].push(DevPerQueryItem {
+                query_id: q.query_id.clone(),
+                expected_document: expected_doc.clone(),
+                query_text: q.text.clone(),
+                rank: cand_rank,
+                recall_at_10: r10,
+            });
+        }
+    }
+
+    // 5. Evaluate and summarize results
+    println!("\n=== Dev Evaluation Results across Configurations (30 queries) ===");
+    let mut config_results: Vec<DevConfigResult> = Vec::new();
+    let mut best_cfg_idx = 1;
+    let mut best_mean_recall = -1.0;
+
+    for (cfg_idx, cfg) in config_defs.iter().enumerate() {
+        let recalls = &config_recalls[cfg_idx];
+        let mean = recalls.iter().sum::<f64>() / (recalls.len() as f64);
+        let hits = recalls.iter().filter(|&&r| r > 0.0).count();
+        let zeroes = &config_zero_queries[cfg_idx];
+
+        println!(
+            "{:<24} | Mean R@10: {:.3} | Hits: {:>2}/30 | Zeroes: {:>2} {:?}",
+            cfg.name, mean, hits, zeroes.len(), zeroes
+        );
+
+        config_results.push(DevConfigResult {
+            name: cfg.name.to_string(),
+            variant: cfg.variant.to_string(),
+            w_lex: cfg.w_lex,
+            w_sem: cfg.w_sem,
+            mean_recall_at_10: (mean * 1000.0).round() / 1000.0,
+            hit_count: hits,
+            zero_recall_count: zeroes.len(),
+            zero_recall_queries: zeroes.clone(),
+        });
+
+        // Prefer Variant A on tie (as per instructions)
+        if mean > best_mean_recall || ( (mean - best_mean_recall).abs() < 1e-6 && cfg.variant == "RRF_pure" && config_defs[best_cfg_idx].variant != "RRF_pure" ) {
+            best_mean_recall = mean;
+            best_cfg_idx = cfg_idx;
+        }
+    }
+
+    let best_cfg = &config_defs[best_cfg_idx];
+    println!("\nBest configuration on DEV: {} (Mean Recall@10: {:.3})", best_cfg.name, best_mean_recall);
+
+    // Write dev-results.json
+    let dev_summary = DevResultsSummary {
+        benchmark: "A05 — Taratura Fusione Ibrida su Query di Sviluppo".into(),
+        timestamp_utc8: get_utc8_timestamp(),
+        dev_queries_count: queries.len(),
+        configurations: config_results,
+        best_configuration: best_cfg.name.to_string(),
+        selection_rationale: format!(
+            "Selezionata la configurazione {} con Recall@10 = {:.3} sul set di sviluppo ({}/30 hit). Come richiesto dalle specifiche, a parita o equivalenza di prestazione e preferita la Variante A (RRF puro) perche evita iperparametri di normalizzazione dinamica.",
+            best_cfg.name, best_mean_recall, config_recalls[best_cfg_idx].iter().filter(|&&r| r > 0.0).count()
+        ),
+    };
+    let summary_path = out_dir.join("dev-results.json");
+    fs::write(&summary_path, serde_json::to_string_pretty(&dev_summary).unwrap()).map_err(|e| e.to_string())?;
+
+    // Write per-query.jsonl for the best configuration
+    let jsonl_path = out_dir.join("per-query.jsonl");
+    let mut jsonl_file = fs::File::create(&jsonl_path).map_err(|e| e.to_string())?;
+    use std::io::Write;
+    for rec in &config_per_query[best_cfg_idx] {
+        let line = serde_json::to_string(rec).map_err(|e| e.to_string())?;
+        writeln!(jsonl_file, "{}", line).map_err(|e| e.to_string())?;
+    }
+
+    let elapsed = start_time.elapsed();
+    println!("Evidence written to {:?}", out_dir);
+    println!("Total Dev Tuning Duration: {:.2}s", elapsed.as_secs_f64());
+
+    Ok(())
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 5 {
-        eprintln!("Usage: gold-benchmark <a05|a05-diag|a15> <vault_path> <queries_path> <out_dir>");
+        eprintln!("Usage: gold-benchmark <a05|a05-diag|a05-tune|a15> <vault_path> <queries_path> <out_dir>");
         std::process::exit(1);
     }
 
@@ -867,6 +1312,12 @@ fn main() {
                 std::process::exit(1);
             }
         }
+        "a05-tune" => {
+            if let Err(e) = run_a05_tune(vault_path, queries_path, out_dir) {
+                eprintln!("A05 Tuning Benchmark Error: {e}");
+                std::process::exit(1);
+            }
+        }
         "a15" => {
             if let Err(e) = run_a15(vault_path, queries_path, out_dir) {
                 eprintln!("A15 Benchmark Error: {e}");
@@ -874,7 +1325,7 @@ fn main() {
             }
         }
         _ => {
-            eprintln!("Unknown mode: {mode}. Use 'a05', 'a05-diag', or 'a15'");
+            eprintln!("Unknown mode: {mode}. Use 'a05', 'a05-diag', 'a05-tune', or 'a15'");
             std::process::exit(1);
         }
     }

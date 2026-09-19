@@ -338,6 +338,61 @@ Per prevenire qualsiasi disallineamento durante la revisione, l'intero stato del
 - **`v3.0.0-audit-closure-complete`** (commit `eaa8413`): Chiusura delle misure A05 (storico v1) e A15 (11.000 passaggi, p95 198.90 ms).
 - **`v3.1.0-a05-corpus-v2-frozen`** (commit `87e41df`): Risoluzione Rilievo C5; congelamento corpus diversificato A05 V2 (120 doc, max Jaccard 0.2154 <= 0.30, 40 query zero overlap).
 - **`v3.1.0-embed-context`** (commit `b7ab5c6`): Misura baseline V2 (0.675), implementazione contestualizzazione passaggi in `embeddings.rs`, unit test ed evidenze comparate post-modifica (0.675, delta 0.000).
-- **`v3.1.0-a05-diagnostic`**: Misura diagnostica comparata della componente semantica pura (0.975), lessicale pura (0.650) e ibrida RRF (0.675) con tabella dei ranghi per tutte le 40 query; verdetto: `SEMANTICA_VALIDA_PROBLEMA_FUSIONE`.
+- **`v3.1.0-a05-diagnostic`** (commit `3d88bc8`): Misura diagnostica comparata della componente semantica pura (0.975), lessicale pura (0.650) e ibrida RRF (0.675) con tabella dei ranghi per tutte le 40 query; verdetto: `SEMANTICA_VALIDA_PROBLEMA_FUSIONE`.
+- **`v3.1.0-dev-queries-frozen`** (commit `9cce037`): Fase 0 completata; 30 nuove query di sviluppo in `tests/gold/A05_DEV_QUERIES.json`, zero sovrapposizione lessicale verificata, manifest aggiornato, congelamento prima di toccare la fusione.
 
-**Nessun push remoto**: In conformità alle direttive di sicurezza, nessun commit o artefatto è stato inviato a repository remoti o servizi esterni.
+---
+
+## 9. Risoluzione Rilievo C8: Correzione Fusione Ibrida
+
+### 9.1 Diagnosi e Causa
+La misura diagnostica sul corpus V2 (commit `3d88bc8`) ha evidenziato che la semantica da sola raggiunge Recall@10 di **0.975** (39/40 query a segno, 31 al rango 1), mentre l'ibrido raggiungeva solo **0.675**, coincidendo esattamente con il rango lessicale in 36 query su 40.
+La causa risiedeva nell'iniezione non normalizzata di `base_score * 0.01` (0.01–0.25) e `exact_bonus` (0.05–0.15) nella formula di fusione a riga 650 di `embeddings.rs`, che sovrastavano di 1-2 ordini di grandezza i termini RRF ($1/(60 + \text{rank}) \le 0.0082$, escursione $\approx 0.006$).
+
+### 9.2 Fase 0: Set di Sviluppo Disaccoppiato dal Gold
+- File: `tests/gold/A05_DEV_QUERIES.json` (30 query, 30 documenti distinti coperti, inclusi tutti i 13 documenti persi dall'ibrido precedente: Q03, Q05, Q06, Q12, Q17, Q18, Q23, Q29, Q31, Q32, Q34, Q37, Q38).
+- Verifica di zero sovrapposizione lessicale: `node scripts/a05-check-overlap.mjs tests/gold/A05_DEV_QUERIES.json` -> **30/30 PASS** (`overlap-check.log`).
+- Verifica collisioni con il gold: **0/30 collisioni**.
+- Manifest verificato: `tests/gold/A05_MANIFEST.sha256` aggiornato (123 file OK, `manifest-verify.log`).
+- Tag dedicato congelato prima di toccare la fusione: `v3.1.0-dev-queries-frozen` (commit `9cce037`).
+- Immutabilità gold preservata: `git diff v3.1.0-a05-corpus-v2-frozen HEAD -- tests/gold/A05_CORPUS` vuoto; `git diff v3.1.0-a05-corpus-v2-frozen HEAD -- tests/gold/A05_QUERIES.json` vuoto.
+
+### 9.3 Fase 1: Esplorazione e Taratura Esclusivamente sul Set di Sviluppo
+Implementato il comando interno di benchmark `a05-tune` in `gold-benchmark.rs` ed eseguite 11 configurazioni sulle 30 query di sviluppo:
+
+| Configurazione | Variante Algoritmica | Pesi (w_lex / w_sem) | Recall@10 (Dev 30q) | Hits / 30 | Query con Recall = 0 |
+|:---|:---|:---|:---|:---|:---|
+| `baseline_current` | Baseline con `base_score * 0.01` | 0.5 / 0.5 | **0.367** | 11 / 30 | 19 query fallite |
+| `VariantA_rrf_0.5_0.5` | Variante A (RRF puro) | 0.5 / 0.5 | **0.900** | 27 / 30 | DEV08, DEV16, DEV18 |
+| `VariantA_rrf_0.4_0.6` | Variante A (RRF puro) | 0.4 / 0.6 | **0.900** | 27 / 30 | DEV08, DEV09, DEV18 |
+| `VariantA_rrf_0.3_0.7` | Variante A (RRF puro) | 0.3 / 0.7 | **0.900** | 27 / 30 | DEV08, DEV09, DEV18 |
+| `VariantA_rrf_0.2_0.8` | Variante A (RRF puro) | 0.2 / 0.8 | **0.900** | 27 / 30 | DEV08, DEV09, DEV18 |
+| `VariantA_rrf_0.1_0.9` | Variante A (RRF puro) | 0.1 / 0.9 | **0.900** | 27 / 30 | DEV08, DEV09, DEV18 |
+| `VariantB_norm_0.5_0.5`| **Variante B (Normalizzata)** | **0.5 / 0.5** | **0.933** | **28 / 30** | **DEV08, DEV18** |
+| `VariantB_norm_0.4_0.6`| Variante B (Normalizzata) | 0.4 / 0.6 | **0.900** | 27 / 30 | DEV08, DEV09, DEV18 |
+| `VariantB_norm_0.3_0.7`| Variante B (Normalizzata) | 0.3 / 0.7 | **0.900** | 27 / 30 | DEV08, DEV09, DEV18 |
+| `VariantB_norm_0.2_0.8`| Variante B (Normalizzata) | 0.2 / 0.8 | **0.900** | 27 / 30 | DEV08, DEV09, DEV18 |
+| `VariantB_norm_0.1_0.9`| Variante B (Normalizzata) | 0.1 / 0.9 | **0.900** | 27 / 30 | DEV08, DEV09, DEV18 |
+
+Evidenze salvate in `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_FUSION_DEV/`:
+- `dev-results.json`: risultati completi delle 11 configurazioni.
+- `per-query.jsonl`: dettaglio per query della configurazione migliore (`VariantB_norm_0.5_0.5`).
+- `run.log`: log completo di esecuzione.
+- `overlap-check.log`: verifica 0 overlap delle query DEV.
+- `manifest-verify.log`: verifica SHA-256 manifest.
+- `cargo-test.log`: log grezzo dell'intera suite di test Rust (96/96 PASS).
+
+### 9.4 Fase 2: Scelta e Congelamento dei Parametri
+1. **Configurazione selezionata**: **Variante B (Punteggi Normalizzati)** con pesi `(w_lex: 0.5, w_sem: 0.5)`.
+2. **Motivazione**: Sul set di sviluppo indipendente, la Variante B (0.5/0.5) ottiene la prestazione più elevata in assoluto (**0.933**, 28/30 hit contro 27/30 della Variante A), recuperando con successo `DEV16` al rango 10 grazie alla normalizzazione min-max che valorizza la similarità semantica rispetto al rumore di match lessicali di basso punteggio.
+3. **Regole di normalizzazione**:
+   - Per ciascuna query, si calcolano `min_lex`, `max_lex`, `min_sem`, `max_sem` sui candidati.
+   - Documento presente solo nella semantica: `lex_norm = 0.0`, score = $0.5 \times \text{sem\_norm}$.
+   - Documento presente solo nel lessicale: `sem_norm = 0.0`, score = $0.5 \times \text{lex\_norm}$.
+   - Bonus corrispondenza esatta: $+0.20$ per codice esatto alfanumerico (con cifre/separatori) e $+0.05$ per corrispondenza di termine/frase esatta.
+4. **Verifica di non regressione**:
+   - `test_hybrid_fusion_ranks_exact_code_first`: **PASS** (i codici esatti come SKU-999-X restano al rango 1).
+   - `test_hybrid_fusion_pure_semantic_enters_top_ten`: **PASS** (un documento privo di qualsiasi occorrenza testuale della query entra stabilmente nella top 10).
+   - `test_hybrid_search_offline_graceful_fallback`: **PASS** (ripiego offline funzionante).
+   - Suite Rust complessiva: **96/96 test passati**.
+

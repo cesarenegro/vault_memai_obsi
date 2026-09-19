@@ -1,0 +1,40 @@
+=== A05 Non-Overlap Check: 30 queries against target passages ===
+
+✅ [PASS] DEV01: 0 overlapping content words
+✅ [PASS] DEV02: 0 overlapping content words
+✅ [PASS] DEV03: 0 overlapping content words
+✅ [PASS] DEV04: 0 overlapping content words
+✅ [PASS] DEV05: 0 overlapping content words
+✅ [PASS] DEV06: 0 overlapping content words
+✅ [PASS] DEV07: 0 overlapping content words
+✅ [PASS] DEV08: 0 overlapping content words
+✅ [PASS] DEV09: 0 overlapping content words
+✅ [PASS] DEV10: 0 overlapping content words
+✅ [PASS] DEV11: 0 overlapping content words
+✅ [PASS] DEV12: 0 overlapping content words
+✅ [PASS] DEV13: 0 overlapping content words
+✅ [PASS] DEV14: 0 overlapping content words
+✅ [PASS] DEV15: 0 overlapping content words
+✅ [PASS] DEV16: 0 overlapping content words
+✅ [PASS] DEV17: 0 overlapping content words
+✅ [PASS] DEV18: 0 overlapping content words
+✅ [PASS] DEV19: 0 overlapping content words
+✅ [PASS] DEV20: 0 overlapping content words
+✅ [PASS] DEV21: 0 overlapping content words
+✅ [PASS] DEV22: 0 overlapping content words
+✅ [PASS] DEV23: 0 overlapping content words
+✅ [PASS] DEV24: 0 overlapping content words
+✅ [PASS] DEV25: 0 overlapping content words
+✅ [PASS] DEV26: 0 overlapping content words
+✅ [PASS] DEV27: 0 overlapping content words
+✅ [PASS] DEV28: 0 overlapping content words
+✅ [PASS] DEV29: 0 overlapping content words
+✅ [PASS] DEV30: 0 overlapping content words
+
+======================================================
+Total queries checked: 30
+Passed (zero lexical overlap): 30
+Failed (overlap detected):     0
+======================================================
+
+All 30 queries strictly satisfy the zero-content-overlap constraint.
