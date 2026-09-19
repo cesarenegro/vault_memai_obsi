@@ -585,10 +585,24 @@ pub async fn hybrid_search_vault_with_vector(
         && term.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
         && term.len() >= 3;
 
-    // Union of all candidate IDs from lexical and semantic
+    // Helper to normalize document ID to 16 hex chars (doc_<16hex>) to reconcile
+    // 68-char IDs from SEARCH_INDEX.json (doc_<64hex>) with 20-char catalog IDs.
+    let normalize_id = |id: &str| -> String {
+        if id.starts_with("doc_") && id.len() > 20 {
+            id[..20].to_string()
+        } else {
+            id.to_string()
+        }
+    };
+
+    // Union of all candidate canonical IDs from lexical and semantic
     let mut all_ids: BTreeSet<String> = BTreeSet::new();
-    all_ids.extend(lexical_results.iter().map(|i| i.id.clone()));
-    all_ids.extend(semantic_scores.keys().cloned());
+    for lex_item in &lexical_results {
+        all_ids.insert(normalize_id(&lex_item.id));
+    }
+    for sem_id in semantic_scores.keys() {
+        all_ids.insert(normalize_id(sem_id));
+    }
 
     struct IntermediateCandidate {
         item: SearchResultItem,
@@ -600,46 +614,55 @@ pub async fn hybrid_search_vault_with_vector(
     let mut intermediate: Vec<IntermediateCandidate> = Vec::new();
 
     for id in all_ids {
-        // Find or build SearchResultItem
-        let (mut item, base_score) = if let Some(lex_item) = lexical_results.iter().find(|i| i.id == id) {
-            (lex_item.clone(), lex_item.score)
-        } else if let Some(doc) = catalog.documents.get(&id) {
-            let (_, pid, loc, snip) = semantic_scores.get(&id).cloned().unwrap_or((0.0, None, None, None));
-            let preview = snip.unwrap_or_else(|| doc.passages.first().map(|p| p.text.clone()).unwrap_or_default());
-            (
-                SearchResultItem {
-                    id: doc.document_id.clone(),
-                    title: doc.file_name.clone(),
-                    relative_path: doc.original_path.clone(),
-                    category: doc.category.clone().unwrap_or_else(|| "source".to_string()),
-                    client: doc.client.clone(),
-                    project: doc.project.clone(),
-                    tags: doc.tags.clone(),
-                    status: Some(doc.editorial_status.clone()),
-                    snippet: preview,
-                    score: 0.0,
-                    updated_at: Some(doc.updated_at.clone()),
-                    sha256: doc.content_hash.clone(),
-                    matching_locator: loc,
-                    matching_passage_id: pid,
-                    passages: Vec::new(),
-                },
-                0.0,
-            )
+        // Check for lexical match by normalized id or full id
+        let lex_item = lexical_results.iter().find(|i| normalize_id(&i.id) == id || i.id == id);
+        let base_score = lex_item.map(|i| i.score).unwrap_or(0.0);
+
+        // Check for semantic match by normalized id or full id
+        let sem_info = semantic_scores.get(&id).or_else(|| {
+            semantic_scores.iter().find(|(k, _)| normalize_id(k) == id).map(|(_, v)| v)
+        });
+        let sem_sim = sem_info.map(|s| s.0 as f64).unwrap_or(0.0);
+
+        // Build base SearchResultItem: prefer lexical item if available, otherwise reconstruct from catalog
+        let mut item = if let Some(li) = lex_item {
+            let mut it = li.clone();
+            it.id = id.clone();
+            it
+        } else if let Some(doc) = catalog.documents.get(&id).or_else(|| {
+            catalog.documents.values().find(|d| normalize_id(&d.document_id) == id || d.original_path == id)
+        }) {
+            let preview = doc.passages.first().map(|p| p.text.clone()).unwrap_or_default();
+            SearchResultItem {
+                id: doc.document_id.clone(),
+                title: doc.file_name.clone(),
+                relative_path: doc.original_path.clone(),
+                category: doc.category.clone().unwrap_or_else(|| "source".to_string()),
+                client: doc.client.clone(),
+                project: doc.project.clone(),
+                tags: doc.tags.clone(),
+                status: Some(doc.editorial_status.clone()),
+                snippet: preview,
+                score: 0.0,
+                updated_at: Some(doc.updated_at.clone()),
+                sha256: doc.content_hash.clone(),
+                matching_locator: None,
+                matching_passage_id: None,
+                passages: Vec::new(),
+            }
         } else {
             continue;
         };
 
-        // If semantic found a better matching passage, update locator and snippet
-        if let Some((_, Some(pid), Some(loc), Some(snip))) = semantic_scores.get(&id) {
-            if item.matching_locator.is_none() {
-                item.matching_locator = Some(loc.clone());
-                item.matching_passage_id = Some(pid.clone());
-                item.snippet = snip.clone();
+        // If semantic found a better matching passage or if locator is missing, enrich item
+        if let Some((_, pid, loc, snip)) = sem_info {
+            if item.matching_locator.is_none() || (lex_item.is_none() && snip.is_some()) {
+                if let Some(l) = loc { item.matching_locator = Some(l.clone()); }
+                if let Some(p) = pid { item.matching_passage_id = Some(p.clone()); }
+                if let Some(s) = snip { item.snippet = s.clone(); }
             }
         }
 
-        let sem_sim = semantic_scores.get(&id).map(|s| s.0 as f64).unwrap_or(0.0);
         let matches_term = item.title.to_lowercase().contains(&term_lower) || item.snippet.to_lowercase().contains(&term_lower);
 
         intermediate.push(IntermediateCandidate {
@@ -992,5 +1015,144 @@ mod tests {
         assert!(found_rank.is_some(), "Document found only by semantics (zero lexical score) MUST enter top 10!");
         let rank = found_rank.unwrap() + 1;
         assert!(rank <= 10, "Pure semantic document rank ({}) must be <= 10", rank);
+    }
+
+    #[test]
+    fn test_hybrid_fusion_coalescence_single_row_when_found_by_both_engines() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path();
+        fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        fs::create_dir_all(path.join("20_RAW_SOURCES")).unwrap();
+
+        let doc_text = "Guaine protettive per cablaggi elettrici e protezione termica.";
+        fs::write(path.join("20_RAW_SOURCES/doc_guaine.txt"), doc_text).unwrap();
+
+        let _ = crate::catalog::sync_catalog_from_vault(path).unwrap();
+        crate::catalog::process_pending_extractions(path).unwrap();
+        let cat = crate::catalog::load_catalog(path).unwrap();
+        search::index_vault_search(path).unwrap();
+
+        let doc_id = cat.documents.values()
+            .find(|d| d.original_path.contains("doc_guaine.txt"))
+            .map(|d| d.document_id.clone())
+            .expect("document must be in catalog");
+
+        let mut cache = EmbeddingsCache {
+            version: 1,
+            model: DEFAULT_EMBEDDINGS_MODEL.into(),
+            dimensions: 3,
+            entries: BTreeMap::new(),
+            last_updated_at: now_iso(),
+        };
+
+        for doc in cat.documents.values() {
+            for p in &doc.passages {
+                cache.entries.insert(
+                    p.passage_id.clone(),
+                    PassageEmbeddingEntry {
+                        passage_id: p.passage_id.clone(),
+                        document_id: doc.document_id.clone(),
+                        relative_path: doc.original_path.clone(),
+                        locator: p.locator.clone(),
+                        sha256: p.sha256.clone(),
+                        embedded_text_sha256: Some(p.sha256.clone()),
+                        model: DEFAULT_EMBEDDINGS_MODEL.into(),
+                        dimensions: 3,
+                        vector: vec![1.0, 0.0, 0.0],
+                        updated_at: now_iso(),
+                    },
+                );
+            }
+        }
+        save_embeddings_cache(path, &mut cache).unwrap();
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let res = rt.block_on(hybrid_search_vault_with_vector(
+            path,
+            SearchQuery {
+                term: Some("Guaine".into()),
+                limit: Some(10),
+                ..Default::default()
+            },
+            Some(vec![1.0, 0.0, 0.0]),
+            true,
+        )).unwrap();
+
+        let matching_rows: Vec<_> = res.iter().filter(|r| r.relative_path.contains("doc_guaine.txt")).collect();
+        assert_eq!(matching_rows.len(), 1, "Document found by both engines MUST produce exactly one row, got {}", matching_rows.len());
+        assert_eq!(res.len(), 1);
+        assert_eq!(res[0].id, doc_id);
+    }
+
+    #[test]
+    fn test_hybrid_fusion_coalesced_beats_single_engine_at_score_parity() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path();
+        fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        fs::create_dir_all(path.join("20_RAW_SOURCES")).unwrap();
+
+        // 1. Doc Both: matches lexically for "solvente" and semantically
+        fs::write(path.join("20_RAW_SOURCES/doc_both.txt"), "Solvente chimico per decappaggio industriale di alta purezza.").unwrap();
+        // 2. Doc LexOnly: matches lexically for "solvente" but orthogonal semantically
+        fs::write(path.join("20_RAW_SOURCES/doc_lex_only.txt"), "Solvente sgrassante per superfici metalliche meccaniche.").unwrap();
+        // 3. Doc SemOnly: ZERO lexical match for "solvente", but high semantic match
+        fs::write(path.join("20_RAW_SOURCES/doc_sem_only.txt"), "Fluido reagente decontaminante per trattamento chimico.").unwrap();
+
+        let _ = crate::catalog::sync_catalog_from_vault(path).unwrap();
+        crate::catalog::process_pending_extractions(path).unwrap();
+        let cat = crate::catalog::load_catalog(path).unwrap();
+        search::index_vault_search(path).unwrap();
+
+        let mut cache = EmbeddingsCache {
+            version: 1,
+            model: DEFAULT_EMBEDDINGS_MODEL.into(),
+            dimensions: 3,
+            entries: BTreeMap::new(),
+            last_updated_at: now_iso(),
+        };
+
+        for doc in cat.documents.values() {
+            let vec = if doc.original_path.contains("doc_both.txt") || doc.original_path.contains("doc_sem_only.txt") {
+                vec![1.0, 0.0, 0.0]
+            } else {
+                vec![0.0, 1.0, 0.0]
+            };
+            for p in &doc.passages {
+                cache.entries.insert(
+                    p.passage_id.clone(),
+                    PassageEmbeddingEntry {
+                        passage_id: p.passage_id.clone(),
+                        document_id: doc.document_id.clone(),
+                        relative_path: doc.original_path.clone(),
+                        locator: p.locator.clone(),
+                        sha256: p.sha256.clone(),
+                        embedded_text_sha256: Some(p.sha256.clone()),
+                        model: DEFAULT_EMBEDDINGS_MODEL.into(),
+                        dimensions: 3,
+                        vector: vec.clone(),
+                        updated_at: now_iso(),
+                    },
+                );
+            }
+        }
+        save_embeddings_cache(path, &mut cache).unwrap();
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let res = rt.block_on(hybrid_search_vault_with_vector(
+            path,
+            SearchQuery {
+                term: Some("solvente".into()),
+                limit: Some(10),
+                ..Default::default()
+            },
+            Some(vec![1.0, 0.0, 0.0]),
+            true,
+        )).unwrap();
+
+        assert!(res.len() >= 3, "Expected at least 3 documents in results");
+        // Doc Both must be strictly Rank 1 because it combines both lexical and semantic scores
+        assert_eq!(res[0].relative_path, "20_RAW_SOURCES/doc_both.txt", "Doc Both MUST be Rank 1");
+        // Its score must strictly exceed Doc LexOnly and Doc SemOnly
+        assert!(res[0].score > res[1].score, "Doc Both score ({}) must be > Rank 2 score ({})", res[0].score, res[1].score);
     }
 }

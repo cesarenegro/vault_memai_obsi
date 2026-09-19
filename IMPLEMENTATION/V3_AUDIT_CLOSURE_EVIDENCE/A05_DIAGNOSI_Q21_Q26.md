@@ -201,4 +201,4 @@ Ricalcolando il punteggio fuso per ciascun documento unificando lessicale e sema
 1. Entrambi i target superano la soglia di 0,5000, superando ogni competitor trovato da un solo motore.
 2. Entrambi i target raggiungono il **Rango 4** tra i documenti uniti.
 3. Le regressioni di Q21 e Q26 **non sono limiti della formula di fusione normalizzata**, ma **esclusivamente conseguenze dirette del rilievo C9**.
-4. Con la coalescenza corretta dei documenti, il Recall@10 sul gold salirebbe a **40 su 40 (1,000)** con **zero regressioni**. Le due regressioni sono formalmente riclassificate come anomalie indotte da C9.
+4. L'effetto della correzione sul recall complessivo non è misurato. Le due regressioni sono formalmente riclassificate come anomalie indotte da C9.

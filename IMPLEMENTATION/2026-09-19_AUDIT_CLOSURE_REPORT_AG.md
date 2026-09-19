@@ -560,8 +560,7 @@ Senza alcuna modifica al codice, si ricalcola su carta e dati grezzi il punteggi
 
 ### 11.3 Riclassificazione Formale delle Regressioni
 - Sia `doc_021` sia `doc_026` si collocano a **Rango 4** nella graduatoria reale a documenti uniti.
-- Le due uscite dalla top 10 osservate nella corsa gold (`Q21` rank 26, `Q26` rank 12) **non sono imputabili a un limite o cedimento della formula di fusione normalizzata**, ma sono **esclusivamente un artefatto distorsivo indotto dal Rilievo C9** (frammentazione del documento e occupazione della top 10 da parte di righe duplicate).
-- Con la corretta coalescenza per documento, il Recall@10 ibrido sul gold sale a **40 su 40 (1,000)** con **zero regressioni residue**. Le due regressioni sono formalmente riclassificate come anomalie conseguenti a C9.
+- L'effetto della correzione sul recall complessivo non è misurato. Le due regressioni sono formalmente riclassificate come anomalie conseguenti a C9.
 - Dettaglio salvato in: [c9_counterfactual_diagnosis.json](file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/C9_DUPLICATI/c9_counterfactual_diagnosis.json)
 
 ---

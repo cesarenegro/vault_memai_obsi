@@ -228,20 +228,20 @@ fn percentile(sorted: &[f64], pct: f64) -> f64 {
 }
 
 fn get_api_key_from_keychain() -> Result<String, String> {
+    let output = std::process::Command::new("/usr/bin/security")
+        .args(["find-generic-password", "-s", "dev.arkai.limenvault.openai", "-a", "api-key", "-w"])
+        .output();
+    if let Ok(out) = output {
+        if out.status.success() {
+            let key = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if !key.is_empty() {
+                return Ok(key);
+            }
+        }
+    }
     if let Ok(Some(k)) = limen_vault::keychain::load() {
         if !k.trim().is_empty() {
             return Ok(k.trim().to_string());
-        }
-    }
-    // Headless/non-interactive CLI fallback on macOS
-    let output = std::process::Command::new("/usr/bin/security")
-        .args(["find-generic-password", "-s", "dev.arkai.limenvault.openai", "-a", "api-key", "-w"])
-        .output()
-        .map_err(|e| format!("Failed to query Keychain: {e}"))?;
-    if output.status.success() {
-        let key = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if !key.is_empty() {
-            return Ok(key);
         }
     }
     Err("OpenAI API key could not be retrieved from macOS Keychain".into())

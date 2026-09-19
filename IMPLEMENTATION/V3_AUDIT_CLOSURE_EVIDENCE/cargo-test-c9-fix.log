@@ -1,0 +1,135 @@
+   Compiling limen-vault v0.3.0 (/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 22.54s
+     Running unittests src/lib.rs (target/debug/deps/limen_vault-982677a6f4e84c25)
+
+running 81 tests
+test ai::model_tests::models_are_validated_and_deduplicated ... ok
+test ai::tests::approved_policy_and_context_hash ... ok
+test ai::tests::source_stale_symlink_and_preview_cancel ... ok
+test ai::index_policy_test::forged_approval_is_rejected ... ok
+test ai::tests::preview_bounds_and_untrusted_data_role ... ok
+test ai::tests::citation_ids_and_incomplete_rejected ... ok
+test ai::tests::binary_raw_source_extracted_text_is_read_in_ai ... ok
+test ai::tests::test_citation_locators_and_tamper_detection ... ok
+test automation::tests::concurrency_and_scheduler_background_reconciliation ... ok
+test automation::tests::batch_import_receipts_deduplication_and_isolation ... ok
+test automation::tests::native_picker_import_is_bounded_and_preserves_selected_file ... ok
+test automation::tests::forged_citations_human_edits_and_symlinks ... ok
+test automation::tests::full_workflow_preserves_originals_deduplicates_and_retrieves ... ok
+test ai::tests::test_eligibility_before_limits_regression_50_drafts_do_not_hide_approved_source ... ok
+test automation::tests::spreadsheets_keep_rows_beyond_api_limit_and_formulas ... ok
+test automation::tests::unicode_text_chunks_preserve_every_byte ... ok
+test catalog::tests::test_catalog_save_and_load_lifecycle ... ok
+test catalog::tests::test_chunk_text_to_passages_locators ... ok
+test automation::tests::offline_ingestion_and_extraction_without_ai_key ... ok
+test automation::tests::inventory_visible_before_activation_and_after_source_changes ... ok
+test catalog::tests::test_deduplication_preserves_aliases ... ok
+test catalog::tests::test_document_pruning_on_file_deletion ... ok
+test catalog::tests::test_document_revision_bump_on_content_change ... ok
+test automation::tests::stale_search_lock_recovers_and_active_lock_is_preserved ... ok
+test automation::tests::long_documents_are_split_without_manual_work ... ok
+test catalog::tests::test_double_migration_idempotent_and_rollback ... ok
+test catalog::tests::test_sync_catalog_and_offline_extraction ... ok
+test catalog::tests::test_proposals_stay_legacy_drafts_and_human_notes_preserved ... ok
+test catalog::tests::test_passage_integrity_and_tamper_detection ... ok
+test catalog::tests::test_verify_document_passage_integrity_all_cases ... ok
+test embeddings::tests::test_cosine_similarity ... ok
+test embeddings::tests::test_embedded_text_sha256_cache_invalidation_on_prefix_change ... ok
+test compiler::tests::test_rust_compiler_sanitizes_html ... ok
+test compiler::tests::test_rust_compiler_compiles_draft_with_status_draft ... ok
+test embeddings::tests::test_embeddings_cache_lifecycle ... ok
+test compiler::tests::test_rust_compiler_deduplication ... ok
+test embeddings::tests::test_hybrid_fusion_coalesced_beats_single_engine_at_score_parity ... ok
+test embeddings::tests::test_hybrid_fusion_coalescence_single_row_when_found_by_both_engines ... ok
+test embeddings::tests::test_hybrid_fusion_ranks_exact_code_first ... ok
+test embeddings::tests::test_passage_embedding_text_context_and_20_percent_cap ... ok
+test extraction::tests::word_and_slides_are_literal ... ok
+test automation::tests::bounded_retries_resume_and_key_absence ... ok
+test knowledge::tests::actual_notes_without_index_and_no_mutations ... ok
+test knowledge::tests::symlink_and_oversized_notes_fail_explicitly ... ok
+test mcp::tests::rpc_readonly_lifecycle ... ok
+test embeddings::tests::test_hybrid_fusion_pure_semantic_enters_top_ten ... ok
+test embeddings::tests::test_hybrid_search_offline_graceful_fallback ... ok
+test proposals::tests::m7_corrupt_state_and_journal_preserved ... ok
+test catalog::tests::test_lookup_by_path_beyond_50_documents_and_homonyms ... ok
+test automation::tests::source_changes_and_deletion_invalidate_wiki_before_next_tick ... ok
+test mcp::tests::http_auth_origin_and_revocation ... ok
+test proposals::tests::m7_metadata_secrets_and_output_provenance ... ok
+test proposals::tests::m7_raw_collision_symlink_and_changed_bytes_denied ... ok
+test search::tests::index_symlink_never_overwrites_note ... ok
+test proposals::tests::m7_import_keeps_compiler_draft_and_rejection ... ok
+test search::tests::metadata_filters_unicode_and_readonly ... ok
+test proposals::tests::m7_recovery_after_document_published ... ok
+test search::tests::search_passages_and_catalog_indexing ... ok
+test proposals::tests::m7_revisions_exclusive_approval_and_idempotence ... ok
+test search::tests::test_search_detects_removed_and_modified_files_without_blocking ... ok
+test snapshots::tests::test_rust_snapshot_creation_and_integrity ... ok
+test sync::tests::sync_capture_rejects_symlink_and_freezes_bytes ... ok
+test snapshots::tests::links_and_rollback_cannot_touch_outside ... ok
+test sync::tests::sync_config_rejects_insecure_endpoints ... ok
+test sync::tests::sync_import_receipt_recovers_commit_window_without_overwrite ... ok
+test sync::tests::sync_rejects_paths_and_collisions ... ok
+test sync::tests::sync_persisted_capture_survives_state_restart_and_detects_corruption ... ok
+test tunnel::tests::invalid_config_and_symlink_do_not_overwrite_files ... ok
+test snapshots::tests::snapshot_corruption_and_readonly ... ok
+test sync::tests::sync_selection_persists_only_selected_frozen_notes ... ok
+test tunnel::tests::stop_releases_real_process_and_invalidates_inflight_start ... ok
+test snapshots::tests::failure_at_manifest_write_cleans_only_staging ... ok
+test snapshots::tests::test_snapshot_restore_to_separate_folder_verifies_hashes ... ok
+test vault::tests::capability_blocks_external_symlinks_and_broken_links ... ok
+test vault::tests::shared_frontmatter_fixtures ... ok
+test vault::tests::concurrent_creation_has_one_winner ... ok
+test snapshots::tests::concurrent_publication_and_collision ... ok
+test vault::tests::exclusive_creation_preserves_existing_bytes ... ok
+test vault::tests::manifest_is_consumed_without_reopening ... ok
+test extraction::tests::pdf_and_scans_use_native_extraction ... ok
+test automation::tests::complete_multi_format_pipeline_with_declared_fake_ai ... ok
+
+test result: ok. 81 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.03s
+
+     Running unittests src/bin/diagnose_c8.rs (target/debug/deps/diagnose_c8-984713eecbb2a135)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/gold-benchmark.rs (target/debug/deps/gold_benchmark-320b4bd13630ed21)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/limen_vault-cd68c0f2afa2c782)
+
+running 17 tests
+test compiler::tests::test_rust_compiler_compiles_draft_with_status_draft ... ok
+test compiler::tests::test_rust_compiler_sanitizes_html ... ok
+test compiler::tests::test_rust_compiler_deduplication ... ok
+test tests::obsidian_registration_matches_canonical_path ... ok
+test snapshots::tests::test_rust_snapshot_creation_and_integrity ... ok
+test tests::test_rust_invalid_yaml_rejection ... ok
+test tests::test_rust_vault_validation ... ok
+test snapshots::tests::links_and_rollback_cannot_touch_outside ... ok
+test vault::tests::capability_blocks_external_symlinks_and_broken_links ... ok
+test vault::tests::shared_frontmatter_fixtures ... ok
+test snapshots::tests::snapshot_corruption_and_readonly ... ok
+test vault::tests::concurrent_creation_has_one_winner ... ok
+test vault::tests::exclusive_creation_preserves_existing_bytes ... ok
+test vault::tests::manifest_is_consumed_without_reopening ... ok
+test snapshots::tests::test_snapshot_restore_to_separate_folder_verifies_hashes ... ok
+test snapshots::tests::failure_at_manifest_write_cleans_only_staging ... ok
+test snapshots::tests::concurrent_publication_and_collision ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s
+
+     Running unittests src/bin/vault-check.rs (target/debug/deps/vault_check-6ab7103726ecb723)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests limen_vault
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
