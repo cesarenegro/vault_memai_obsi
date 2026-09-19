@@ -1,0 +1,48 @@
+{
+  "benchmark": "A05 — Misura Diagnostica Semantica vs Lessicale vs Ibrida",
+  "timestamp_utc8": "2026-09-20T05:06:37.461259+08:00",
+  "model": "text-embedding-3-small",
+  "cache_source": "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/scratch/a05_v2_context_vault/00_SYSTEM/EMBEDDINGS_CACHE.json",
+  "indexed_documents": 120,
+  "indexed_passages": 167,
+  "total_queries": 40,
+  "semantic_mean_recall_at_10": 0.975,
+  "lexical_mean_recall_at_10": 0.65,
+  "hybrid_mean_recall_at_10": 0.95,
+  "zero_recall_count_semantic": 1,
+  "zero_recall_queries_semantic": [
+    "Q21"
+  ],
+  "zero_recall_count_lexical": 14,
+  "zero_recall_queries_lexical": [
+    "Q03",
+    "Q05",
+    "Q06",
+    "Q10",
+    "Q12",
+    "Q17",
+    "Q18",
+    "Q23",
+    "Q29",
+    "Q31",
+    "Q32",
+    "Q34",
+    "Q37",
+    "Q38"
+  ],
+  "zero_recall_count_hybrid": 2,
+  "zero_recall_queries_hybrid": [
+    "Q12",
+    "Q18"
+  ],
+  "semantic_hit_hybrid_miss_queries": [
+    "Q12",
+    "Q18"
+  ],
+  "hybrid_hit_semantic_miss_queries": [
+    "Q21"
+  ],
+  "decision_rule_verbatim": "Semantica da sola maggiore o uguale a 0,85: la semantica funziona, il problema è nella fusione. Il passo successivo diventa la taratura dei pesi, non il cambio di modello.\nSemantica da sola minore o uguale a 0,70: il problema è negli embedding o nel modello. Il passo successivo diventa il modello più grande o il testo indicizzato.\nValore intermedio: entrambe le cause concorrono; si riportano i numeri e si decide con l'utente.",
+  "diagnostic_verdict": "SEMANTICA_VALIDA_PROBLEMA_FUSIONE",
+  "diagnostic_conclusion": "La semantica da sola vale 0.975 (>= 0.85): la semantica funziona, il problema è nella fusione. Il passo successivo è la taratura dei pesi."
+}
