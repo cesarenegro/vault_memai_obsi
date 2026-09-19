@@ -86,7 +86,7 @@ Tutti i comandi citati corrispondono a test ed eseguibili reali. Gli output grez
 | **A02** | Estrazione e normalizzazione su formati supportati | `extraction::tests::pdf_and_scans_use_native_extraction`<br>`extraction::tests::word_and_slides_are_literal`<br>`automation::tests::unicode_text_chunks_preserve_every_byte`<br>`automation::tests::complete_multi_format_pipeline_with_declared_fake_ai` | `cargo-test.log` | Code: 0<br>4.41s | **PASS** |
 | **A03** | Documenti lunghi e tabelle oltre 1.200 righe senza troncamento | `automation::tests::spreadsheets_keep_rows_beyond_api_limit_and_formulas`<br>`automation::tests::long_documents_are_split_without_manual_work`<br>`catalog::tests::test_chunk_text_to_passages_locators` | `cargo-test.log` | Code: 0<br>4.41s | **PASS** |
 | **A04** | Ricerca deterministica: 100% casi gold e passaggi | *Funzionalità verificata su singola nota*: `search::tests::search_passages_and_catalog_indexing`<br>`embeddings::tests::test_hybrid_fusion_ranks_exact_code_first`<br>`catalog::tests::test_lookup_by_path_beyond_50_documents_and_homonyms`<br>*Mancante*: Set gold congelato con misura di rank e copertura per query. | `cargo-test.log` | Code: 0<br>4.41s | **NON VERIFICATO**<br>(Aperto accanto ad A05/A15) |
-| **A05** | Semantica: 40 parafrasi / 100 doc, Recall@10 ≥ 0.90 con gold congelato | Esecuzione su 120 doc e 193 passaggi con modello reale `text-embedding-3-small` (chiave Portachiavi macOS). 40 query gold con verifica di zero sovrapposizione lessicale (40/40 PASS). Dataset congelato nel commit `446c86c` (`v3.0.0-benchmark-datasets-frozen`).<br>Recall@10 ibrida: **0.475** (19/40) vs baseline lessicale **0.200** (8/40). | `A05/run.log`<br>`A05/summary.json`<br>`A05/per-query.jsonl`<br>`A05/overlap-check.log`<br>`A05/manifest-verify.log` | Code: 0<br>23s | **NON SUPERATO**<br>(Soglia ≥ 0.90 non raggiunta; numero reale 0.475, gate APERTO) |
+| **A05** | Semantica: 40 parafrasi / 100 doc, Recall@10 ≥ 0.90 con gold congelato | Esecuzione su 120 doc con modello reale `text-embedding-3-small`.<br>- Storico v1 (boilerplate sintetico): Recall@10 **0.475** (19/40).<br>- **Intervento 1 (Rilievo C5)**: Corpus V2 diversificato (120 doc, Jaccard coppia max **0.2154** ≤ 0.30, tag `v3.1.0-a05-corpus-v2-frozen`).<br>  - **Baseline V2** (motore immutato): Recall@10 **0.675** (27/40, mediano 1.000, lessicale 0.650).<br>  - **Context V2** (`embeddings.rs` contestualizzato con titolo, categoria, locator e invalidazione cache): Recall@10 **0.675** (27/40, mediano 1.000, 167 passaggi ricalcolati). | `A05/`<br>`A05_V2_BASELINE/`<br>`A05_V2_CONTEXT/` | Code: 0<br>5s | **NON SUPERATO**<br>(Soglia ≥ 0.90 non raggiunta; numero reale 0.675, gate APERTO) |
 | **A06** | Ammissibilità prima del ranking (R3) | `ai::tests::test_eligibility_before_limits_regression_50_drafts_do_not_hide_approved_source`<br>`ai::index_policy_test::forged_approval_is_rejected`<br>`catalog::tests::test_proposals_stay_legacy_drafts_and_human_notes_preserved` | `cargo-test.log` | Code: 0<br>4.41s | **PASS** |
 | **A07** | Citazioni e UI: apertura passaggio/revisione/sha256 (R4, R6) | `ai::tests::test_citation_locators_and_tamper_detection`<br>`catalog::tests::test_verify_document_passage_integrity_all_cases`<br>`ai::tests::binary_raw_source_extracted_text_is_read_in_ai`<br>`catalog::tests::test_passage_integrity_and_tamper_detection`<br>*TypeScript*: `DocumentReaderModal - highlightMatches` | `cargo-test.log`<br>`document-reader.log` | Code: 0<br>4.41s / 15ms | **PASS** |
 | **A08** | Freshness e guasti isolati: modifica/rimozione file | `search::tests::test_search_detects_removed_and_modified_files_without_blocking`<br>`catalog::tests::test_document_pruning_on_file_deletion`<br>`catalog::tests::test_document_revision_bump_on_content_change`<br>`automation::tests::source_changes_and_deletion_invalidate_wiki_before_next_tick` | `cargo-test.log` | Code: 0<br>4.41s | **PASS** |
@@ -109,10 +109,10 @@ Tutti i comandi sono stati eseguiti con successo, producendo i rispettivi log gr
    - File log: `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/cargo-test.log`
    - Exit code: `0` — Durata: `24s`
    - Dettaglio:
-     - `Running unittests src/lib.rs`: **76 passed; 0 failed; 0 ignored**
+     - `Running unittests src/lib.rs`: **78 passed; 0 failed; 0 ignored**
      - `Running unittests src/main.rs`: **17 passed; 0 failed; 0 ignored**
      - `Running unittests src/bin/vault-check.rs`: 0 tests
-     - **Totale test Rust**: **93 passed, 0 failed**.
+     - **Totale test Rust**: **95 passed, 0 failed**.
 2. **`pnpm test`**
    - File log: `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/pnpm-test.log`
    - Exit code: `0` — Durata: `4s`
@@ -135,28 +135,48 @@ Tutti i comandi sono stati eseguiti con successo, producendo i rispettivi log gr
    - `test` (Desktop IPC) -> `desktop-ipc.log` (Exit code: `0`, Durata: `1s`)
    - `document-reader.test.ts` -> `document-reader.log` (Exit code: `0`, Durata: `0s`)
 
-### 5.1 Benchmark A05 — Semantica Misurata (Recall@10)
+### 5.1 Benchmark A05 Storico V1 — Semantica Misurata (Recall@10 = 0.475)
 Esecuzione dell'incarico in `MESSAGGIO AG - CHIUSURA A05 A15.md`:
-- **Corpus**: 120 documenti Markdown in `tests/gold/A05_CORPUS/` generati deterministicamente con seme `20260919` da `scripts/a05-generate-corpus.mjs`. 193 passaggi indicizzati con locators di pagina/paragrafo.
-- **Query Gold**: 40 query di parafrasi in `tests/gold/A05_QUERIES.json`.
-- **Controllo non sovrapposizione lessicale**: script `scripts/a05-check-overlap.mjs` eseguito su tutte le 40 query (normalizzazione, rimozione stopword italiane, intersezione lemmi vuota). Risultato: **40/40 superate (zero sovrapposizione lessicale)**. Log: `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05/overlap-check.log`.
-- **Congelamento**: dataset, manifest `A05_MANIFEST.sha256` e query congelati nel commit `446c86c` (tag `v3.0.0-benchmark-datasets-frozen`), strettamente precedente ai risultati.
-- **Provider**: modello reale `text-embedding-3-small` sincronizzato tramite chiave letta dal Portachiavi macOS (`sync_embeddings`). Nessuna chiave presente nei log.
-- **Risultati misurati**:
-  - **Recall@10 medio (Ibrida)**: **0.475** (19 hit su 40 query).
-  - **Recall@10 mediano**: 0.000.
-  - **Recall@10 minimo**: 0.000 (21 query con Recall@10 = 0).
-  - **Baseline lessicale media (Recall@10)**: **0.200** (8 hit su 40 query).
-  - **Contributo netto semantica**: +0.275 (+137.5% rispetto alla ricerca puramente lessicale).
-- **Esito**: **NON SUPERATO** (soglia richiesta ≥ 0.90; numero reale 0.475 registrato con trasparenza, gate lasciato APERTO).
-- **Evidenze archiviate**:
-  - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05/per-query.jsonl`
-  - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05/summary.json`
-  - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05/run.log`
-  - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05/overlap-check.log`
-  - `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05/manifest-verify.log`
+- **Corpus**: 120 documenti Markdown in `tests/gold/A05_CORPUS/` generati con template sintetico. 193 passaggi.
+- **Risultato**: Recall@10 ibrida: **0.475** (19/40) vs baseline lessicale **0.200** (8/40).
+- **Rilievo C5 (Auditor Claude)**: Il corpus sintetico presentava 12 righe su 17 identiche tra documenti, comprimendo la varianza dei vettori semantici e rendendo artificialmente difficoltosa la discriminazione.
 
-### 5.2 Benchmark A15 — Prestazioni Ricerca Locale Calda
+### 5.2 Intervento 1 — Testo Indicizzato Contestualizzato e Misura Prima/Dopo (Rilievo C5)
+Esecuzione puntuale di [MESSAGGIO AG - INTERVENTO 1 TESTO INDICIZZATO.md](file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/MESSAGGIO%20AG%20-%20INTERVENTO%201%20TESTO%20INDICIZZATO.md):
+
+1. **Fase 0 — Rigenerazione Corpus V2 e Congelamento**:
+   - 120 documenti Markdown completamente unici su packaging industriale in `tests/gold/A05_CORPUS/`.
+   - Controllo diversità `scripts/a05-corpus-diversity.mjs`: per tutte le 7.140 coppie, la similarità di Jaccard è **≤ 0.2154** (soglia richiesta ≤ 0.30, media 0.1062). Log: `corpus-diversity.log`.
+   - Controllo sovrapposizione lessicale `scripts/a05-check-overlap.mjs`: **40/40 superate (zero sovrapposizione)**. Log: `overlap-check.log`.
+   - Congelamento preventivo nel commit `87e41df` con tag annotato `v3.1.0-a05-corpus-v2-frozen`.
+
+2. **Fase 1 — Misura Baseline V2 (Motore Immutato)**:
+   - Misura condotta in ambiente isolato (`tests/scratch/a05_v2_baseline_vault/`).
+   - Evidenze in `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_V2_BASELINE/`.
+   - **Mean Recall@10**: **0.675** (27 hit su 40 query; 13 query a zero recall).
+   - **Median Recall@10**: **1.000**.
+   - **Baseline lessicale media**: **0.650**.
+   - *Nota*: La sola rimozione del boilerplate (C5) ha innalzato la discriminazione da 0.475 a 0.675.
+
+3. **Fase 2 — Modifica Motore (`embeddings.rs`)**:
+   - Implementata `build_passage_embedding_text` che antepone titolo documento, categoria e locator di sezione (con troncamento al 20% max del testo del passaggio). Query mantenute senza prefisso.
+   - Aggiunto `embedded_text_sha256` nella cache e controllo di invalidazione per ricalcolare automaticamente gli embedding quando il contesto cambia.
+   - Unit test dedicati: `test_passage_embedding_text_context_and_20_percent_cap`, `test_embedded_text_sha256_cache_invalidation_on_prefix_change`.
+
+4. **Fase 3 — Misura Comparativa Post-Modifica (`A05_V2_CONTEXT`)**:
+   - Misura condotta sullo stesso dataset congelato in ambiente isolato (`tests/scratch/a05_v2_context_vault/`).
+   - Evidenze in `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A05_V2_CONTEXT/`.
+   - **Passaggi ricalcolati**: 167 passaggi (100% catalogo). Modello: `text-embedding-3-small`.
+   - **Mean Recall@10**: **0.675** (27 hit su 40 query).
+   - **Median Recall@10**: **1.000**.
+   - **Confronto per singola query rispetto a Baseline V2**:
+     - Query migliorate (Recall@10 aumentato): **0**
+     - Query invariate (Recall@10 identico): **40** (27 a 1.0, 13 a 0.0)
+     - Query peggiorate (Recall@10 diminuito): **0**
+     - Shift di rank interni alla top-10: Q02 (rank 8 -> 9), Q39 (rank 6 -> 7).
+   - **Esito**: **NON SUPERATO** (Recall@10 0.675 < soglia 0.90; effetto netto isolato dell'intervento 1 registrato obiettivamente, gate A05 lasciato aperto).
+
+### 5.3 Benchmark A15 — Prestazioni Ricerca Locale Calda
 Esecuzione dell'incarico in `MESSAGGIO AG - CHIUSURA A05 A15.md`:
 - **Corpus**: 1.000 documenti Markdown in `tests/gold/A15_CORPUS/` generati deterministicamente con seme `20260919` da `scripts/a15-generate-corpus.mjs`. Ciascun documento strutturato con 11 sezioni e marcatori `## Pagina 1`..`## Pagina 11`.
 - **Passaggi effettivi nel catalogo**: **11.000 passaggi** (soglia minima richiesta: 10.000 passaggi).

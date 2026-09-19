@@ -5,7 +5,7 @@
 use crate::{
     catalog::{load_catalog, DocumentPassage},
     search::{self, normalize_text, SearchQuery, SearchResultItem},
-    snapshots::{child, names, read, root, write_new},
+    snapshots::{child, compute_sha256, names, read, root, write_new},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -35,6 +35,8 @@ pub struct PassageEmbeddingEntry {
     pub relative_path: String,
     pub locator: String,
     pub sha256: String, // Hash of the passage text
+    #[serde(default)]
+    pub embedded_text_sha256: Option<String>,
     pub model: String,
     pub dimensions: usize,
     pub vector: Vec<f32>,
@@ -244,6 +246,51 @@ pub async fn fetch_openai_embeddings(
     Ok(embeddings)
 }
 
+/// Build contextualized passage text for embedding:
+/// - Note title (frontmatter title if available, else file_name without extension)
+/// - Document category (folder name e.g. "01_CLIENTS" ... "10_APPROVED_OUTPUTS" or category)
+/// - Section locator (p.locator e.g. "Pagina N", "Slide N", "Paragrafi N-M")
+/// - Raw passage text
+/// Prefix context is capped at 20% of the character length of the passage.
+pub fn build_passage_embedding_text(
+    title: &str,
+    category: &str,
+    locator: &str,
+    passage_text: &str,
+) -> String {
+    let mut ctx_lines = Vec::new();
+    let trimmed_title = title.trim();
+    if !trimmed_title.is_empty() {
+        ctx_lines.push(trimmed_title);
+    }
+    let trimmed_cat = category.trim();
+    if !trimmed_cat.is_empty() {
+        ctx_lines.push(trimmed_cat);
+    }
+    let trimmed_loc = locator.trim();
+    if !trimmed_loc.is_empty() {
+        ctx_lines.push(trimmed_loc);
+    }
+
+    if ctx_lines.is_empty() || passage_text.trim().is_empty() {
+        return passage_text.to_string();
+    }
+
+    let raw_ctx = ctx_lines.join("\n");
+    let max_len = (passage_text.chars().count() as f64 * 0.20).floor() as usize;
+    let final_ctx: String = if raw_ctx.chars().count() > max_len {
+        raw_ctx.chars().take(max_len).collect()
+    } else {
+        raw_ctx
+    };
+
+    if final_ctx.is_empty() {
+        passage_text.to_string()
+    } else {
+        format!("{}\n{}", final_ctx, passage_text)
+    }
+}
+
 /// Synchronize embeddings for catalog passages using the configured OpenAI API key.
 /// Bounded to batches of max 32 passages to prevent timeouts and cost explosions.
 pub async fn sync_embeddings(
@@ -255,13 +302,16 @@ pub async fn sync_embeddings(
     let mut cache = load_embeddings_cache(vault_path)?;
     let target_model = model.unwrap_or(DEFAULT_EMBEDDINGS_MODEL);
 
-    let key_from_keychain = if api_key.trim().is_empty() {
+    let key_from_env = std::env::var("OPENAI_API_KEY").ok().filter(|k| !k.trim().is_empty());
+    let key_from_keychain = if api_key.trim().is_empty() && key_from_env.is_none() {
         crate::keychain::load().ok().flatten().filter(|k| !k.trim().is_empty())
     } else {
         None
     };
     let effective_key = if !api_key.trim().is_empty() {
         api_key
+    } else if let Some(ref k) = key_from_env {
+        k.as_str()
     } else if let Some(ref k) = key_from_keychain {
         k.as_str()
     } else {
@@ -281,19 +331,60 @@ pub async fn sync_embeddings(
         relative_path: String,
         locator: String,
         sha256: String,
-        text: String,
+        embedded_text_sha256: String,
+        text_to_embed: String,
     }
 
     let mut missing: Vec<MissingPassage> = Vec::new();
     let mut valid_passage_ids = BTreeSet::new();
 
     for doc in catalog.documents.values() {
+        let doc_title = if let Ok(content) = std::fs::read_to_string(vault_path.join(&doc.original_path)) {
+            crate::vault::frontmatter(&content)
+                .ok()
+                .flatten()
+                .and_then(|fm| fm["title"].as_str().map(|s| s.trim().to_string()))
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| {
+                    Path::new(&doc.file_name)
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or(&doc.file_name)
+                        .to_string()
+                })
+        } else {
+            Path::new(&doc.file_name)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or(&doc.file_name)
+                .to_string()
+        };
+
+        let doc_category = if let Some(first_segment) = doc.original_path.split('/').next() {
+            if first_segment.starts_with("0") || first_segment.starts_with("1") {
+                first_segment.to_string()
+            } else {
+                doc.category.clone().unwrap_or_else(|| first_segment.to_string())
+            }
+        } else {
+            doc.category.clone().unwrap_or_default()
+        };
+
         for p in &doc.passages {
             valid_passage_ids.insert(p.passage_id.clone());
+
+            let text_to_embed = build_passage_embedding_text(&doc_title, &doc_category, &p.locator, &p.text);
+            let embedded_sha = compute_sha256(text_to_embed.as_bytes());
+
             let needs_update = match cache.entries.get(&p.passage_id) {
-                Some(entry) => entry.sha256 != p.sha256 || entry.model != target_model,
+                Some(entry) => {
+                    entry.sha256 != p.sha256
+                        || entry.model != target_model
+                        || entry.embedded_text_sha256.as_deref() != Some(&embedded_sha)
+                }
                 None => true,
             };
+
             if needs_update && !p.text.trim().is_empty() {
                 missing.push(MissingPassage {
                     passage_id: p.passage_id.clone(),
@@ -301,7 +392,8 @@ pub async fn sync_embeddings(
                     relative_path: doc.original_path.clone(),
                     locator: p.locator.clone(),
                     sha256: p.sha256.clone(),
-                    text: p.text.clone(),
+                    embedded_text_sha256: embedded_sha,
+                    text_to_embed,
                 });
             }
         }
@@ -313,7 +405,7 @@ pub async fn sync_embeddings(
     // Process in batches of 16 passages
     let batch_size = 16;
     for chunk in missing.chunks(batch_size) {
-        let texts: Vec<String> = chunk.iter().map(|m| m.text.clone()).collect();
+        let texts: Vec<String> = chunk.iter().map(|m| m.text_to_embed.clone()).collect();
         let vectors = fetch_openai_embeddings(effective_key, target_model, &texts).await?;
 
         for (m, vec) in chunk.iter().zip(vectors.into_iter()) {
@@ -325,6 +417,7 @@ pub async fn sync_embeddings(
                     relative_path: m.relative_path.clone(),
                     locator: m.locator.clone(),
                     sha256: m.sha256.clone(),
+                    embedded_text_sha256: Some(m.embedded_text_sha256.clone()),
                     model: target_model.to_string(),
                     dimensions: vec.len(),
                     vector: vec,
@@ -401,10 +494,13 @@ pub async fn hybrid_search_vault(
         _ => return Ok(lexical_results.into_iter().skip(offset).take(limit).collect()), // Graceful offline fallback
     };
 
-    // 3. Obtain API key: use provided or load directly from Keychain in backend (R2)
+    // 3. Obtain API key: use provided, check OPENAI_API_KEY env, or load directly from Keychain in backend (R2)
     let effective_key = match api_key.as_deref() {
         Some(k) if !k.trim().is_empty() => Some(k.to_string()),
-        _ => crate::keychain::load().ok().flatten().filter(|k| !k.trim().is_empty()),
+        _ => std::env::var("OPENAI_API_KEY")
+            .ok()
+            .filter(|k| !k.trim().is_empty())
+            .or_else(|| crate::keychain::load().ok().flatten().filter(|k| !k.trim().is_empty())),
     };
 
     // 4. Compute query embedding vector (or fallback to lexical if key absent or network fails)
@@ -609,6 +705,7 @@ mod tests {
                 relative_path: "20_RAW_SOURCES/doc.txt".into(),
                 locator: "Paragrafo 1".into(),
                 sha256: "hash1".into(),
+                embedded_text_sha256: Some("emb_hash1".into()),
                 model: DEFAULT_EMBEDDINGS_MODEL.into(),
                 dimensions: 3,
                 vector: vec![0.1, 0.2, 0.3],
@@ -622,6 +719,94 @@ mod tests {
         let entry = loaded.entries.get("doc1_p0").unwrap();
         assert_eq!(entry.locator, "Paragrafo 1");
         assert_eq!(entry.vector, vec![0.1, 0.2, 0.3]);
+        assert_eq!(entry.embedded_text_sha256.as_deref(), Some("emb_hash1"));
+    }
+
+    #[test]
+    fn test_passage_embedding_text_context_and_20_percent_cap() {
+        let title = "Guida al Confezionamento Sottovuoto";
+        let category = "05_PACKAGING_KNOWLEDGE";
+        let locator = "Pagina 12";
+        let short_passage = "Testo breve.";
+
+        // When passage text is short, prefix cap applies:
+        // short_passage is 12 chars -> 20% is floor(2.4) = 2 chars.
+        let embedded_short = build_passage_embedding_text(title, category, locator, short_passage);
+        let lines: Vec<&str> = embedded_short.split('\n').collect();
+        // Since prefix is capped to 2 chars, it takes the first 2 chars of "Guida..." which is "Gu"
+        assert_eq!(lines[0], "Gu");
+        assert_eq!(lines[1], short_passage);
+
+        // When passage text is long enough, all metadata is preserved:
+        let long_passage = "Questo documento descrive in modo dettagliato tutte le specifiche tecniche, i parametri di saldatura, i tempi di ciclo, le tolleranze di tenuta e le procedure di convalida per le linee di confezionamento sottovuoto ad alta velocità destinate al settore alimentare e medicale. Include inoltre le istruzioni operative per gli operatori di linea e le verifiche di conformità per i materiali barriera multistrato.".repeat(2);
+        let embedded_long = build_passage_embedding_text(title, category, locator, &long_passage);
+        assert!(embedded_long.contains(title));
+        assert!(embedded_long.contains(category));
+        assert!(embedded_long.contains(locator));
+        assert!(embedded_long.ends_with(&long_passage));
+    }
+
+    #[test]
+    fn test_embedded_text_sha256_cache_invalidation_on_prefix_change() {
+        let passage_text = "Passaggio informativo molto dettagliato con parametri di saldatura e tempi di ciclo per le confezionatrici.";
+        let raw_sha256 = compute_sha256(passage_text.as_bytes());
+
+        // Context 1: Document title "Titolo Vecchio", category "05_PACKAGING_KNOWLEDGE", locator "Pagina 1"
+        let text_v1 = build_passage_embedding_text("Titolo Vecchio", "05_PACKAGING_KNOWLEDGE", "Pagina 1", passage_text);
+        let sha_v1 = compute_sha256(text_v1.as_bytes());
+
+        // Cache entry created with v1 context:
+        let entry = PassageEmbeddingEntry {
+            passage_id: "doc1_p0".into(),
+            document_id: "doc1".into(),
+            relative_path: "05_PACKAGING_KNOWLEDGE/doc1.md".into(),
+            locator: "Pagina 1".into(),
+            sha256: raw_sha256.clone(), // raw passage text hash
+            embedded_text_sha256: Some(sha_v1.clone()),
+            model: DEFAULT_EMBEDDINGS_MODEL.into(),
+            dimensions: 1536,
+            vector: vec![0.1; 1536],
+            updated_at: now_iso(),
+        };
+
+        // If context doesn't change, no update needed:
+        let text_v1_same = build_passage_embedding_text("Titolo Vecchio", "05_PACKAGING_KNOWLEDGE", "Pagina 1", passage_text);
+        let sha_v1_same = compute_sha256(text_v1_same.as_bytes());
+        let needs_update_unchanged = entry.sha256 != raw_sha256
+            || entry.model != DEFAULT_EMBEDDINGS_MODEL
+            || entry.embedded_text_sha256.as_deref() != Some(&sha_v1_same);
+        assert!(!needs_update_unchanged, "Cache entry should remain valid when context is identical");
+
+        // Context 2: Document title changed to "Titolo Nuovo", but raw passage text is UNCHANGED!
+        let text_v2 = build_passage_embedding_text("Titolo Nuovo", "05_PACKAGING_KNOWLEDGE", "Pagina 1", passage_text);
+        let sha_v2 = compute_sha256(text_v2.as_bytes());
+        assert_ne!(sha_v1, sha_v2, "Embedded text SHA must change when title changes");
+
+        // Cache invalidation check:
+        // Even though entry.sha256 == raw_sha256 (raw passage is identical),
+        // entry.embedded_text_sha256 != sha_v2 triggers invalidation!
+        let needs_update = entry.sha256 != raw_sha256
+            || entry.model != DEFAULT_EMBEDDINGS_MODEL
+            || entry.embedded_text_sha256.as_deref() != Some(&sha_v2);
+        assert!(needs_update, "Cache must invalidate when prefix/context changes even if raw passage text sha256 matches!");
+
+        // Also verify that an older cache entry with embedded_text_sha256 == None triggers update:
+        let old_style_entry = PassageEmbeddingEntry {
+            passage_id: "doc1_p0".into(),
+            document_id: "doc1".into(),
+            relative_path: "05_PACKAGING_KNOWLEDGE/doc1.md".into(),
+            locator: "Pagina 1".into(),
+            sha256: raw_sha256.clone(),
+            embedded_text_sha256: None, // old format
+            model: DEFAULT_EMBEDDINGS_MODEL.into(),
+            dimensions: 1536,
+            vector: vec![0.1; 1536],
+            updated_at: now_iso(),
+        };
+        let needs_update_old = old_style_entry.sha256 != raw_sha256
+            || old_style_entry.model != DEFAULT_EMBEDDINGS_MODEL
+            || old_style_entry.embedded_text_sha256.as_deref() != Some(&sha_v2);
+        assert!(needs_update_old, "Old cache entry without embedded_text_sha256 must be invalidated and re-embedded!");
     }
 
     #[test]

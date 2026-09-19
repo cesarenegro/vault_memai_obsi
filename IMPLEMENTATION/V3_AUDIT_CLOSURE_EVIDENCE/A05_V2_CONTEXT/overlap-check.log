@@ -1,0 +1,50 @@
+=== A05 Non-Overlap Check: 40 queries against target passages ===
+
+✅ [PASS] Q01: 0 overlapping content words
+✅ [PASS] Q02: 0 overlapping content words
+✅ [PASS] Q03: 0 overlapping content words
+✅ [PASS] Q04: 0 overlapping content words
+✅ [PASS] Q05: 0 overlapping content words
+✅ [PASS] Q06: 0 overlapping content words
+✅ [PASS] Q07: 0 overlapping content words
+✅ [PASS] Q08: 0 overlapping content words
+✅ [PASS] Q09: 0 overlapping content words
+✅ [PASS] Q10: 0 overlapping content words
+✅ [PASS] Q11: 0 overlapping content words
+✅ [PASS] Q12: 0 overlapping content words
+✅ [PASS] Q13: 0 overlapping content words
+✅ [PASS] Q14: 0 overlapping content words
+✅ [PASS] Q15: 0 overlapping content words
+✅ [PASS] Q16: 0 overlapping content words
+✅ [PASS] Q17: 0 overlapping content words
+✅ [PASS] Q18: 0 overlapping content words
+✅ [PASS] Q19: 0 overlapping content words
+✅ [PASS] Q20: 0 overlapping content words
+✅ [PASS] Q21: 0 overlapping content words
+✅ [PASS] Q22: 0 overlapping content words
+✅ [PASS] Q23: 0 overlapping content words
+✅ [PASS] Q24: 0 overlapping content words
+✅ [PASS] Q25: 0 overlapping content words
+✅ [PASS] Q26: 0 overlapping content words
+✅ [PASS] Q27: 0 overlapping content words
+✅ [PASS] Q28: 0 overlapping content words
+✅ [PASS] Q29: 0 overlapping content words
+✅ [PASS] Q30: 0 overlapping content words
+✅ [PASS] Q31: 0 overlapping content words
+✅ [PASS] Q32: 0 overlapping content words
+✅ [PASS] Q33: 0 overlapping content words
+✅ [PASS] Q34: 0 overlapping content words
+✅ [PASS] Q35: 0 overlapping content words
+✅ [PASS] Q36: 0 overlapping content words
+✅ [PASS] Q37: 0 overlapping content words
+✅ [PASS] Q38: 0 overlapping content words
+✅ [PASS] Q39: 0 overlapping content words
+✅ [PASS] Q40: 0 overlapping content words
+
+======================================================
+Total queries checked: 40
+Passed (zero lexical overlap): 40
+Failed (overlap detected):     0
+======================================================
+
+All 40 queries strictly satisfy the zero-content-overlap constraint.

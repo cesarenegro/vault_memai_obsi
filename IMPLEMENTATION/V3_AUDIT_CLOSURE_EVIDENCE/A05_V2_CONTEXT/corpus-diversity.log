@@ -1,0 +1,10 @@
+=== A05 Corpus Diversity Check (Jaccard Pairwise Analysis) ===
+
+Total documents found: 120
+Total pairs analyzed: 7140
+Average Jaccard similarity: 0.1062
+Maximum Jaccard similarity: 0.2154 between doc_038.md and doc_046.md
+Threshold: 0.30
+
+✅ [PASS] All 7140 document pairs have Jaccard similarity <= 0.30.
+The corpus satisfies the diversity requirement with zero boilerplate repetition.
