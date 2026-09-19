@@ -1,0 +1,244 @@
+[
+  {
+    "query_id": "Q21",
+    "target_doc": "doc_021",
+    "uncoalesced_hybrid_rank": 26,
+    "uncoalesced_fused_score": 0.41661041015306305,
+    "counterfactual_coalesced_rank": 4,
+    "counterfactual_fused_score": 0.5141612611285715,
+    "entered_top_10": true,
+    "competitors_ahead": [
+      {
+        "rank": 1,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_087.md",
+        "title": "doc_087.md",
+        "raw_lex": 24.09,
+        "raw_sem": 0.508479118347168,
+        "lex_norm": 1.0,
+        "sem_norm": 1.0,
+        "fused_score": 1.0,
+        "is_target": false
+      },
+      {
+        "rank": 2,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_062.md",
+        "title": "doc_062.md",
+        "raw_lex": 21.68,
+        "raw_sem": 0.5066426992416382,
+        "lex_norm": 0.8999584889995849,
+        "sem_norm": 0.9963884080205709,
+        "fused_score": 0.9481734485100779,
+        "is_target": false
+      },
+      {
+        "rank": 3,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_051.md",
+        "title": "doc_051.md",
+        "raw_lex": 18.37,
+        "raw_sem": 0.45719170570373535,
+        "lex_norm": 0.7625570776255708,
+        "sem_norm": 0.8991356561304927,
+        "fused_score": 0.8308463668780317,
+        "is_target": false
+      },
+      {
+        "rank": 4,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_021.md",
+        "title": "doc_021.md",
+        "raw_lex": 4.7,
+        "raw_sem": 0.42367538809776306,
+        "lex_norm": 0.19510170195101703,
+        "sem_norm": 0.8332208203061261,
+        "fused_score": 0.5141612611285715,
+        "is_target": true
+      },
+      {
+        "rank": 5,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_037.md",
+        "title": "doc_037.md",
+        "raw_lex": 3.31,
+        "raw_sem": 0.4506836235523224,
+        "lex_norm": 0.13740141137401413,
+        "sem_norm": 0.8863365422306579,
+        "fused_score": 0.511868976802336,
+        "is_target": false
+      },
+      {
+        "rank": 6,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_086.md",
+        "title": "doc_086.md",
+        "raw_lex": 4.19,
+        "raw_sem": 0.42832791805267334,
+        "lex_norm": 0.17393109173931093,
+        "sem_norm": 0.8423707141504073,
+        "fused_score": 0.5081509029448591,
+        "is_target": false
+      },
+      {
+        "rank": 7,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_053.md",
+        "title": "doc_053.md",
+        "raw_lex": 4.7,
+        "raw_sem": 0.3900929093360901,
+        "lex_norm": 0.19510170195101703,
+        "sem_norm": 0.7671758687045064,
+        "fused_score": 0.4811387853277617,
+        "is_target": false
+      },
+      {
+        "rank": 8,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_120.md",
+        "title": "doc_120.md",
+        "raw_lex": 3.31,
+        "raw_sem": 0.4167402386665344,
+        "lex_norm": 0.13740141137401413,
+        "sem_norm": 0.819581814925194,
+        "fused_score": 0.4784916131496041,
+        "is_target": false
+      },
+      {
+        "rank": 9,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_066.md",
+        "title": "doc_066.md",
+        "raw_lex": 0.0,
+        "raw_sem": 0.48570534586906433,
+        "lex_norm": 0.0,
+        "sem_norm": 0.9552119808732152,
+        "fused_score": 0.4776059904366076,
+        "is_target": false
+      },
+      {
+        "rank": 10,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_095.md",
+        "title": "doc_095.md",
+        "raw_lex": 3.31,
+        "raw_sem": 0.40070050954818726,
+        "lex_norm": 0.13740141137401413,
+        "sem_norm": 0.7880372961050603,
+        "fused_score": 0.4627193537395372,
+        "is_target": false
+      }
+    ]
+  },
+  {
+    "query_id": "Q26",
+    "target_doc": "doc_026",
+    "uncoalesced_hybrid_rank": 12,
+    "uncoalesced_fused_score": 0.45403023749863297,
+    "counterfactual_coalesced_rank": 4,
+    "counterfactual_fused_score": 0.678372682057684,
+    "entered_top_10": true,
+    "competitors_ahead": [
+      {
+        "rank": 1,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_077.md",
+        "title": "doc_077.md",
+        "raw_lex": 19.39,
+        "raw_sem": 0.4970579147338867,
+        "lex_norm": 1.0,
+        "sem_norm": 1.0,
+        "fused_score": 1.0,
+        "is_target": false
+      },
+      {
+        "rank": 2,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_114.md",
+        "title": "doc_114.md",
+        "raw_lex": 19.39,
+        "raw_sem": 0.4129807651042938,
+        "lex_norm": 1.0,
+        "sem_norm": 0.8308503956232025,
+        "fused_score": 0.9154251978116013,
+        "is_target": false
+      },
+      {
+        "rank": 3,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_082.md",
+        "title": "doc_082.md",
+        "raw_lex": 18.01,
+        "raw_sem": 0.36718645691871643,
+        "lex_norm": 0.9288292934502321,
+        "sem_norm": 0.7387196663296259,
+        "fused_score": 0.833774479889929,
+        "is_target": false
+      },
+      {
+        "rank": 4,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_026.md",
+        "title": "doc_026.md",
+        "raw_lex": 8.7,
+        "raw_sem": 0.4513586461544037,
+        "lex_norm": 0.44868488911810206,
+        "sem_norm": 0.9080604749972659,
+        "fused_score": 0.678372682057684,
+        "is_target": true
+      },
+      {
+        "rank": 5,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_117.md",
+        "title": "doc_117.md",
+        "raw_lex": 4.41,
+        "raw_sem": 0.4775850474834442,
+        "lex_norm": 0.22743682310469315,
+        "sem_norm": 0.9608237457382248,
+        "fused_score": 0.594130284421459,
+        "is_target": false
+      },
+      {
+        "rank": 6,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_008.md",
+        "title": "doc_008.md",
+        "raw_lex": 8.7,
+        "raw_sem": 0.36615970730781555,
+        "lex_norm": 0.44868488911810206,
+        "sem_norm": 0.7366540124481248,
+        "fused_score": 0.5926694507831134,
+        "is_target": false
+      },
+      {
+        "rank": 7,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_072.md",
+        "title": "doc_072.md",
+        "raw_lex": 4.41,
+        "raw_sem": 0.45441073179244995,
+        "lex_norm": 0.22743682310469315,
+        "sem_norm": 0.9142007768566183,
+        "fused_score": 0.5708187999806558,
+        "is_target": false
+      },
+      {
+        "rank": 8,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_062.md",
+        "title": "doc_062.md",
+        "raw_lex": 4.0,
+        "raw_sem": 0.42135879397392273,
+        "lex_norm": 0.20629190304280556,
+        "sem_norm": 0.847705632450312,
+        "fused_score": 0.5269987677465588,
+        "is_target": false
+      },
+      {
+        "rank": 9,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_063.md",
+        "title": "doc_063.md",
+        "raw_lex": 4.0,
+        "raw_sem": 0.39041590690612793,
+        "lex_norm": 0.20629190304280556,
+        "sem_norm": 0.7854535564837501,
+        "fused_score": 0.49587272976327784,
+        "is_target": false
+      },
+      {
+        "rank": 10,
+        "doc_path": "05_PACKAGING_KNOWLEDGE/doc_089.md",
+        "title": "doc_089.md",
+        "raw_lex": 4.0,
+        "raw_sem": 0.3840591013431549,
+        "lex_norm": 0.20629190304280556,
+        "sem_norm": 0.7726646935071364,
+        "fused_score": 0.48947829827497097,
+        "is_target": false
+      }
+    ]
+  }
+]

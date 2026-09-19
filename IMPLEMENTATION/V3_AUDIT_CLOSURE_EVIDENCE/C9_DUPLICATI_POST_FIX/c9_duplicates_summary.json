@@ -1,0 +1,9 @@
+{
+  "benchmark": "Misura Rilievo C9 — Duplicati in Top 10 su 40 Query Gold",
+  "timestamp_utc8": "2026-09-20T07:00:00+08:00",
+  "total_queries": 40,
+  "queries_with_duplicates_count": 0,
+  "queries_with_full_10_distinct_count": 40,
+  "total_duplicate_rows_in_top10_all_queries": 0,
+  "queries_with_duplicates_list": []
+}
