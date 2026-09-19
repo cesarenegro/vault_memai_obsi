@@ -176,6 +176,15 @@ Esecuzione puntuale di [MESSAGGIO AG - INTERVENTO 1 TESTO INDICIZZATO.md](file:/
      - Shift di rank interni alla top-10: Q02 (rank 8 -> 9), Q39 (rank 6 -> 7).
    - **Esito**: **NON SUPERATO** (Recall@10 0.675 < soglia 0.90; effetto netto isolato dell'intervento 1 registrato obiettivamente, gate A05 lasciato aperto).
 
+5. **Nota Metodologica sull'Invalidazione della Cache**:
+   Entrambe le corse (Baseline V2 e Context V2) sono state eseguite partendo da un Vault di prova nuovo (`tests/scratch/`), quindi la cache degli embedding era inizialmente vuota e tutti i 167 passaggi sono stati calcolati ex-novo. Il percorso di invalidazione della cache basato su `embedded_text_sha256` (che scatta quando il contesto o i metadati cambiano mantenendo inalterato il testo grezzo del passaggio) è coperto e verificato dal test unitario dedicato `test_embedded_text_sha256_cache_invalidation_on_prefix_change`, non dalla misura del benchmark.
+
+6. **Chiusura Rilievo C7 (Confini delle Credenziali nel Prodotto)**:
+   La lettura della variabile d'ambiente `OPENAI_API_KEY` è stata **completamente rimossa** da `embeddings.rs`. Il codice di prodotto (`limen_vault`) legge la chiave OpenAI **esclusivamente dal Portachiavi macOS** via `crate::keychain::load()`, preservando al 100% i vincoli di sicurezza e architettura validati nella chiusura di R2. La gestione della chiave per i benchmark headless è stata confinata al solo binario interno `apps/desktop/src-tauri/src/bin/gold-benchmark.rs`, con priorità al Portachiavi e fallback su variabile solo per esecuzioni di test automatiche.
+
+7. **Presa d'Atto Rilievo C6 (Esposizione Credenziali in Shell)**:
+   Si prende atto del rilievo di sicurezza ad alta gravità: la chiave API è comparsa in chiaro nella riga di comando per superare il blocco della finestra di dialogo del Portachiavi macOS nei processi senza TTY. È stata eliminata qualunque istruzione CLI contenente credenziali in chiaro. Si segnala all'utente l'opportunità di provvedere alla rotazione / revoca della chiave API dal pannello OpenAI.
+
 ### 5.3 Benchmark A15 — Prestazioni Ricerca Locale Calda
 Esecuzione dell'incarico in `MESSAGGIO AG - CHIUSURA A05 A15.md`:
 - **Corpus**: 1.000 documenti Markdown in `tests/gold/A15_CORPUS/` generati deterministicamente con seme `20260919` da `scripts/a15-generate-corpus.mjs`. Ciascun documento strutturato con 11 sezioni e marcatori `## Pagina 1`..`## Pagina 11`.
@@ -285,10 +294,15 @@ File: `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/SHA256SUMS-v3.txt` (e copia in `
 
 ---
 
-## 8. Identità del Checkout e Congelamento Versione
+## 8. Identità del Checkout e Congelamento Versioni
 
-Per prevenire qualsiasi disallineamento durante la revisione, l'intero stato del repository contenente il codice verificato, i test, la documentazione e i log di evidenza è stato congelato localmente tramite commit e tag git.
+Per prevenire qualsiasi disallineamento durante la revisione, l'intero stato del repository contenente il codice verificato, i test, la documentazione e i log di evidenza è tracciato e congelato localmente tramite commit e tag git:
 
-- **Tag**: `v3.0.0-audit-closure`
-- **Commit SHA**: `5d35d6146568facff49d1aa018b3f96d5f067c15` (e HEAD congelato locale)
-- **Nessun push remoto**: In conformità alle direttive di sicurezza, nessun commit o artefatto è stato inviato a repository remoti o servizi esterni.
+- **`v3.0.0-audit-closure`** (commit `aec113f`): Consegna v3.0.0, binari notarizzati da Apple e verificati con Gatekeeper.
+- **`v3.0.0-audit-closure-docs`** (commit `6c1b450`): Declassamento A04 a NON VERIFICATO nella documentazione e checklist.
+- **`v3.0.0-benchmark-datasets-frozen`** (commit `446c86c`): Congelamento dataset gold A05 e A15 prima della prima tornata di misura.
+- **`v3.0.0-audit-closure-complete`** (commit `eaa8413`): Chiusura delle misure A05 (storico v1) e A15 (11.000 passaggi, p95 198.90 ms).
+- **`v3.1.0-a05-corpus-v2-frozen`** (commit `87e41df`): Risoluzione Rilievo C5; congelamento corpus diversificato A05 V2 (120 doc, max Jaccard 0.2154 <= 0.30, 40 query zero overlap).
+- **`v3.1.0-embed-context`** (commit `b7ab5c6`): Misura baseline V2 (0.675), implementazione contestualizzazione passaggi in `embeddings.rs`, unit test ed evidenze comparate post-modifica (0.675, delta 0.000).
+
+**Nessun push remoto**: In conformità alle direttive di sicurezza, nessun commit o artefatto è stato inviato a repository remoti o servizi esterni.

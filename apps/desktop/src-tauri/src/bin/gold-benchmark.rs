@@ -167,11 +167,18 @@ fn run_a05(vault_path: &Path, queries_path: &Path, out_dir: &Path) -> Result<(),
     println!("Indexing vault for lexical search...");
     limen_vault::search::index_vault_search(vault_path)?;
 
-    // 3. Sync embeddings using Keychain key
+    // 3. Sync embeddings using Keychain key (or benchmark-specific key)
     println!("Synchronizing embeddings via OpenAI API (model: text-embedding-3-small)...");
+    let bench_api_key = limen_vault::keychain::load()
+        .ok()
+        .flatten()
+        .filter(|k| !k.trim().is_empty())
+        .or_else(|| std::env::var("OPENAI_API_KEY").ok().filter(|k| !k.trim().is_empty()));
+    let effective_key_str = bench_api_key.as_deref().unwrap_or("");
+
     let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
     let sync_start = Instant::now();
-    let emb_report = rt.block_on(limen_vault::embeddings::sync_embeddings(vault_path, "", None))?;
+    let emb_report = rt.block_on(limen_vault::embeddings::sync_embeddings(vault_path, effective_key_str, None))?;
     let sync_dur = sync_start.elapsed();
     println!(
         "Embeddings synchronized in {:.2}s. Total cached passages: {}, model: {}",
@@ -201,7 +208,7 @@ fn run_a05(vault_path: &Path, queries_path: &Path, out_dir: &Path) -> Result<(),
         let res_hybrid = rt.block_on(limen_vault::embeddings::hybrid_search_vault(
             vault_path,
             sq_hybrid,
-            None,
+            bench_api_key.clone(),
             true, // use_semantic
         ))?;
 

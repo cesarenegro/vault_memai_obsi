@@ -302,16 +302,13 @@ pub async fn sync_embeddings(
     let mut cache = load_embeddings_cache(vault_path)?;
     let target_model = model.unwrap_or(DEFAULT_EMBEDDINGS_MODEL);
 
-    let key_from_env = std::env::var("OPENAI_API_KEY").ok().filter(|k| !k.trim().is_empty());
-    let key_from_keychain = if api_key.trim().is_empty() && key_from_env.is_none() {
+    let key_from_keychain = if api_key.trim().is_empty() {
         crate::keychain::load().ok().flatten().filter(|k| !k.trim().is_empty())
     } else {
         None
     };
     let effective_key = if !api_key.trim().is_empty() {
         api_key
-    } else if let Some(ref k) = key_from_env {
-        k.as_str()
     } else if let Some(ref k) = key_from_keychain {
         k.as_str()
     } else {
@@ -494,13 +491,10 @@ pub async fn hybrid_search_vault(
         _ => return Ok(lexical_results.into_iter().skip(offset).take(limit).collect()), // Graceful offline fallback
     };
 
-    // 3. Obtain API key: use provided, check OPENAI_API_KEY env, or load directly from Keychain in backend (R2)
+    // 3. Obtain API key: use provided or load directly from Keychain in backend (R2)
     let effective_key = match api_key.as_deref() {
         Some(k) if !k.trim().is_empty() => Some(k.to_string()),
-        _ => std::env::var("OPENAI_API_KEY")
-            .ok()
-            .filter(|k| !k.trim().is_empty())
-            .or_else(|| crate::keychain::load().ok().flatten().filter(|k| !k.trim().is_empty())),
+        _ => crate::keychain::load().ok().flatten().filter(|k| !k.trim().is_empty()),
     };
 
     // 4. Compute query embedding vector (or fallback to lexical if key absent or network fails)
