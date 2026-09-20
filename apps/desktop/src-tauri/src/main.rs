@@ -792,6 +792,7 @@ async fn embeddings_cancel_sync() -> Result<(), String> {
 
 #[tauri::command]
 async fn embeddings_sync_vault(
+    app: tauri::AppHandle,
     vault_path: String,
     api_key: Option<String>,
     model: Option<String>,
@@ -804,11 +805,23 @@ async fn embeddings_sync_vault(
         None
     };
 
-    limen_vault::embeddings::sync_embeddings_with_port(
+    // Avanzamento reale per la barra "Ricalcolo cache in corso": un evento all'avvio e uno per lotto.
+    let app_handle = app.clone();
+    let on_progress = move |processed: usize, total: usize| {
+        use tauri::Emitter;
+        let percent = if total == 0 { 100.0 } else { (processed as f64 / total as f64) * 100.0 };
+        let _ = app_handle.emit(
+            "embeddings_sync_progress",
+            serde_json::json!({ "processed": processed, "total": total, "percent": percent }),
+        );
+    };
+
+    limen_vault::embeddings::sync_embeddings_with_progress(
         Path::new(&vault_path),
         api_key.as_deref().unwrap_or(""),
         model.as_deref(),
         port,
+        Some(&on_progress),
     )
     .await
 }

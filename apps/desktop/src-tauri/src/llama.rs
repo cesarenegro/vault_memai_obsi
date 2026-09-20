@@ -506,6 +506,17 @@ impl LlamaServerState {
             "-b", "2048",
         ]);
 
+        // Backend Metal. ggml cerca i backend nella cartella compilata nel binario
+        // (/opt/homebrew/Cellar/ggml/<ver>/libexec): se su questo Mac esiste, trova li' le librerie
+        // Homebrew firmate ad-hoc, che il runtime indurito rifiuta ("different Team IDs"), e NON ripiega
+        // su quelle incluse nell'app: il server parte con la sola CPU. Verificato il 20/09/2026 con
+        // `--list-devices`: "(none)" con la cartella visibile, "BLAS + MTL0" con la cartella nascosta;
+        // 0,65 s/passaggio su CPU contro 0,09 s con Metal. GGML_BACKEND_PATH carica esplicitamente la
+        // libreria Metal inclusa e non duplica il dispositivo quando e' gia' stato trovato.
+        if let Some(metal) = binary.parent().map(|d| d.join("libggml-metal.so")).filter(|p| p.is_file()) {
+            cmd.env("GGML_BACKEND_PATH", metal);
+        }
+
         #[cfg(unix)]
         {
             use std::os::unix::process::CommandExt;

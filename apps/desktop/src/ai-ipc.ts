@@ -11,6 +11,8 @@ export interface EmbeddingsProviderReport {
   endpoint: string;
   cacheDimensions: number;
   cacheEntries: number;
+  totalPassages: number;
+  matchedPassages: number;
   needsReindex: boolean;
 }
 
@@ -42,6 +44,8 @@ let mockProvider: EmbeddingsProviderReport = {
   endpoint: 'http://127.0.0.1:57471/v1/embeddings',
   cacheDimensions: 1024,
   cacheEntries: 9458,
+  totalPassages: 9458,
+  matchedPassages: 9458,
   needsReindex: false,
 };
 

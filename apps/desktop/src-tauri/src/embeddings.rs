@@ -36,6 +36,9 @@ pub struct EmbeddingsProviderReport {
     pub endpoint: String,
     pub cache_dimensions: usize,
     pub cache_entries: usize,
+    /// Passaggi totali nel catalogo e quanti hanno gia' un vettore valido per il fornitore attivo.
+    pub total_passages: usize,
+    pub matched_passages: usize,
     pub needs_reindex: bool,
 }
 
@@ -75,8 +78,11 @@ pub fn get_embeddings_provider(vault_path: &Path, active_port: u16) -> Embedding
     };
 
     let cache = load_embeddings_cache(vault_path).unwrap_or_default();
-    let cache_dimensions = cache.dimensions;
     let cache_entries = cache.entries.len();
+    // Cache assente o vuota: nessuna dimensione memorizzata da confrontare. Senza questo azzeramento il
+    // default della struct (1536) veniva mostrato in UI come "cache a 1536 dim" con 0 passaggi
+    // (collaudo del 20/09/2026 su vault senza EMBEDDINGS_CACHE.json).
+    let cache_dimensions = if cache_entries == 0 { 0 } else { cache.dimensions };
 
     let mut total_passages = 0;
     let mut matched_passages = 0;
@@ -106,6 +112,8 @@ pub fn get_embeddings_provider(vault_path: &Path, active_port: u16) -> Embedding
         endpoint,
         cache_dimensions,
         cache_entries,
+        total_passages,
+        matched_passages,
         needs_reindex,
     }
 }
@@ -403,9 +411,15 @@ pub async fn fetch_openai_embeddings_with_endpoint(
         return Err("OpenAI API key non configurata".into());
     }
 
+    // Loopback: il server locale calcola i vettori sul Mac (misurato il 20/09/2026 su M2: 0,65 s/passaggio
+    // senza GPU, 0,09 s con Metal). Con 60 s un lotto veniva annullato a meta' calcolo: nel log di
+    // llama-server "cancel task" arrivava esattamente 60 s dopo la richiesta e l'utente vedeva
+    // "error sending request for url". 300 s coprono un lotto di 16 passaggi con ampio margine anche su
+    // un Mac lento; l'API remota resta a 60 s.
+    let request_timeout = if is_loopback { Duration::from_secs(300) } else { Duration::from_secs(60) };
     let mut client_builder = reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(10))
-        .timeout(Duration::from_secs(60));
+        .timeout(request_timeout);
 
     if !is_loopback {
         client_builder = client_builder.https_only(true);
@@ -534,6 +548,19 @@ pub async fn sync_embeddings_with_port(
     api_key: &str,
     model: Option<&str>,
     active_port: Option<u16>,
+) -> Result<EmbeddingsStatusReport, String> {
+    sync_embeddings_with_progress(vault_path, api_key, model, active_port, None).await
+}
+
+/// Come `sync_embeddings_with_port`, con callback `(elaborati, totale)` invocata all'avvio e dopo ogni
+/// lotto: e' l'unica sorgente dell'evento `embeddings_sync_progress` che alimenta la barra in UI
+/// (prima di questa callback l'evento non veniva mai emesso e la barra restava a 0,0%).
+pub async fn sync_embeddings_with_progress(
+    vault_path: &Path,
+    api_key: &str,
+    model: Option<&str>,
+    active_port: Option<u16>,
+    on_progress: Option<&(dyn Fn(usize, usize) + Sync)>,
 ) -> Result<EmbeddingsStatusReport, String> {
     SYNC_CANCELLED.store(false, Ordering::SeqCst);
 
@@ -708,12 +735,15 @@ pub async fn sync_embeddings_with_port(
     // Prune stale passages from working cache
     working_cache.entries.retain(|id, _| valid_passage_ids.contains(id));
 
-    // Process in batches (64 for local loopback or 32 for remote API)
-    let batch_size = if is_loopback { 64 } else { 32 };
+    // Lotti: 16 in locale (avanzamento a passi piccoli, annullamento entro un lotto), 32 verso l'API remota.
+    let batch_size = if is_loopback { 16 } else { 32 };
     let total_missing = missing.len();
     let mut processed_count = 0;
     if total_missing > 0 {
         println!("Starting embedding sync: {} missing passages to process...", total_missing);
+    }
+    if let Some(cb) = on_progress {
+        cb(0, total_missing);
     }
 
     for chunk in missing.chunks(batch_size) {
@@ -746,6 +776,9 @@ pub async fn sync_embeddings_with_port(
         }
 
         processed_count += chunk.len();
+        if let Some(cb) = on_progress {
+            cb(processed_count, total_missing);
+        }
         if is_model_migration && (processed_count % 320 == 0 || processed_count == total_missing) {
             let _ = std::fs::write(&staging_path, serde_json::to_string(&working_cache).unwrap_or_default());
         }
@@ -1696,6 +1729,25 @@ mod tests {
         fs::write(path.join("00_SYSTEM/SYNC_PROFILE.json"), custom).unwrap();
         assert_eq!(resolve_embeddings_endpoint(path), "");
         assert_eq!(resolve_embeddings_model(path).as_deref(), Some("bge-m3"));
+    }
+
+    #[test]
+    fn test_provider_report_with_empty_cache_reports_zero_dims_and_total_passages() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path();
+        fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        fs::create_dir_all(path.join("20_RAW_SOURCES")).unwrap();
+        fs::write(path.join("00_SYSTEM/SYNC_PROFILE.json"), r#"{"embeddingsProvider":"local"}"#).unwrap();
+        fs::write(path.join("20_RAW_SOURCES/nota.txt"), "Testo di prova per un passaggio del catalogo.").unwrap();
+        crate::catalog::sync_catalog_from_vault(path).unwrap();
+        crate::catalog::process_pending_extractions(path).unwrap();
+
+        let rep = get_embeddings_provider(path, 0);
+        assert_eq!(rep.cache_entries, 0);
+        assert_eq!(rep.cache_dimensions, 0, "cache assente: nessuna dimensione da mostrare (non il default 1536)");
+        assert!(rep.total_passages > 0, "il catalogo di prova deve avere almeno un passaggio");
+        assert_eq!(rep.matched_passages, 0);
+        assert!(rep.needs_reindex);
     }
 
     #[test]

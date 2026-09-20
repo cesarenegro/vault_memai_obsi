@@ -51,6 +51,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
   const [startingServer, setStartingServer] = useState(false);
   const [reindexing, setReindexing] = useState(false);
   const [reindexPercent, setReindexPercent] = useState<number | null>(null);
+  const [reindexCounts, setReindexCounts] = useState<{ processed: number; total: number } | null>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -98,6 +99,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
     void listen<{ percent: number; processed: number; total: number }>('embeddings_sync_progress', (e) => {
       if (isMounted.current) {
         setReindexPercent(e.payload.percent);
+        setReindexCounts({ processed: e.payload.processed, total: e.payload.total });
       }
     }).then((unlisten) => {
       unlistenSync = unlisten;
@@ -204,6 +206,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
     setSuccessMessage(null);
     setReindexing(true);
     setReindexPercent(0);
+    setReindexCounts(null);
     try {
       await aiIpc.embeddingsSyncVault(vaultPath);
       setSuccessMessage('Cache semantica ricalcolata e allineata con successo al 100%.');
@@ -212,6 +215,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
     } finally {
       setReindexing(false);
       setReindexPercent(null);
+      setReindexCounts(null);
       await refreshAll();
     }
   };
@@ -523,28 +527,53 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Cache semantica del Vault</span>
             <span style={{ fontSize: 12, color: '#64748b' }}>
-              {providerReport.cacheEntries} passaggi indicizzati ({providerReport.cacheDimensions} dim)
+              {providerReport.cacheEntries === 0
+                ? 'Nessun passaggio indicizzato'
+                : `${providerReport.cacheEntries} passaggi indicizzati (${providerReport.cacheDimensions} dim)`}
             </span>
           </div>
 
           {providerReport.needsReindex ? (
             <div>
               <div style={{ fontSize: 13, color: '#92400e', marginBottom: 10 }}>
-                ⚠️ <strong>Disallineamento dimensioni vettore rilevato:</strong> la cache attuale memorizza vettori a{' '}
-                <strong>{providerReport.cacheDimensions}</strong> dimensioni, mentre il fornitore scelto (
-                <strong>{providerReport.provider}</strong>) genera vettori a{' '}
-                <strong>{providerReport.dimensions}</strong> dimensioni.
+                {providerReport.cacheEntries === 0 ? (
+                  <>
+                    ⚠️ <strong>Cache semantica assente:</strong> nessun vettore è ancora stato calcolato per questo Vault.
+                    <br />
+                    I <strong>{providerReport.totalPassages}</strong> passaggi del vault devono essere calcolati per attivare
+                    la ricerca semantica.
+                  </>
+                ) : providerReport.cacheDimensions !== providerReport.dimensions ? (
+                  <>
+                    ⚠️ <strong>Disallineamento dimensioni vettore rilevato:</strong> la cache attuale memorizza vettori a{' '}
+                    <strong>{providerReport.cacheDimensions}</strong> dimensioni, mentre il fornitore scelto (
+                    <strong>{providerReport.provider}</strong>) genera vettori a{' '}
+                    <strong>{providerReport.dimensions}</strong> dimensioni.
+                    <br />
+                    I <strong>{providerReport.totalPassages}</strong> passaggi del vault devono essere ricalcolati per attivare
+                    la ricerca semantica.
+                    <br />
+                    <em>Nota di sicurezza: la cache attuale rimane attiva finché il nuovo calcolo non è completato al 100%.</em>
+                  </>
+                ) : (
+                  <>
+                    ⚠️ <strong>Cache semantica incompleta:</strong>{' '}
+                    <strong>{providerReport.totalPassages - providerReport.matchedPassages}</strong> passaggi su{' '}
+                    {providerReport.totalPassages} non sono ancora indicizzati (documenti nuovi o modificati).
+                  </>
+                )}
                 <br />
-                I <strong>{providerReport.cacheEntries}</strong> passaggi del vault devono essere ricalcolati per attivare
-                la ricerca semantica locale. L’operazione richiede circa ~14 minuti su Apple Silicon.
-                <br />
-                <em>Nota di sicurezza: la cache attuale rimane attiva finché il nuovo calcolo non è completato al 100%.</em>
+                Durata indicativa: circa 0,1 s per passaggio con GPU Metal su Apple Silicon (misurato con bge-m3 su M2),
+                fino a 7 volte di più senza GPU. L’avanzamento è mostrato qui sotto durante il calcolo.
               </div>
 
               {reindexing ? (
                 <div style={{ marginTop: 10 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-                    <span>Ricalcolo cache in corso…</span>
+                    <span>
+                      Ricalcolo cache in corso…
+                      {reindexCounts ? ` ${reindexCounts.processed}/${reindexCounts.total} passaggi` : ''}
+                    </span>
                     <span>{reindexPercent !== null ? `${reindexPercent.toFixed(1)}%` : 'Elaborazione…'}</span>
                   </div>
                   <div
@@ -578,7 +607,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
                   disabled={loading || reindexing || (isLocal && !modelReport?.installed)}
                   onClick={handleReindexCache}
                 >
-                  RICALCOLA CACHE SEMANTICA (1024 DIM)
+                  RICALCOLA CACHE SEMANTICA ({providerReport.dimensions} DIM)
                 </button>
               )}
             </div>
