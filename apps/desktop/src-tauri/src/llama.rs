@@ -300,6 +300,82 @@ pub fn detect_llama_server_binary() -> Option<PathBuf> {
     None
 }
 
+// ---------------------------------------------------------------------------------------------
+// Processi orfani. Il figlio llama-server vive in un proprio process group: se l'app viene uccisa
+// (kill -9, crash) il figlio non riceve nulla, passa a launchd (ppid 1) e resta in memoria con il
+// modello caricato (caso reale del 20/09/2026: pid 21212 attivo per 3 ore dopo la fine dell'app).
+// L'app registra il pid del figlio in un file accanto al modello e, all'avvio e prima di ogni nuovo
+// avvio del servizio, termina SOLO un server registrato che risulti orfano: mai un server con
+// genitore vivo (altra istanza dell'app) e mai un processo diverso che abbia riusato il pid.
+// ---------------------------------------------------------------------------------------------
+
+/// File con il pid dell'ultimo llama-server avviato da questa app.
+pub fn pid_file_path() -> Option<PathBuf> {
+    get_models_dir().ok().map(|d| d.join("llama-server.pid"))
+}
+
+fn write_pid_file(path: &Path, pid: u32) {
+    let _ = fs::write(path, pid.to_string());
+}
+
+fn read_pid_file(path: &Path) -> Option<u32> {
+    fs::read_to_string(path).ok()?.trim().parse::<u32>().ok()
+}
+
+/// Decisione pura: orfano = genitore launchd (ppid 1) e riga di comando di un llama-server in modalita' embedding.
+pub fn is_orphan_llama_server(ppid: i32, command: &str) -> bool {
+    ppid == 1 && command.contains("llama-server") && command.contains("--embedding")
+}
+
+/// (ppid, riga di comando) del processo, oppure None se non esiste.
+fn process_parent_and_command(pid: u32) -> Option<(i32, String)> {
+    let out = Command::new("/bin/ps")
+        .args(["-o", "ppid=,command=", "-p", &pid.to_string()])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let text = String::from_utf8_lossy(&out.stdout);
+    let line = text.lines().find(|l| !l.trim().is_empty())?;
+    let mut parts = line.trim().splitn(2, char::is_whitespace);
+    let ppid = parts.next()?.trim().parse::<i32>().ok()?;
+    let command = parts.next().unwrap_or("").trim().to_string();
+    Some((ppid, command))
+}
+
+/// Termina un llama-server orfano registrato nel pidfile. Restituisce il pid terminato, se c'era.
+pub fn reap_orphan_server() -> Option<u32> {
+    let path = pid_file_path()?;
+    let pid = read_pid_file(&path)?;
+    let Some((ppid, command)) = process_parent_and_command(pid) else {
+        let _ = fs::remove_file(&path); // il processo non esiste piu': pidfile stantio
+        return None;
+    };
+    if !is_orphan_llama_server(ppid, &command) {
+        return None;
+    }
+    #[cfg(unix)]
+    unsafe {
+        libc::kill(pid as i32, libc::SIGTERM);
+    }
+    for _ in 0..20 {
+        std::thread::sleep(Duration::from_millis(50));
+        if process_parent_and_command(pid).is_none() {
+            break;
+        }
+    }
+    #[cfg(unix)]
+    unsafe {
+        if process_parent_and_command(pid).is_some() {
+            libc::kill(pid as i32, libc::SIGKILL);
+        }
+    }
+    let _ = fs::remove_file(&path);
+    eprintln!("[llama] llama-server orfano (pid {}) terminato", pid);
+    Some(pid)
+}
+
 pub fn find_free_port() -> Result<u16, String> {
     let listener = std::net::TcpListener::bind("127.0.0.1:0")
         .map_err(|e| format!("Impossibile trovare una porta libera su 127.0.0.1: {}", e))?;
@@ -430,6 +506,9 @@ fn stop_child(s: &mut RunningState) {
         }
         let _ = c.wait();
     }
+    if let Some(p) = pid_file_path() {
+        let _ = fs::remove_file(p);
+    }
     s.port = 0;
 }
 
@@ -482,6 +561,9 @@ impl LlamaServerState {
                 return Ok(self.status());
             }
         }
+
+        // 2b. Un server orfano di un'istanza precedente (app uccisa) va terminato prima di avviarne un altro
+        let _ = reap_orphan_server();
 
         // 3. Find standalone or system binary
         let binary = detect_llama_server_binary().ok_or_else(|| {
@@ -537,6 +619,9 @@ impl LlamaServerState {
             .spawn()
             .map_err(|e| format!("Impossibile avviare il processo llama-server: {}", e))?;
 
+        if let Some(p) = pid_file_path() {
+            write_pid_file(&p, child.id());
+        }
         s.child = Some(child);
         s.port = port;
         s.model_path = model_path;
@@ -654,6 +739,32 @@ mod tests {
         let rep = local_model_status();
         println!("Local model status: {:?}", rep);
         assert!(rep.bytes == 0 || rep.bytes == EXPECTED_MODEL_SIZE_BYTES);
+    }
+
+    #[test]
+    fn test_pid_file_roundtrip_and_orphan_decision() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("llama-server.pid");
+        assert_eq!(read_pid_file(&p), None);
+        write_pid_file(&p, 4242);
+        assert_eq!(read_pid_file(&p), Some(4242));
+        fs::write(&p, "non-un-pid").unwrap();
+        assert_eq!(read_pid_file(&p), None);
+
+        let ours = "/Applications/LIMEN Vault v3.app/Contents/Resources/native/llama-server -m m.gguf --embedding --host 127.0.0.1 --port 1";
+        assert!(is_orphan_llama_server(1, ours), "genitore launchd + nostro server = orfano");
+        assert!(!is_orphan_llama_server(4321, ours), "genitore vivo: appartiene a un'istanza attiva, non si tocca");
+        assert!(!is_orphan_llama_server(1, "/usr/bin/python3 server.py"), "pid riusato da un altro processo");
+        assert!(!is_orphan_llama_server(1, "/opt/homebrew/bin/llama-server -m chat.gguf --port 8080"), "llama-server non in modalita' embedding");
+    }
+
+    #[test]
+    fn test_process_parent_and_command_reads_live_process_only() {
+        let me = std::process::id();
+        let (ppid, cmd) = process_parent_and_command(me).expect("ps deve leggere il processo corrente");
+        assert!(ppid > 0);
+        assert!(!cmd.is_empty());
+        assert_eq!(process_parent_and_command(u32::MAX - 7), None, "pid inesistente");
     }
 
     #[test]

@@ -100,6 +100,11 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
       if (isMounted.current) {
         setReindexPercent(e.payload.percent);
         setReindexCounts({ processed: e.payload.processed, total: e.payload.total });
+        // Primo evento (0 elaborati): il backend ha appena avviato il servizio locale su richiesta.
+        // Senza questa rilettura il badge restava su SPENTO per tutta la durata del ricalcolo (collaudo 20/09/2026).
+        if (e.payload.processed === 0) {
+          void refreshAll();
+        }
       }
     }).then((unlisten) => {
       unlistenSync = unlisten;

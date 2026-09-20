@@ -294,6 +294,8 @@ fn obsidian_registered(registry: &serde_json::Value, target: &Path) -> bool {
 }
 
 fn main() {
+    // Un llama-server rimasto orfano da un'istanza uccisa (kill -9/crash) viene terminato subito all'avvio.
+    let _ = limen_vault::llama::reap_orphan_server();
     let args:Vec<String>=std::env::args().collect();
     if args.get(1).is_some_and(|s|s=="--mcp-stdio") {
         if args.len()!=3 { eprintln!("Usage: limen-vault --mcp-stdio VAULT");std::process::exit(2); }
