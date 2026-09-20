@@ -227,7 +227,7 @@ export function HelpPanel({
             <ol>
               <li>Vai in <strong>Avanzate e Manutenzione → Collegamenti AI & MCP</strong>.</li>
               <li>Nel pannello <strong>Motore semantico</strong>, assicurati che sia selezionato <strong>Locale (bge-m3, nessun dato esce dal Mac)</strong>.</li>
-              <li>Se il modello non è installato, premi <strong>SCARICA MODELLO (BGE-M3)</strong> (~605 MB) oppure seleziona un file <code>.gguf</code> già presente sul disco.</li>
+              <li>Se il modello non è installato, premi <strong>SCARICA MODELLO (635 MB)</strong> oppure <strong>SELEZIONA FILE GGUF DA DISCO…</strong> per un file già presente sul disco.</li>
               <li>Premi <strong>AVVIA SERVIZIO LOCALE</strong>: il sistema avvierà <code>llama-server</code> su una porta libera locale e verificherà la salute (<code>/health</code>).</li>
               <li>Se la cache indica disallineamento, premi <strong>RICALCOLA CACHE</strong> per generare i vettori semantici sul Mac.</li>
             </ol>
@@ -384,7 +384,7 @@ export function HelpPanel({
             <ul>
               <li><strong>Nessun dato esce dal Mac:</strong> l’applicazione non ripiega mai silenziosamente su OpenAI se il fornitore è locale.</li>
               <li><strong>Segnalazione visiva:</strong> compare il banner giallo e il badge accanto ai risultati indica <em>RAG LOCALE SPENTO (SOLO LESSICALE)</em>.</li>
-              <li><strong>Ripristino:</strong> basta recarsi in <em>Collegamenti AI & MCP</em> o premere <em>Riavvia Servizio Locale</em> per tornare alla ricerca ibrida completa.</li>
+              <li><strong>Ripristino:</strong> vai in <em>Avanzate → Collegamenti AI & MCP → Motore semantico</em> e premi <strong>AVVIA SERVIZIO LOCALE</strong> (il banner non ha pulsanti); il ricalcolo della cache avvia il servizio da solo, la ricerca no.</li>
             </ul>
           </div>
         ),
@@ -576,7 +576,7 @@ Richiede soluzioni di packaging compostabile.`}
               <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.7 }}>
                 <li>Apri <strong>Avanzate e Manutenzione → Collegamenti AI & MCP</strong>.</li>
                 <li>Nel riquadro <strong>Motore semantico</strong>, seleziona <strong>Locale (bge-m3, nessun dato esce dal Mac)</strong>.</li>
-                <li>Se il riquadro <em>Modello locale</em> indica <em>Non installato</em>, premi <strong>SCARICA MODELLO (BGE-M3)</strong> e attendi il completamento (~605 MB) con verifica automatica dell’hash SHA-256.</li>
+                <li>Se il riquadro <em>Modello locale</em> indica <em>Non installato</em>, premi <strong>SCARICA MODELLO (635 MB)</strong> e attendi il completamento con verifica automatica dell’hash SHA-256.</li>
                 <li>Premi <strong>AVVIA SERVIZIO LOCALE</strong>: l’app avvierà <code>llama-server</code> su una porta dinamica libera (es. <code>59667</code>) e mostrerà il badge verde <strong>ATTIVO</strong>.</li>
                 <li>Se il riquadro <em>Cache semantica</em> segnala passaggi mancanti o disallineati, premi <strong>RICALCOLA CACHE</strong> per completare l’indicizzazione vettoriale.</li>
               </ol>
@@ -589,7 +589,7 @@ Richiede soluzioni di packaging compostabile.`}
                 <li>Assicurati che la casella <strong>Ricerca Ibrida</strong> sia spuntata.</li>
                 <li>Digita i termini cercati (es. <em>posizionamento di marca</em> o <em>private label</em>) e premi Invio.</li>
                 <li>I risultati combinano la corrispondenza lessicale BM25 e la vicinanza concettuale bge-m3. Ciascun risultato mostra titolo, snippet e locator di pagina/paragrafo.</li>
-                <li><strong>Se compare il banner giallo ⚠️ Modalità degradata:</strong> significa che il processo locale è caduto o è stato arrestato. La ricerca continua comunque a funzionare in solo lessicale BM25. Per riattivare il semantico, premi <strong>Riavvia Servizio Locale</strong> oppure vai in <em>Collegamenti AI & MCP</em>.</li>
+                <li><strong>Se compare il banner giallo ⚠️ Modalità degradata:</strong> significa che il processo locale è caduto o è stato arrestato. La ricerca continua comunque a funzionare in solo lessicale BM25. Per riattivare il semantico, vai in <em>Avanzate → Collegamenti AI & MCP → Motore semantico</em> e premi <strong>AVVIA SERVIZIO LOCALE</strong>.</li>
               </ol>
             </div>
 
@@ -648,10 +648,10 @@ Richiede soluzioni di packaging compostabile.`}
 
               <details style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, padding: 12 }}>
                 <summary style={{ fontWeight: 700, color: '#0f172a', cursor: 'pointer' }}>
-                  La cache semantica mostra «Disallineata con il fornitore attivo»
+                  La cache semantica mostra «assente», «Disallineamento dimensioni vettore» o «incompleta»
                 </summary>
                 <div style={{ marginTop: 8, fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
-                  Questo accade se hai cambiato fornitore (es. da OpenAI con 1536 dimensioni a Locale bge-m3 con 1024 dimensioni) o se hai aggiunto nuovi documenti in <code>20_RAW_SOURCES</code>. Premi semplicemente <strong>RICALCOLA CACHE SEMANTICA</strong> nel pannello del motore semantico; i nuovi vettori verranno calcolati in background senza bloccare la consultazione delle note.
+                  Questo accade se hai cambiato fornitore (es. da OpenAI con 1536 dimensioni a Locale bge-m3 con 1024 dimensioni) o se hai aggiunto nuovi documenti in <code>20_RAW_SOURCES</code>. Premi <strong>RICALCOLA CACHE SEMANTICA (1024 DIM)</strong> nel pannello del motore semantico: il servizio locale parte da solo se è spento, la barra mostra «K/N passaggi» e la percentuale, la cache precedente resta in uso fino al 100%. Durata misurata: 9.458 passaggi in 49 minuti su un Mac M2 8 GB.
                 </div>
               </details>
 

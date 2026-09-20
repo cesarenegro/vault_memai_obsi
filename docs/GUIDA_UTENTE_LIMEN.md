@@ -3,7 +3,7 @@
 **La tua conoscenza, organizzata. L’AI ti aiuta. Tu decidi.**
 
 Guida utente · macOS · Versione di riferimento **v3 (0.3.0)**  
-Edizione HELP · 18 settembre 2026  
+Edizione HELP · 20 settembre 2026  
 Revisione confrontata con i sorgenti locali della consegna v3
 
 Qui trovi il percorso per iniziare, le istruzioni per ogni attività e le soluzioni ai problemi più comuni. Puoi leggere la guida dall’inizio oppure scegliere direttamente ciò che vuoi fare.
@@ -359,7 +359,7 @@ Se il servizio semantico locale non è in esecuzione, non risponde entro il time
   *⚠️ Modalità degradata (solo ricerca lessicale): il servizio semantico locale non è attivo o non ha risposto. I risultati sono calcolati esclusivamente tramite indice lessicale BM25. Nessun dato è uscito dal Mac.*
 - Il badge dei risultati riporta: *RAG LOCALE SPENTO (SOLO LESSICALE)*.
 - **Nessun dato esce mai dal Mac**: l'applicazione non tenta alcun fallback remoto su server esterni se il fornitore configurato è locale.
-- Per ripristinare il canale semantico, basta cliccare sul pulsante **Riavvia Servizio Locale** presente nell'avviso o andare in *Avanzate → Collegamenti AI & MCP*.
+- Per ripristinare il canale semantico vai in *Avanzate → Collegamenti AI & MCP → Motore semantico* e premi **AVVIA SERVIZIO LOCALE** (l'avviso non ha pulsanti). La ricerca non riavvia il servizio da sola; il ricalcolo della cache invece lo avvia automaticamente se è spento.
 
 ---
 
@@ -694,9 +694,9 @@ Il tunnel non parte automaticamente all’apertura di LIMEN e si arresta alla ch
 
 Nel pannello **Avanzate → Collegamenti AI & MCP → Motore semantico**:
 - **Scelta del Fornitore**: puoi commutare liberamente tra *Locale (bge-m3, nessun dato esce dal Mac)* e *OpenAI (in rete)*. Nessun URL viene digitato a mano: l'endpoint loopback viene gestito dinamicamente dal prodotto.
-- **Gestione del Modello**: scarica il file `bge-m3-Q8_0.gguf` (~605 MB) con verifica automatica del checksum crittografico SHA-256 (`950f4a8e5e19477a...`) oppure seleziona un file `.gguf` locale.
-- **Ciclo di Vita del Servizio**: gestisci l'avvio, l'arresto e il controllo di salute del processo integrato `llama-server`. Il sistema alloca a ogni avvio una porta libera loopback (`127.0.0.1:<porta>`), verifica `/health` ed esegue l'arresto pulito alla chiusura dell'applicazione. In caso di errore, lo stderr viene salvato in `~/Library/Application Support/LIMEN Vault/models/llama-server.log`.
-- **Cache Semantica a Staging**: l'allineamento della cache vettoriale a 1024 dimensioni avviene tramite file di staging atomico `00_SYSTEM/EMBEDDINGS_CACHE.staging.json`, garantendo la massima sicurezza dei dati e la riprendibilità immediata del calcolo in caso di interruzione.
+- **Gestione del Modello**: **SCARICA MODELLO (635 MB)** scarica `bge-m3-Q8_0.gguf` (634.553.760 byte) con verifica automatica del checksum SHA-256 (`950f4a8e5e19477a…`); **SELEZIONA FILE GGUF DA DISCO…** importa un file già scaricato, con la stessa verifica.
+- **Ciclo di Vita del Servizio**: **AVVIA SERVIZIO LOCALE** / **ARRESTA SERVIZIO LOCALE** / **AGGIORNA STATO**. A ogni avvio il sistema alloca una porta libera su `127.0.0.1`, verifica `/health` entro 25 s e usa la GPU Metal del Mac (backend caricato dall'app stessa). Alla chiusura regolare dell'applicazione il servizio viene arrestato; se l'app viene terminata forzatamente e il servizio resta in memoria, viene riconosciuto e terminato al riavvio successivo (il suo pid è registrato in `~/Library/Application Support/LIMEN Vault/models/llama-server.pid`). In caso di errore, lo stderr è in `~/Library/Application Support/LIMEN Vault/models/llama-server.log` e le ultime righe compaiono nel messaggio.
+- **Cache semantica del Vault**: il riquadro mostra «N passaggi indicizzati (D dim)» oppure «Nessun passaggio indicizzato» e uno di tre avvisi: **Cache semantica assente** (nessun vettore ancora calcolato), **Disallineamento dimensioni vettore** (la cache è di un altro fornitore, es. 1536 → 1024) oppure **Cache semantica incompleta** (K passaggi su N non ancora indicizzati: documenti nuovi o modificati). Il pulsante **RICALCOLA CACHE SEMANTICA (1024 DIM)** avvia il calcolo: durante il lavoro compaiono «Ricalcolo cache in corso… K/N passaggi», la percentuale e la barra; **ANNULLA (I progressi parziali vengono conservati)** interrompe salvando il punto raggiunto. Il calcolo scrive in `00_SYSTEM/EMBEDDINGS_CACHE.staging.json` (salvataggio intermedio ogni 320 passaggi) e la cache precedente resta in uso fino al 100 %; se l'app viene chiusa, alla ripresa si riparte dall'ultimo salvataggio intermedio. Durata misurata il 20/09/2026 su Mac M2 8 GB: **9.458 passaggi in 49 minuti** (circa 0,3 s per passaggio); 160 passaggi in circa un minuto.
 
 [↑ Indice](#indice)
 
@@ -973,6 +973,6 @@ Conserva una copia del lavoro, arresta l’eventuale tunnel e chiudi LIMEN. Segu
 <a id="note-edizione"></a>
 ## 15. Edizione v3 e verifica della documentazione
 
-Questa guida descrive il codice locale v3 (0.3.0), aggiornato il 18 settembre 2026. HELP integrato, file HELP, guida e manuale distribuito descrivono lo stesso flusso automatico. Il pacchetto include i documenti anche per la lettura offline.
+Questa guida descrive il codice locale v3 (0.3.0), aggiornato il 20 settembre 2026 (RAG locale, BM25, ricalcolo della cache collaudato sull'app installata). HELP integrato, file HELP, guida e manuale distribuito descrivono lo stesso flusso automatico. Il pacchetto include i documenti anche per la lettura offline.
 
 L’automazione è verificata nei moduli `automation.rs`, `extraction.rs`, `AutomationPanel.tsx`; le regole di lettura in `ai.rs`, `mcp.rs` e nei componenti di ricerca. La compilazione manuale resta in `compiler.rs`, la pubblicazione in `sync.rs`. Firma e notarizzazione attestano il pacchetto; non certificano la correttezza dei contenuti generati dall’AI. Gli esiti dei collaudi e gli eventuali residui sono registrati separatamente nella checklist di progetto.

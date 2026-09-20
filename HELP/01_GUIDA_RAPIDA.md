@@ -15,7 +15,7 @@ Torna all’indice: [[00_INDICE]]
 3. **Configura il Motore Semantico Locale (Rete Zero)**:
    - Vai in **Avanzate e Manutenzione → Collegamenti AI & MCP**.
    - Nel pannello **Motore semantico**, seleziona **Locale (bge-m3, nessun dato esce dal Mac)**.
-   - Premi **SCARICA MODELLO (BGE-M3)** (~605 MB, operazione una-tantum con verifica hash SHA-256) oppure seleziona un file `.gguf` locale.
+   - Premi **SCARICA MODELLO (635 MB)** (operazione una-tantum con verifica SHA-256) oppure **SELEZIONA FILE GGUF DA DISCO…** per un file già scaricato.
    - Premi **AVVIA SERVIZIO LOCALE** (lo stato diventerà *ATTIVO* con una porta dinamica libera).
    - *(Facoltativo)* Se intendi usare anche la chat generativa remota in *Chiedi al Vault*, salva la chiave OpenAI nel Portachiavi.
 4. Premi il pulsante verde **CARICA DOCUMENTI** e seleziona i file grezzi (PDF, DOCX, presentazioni, immagini, trascrizioni). Non convertirli prima: l'estrattore nativo Swift esegue OCR e chunking sul Mac.

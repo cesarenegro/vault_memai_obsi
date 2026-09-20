@@ -12,6 +12,10 @@ sono presenti anche Manuale LIMEN v3.txt, Guida utente LIMEN v3.md e HELP v3.
 
 Novità: caricamento dei documenti grezzi, conversione e OCR sul Mac,
 normalizzazione, classificazione, cartelle, collegamenti, ricerca e wiki.
+Ricerca ibrida interamente sul Mac (indice lessicale BM25 + vettori semantici
+bge-m3): in Avanzate → Collegamenti AI & MCP → Motore semantico scegli Locale,
+scarica una volta il modello (635 MB) e premi RICALCOLA CACHE SEMANTICA.
+Con il fornitore Locale nessun documento esce dal Mac.
 Per il flusso automatico configura la chiave API in Impostazioni, poi modello
 e ATTIVA AUTOMAZIONE in Fonti. L’app deve rimanere aperta; le chiamate API
 per classificazione e wiki sono a consumo. Gli originali vengono conservati.

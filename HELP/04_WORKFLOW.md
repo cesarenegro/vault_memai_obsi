@@ -307,7 +307,7 @@ flowchart TD
   C -- OpenAI --> D[Seleziona: Locale bge-m3, nessun dato esce dal Mac]
   C -- Già Locale --> E{Modello bge-m3 presente?}
   D --> E
-  E -- No --> F[SCARICA MODELLO BGE-M3 ~605 MB oppure Seleziona file locale]
+  E -- No --> F[SCARICA MODELLO 635 MB oppure SELEZIONA FILE GGUF DA DISCO]
   F --> G[Verifica automatica SHA-256: 950f4a8e...]
   E -- Sì, INSTALLATO SHA-256 OK --> H[AVVIA SERVIZIO LOCALE]
   G --> H
@@ -324,7 +324,7 @@ flowchart TD
 
 1. Apri la barra laterale su **Avanzate e Manutenzione** e seleziona **Collegamenti AI & MCP**.
 2. Nel riquadro **Motore semantico**, seleziona **Locale (bge-m3, nessun dato esce dal Mac)**.
-3. Se il modello non è installato, premi **SCARICA MODELLO (BGE-M3)** (~605 MB) o seleziona un file `.gguf` locale.
+3. Se il modello non è installato, premi **SCARICA MODELLO (635 MB)** o **SELEZIONA FILE GGUF DA DISCO…**.
 4. Premi **AVVIA SERVIZIO LOCALE**: il processo `llama-server` parte su porta libera loopback e supera `/health`.
 5. Se la cache mostra disallineamento, premi **RICALCOLA CACHE**: il calcolo avviene progressivamente sul Mac.
 
@@ -354,10 +354,10 @@ sequenceDiagram
   else llama-server SPENTO o NON RISPONDE
     HYB-->>APP: 50 risultati solo lessicali (degraded: true)
     APP-->>U: Banner giallo Modalità degradata (solo lessicale)
-    opt Ripristino rapido
-      U->>APP: Clic su "Riavvia Servizio Locale"
+    opt Ripristino
+      U->>APP: Avanzate > Motore semantico > AVVIA SERVIZIO LOCALE
       APP->>LLAMA: Avvio processo su nuova porta libera
-      APP-->>U: Servizio ripristinato, riesegui ricerca
+      APP-->>U: ATTIVO (PORTA n), riesegui la ricerca
     end
   end
 ```
@@ -376,16 +376,17 @@ flowchart TD
   C --> D[Avviso: Cache non allineata al fornitore attivo]
   D --> E[Premi: RICALCOLA CACHE SEMANTICA]
   E --> F[Creazione file 00_SYSTEM/EMBEDDINGS_CACHE.staging.json]
-  F --> G[Calcolo vettori a batch su loopback: ~180 ms per passaggio]
+  F --> G[Calcolo a lotti di 16 sul Mac con GPU Metal: misurati 0,3 s per passaggio, 9.458 passaggi in 49 min]
   G --> H{Interruzione utente o app chiusa?}
   H -- Sì: ANNULLA o Chiusura --> I[Staging preservata parzialmente; vecchia cache ancora valida]
-  I --> J[Alla riapertura: riprende dal punto esatto interrotto]
+  I --> J[Alla ripresa: riparte dall'ultimo salvataggio dello staging - ogni 320 passaggi, o al punto esatto se premuto ANNULLA]
   H -- No: 100% completato --> K[Scrittura atomica: rinomina staging in EMBEDDINGS_CACHE.json]
   K --> L[Stato: Allineata 100% - Vecchia cache rimossa in sicurezza]
 ```
 
 - **Staging atomico**: la cache esistente rimane valida e utilizzabile per le ricerche fino al completamento al 100%.
-- **Resumability**: alla riapertura dell'app, il calcolo salta i passaggi con hash corrispondente già presenti nello staging.
+- **Ripresa**: alla riapertura dell'app, premendo di nuovo RICALCOLA il calcolo salta i passaggi già presenti nello staging (salvato ogni 320 passaggi, o al punto esatto con ANNULLA).
+- **Barra reale**: la percentuale e il conteggio «K/N passaggi» sono aggiornati a ogni lotto; il badge del servizio passa a *ATTIVO (PORTA n)* all'avvio automatico.
 
 ---
 

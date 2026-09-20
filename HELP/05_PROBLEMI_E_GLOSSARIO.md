@@ -18,10 +18,12 @@ Torna all'indice: [[00_INDICE]]
 
 | Messaggio | Causa | Cosa fare |
 | --- | --- | --- |
-| Modalità degradata (solo ricerca lessicale)... | Il servizio semantico locale `llama-server` non risponde o è spento | Clic su **Riavvia Servizio Locale** nel banner, oppure vai in *Avanzate → Collegamenti AI & MCP → Motore semantico* e premi **AVVIA SERVIZIO LOCALE**. Nessun dato esce dal Mac |
-| Le dimensioni della cache (1024d/1536d) non sono allineate... | Cambio di fornitore (es. da OpenAI a Locale bge-m3) o nuovi documenti aggiunti | Nel pannello *Motore semantico*, premi **RICALCOLA CACHE SEMANTICA**. Il ricalcolo usa uno staging atomico senza cancellare la cache in uso |
+| Modalità degradata (solo ricerca lessicale)... | Il servizio semantico locale `llama-server` non risponde o è spento | Vai in *Avanzate → Collegamenti AI & MCP → Motore semantico* e premi **AVVIA SERVIZIO LOCALE** (il banner non ha pulsanti). Nessun dato esce dal Mac |
+| Cache semantica assente / Disallineamento dimensioni vettore / Cache semantica incompleta | Nessun vettore ancora calcolato; cambio di fornitore (1536 ↔ 1024); documenti nuovi o modificati | Nel pannello *Motore semantico*, premi **RICALCOLA CACHE SEMANTICA (1024 DIM)**. Il ricalcolo usa uno staging senza cancellare la cache in uso; durata misurata 49 min per 9.458 passaggi su M2 |
+| Ricalcolo cache fallito o interrotto: Richiesta embeddings fallita verso http://127.0.0.1:… | Il servizio locale non ha risposto a un lotto entro 300 s (Mac molto carico o servizio bloccato) | Premi **AGGIORNA STATO**; se il servizio non risponde, **ARRESTA** e **AVVIA SERVIZIO LOCALE**, poi **RICALCOLA**: riparte dallo staging |
+| `llama-server` rimane in memoria dopo una chiusura forzata dell'app | L'app è stata terminata con Forza uscita o è caduta: il processo figlio sopravvive | Nessuna azione: al riavvio l'app riconosce il processo orfano dal pid registrato e lo termina prima di avviarne uno nuovo |
 | llama-server uscito con codice exit status: 1 | Problema all'avvio del binario o modello mancante/danneggiato | Controlla il log diagnostico in `~/Library/Application Support/LIMEN Vault/models/llama-server.log`. Verifica l'integrità del modello (deve essere *INSTALLATO (SHA-256 OK)*) |
-| Download del modello fallito o interrotto | Connessione di rete persa durante il download di `bge-m3-Q8_0.gguf` (~605 MB) | Riprova il download oppure copia manualmente il file in `~/Library/Application Support/LIMEN Vault/models/` e usa **SELEZIONA FILE GGUF LOCALE** |
+| Download del modello fallito o interrotto | Connessione di rete persa durante il download di `bge-m3-Q8_0.gguf` (~605 MB) | Riprova il download oppure copia manualmente il file in `~/Library/Application Support/LIMEN Vault/models/` e usa **SELEZIONA FILE GGUF DA DISCO…** |
 | Configura la chiave API nelle Impostazioni | Nessuna chiave OpenAI salvata (necessaria solo per *Chiedi al Vault* generativo) | Impostazioni → SALVA CHIAVE (non serve per il RAG locale bge-m3) |
 | Indica un modello API disponibile nel tuo account | Campo modello OpenAI vuoto | Scrivi l'identificativo del modello (es. `gpt-4o`) |
 | Accesso al Portachiavi negato o non disponibile | macOS ha negato l'accesso alle chiavi | Riprova e autorizza nella finestra di dialogo di sicurezza macOS |
@@ -35,7 +37,7 @@ Torna all'indice: [[00_INDICE]]
 
 | Sintomo | Verifica | Soluzione |
 | --- | --- | --- |
-| Compare il banner giallo di Modalità Degradata | La casella *Ricerca Ibrida* è spuntata ma il processo locale è offline | Normale comportamento di sicurezza: la ricerca continua in sola modalità BM25. Clicca su **Riavvia Servizio Locale** |
+| Compare il banner giallo di Modalità Degradata | La casella *Ricerca Ibrida* è spuntata ma il processo locale è offline | Normale comportamento di sicurezza: la ricerca continua in sola modalità BM25. Avvia il servizio da *Avanzate → Motore semantico* |
 | Il servizio locale non parte | C'è un altro processo in ascolto o modello assente | Premi **AGGIORNA STATO** nel Motore Semantico. Se necessario, riavvia l'applicazione LIMEN |
 | Ricerca vuota o risultati parziali | Indice non aggiornato o filtri cliente/progetto attivi | Rimuovi i filtri e premi **AGGIORNA INDICE** in Ricerca |
 | Ricalcolo cache semantica interrotto | L'app è stata chiusa durante l'indicizzazione dei passaggi | Riapri l'app e premi **RICALCOLA CACHE**: il processo riprende dallo staging atomico senza ripartire da zero |

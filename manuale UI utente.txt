@@ -1,5 +1,5 @@
 LIMEN VAULT — MANUALE DELL’INTERFACCIA UTENTE
-Edizione italiana · 18 settembre 2026 · LIMEN Vault v3 (0.3.0)
+Edizione italiana · 20 settembre 2026 · LIMEN Vault v3 (0.3.0)
 
 Apri LIMEN Vault v3.app dal pacchetto consegnato. Puoi copiarla in Applicazioni.
 La v3 mantiene lo stesso formato del Vault; riapri la cartella esistente senza
@@ -176,6 +176,14 @@ etichette separate da virgole e stato. I filtri usano i metadati delle note:
 se una nota non contiene il valore cercato, non apparirà con quel filtro.
 Gli stati disponibili sono Approvata, Bozza, In revisione e Archiviata.
 
+Ricerca Ibrida (Semantica + Lessicale): nella scheda Chiedi, con la casella spuntata,
+i risultati uniscono l’indice lessicale BM25 (parole esatte, codici, nomi) e i vettori
+semantici bge-m3 calcolati sul Mac (concetti simili con parole diverse). Il badge
+accanto ai risultati indica RAG 100% LOCALE. Se il servizio locale è spento compare il
+banner giallo «Modalità degradata (solo ricerca lessicale)»: la ricerca continua con il
+solo indice lessicale e nessun dato esce dal Mac; per riattivare il semantico vai in
+Avanzate → Collegamenti AI & MCP → Motore semantico e premi AVVIA SERVIZIO LOCALE.
+
 I risultati mostrano titolo, categoria, rilevanza, percorso ed estratto. Per leggere
 la nota completa consulta Conoscenza o aprila in Obsidian tramite il suo percorso.
 Se non trovi nulla: controlla i filtri, aggiorna l’indice e verifica che la nota
@@ -297,6 +305,22 @@ Collegamenti AI:
 - VERIFICA PORTACHIAVI controlla la presenza della chiave, non la validità di ogni
   modello o la disponibilità di credito API.
 - RIMUOVI CHIAVE elimina la credenziale locale usata da LIMEN.
+
+Motore semantico (RAG locale), in Avanzate → Collegamenti AI & MCP:
+- Fornitore: Locale (bge-m3, nessun dato esce dal Mac) oppure OpenAI (in rete).
+  Con Locale nessun documento lascia il Mac; non si digita alcun indirizzo.
+- Modello locale: SCARICA MODELLO (635 MB) una sola volta, con verifica SHA-256,
+  oppure SELEZIONA FILE GGUF DA DISCO… per un file già scaricato.
+- Servizio locale di calcolo: AVVIA SERVIZIO LOCALE / ARRESTA SERVIZIO LOCALE /
+  AGGIORNA STATO. Stato ATTIVO (PORTA n), SPENTO o ERRORE con il motivo. Il servizio
+  viene arrestato alla chiusura regolare dell’app; se l’app viene terminata a forza,
+  il processo rimasto viene riconosciuto e chiuso al riavvio successivo.
+- Cache semantica del Vault: «N passaggi indicizzati (1024 dim)» oppure «Nessun
+  passaggio indicizzato», con un avviso se la cache è assente, di un altro fornitore
+  o incompleta (documenti nuovi o modificati). RICALCOLA CACHE SEMANTICA (1024 DIM)
+  avvia il calcolo sul Mac (e il servizio, se spento) mostrando «K/N passaggi», la
+  percentuale e la barra; ANNULLA conserva i progressi. La cache precedente resta in
+  uso fino al 100%. Durata misurata: 9.458 passaggi in 49 minuti su un Mac M2 8 GB.
 
 MCP in sola lettura:
 ATTIVA MCP LOCALE espone il collegamento per client configurati, limitato alle note
@@ -424,6 +448,10 @@ Nessuna nota: verifica la categoria e i file reali; i file di sistema non sono c
 Ricerca vuota: rimuovi filtri non necessari e aggiorna l’indice.
 AI senza fonti: verifica indice, note approvate o note automatiche correnti.
 AI non disponibile: controlla chiave, modello, rete e messaggio; il locale resta utilizzabile.
+Banner giallo «Modalità degradata»: il servizio semantico locale è spento; la ricerca
+continua in sola modalità lessicale. Avvialo da Avanzate → Motore semantico.
+Ricalcolo cache fallito o interrotto: premi AGGIORNA STATO, se serve ARRESTA e AVVIA
+SERVIZIO LOCALE, poi RICALCOLA: riparte dai progressi salvati.
 Cloud non configurato: richiedi il codice all’amministratore; non cambiare bucket a caso.
 NO_PUBLICATION nel CRM: serve una pubblicazione approvata completata per il Vault collegato.
 Differenze di integrità: consulta l’elenco; non cancellare file automaticamente.

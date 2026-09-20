@@ -69,7 +69,7 @@ Se la casella *Ricerca Ibrida* è attiva ma il servizio locale `llama-server` no
   `⚠️ Modalità degradata (solo ricerca lessicale): il servizio semantico locale non è attivo o non ha risposto. I risultati sono calcolati esclusivamente tramite indice lessicale BM25. Nessun dato è uscito dal Mac.`
 - Il badge dei risultati diventa **RAG LOCALE SPENTO (SOLO LESSICALE)**.
 - L'app **non si blocca mai e non invia dati all'esterno**: garantisce la risposta tramite l'indice BM25 con normalizzazione sulla lunghezza.
-- Per ripristinare il canale semantico, premi il pulsante **Riavvia Servizio Locale** oppure recati in *Avanzate → Collegamenti AI & MCP*.
+- Per ripristinare il canale semantico vai in *Avanzate → Collegamenti AI & MCP → Motore semantico* e premi **AVVIA SERVIZIO LOCALE** (l'avviso non ha pulsanti). La ricerca non riavvia il servizio da sola; il ricalcolo della cache invece lo avvia automaticamente se è spento.
 
 ### Chiedi al Vault (Generazione con OpenAI)
 
@@ -96,14 +96,14 @@ Configura il fornitore per il calcolo dei vettori semantici e la ricerca ibrida:
 | Badge di stato | **RAG 100% LOCALE** (verde) oppure **OPENAI (RETE)** (blu) |
 | Selettore fornitore | Scelta radio button esclusiva: **Locale (bge-m3, nessun dato esce dal Mac)** o **OpenAI (in rete)** |
 | **Modello locale (bge-m3-Q8_0.gguf)** | Riporta lo stato (*INSTALLATO (SHA-256 OK)* / *Non installato*), percorso assoluto (`~/Library/Application Support/LIMEN Vault/models/`) e dimensione esatta (605,2 MB · 634.553.760 byte) |
-| **SCARICA MODELLO (BGE-M3)** | Scarica il modello con barra percentuale di avanzamento e verifica automatica SHA-256 |
-| **SELEZIONA FILE GGUF LOCALE** | Selettore nativo file per importare un file `bge-m3-Q8_0.gguf` già scaricato, con verifica checksum |
+| **SCARICA MODELLO (635 MB)** | Scarica il modello con barra percentuale di avanzamento e verifica automatica SHA-256; **ANNULLA SCARICAMENTO** lo interrompe |
+| **SELEZIONA FILE GGUF DA DISCO…** | Selettore nativo file per importare un file `bge-m3-Q8_0.gguf` già scaricato, con verifica checksum |
 | **Servizio locale di calcolo** | Riporta lo stato: *ATTIVO (PORTA n)* / *SPENTO* / *ERRORE*, con il modello caricato e l'esito del controllo `/health` |
 | **AVVIA / ARRESTA SERVIZIO LOCALE** | Gestisce il ciclo di vita del processo `llama-server`. Il sistema alloca una porta libera loopback `127.0.0.1` a ogni avvio |
 | **AGGIORNA STATO** | Interroga lo stato del processo e l'endpoint di salute locale |
-| **Cache semantica del Vault** | Riporta il numero di passaggi indicizzati a 1024 dimensioni (es. `9458 passaggi indicizzati (1024 dim)`) e segnala se la cache è allineata al fornitore attivo |
-| **RICALCOLA CACHE SEMANTICA** | Avvia il calcolo progressivo della cache tramite file di staging atomico `00_SYSTEM/EMBEDDINGS_CACHE.staging.json`. Non distrugge la cache precedente finché il calcolo non è al 100% |
-| **ANNULLA RICALCOLO** | Interrompe il calcolo salvando i progressi intermedi: l'operazione è riprendibile |
+| **Cache semantica del Vault** | Riporta `N passaggi indicizzati (D dim)` oppure `Nessun passaggio indicizzato`, e uno di tre avvisi: **Cache semantica assente**, **Disallineamento dimensioni vettore** (cache di un altro fornitore), **Cache semantica incompleta** (K passaggi su N da indicizzare: documenti nuovi o modificati). Se tutto è allineato: «Le dimensioni della cache (1024d) sono perfettamente allineate con il fornitore attivo» |
+| **RICALCOLA CACHE SEMANTICA (1024 DIM)** | Avvia il calcolo (e il servizio locale, se spento). Mostra «Ricalcolo cache in corso… K/N passaggi», percentuale e barra; scrive in `00_SYSTEM/EMBEDDINGS_CACHE.staging.json` con salvataggio ogni 320 passaggi e non tocca la cache precedente finché il calcolo non è al 100%. Durata misurata: 9.458 passaggi in 49 minuti su M2 8 GB |
+| **ANNULLA (I progressi parziali vengono conservati)** | Interrompe il calcolo salvando il punto raggiunto nello staging: la ripresa riparte da lì |
 
 ### 2. Collegamenti AI (Chiave OpenAI)
 - **SALVA CHIAVE**: salva la chiave API OpenAI nel Portachiavi sicuro di macOS. Non viene mai salvata in chiaro nei file del Vault né esposta in variabili d'ambiente.
