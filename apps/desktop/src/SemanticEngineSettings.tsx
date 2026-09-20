@@ -90,7 +90,10 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
       }
     }).then((unlisten) => {
       unlistenDownload = unlisten;
-    }).catch(() => {});
+    }).catch((err) => {
+      // Errore visibile: un listener negato dai permessi Tauri lascerebbe l'avanzamento fermo senza spiegazione.
+      console.error('[LIMEN] listen non registrato:', err);
+    });
 
     void listen<{ percent: number; processed: number; total: number }>('embeddings_sync_progress', (e) => {
       if (isMounted.current) {
@@ -98,7 +101,10 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
       }
     }).then((unlisten) => {
       unlistenSync = unlisten;
-    }).catch(() => {});
+    }).catch((err) => {
+      // Errore visibile: un listener negato dai permessi Tauri lascerebbe l'avanzamento fermo senza spiegazione.
+      console.error('[LIMEN] listen non registrato:', err);
+    });
 
     return () => {
       isMounted.current = false;

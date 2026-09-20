@@ -147,7 +147,10 @@ export default function App() {
       setSearchProvider(e.payload.provider);
     }).then((u) => {
       unlisten = u;
-    }).catch(() => {});
+    }).catch((err) => {
+      // Errore visibile: un listener negato dal sistema di permessi lascerebbe il banner muto.
+      console.error('[LIMEN] listen(search_mode_status) non registrato:', err);
+    });
     return () => {
       if (unlisten) unlisten();
     };

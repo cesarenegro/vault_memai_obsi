@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schemas.tauri.app/config/2/capability",
+  "identifier": "default",
+  "description": "Permessi del webview principale. Senza questa capability Tauri 2 nega i comandi core (fra cui event.listen): gli eventi search_mode_status, local_model_download_progress ed embeddings_sync_progress non raggiungevano mai l'interfaccia e il banner di modalita' degradata non compariva.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:default"
+  ]
+}
