@@ -33,3 +33,4 @@ apps/desktop/src-tauri/resources/mcp/cloudflared
 scripts/__pycache__/
 apps/desktop/src-tauri/resources/native/limen-extract
 tests/scratch/
+USER INSTALL/
