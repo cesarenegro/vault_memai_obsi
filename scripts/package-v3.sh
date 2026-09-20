@@ -28,7 +28,9 @@ PY
       codesign --force --options runtime --timestamp --sign "$LIMEN_SIGN_IDENTITY" "$APP/Contents/Resources/$helper"
     fi
   done
-  find "$APP/Contents/Resources/native" -type f \( -name "*.dylib" -o -perm +111 \) -exec codesign --force --options runtime --timestamp --sign "$LIMEN_SIGN_IDENTITY" {} +
+  # I backend ggml (*.so) vanno firmati con lo stesso Team ID del binario: con il runtime
+  # indurito, dyld rifiuta di caricare librerie firmate da un Team ID diverso (library validation).
+  find "$APP/Contents/Resources/native" -type f \( -name "*.dylib" -o -name "*.so" -o -perm +111 \) -exec codesign --force --options runtime --timestamp --sign "$LIMEN_SIGN_IDENTITY" {} +
   codesign --force --options runtime --timestamp --sign "$LIMEN_SIGN_IDENTITY" "$APP"
   codesign --verify --deep --strict --verbose=2 "$APP" > "$EVIDENCE/app-signature.log" 2>&1
   ditto -c -k --keepParent "$APP" "$OUT/app-v3.zip"

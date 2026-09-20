@@ -514,7 +514,13 @@ impl LlamaServerState {
 
         cmd.stdin(Stdio::null());
         cmd.stdout(Stdio::null());
-        cmd.stderr(Stdio::null());
+        // stderr su file accanto al modello: senza, un avvio fallito non lascia alcuna causa
+        // leggibile (caso reale: "no backends are loaded" nascosto dietro un semplice "exit status 1").
+        let log_path = model_path.parent().map(|p| p.join("llama-server.log"));
+        match log_path.as_ref().and_then(|p| std::fs::File::create(p).ok()) {
+            Some(f) => { cmd.stderr(Stdio::from(f)); }
+            None => { cmd.stderr(Stdio::null()); }
+        }
 
         let child = cmd
             .spawn()
@@ -541,8 +547,20 @@ impl LlamaServerState {
             if let Some(c) = guard.child.as_mut() {
                 if let Ok(Some(code)) = c.try_wait() {
                     guard.child = None;
-                    guard.last_error = Some(format!("llama-server uscito con codice {}", code));
-                    return Err(format!("Avvio llama-server fallito (codice {})", code));
+                    // Ultime righe dello stderr: e' la causa reale, va mostrata all'utente.
+                    let tail = log_path
+                        .as_ref()
+                        .and_then(|p| std::fs::read_to_string(p).ok())
+                        .map(|t| {
+                            let mut last: Vec<&str> = t.lines().filter(|l| !l.trim().is_empty()).collect();
+                            let keep = last.len().saturating_sub(3);
+                            last.drain(..keep);
+                            last.join(" | ")
+                        })
+                        .unwrap_or_default();
+                    let detail = if tail.is_empty() { String::new() } else { format!(" — {}", tail) };
+                    guard.last_error = Some(format!("llama-server uscito con codice {}{}", code, detail));
+                    return Err(format!("Avvio llama-server fallito (codice {}){}", code, detail));
                 }
             }
         }
