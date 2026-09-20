@@ -1,0 +1,988 @@
+[
+ {
+  "queryId": "R001",
+  "text": "Quell’80% in difficoltà può lavorare dieci o dodici ore al giorno, sei o sette giorni alla settimana, rinunciando alle vacanze e magari ipotecando la casa per reinvestire nell’attività.",
+  "relevantDocumentIds": [
+   "e6644b58940506e7-Factory_2024_1-3-24_Mattina_parte_1--8d2b06ad1289--whisper__RAG.md",
+   "fe68f713f1abd7c0-Factory_2024_1-3-24_Mattina_parte_1--8d2b06ad1289--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_1-3-24_Mattina_parte_1--8d2b06ad1289--whisper",
+  "_origine": "e6644b58940506e7-Factory_2024_1-3-24_Mattina_parte_1--8d2b06ad1289--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R002",
+  "text": "Essere tra i più antichi può significare essere arrivati prima, ma non basta.",
+  "relevantDocumentIds": [
+   "e6644b58940506e7-Factory_2024_1-3-24_Mattina_parte_1--8d2b06ad1289--whisper__RAG.md",
+   "fe68f713f1abd7c0-Factory_2024_1-3-24_Mattina_parte_1--8d2b06ad1289--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_1-3-24_Mattina_parte_1--8d2b06ad1289--whisper",
+  "_origine": "e6644b58940506e7-Factory_2024_1-3-24_Mattina_parte_1--8d2b06ad1289--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R003",
+  "text": "Il consumatore poteva pensare: non conosco ancora il nome, ma questa proposta risponde meglio al mio bisogno.",
+  "relevantDocumentIds": [
+   "e6644b58940506e7-Factory_2024_1-3-24_Mattina_parte_1--8d2b06ad1289--whisper__RAG.md",
+   "fe68f713f1abd7c0-Factory_2024_1-3-24_Mattina_parte_1--8d2b06ad1289--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_1-3-24_Mattina_parte_1--8d2b06ad1289--whisper",
+  "_origine": "e6644b58940506e7-Factory_2024_1-3-24_Mattina_parte_1--8d2b06ad1289--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R004",
+  "text": "Se io e Jack Trout avessimo lavorato separatamente sullo stesso cliente, avremmo condiviso le basi teoriche, ma probabilmente sviluppato soluzioni diverse.",
+  "relevantDocumentIds": [
+   "1408627ff6d188e2-Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper__RAG.md",
+   "747ebc6b74dbb9a0-Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper",
+  "_origine": "1408627ff6d188e2-Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R005",
+  "text": "Per essere posizionato, un brand deve essere associato a una categoria specifica e viceversa.",
+  "relevantDocumentIds": [
+   "1408627ff6d188e2-Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper__RAG.md",
+   "747ebc6b74dbb9a0-Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper",
+  "_origine": "1408627ff6d188e2-Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R006",
+  "text": "Per suole da trekking penso a Vibram, per freni ad alta velocità a Brembo, se li conosco.",
+  "relevantDocumentIds": [
+   "1408627ff6d188e2-Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper__RAG.md",
+   "747ebc6b74dbb9a0-Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper",
+  "_origine": "1408627ff6d188e2-Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R007",
+  "text": "Vendendo una forma intera, quale argomento posso usare per chiedere un prezzo diverso da quello del concorrente?",
+  "relevantDocumentIds": [
+   "8c78ebd437e557fc-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper__RAG.md",
+   "c585ead999bda537-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper",
+  "_origine": "8c78ebd437e557fc-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R008",
+  "text": "Lavorando una forma, una parte viene destinata al taglio e una parte alla grattugia, nel rispetto dei disciplinari.",
+  "relevantDocumentIds": [
+   "8c78ebd437e557fc-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper__RAG.md",
+   "c585ead999bda537-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper",
+  "_origine": "8c78ebd437e557fc-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R009",
+  "text": "Come modello ci siamo immaginati anche Findus: ci sono Capitan Findus, i Sofficini, Green Cuisine e il marchio Findus, che può stare anche da solo.",
+  "relevantDocumentIds": [
+   "8c78ebd437e557fc-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper__RAG.md",
+   "c585ead999bda537-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper",
+  "_origine": "8c78ebd437e557fc-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R010",
+  "text": "Un posizionamento sposta anche la percezione della concorrenza: è come collocare una calamita in un punto del frigorifero, modificando i rapporti con le altre.",
+  "relevantDocumentIds": [
+   "815733b6b5389e31-Factory_2024_1-3-24_pomeriggio_parte_2--d8672a102d6a--whisper__RAG.md",
+   "6053de5f00796311-Factory_2024_1-3-24_pomeriggio_parte_2--d8672a102d6a--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_1-3-24_pomeriggio_parte_2--d8672a102d6a--whisper",
+  "_origine": "815733b6b5389e31-Factory_2024_1-3-24_pomeriggio_parte_2--d8672a102d6a--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R011",
+  "text": "Sono soluzioni da studiare e rendere compatibili con le macchine; se realizzate, possono creare una confezione molto riconoscibile.",
+  "relevantDocumentIds": [
+   "815733b6b5389e31-Factory_2024_1-3-24_pomeriggio_parte_2--d8672a102d6a--whisper__RAG.md",
+   "6053de5f00796311-Factory_2024_1-3-24_pomeriggio_parte_2--d8672a102d6a--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_1-3-24_pomeriggio_parte_2--d8672a102d6a--whisper",
+  "_origine": "815733b6b5389e31-Factory_2024_1-3-24_pomeriggio_parte_2--d8672a102d6a--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R012",
+  "text": "La risposta è: «Oggi te li faccio io, buoni e semplici», con farina, zucchero, burro, uova fresche, lievito e miele.",
+  "relevantDocumentIds": [
+   "815733b6b5389e31-Factory_2024_1-3-24_pomeriggio_parte_2--d8672a102d6a--whisper__RAG.md",
+   "6053de5f00796311-Factory_2024_1-3-24_pomeriggio_parte_2--d8672a102d6a--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_1-3-24_pomeriggio_parte_2--d8672a102d6a--whisper",
+  "_origine": "815733b6b5389e31-Factory_2024_1-3-24_pomeriggio_parte_2--d8672a102d6a--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R013",
+  "text": "Culturalmente ci siamo abituati a quel modo di mangiare il primo piatto, forse senza accorgercene.",
+  "relevantDocumentIds": [
+   "70a2a7ef0e86b02f-Factory_2024_2-3-24_mattina_parte_1--9a84ca2b1ec8--whisper__RAG.md",
+   "195a61deba541a21-Factory_2024_2-3-24_mattina_parte_1--9a84ca2b1ec8--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_2-3-24_mattina_parte_1--9a84ca2b1ec8--whisper",
+  "_origine": "70a2a7ef0e86b02f-Factory_2024_2-3-24_mattina_parte_1--9a84ca2b1ec8--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R014",
+  "text": "Avrei preso l’angolo d’attacco opposto: il vero caffè, il culto e la tradizione italiana sono quelli della moka; tutto il resto, per richiamare Califano, è noia.",
+  "relevantDocumentIds": [
+   "70a2a7ef0e86b02f-Factory_2024_2-3-24_mattina_parte_1--9a84ca2b1ec8--whisper__RAG.md",
+   "195a61deba541a21-Factory_2024_2-3-24_mattina_parte_1--9a84ca2b1ec8--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_2-3-24_mattina_parte_1--9a84ca2b1ec8--whisper",
+  "_origine": "70a2a7ef0e86b02f-Factory_2024_2-3-24_mattina_parte_1--9a84ca2b1ec8--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R015",
+  "text": "Dico che ci hanno provato e poi si sono fatti prendere anche l’idea.",
+  "relevantDocumentIds": [
+   "70a2a7ef0e86b02f-Factory_2024_2-3-24_mattina_parte_1--9a84ca2b1ec8--whisper__RAG.md",
+   "195a61deba541a21-Factory_2024_2-3-24_mattina_parte_1--9a84ca2b1ec8--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_2-3-24_mattina_parte_1--9a84ca2b1ec8--whisper",
+  "_origine": "70a2a7ef0e86b02f-Factory_2024_2-3-24_mattina_parte_1--9a84ca2b1ec8--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R016",
+  "text": "Mi assumo la responsabilità di questa opinione: pagare una persona perché gestisca i social, senza prevedere un budget pubblicitario, spesso significa sprecare risorse e frustrarla.",
+  "relevantDocumentIds": [
+   "c810c6e0cea9e3d3-Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper__RAG.md",
+   "b9b8e64ae951124d-Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper",
+  "_origine": "c810c6e0cea9e3d3-Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R017",
+  "text": "Online possiamo farlo senza radunare tutti fisicamente ogni volta, magari mantenendo un incontro annuale in presenza.",
+  "relevantDocumentIds": [
+   "c810c6e0cea9e3d3-Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper__RAG.md",
+   "b9b8e64ae951124d-Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper",
+  "_origine": "c810c6e0cea9e3d3-Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R018",
+  "text": "Lo stesso individuo che arriva da una sponsorizzata potrebbe averci incontrato a una fiera a Düsseldorf tre mesi prima.",
+  "relevantDocumentIds": [
+   "c810c6e0cea9e3d3-Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper__RAG.md",
+   "b9b8e64ae951124d-Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper",
+  "_origine": "c810c6e0cea9e3d3-Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R019",
+  "text": "[Il nome compare come «Moscheri» nella fonte; il riferimento è identificato dal confronto tra praline Ferrero.]",
+  "relevantDocumentIds": [
+   "8aa5ea9d7ba48f72-Factory_2024_2-3-24_pomeriggio_parte_1--5624299f5ae0--whisper__RAG.md",
+   "c6c8fbd672a05af3-Factory_2024_2-3-24_pomeriggio_parte_1--5624299f5ae0--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_2-3-24_pomeriggio_parte_1--5624299f5ae0--whisper",
+  "_origine": "8aa5ea9d7ba48f72-Factory_2024_2-3-24_pomeriggio_parte_1--5624299f5ae0--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R020",
+  "text": "L’azienda stampa sia foglio sia cartone: per alcune tirature, il concorrente può essere un operatore digitale, anziché una tipografia o litografia tradizionale.",
+  "relevantDocumentIds": [
+   "8aa5ea9d7ba48f72-Factory_2024_2-3-24_pomeriggio_parte_1--5624299f5ae0--whisper__RAG.md",
+   "c6c8fbd672a05af3-Factory_2024_2-3-24_pomeriggio_parte_1--5624299f5ae0--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_2-3-24_pomeriggio_parte_1--5624299f5ae0--whisper",
+  "_origine": "8aa5ea9d7ba48f72-Factory_2024_2-3-24_pomeriggio_parte_1--5624299f5ae0--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R021",
+  "text": "Per rispondere alla domanda: Ferrero ha molti soldi, ma li ha fatti proprio in funzione di questa strategia.",
+  "relevantDocumentIds": [
+   "8aa5ea9d7ba48f72-Factory_2024_2-3-24_pomeriggio_parte_1--5624299f5ae0--whisper__RAG.md",
+   "c6c8fbd672a05af3-Factory_2024_2-3-24_pomeriggio_parte_1--5624299f5ae0--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_2-3-24_pomeriggio_parte_1--5624299f5ae0--whisper",
+  "_origine": "8aa5ea9d7ba48f72-Factory_2024_2-3-24_pomeriggio_parte_1--5624299f5ae0--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R022",
+  "text": "Una persona usciva con il cane, si fermava a prendere il caffè e poi andava al parco.",
+  "relevantDocumentIds": [
+   "bee0ffd2cfe05ed5-Factory_2024_2-3-24_pomeriggio_parte_2--7c02423c85f3--whisper__RAG.md",
+   "eee2c8ccd3834603-Factory_2024_2-3-24_pomeriggio_parte_2--7c02423c85f3--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_2-3-24_pomeriggio_parte_2--7c02423c85f3--whisper",
+  "_origine": "bee0ffd2cfe05ed5-Factory_2024_2-3-24_pomeriggio_parte_2--7c02423c85f3--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R023",
+  "text": "L’alito può essere poco percepito dalla persona stessa, soprattutto se si è abituata: come chi vive con i cani non ne sente più l’odore o chi fuma non avverte quello del fumo.",
+  "relevantDocumentIds": [
+   "bee0ffd2cfe05ed5-Factory_2024_2-3-24_pomeriggio_parte_2--7c02423c85f3--whisper__RAG.md",
+   "eee2c8ccd3834603-Factory_2024_2-3-24_pomeriggio_parte_2--7c02423c85f3--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_2-3-24_pomeriggio_parte_2--7c02423c85f3--whisper",
+  "_origine": "bee0ffd2cfe05ed5-Factory_2024_2-3-24_pomeriggio_parte_2--7c02423c85f3--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R024",
+  "text": "Nella spiegazione del relatore, quella sensazione non era di per sé ciò che produceva il risultato di igiene: serviva come prova percepita.",
+  "relevantDocumentIds": [
+   "bee0ffd2cfe05ed5-Factory_2024_2-3-24_pomeriggio_parte_2--7c02423c85f3--whisper__RAG.md",
+   "eee2c8ccd3834603-Factory_2024_2-3-24_pomeriggio_parte_2--7c02423c85f3--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2024_2-3-24_pomeriggio_parte_2--7c02423c85f3--whisper",
+  "_origine": "bee0ffd2cfe05ed5-Factory_2024_2-3-24_pomeriggio_parte_2--7c02423c85f3--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R025",
+  "text": "Le multinazionali guardano il mercato globale, non soltanto quello locale.",
+  "relevantDocumentIds": [
+   "02f3106ba1486cb0-Factory_2025_10_03_25_-_CONCLUSIONE--82a8ebf1ef39--whisper__RAG.md",
+   "1db4db1bae338946-Factory_2025_10_03_25_-_CONCLUSIONE--82a8ebf1ef39--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_10_03_25_-_CONCLUSIONE--82a8ebf1ef39--whisper",
+  "_origine": "02f3106ba1486cb0-Factory_2025_10_03_25_-_CONCLUSIONE--82a8ebf1ef39--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R026",
+  "text": "Il posizionamento di BlackBerry era l’integrazione con le email: aveva una piccola tastiera da computer.",
+  "relevantDocumentIds": [
+   "02f3106ba1486cb0-Factory_2025_10_03_25_-_CONCLUSIONE--82a8ebf1ef39--whisper__RAG.md",
+   "1db4db1bae338946-Factory_2025_10_03_25_-_CONCLUSIONE--82a8ebf1ef39--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_10_03_25_-_CONCLUSIONE--82a8ebf1ef39--whisper",
+  "_origine": "02f3106ba1486cb0-Factory_2025_10_03_25_-_CONCLUSIONE--82a8ebf1ef39--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R027",
+  "text": "[La descrizione del rapporto societario rimane quella sintetica della fonte.]",
+  "relevantDocumentIds": [
+   "02f3106ba1486cb0-Factory_2025_10_03_25_-_CONCLUSIONE--82a8ebf1ef39--whisper__RAG.md",
+   "1db4db1bae338946-Factory_2025_10_03_25_-_CONCLUSIONE--82a8ebf1ef39--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_10_03_25_-_CONCLUSIONE--82a8ebf1ef39--whisper",
+  "_origine": "02f3106ba1486cb0-Factory_2025_10_03_25_-_CONCLUSIONE--82a8ebf1ef39--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R028",
+  "text": "Le ragioni elencate sono modelli di business non sostenibili, incapacità di sviluppare il marketing, errori nella gestione e nella scalabilità.",
+  "relevantDocumentIds": [
+   "409b8b49a4bafbf5-Factory_2025_10_03_25_-_MATTINO_prima_parte_--072eb37c89d5--whisper__RAG.md",
+   "983b4833dda286c7-Factory_2025_10_03_25_-_MATTINO_prima_parte_--072eb37c89d5--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_10_03_25_-_MATTINO_prima_parte_--072eb37c89d5--whisper",
+  "_origine": "409b8b49a4bafbf5-Factory_2025_10_03_25_-_MATTINO_prima_parte_--072eb37c89d5--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R029",
+  "text": "Richiede più tempo, perché prima bisogna togliere il grosso e poi rifinire con pazienza.",
+  "relevantDocumentIds": [
+   "409b8b49a4bafbf5-Factory_2025_10_03_25_-_MATTINO_prima_parte_--072eb37c89d5--whisper__RAG.md",
+   "983b4833dda286c7-Factory_2025_10_03_25_-_MATTINO_prima_parte_--072eb37c89d5--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_10_03_25_-_MATTINO_prima_parte_--072eb37c89d5--whisper",
+  "_origine": "409b8b49a4bafbf5-Factory_2025_10_03_25_-_MATTINO_prima_parte_--072eb37c89d5--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R030",
+  "text": "Tornando in azienda dovrebbe — uso apposta il condizionale — spiegarli all’ufficio marketing.",
+  "relevantDocumentIds": [
+   "409b8b49a4bafbf5-Factory_2025_10_03_25_-_MATTINO_prima_parte_--072eb37c89d5--whisper__RAG.md",
+   "983b4833dda286c7-Factory_2025_10_03_25_-_MATTINO_prima_parte_--072eb37c89d5--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_10_03_25_-_MATTINO_prima_parte_--072eb37c89d5--whisper",
+  "_origine": "409b8b49a4bafbf5-Factory_2025_10_03_25_-_MATTINO_prima_parte_--072eb37c89d5--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R031",
+  "text": "Lo stesso può accadere sciando o andando in montagna: torno rigenerato.",
+  "relevantDocumentIds": [
+   "282b056863b9531c-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper__RAG.md",
+   "c00601975051e575-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper",
+  "_origine": "282b056863b9531c-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R032",
+  "text": "Nel discorso il relatore usa anche «rebranding» per questa attività di riproposizione del marchio.",
+  "relevantDocumentIds": [
+   "282b056863b9531c-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper__RAG.md",
+   "c00601975051e575-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper",
+  "_origine": "282b056863b9531c-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R033",
+  "text": "Produce dolce e salato: brioche, pasticceria fresca, torte per feste e compleanni, focaccia ligure.",
+  "relevantDocumentIds": [
+   "282b056863b9531c-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper__RAG.md",
+   "c00601975051e575-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper",
+  "_origine": "282b056863b9531c-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R034",
+  "text": "Dopo circa un anno un produttore importante ha usato Zuccherina senza registrarlo, copiando anche packaging, forma e colori.",
+  "relevantDocumentIds": [
+   "f567c14c3664fcaa-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper__RAG.md",
+   "b8a45f9e3f624671-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper",
+  "_origine": "f567c14c3664fcaa-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R035",
+  "text": "Introduco il naming prima dell’intervento del dottor De Ferri.",
+  "relevantDocumentIds": [
+   "f567c14c3664fcaa-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper__RAG.md",
+   "b8a45f9e3f624671-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper",
+  "_origine": "f567c14c3664fcaa-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R036",
+  "text": "L’esempio vuole mostrare come una caratteristica comune possa essere trasformata in un argomento riconoscibile.",
+  "relevantDocumentIds": [
+   "f567c14c3664fcaa-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper__RAG.md",
+   "b8a45f9e3f624671-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper",
+  "_origine": "f567c14c3664fcaa-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R037",
+  "text": "Mantenere una confezione per quindici o vent’anni è già un risultato importante.",
+  "relevantDocumentIds": [
+   "21a682d23461a023-Factory_2025_11_03_25_-_MATTINA_prima_parte_--aff27310b6cc--whisper__RAG.md",
+   "862f5ad9547acead-Factory_2025_11_03_25_-_MATTINA_prima_parte_--aff27310b6cc--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_11_03_25_-_MATTINA_prima_parte_--aff27310b6cc--whisper",
+  "_origine": "21a682d23461a023-Factory_2025_11_03_25_-_MATTINA_prima_parte_--aff27310b6cc--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R038",
+  "text": "Io cerco di dire ciò che ritengo funzioni, non ciò che piace al cliente: vendo per il cliente, non soltanto al cliente.",
+  "relevantDocumentIds": [
+   "21a682d23461a023-Factory_2025_11_03_25_-_MATTINA_prima_parte_--aff27310b6cc--whisper__RAG.md",
+   "862f5ad9547acead-Factory_2025_11_03_25_-_MATTINA_prima_parte_--aff27310b6cc--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_11_03_25_-_MATTINA_prima_parte_--aff27310b6cc--whisper",
+  "_origine": "21a682d23461a023-Factory_2025_11_03_25_-_MATTINA_prima_parte_--aff27310b6cc--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R039",
+  "text": "Nel secondo caso esprimo una caratteristica chiara, precisa e differenziante; nel primo, secondo la mia valutazione, il messaggio resta generico.",
+  "relevantDocumentIds": [
+   "21a682d23461a023-Factory_2025_11_03_25_-_MATTINA_prima_parte_--aff27310b6cc--whisper__RAG.md",
+   "862f5ad9547acead-Factory_2025_11_03_25_-_MATTINA_prima_parte_--aff27310b6cc--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_11_03_25_-_MATTINA_prima_parte_--aff27310b6cc--whisper",
+  "_origine": "21a682d23461a023-Factory_2025_11_03_25_-_MATTINA_prima_parte_--aff27310b6cc--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R040",
+  "text": "Ho visto che hai richiesto informazioni per prenotare la visita ortopedica.",
+  "relevantDocumentIds": [
+   "61aba661f19ce1ab-Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper__RAG.md",
+   "eba39a4d763ec2e6-Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper",
+  "_origine": "eba39a4d763ec2e6-Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper.txt",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R041",
+  "text": "Catturo l'attenzione, miglioro ogni tassello, ragiono sulla strategia, comprendo ancora meglio il target, guardo il mercato, capisco i competitor, e lo rifaccio.",
+  "relevantDocumentIds": [
+   "61aba661f19ce1ab-Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper__RAG.md",
+   "eba39a4d763ec2e6-Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper",
+  "_origine": "eba39a4d763ec2e6-Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper.txt",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R042",
+  "text": "Per di più esco, a 200 metri c'era la pasticceria di Gigno Massari, passo davanti la pasticceria di Gigno Massari e c'era la coda, la fila per entrare.",
+  "relevantDocumentIds": [
+   "61aba661f19ce1ab-Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper__RAG.md",
+   "eba39a4d763ec2e6-Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper",
+  "_origine": "eba39a4d763ec2e6-Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper.txt",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R043",
+  "text": "Se adesso bisogna spostare il coso che non è stato fatto, bisogna farlo.",
+  "relevantDocumentIds": [
+   "13a1fc09cc140cd1-Factory_2025_11_03_25_-_POMERIGGIO_prima_parte_--7fa602e10ee1--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_11_03_25_-_POMERIGGIO_prima_parte_--7fa602e10ee1--whisper",
+  "_origine": "13a1fc09cc140cd1-Factory_2025_11_03_25_-_POMERIGGIO_prima_parte_--7fa602e10ee1--whisper.txt",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R044",
+  "text": "La squadra precisa che non voleva limitarsi al wrapping: intendeva occuparsi dell’intero restyling, offrendo tutto ciò di cui il locale ha bisogno.",
+  "relevantDocumentIds": [
+   "f683fb36492a113d-Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper__RAG.md",
+   "7812ef47b23bf80d-Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper",
+  "_origine": "f683fb36492a113d-Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R045",
+  "text": "Se invece voglio semplicemente un wrap trasparente per proteggere la vernice dai graffi, l’illuminazione non c’entra: occorre scegliere l’angolo d’attacco.",
+  "relevantDocumentIds": [
+   "f683fb36492a113d-Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper__RAG.md",
+   "7812ef47b23bf80d-Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper",
+  "_origine": "f683fb36492a113d-Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R046",
+  "text": "Se riesci a costruirlo, soprattutto associandolo a un momento della giornata, hai fatto bingo.",
+  "relevantDocumentIds": [
+   "f683fb36492a113d-Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper__RAG.md",
+   "7812ef47b23bf80d-Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper",
+  "_origine": "f683fb36492a113d-Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R047",
+  "text": "Non ci siamo messi d'accordo, io e il prof Tirelli, ma lui ha concluso la sua presentazione con \"Più turbo lento\" e io poi partirò da lì.",
+  "relevantDocumentIds": [
+   "25065f67bee1d84a-Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper__RAG.md",
+   "9c224699d2888b7b-Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper",
+  "_origine": "9c224699d2888b7b-Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper.txt",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R048",
+  "text": "Chiaramente quella migliore soluzione tecnologica che poi possa supportare gli obiettivi di gruppo.",
+  "relevantDocumentIds": [
+   "25065f67bee1d84a-Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper__RAG.md",
+   "9c224699d2888b7b-Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper",
+  "_origine": "9c224699d2888b7b-Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper.txt",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R049",
+  "text": "A meno che non cambi qualcosa all'interno sia a livello empatico, sia a livello di comunicazione, sia a livello di servizio.",
+  "relevantDocumentIds": [
+   "25065f67bee1d84a-Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper__RAG.md",
+   "9c224699d2888b7b-Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper",
+  "_origine": "9c224699d2888b7b-Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper.txt",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R050",
+  "text": "Per prodotti a lunga stagionatura — Parmigiano Reggiano, Grana Padano e prosciutti come Parma e San Daniele — la stagionatura è un fattore produttivo obbligatorio.",
+  "relevantDocumentIds": [
+   "54f5c7d6b9db0989-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper__RAG.md",
+   "5b24f5fce99add5f-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper",
+  "_origine": "54f5c7d6b9db0989-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R051",
+  "text": "Parmigiano Reggiano scende sotto il 10%, mentre Grana Padano passa dal 45% a circa il 35%.",
+  "relevantDocumentIds": [
+   "54f5c7d6b9db0989-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper__RAG.md",
+   "5b24f5fce99add5f-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper",
+  "_origine": "54f5c7d6b9db0989-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R052",
+  "text": "Apprezzo chi sviluppa bene private label mainstream, primo prezzo, funzionali o premium, ma anche imprese molto performanti con altre impostazioni.",
+  "relevantDocumentIds": [
+   "54f5c7d6b9db0989-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper__RAG.md",
+   "5b24f5fce99add5f-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper",
+  "_origine": "54f5c7d6b9db0989-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R053",
+  "text": "Il moderatore riconosce che questo può distruggere la marca, pur nella difficoltà di trovare un imprenditore disposto ad aspettare due anni.",
+  "relevantDocumentIds": [
+   "f553e300c78bbd31-Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper__RAG.md",
+   "f9f9794666ad214d-Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper",
+  "_origine": "f553e300c78bbd31-Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R054",
+  "text": "Il moderatore osserva che desideriamo anche ciò che vediamo: la comunicazione su tonno, pandoro, prosciutto o latte contribuisce a farli comprare.",
+  "relevantDocumentIds": [
+   "f553e300c78bbd31-Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper__RAG.md",
+   "f9f9794666ad214d-Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper",
+  "_origine": "f553e300c78bbd31-Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R055",
+  "text": "Il salto strutturale non è ancora compiuto: ci sono molte sperimentazioni, ma un’azienda mass market deve poter agire almeno su un’intera catena o canale.",
+  "relevantDocumentIds": [
+   "f553e300c78bbd31-Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper__RAG.md",
+   "f9f9794666ad214d-Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper",
+  "_origine": "f553e300c78bbd31-Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R056",
+  "text": "Non considero innovazione nemmeno Nutella Biscuits: quando avevo dieci anni mettevo già Nutella sui biscotti; con questo criterio sarei stato innovativo anch’io quarantacinque anni fa.",
+  "relevantDocumentIds": [
+   "63597824e092ea1f-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26--e3753646c668--whisper__RAG.md",
+   "45b1570b0924c5ce-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26--e3753646c668--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26--e3753646c668--whisper",
+  "_origine": "63597824e092ea1f-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26--e3753646c668--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R057",
+  "text": "In sala alcuni si avvicinano al posizionamento per la prima volta, altri lo conoscono già; dobbiamo permettere anche ai primi di capire se può funzionare nel loro lavoro.",
+  "relevantDocumentIds": [
+   "63597824e092ea1f-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26--e3753646c668--whisper__RAG.md",
+   "45b1570b0924c5ce-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26--e3753646c668--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26--e3753646c668--whisper",
+  "_origine": "63597824e092ea1f-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26--e3753646c668--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R058",
+  "text": "Le case automobilistiche hanno iniziato ad ascoltare il cliente quando negli anni Ottanta è aumentata la competizione, con l’arrivo di giapponesi e americane.",
+  "relevantDocumentIds": [
+   "63597824e092ea1f-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26--e3753646c668--whisper__RAG.md",
+   "45b1570b0924c5ce-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26--e3753646c668--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26--e3753646c668--whisper",
+  "_origine": "63597824e092ea1f-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26--e3753646c668--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R059",
+  "text": "Mi piacciono invece i descrittivi, perché aiutano a prendere una categoria.",
+  "relevantDocumentIds": [
+   "5153e47cf0802bef-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574__RAG.md",
+   "2d6a9ea1d84c953d-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574",
+  "_origine": "5153e47cf0802bef-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R060",
+  "text": "Ricordate i negozi nelle piazze italiane, per esempio piazza Garibaldi a Parma?",
+  "relevantDocumentIds": [
+   "5153e47cf0802bef-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574__RAG.md",
+   "2d6a9ea1d84c953d-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574",
+  "_origine": "5153e47cf0802bef-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R061",
+  "text": "“Custode” richiama tradizione, ricetta, territorio, sapere antico e valore culturale; “Termalis” evoca lentezza, precisione, acqua e cura artigianale.",
+  "relevantDocumentIds": [
+   "5153e47cf0802bef-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574__RAG.md",
+   "2d6a9ea1d84c953d-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574",
+  "_origine": "5153e47cf0802bef-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R062",
+  "text": "Lo storytelling crea familiarità, empatia, significato, valore e fiducia; ispira motivazioni che possono generare acquisti.",
+  "relevantDocumentIds": [
+   "b5fbdcdd2ffbf788-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper__RAG.md",
+   "4d9020b8d816ea4e-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper.txt",
+   "Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper__RAG.md"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper",
+  "_origine": "Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R063",
+  "text": "Poi c'era qualcuno dentro che seguiva tutto il reparto creativo produttivo, vi dicendo, seguiva un po' l'amministrazione, mi settavo i dati, però io quello facevo.",
+  "relevantDocumentIds": [
+   "b5fbdcdd2ffbf788-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper__RAG.md",
+   "4d9020b8d816ea4e-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper.txt",
+   "Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper__RAG.md"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper",
+  "_origine": "4d9020b8d816ea4e-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper.txt",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R064",
+  "text": "La richiesta è quella di andare verso un allenamento e un concetto di metabolismo.",
+  "relevantDocumentIds": [
+   "b5fbdcdd2ffbf788-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper__RAG.md",
+   "4d9020b8d816ea4e-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper.txt",
+   "Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper__RAG.md"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper",
+  "_origine": "4d9020b8d816ea4e-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper.txt",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R065",
+  "text": "L’esempio è un dispositivo bianco e rotondo portato sul braccio da alcune persone con diabete.",
+  "relevantDocumentIds": [
+   "6a59282f4c7c3b39-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper__RAG.md",
+   "b350d770cdeb309a-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper",
+  "_origine": "6a59282f4c7c3b39-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R066",
+  "text": "[Sono caratteristiche e spiegazioni riportate nella lezione, non verificate scientificamente.]",
+  "relevantDocumentIds": [
+   "6a59282f4c7c3b39-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper__RAG.md",
+   "b350d770cdeb309a-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper",
+  "_origine": "6a59282f4c7c3b39-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R067",
+  "text": "Non sono facili da posizionare, non emerge un servizio davvero differenziante, manca la focalizzazione e il mercato non riconosce una peculiarità.",
+  "relevantDocumentIds": [
+   "6a59282f4c7c3b39-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper__RAG.md",
+   "b350d770cdeb309a-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper",
+  "_origine": "6a59282f4c7c3b39-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R068",
+  "text": "La richiesta era riposizionare la mezzaluna e trasmettere la brand awareness di Auricchio.",
+  "relevantDocumentIds": [
+   "822373a2b828bd01-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper__RAG.md",
+   "ae143c2bf2e8ec3c-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper",
+  "_origine": "822373a2b828bd01-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R069",
+  "text": "Era una delle cose tipiche che aspettavo, come il pane carasau o la fregola.",
+  "relevantDocumentIds": [
+   "822373a2b828bd01-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper__RAG.md",
+   "ae143c2bf2e8ec3c-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper",
+  "_origine": "822373a2b828bd01-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R070",
+  "text": "La prima cosa che feci notare a Silvio Carta fu la shelf life.",
+  "relevantDocumentIds": [
+   "822373a2b828bd01-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper__RAG.md",
+   "ae143c2bf2e8ec3c-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper",
+  "_origine": "822373a2b828bd01-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R071",
+  "text": "Oggi la nostra agenzia, chiamata WIT nella fonte, ha ventitré–ventiquattro persone in tutta Italia e lavora interamente da remoto.",
+  "relevantDocumentIds": [
+   "96bd4b7d2b5cceff-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper__RAG.md",
+   "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper",
+  "_origine": "96bd4b7d2b5cceff-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R072",
+  "text": "Se giochi sempre con persone del tuo livello cresci meno; affrontando partite più alte affini la tecnica.",
+  "relevantDocumentIds": [
+   "96bd4b7d2b5cceff-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper__RAG.md",
+   "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper",
+  "_origine": "96bd4b7d2b5cceff-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R073",
+  "text": "Stai persino cominciando a pensare che per i tuoi capelli i prodotti bio non funzionano\".",
+  "relevantDocumentIds": [
+   "96bd4b7d2b5cceff-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper__RAG.md",
+   "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper",
+  "_origine": "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper.txt",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R074",
+  "text": "Per il produttore, il punto è la crescita della marca privata, ancora inferiore a quella di altri Paesi, mentre diminuisce la quota delle marche leader.",
+  "relevantDocumentIds": [
+   "85c849bebba15116-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-180326--ba143ee3aa4a--whisper__RAG.md",
+   "302440a151b94d55-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-180326--ba143ee3aa4a--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-180326--ba143ee3aa4a--whisper",
+  "_origine": "85c849bebba15116-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-180326--ba143ee3aa4a--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R075",
+  "text": "Nei due anni a Chicago avevo un mentore americano che continuava a dirmi: «Devi andare in Esselunga e fare il direttore di supermercato».",
+  "relevantDocumentIds": [
+   "85c849bebba15116-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-180326--ba143ee3aa4a--whisper__RAG.md",
+   "302440a151b94d55-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-180326--ba143ee3aa4a--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-180326--ba143ee3aa4a--whisper",
+  "_origine": "85c849bebba15116-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-180326--ba143ee3aa4a--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R076",
+  "text": "Nell’analisi dei costi diretti io ragionavo da laureato in matematica e pensavo che Esselunga sbagliasse a vendere il pacchetto singolo.",
+  "relevantDocumentIds": [
+   "85c849bebba15116-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-180326--ba143ee3aa4a--whisper__RAG.md",
+   "302440a151b94d55-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-180326--ba143ee3aa4a--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-180326--ba143ee3aa4a--whisper",
+  "_origine": "85c849bebba15116-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-180326--ba143ee3aa4a--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R077",
+  "text": "Al di là di pochi casi di successo come Ferrero, oggi conta essere elastici, cogliere prima i trend e tradurli in prodotti.",
+  "relevantDocumentIds": [
+   "09209ed09a3d4e40-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper__RAG.md",
+   "af381c8b5c34be15-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper",
+  "_origine": "09209ed09a3d4e40-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R078",
+  "text": "Oggi abbiamo un aiuto in più, la quantità di dati disponibili e l’intelligenza artificiale per trasformarli in indicazioni utili alle decisioni commerciali.",
+  "relevantDocumentIds": [
+   "09209ed09a3d4e40-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper__RAG.md",
+   "af381c8b5c34be15-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper",
+  "_origine": "09209ed09a3d4e40-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R079",
+  "text": "Allora, prima di tutto vorrei contestualizzare la mia presenza.",
+  "relevantDocumentIds": [
+   "09209ed09a3d4e40-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper__RAG.md",
+   "af381c8b5c34be15-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper",
+  "_origine": "af381c8b5c34be15-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper.txt",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R080",
+  "text": "È una riflessione diversa da quella sul legame tra insegna e prodotto.",
+  "relevantDocumentIds": [
+   "4261ec943855a0c7-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper__RAG.md",
+   "83aa9f3a3c09d9de-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper",
+  "_origine": "4261ec943855a0c7-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R081",
+  "text": "L’Italia deve ancora attraversare processi di concentrazione della distribuzione.",
+  "relevantDocumentIds": [
+   "4261ec943855a0c7-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper__RAG.md",
+   "83aa9f3a3c09d9de-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper",
+  "_origine": "4261ec943855a0c7-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ },
+ {
+  "queryId": "R082",
+  "text": "Nel complesso le aziende investono centinaia di milioni; speriamo di continuare.",
+  "relevantDocumentIds": [
+   "4261ec943855a0c7-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper__RAG.md",
+   "83aa9f3a3c09d9de-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_sessione": "Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper",
+  "_origine": "4261ec943855a0c7-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper__RAG.md",
+  "_tipo": "frase_esatta"
+ }
+]

@@ -492,6 +492,11 @@ pub async fn sync_embeddings(
 
     // Process in batches of 16 passages
     let batch_size = 16;
+    let total_missing = missing.len();
+    let mut processed_count = 0;
+    if total_missing > 0 {
+        println!("Starting embedding sync: {} missing passages to process...", total_missing);
+    }
     for chunk in missing.chunks(batch_size) {
         let texts: Vec<String> = chunk.iter().map(|m| m.text_to_embed.clone()).collect();
         let vectors = fetch_openai_embeddings_with_endpoint(&endpoint, effective_key, target_model, &texts).await?;
@@ -524,6 +529,16 @@ pub async fn sync_embeddings(
                     vector: vec,
                     updated_at: now_iso(),
                 },
+            );
+        }
+
+        processed_count += chunk.len();
+        if processed_count % 160 == 0 || processed_count == total_missing {
+            println!(
+                "Embedding progress: {}/{} passages ({:.1}%)",
+                processed_count,
+                total_missing,
+                (processed_count as f64 / total_missing as f64) * 100.0
             );
         }
     }
