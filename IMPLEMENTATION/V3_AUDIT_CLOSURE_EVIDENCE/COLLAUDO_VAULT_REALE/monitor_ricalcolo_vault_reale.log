@@ -1,0 +1,23 @@
+22:42:27 release=737 staging=8507467 pid=16852 app=15384
+22:44:27 release=1285 staging=17008414 pid=16852 app=15384
+22:46:27 release=1749 staging=21261273 pid=16852 app=15384
+22:48:27 release=2173 staging=25513563 pid=16852 app=15384
+22:50:27 release=2661 staging=34022059 pid=16852 app=15384
+22:52:28 release=3165 staging=38278248 pid=16852 app=15384
+22:54:28 release=3645 staging=46775964 pid=16852 app=15384
+22:56:28 release=4145 staging=51025374 pid=16852 app=15384
+22:58:28 release=4649 staging=59535705 pid=16852 app=15384
+23:00:28 release=5169 staging=68040061 pid=16852 app=15384
+23:02:28 release=5613 staging=72285865 pid=16852 app=15384
+23:04:28 release=6217 staging=80794725 pid=16852 app=15384
+23:06:28 release=6809 staging=89299898 pid=16852 app=15384
+23:08:28 release=7349 staging=93551119 pid=16852 app=15384
+23:10:28 release=7913 staging=102050650 pid=16852 app=15384
+23:12:28 release=8433 staging=110559357 pid=16852 app=15384
+23:14:29 release=8953 staging=114812420 pid=16852 app=15384
+23:16:29 release=9397 staging=123321011 pid=16852 app=15384
+23:18:29 release=9459 staging=0 pid=16852 app=15384
+FINE 23:18:29
+-rw-r--r--@  1 cesare  staff  125687962 Sep 20 23:16 EMBEDDINGS_CACHE.json
+
+[exited with code 0]

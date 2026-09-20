@@ -310,6 +310,12 @@ Tempo totale **49 min 01 s** (0,31 s/passaggio). La schermata del messaggio fina
 
 Nota operativa: `~/Applications/LIMEN Vault 0.2.0.app` (versione precedente con lo stesso identificativo) è stata **rimossa** il 20/09.
 
+### 6.4 Vault reale `/Users/cesare/Documents/VAULT` — 22:35–23:20 UTC+8 (su autorizzazione esplicita)
+
+Prima di questa sessione il Vault reale **non era mai stato processato dalla v3** (mancavano catalogo, cache e fornitore). Con backup integrale preventivo (`/Users/cesare/Documents/VAULT_BACKUP_2026-09-20_pre-v3`, identico), nell'app installata: apertura (catalogo: 114 documenti, 9.458 passaggi, tutti `ready`), **Aggiorna indice** (indice lessicale riscritto), fornitore **Locale** (profilo scritto), **RICALCOLA** con avvio automatico del servizio (porta 50509): cache completata in **36 min 35 s**, 9.458 voci su 9.458 passaggi, 1024 dim, intersezione 100 %. Ricerca ibrida «marca privata e distribuzione»: 50 risultati, badge RAG 100% LOCALE, nessun banner. `lsof`: il server ha il solo socket `127.0.0.1:50509`, l'app nessuna connessione TCP. Chiusura regolare senza processi residui. Evidenze e nota in `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/COLLAUDO_VAULT_REALE/`. La pipeline ha scritto solo `00_SYSTEM/VAULT_CATALOG.json`, `EMBEDDINGS_CACHE.json`, `SEARCH_INDEX.json`, `SYNC_PROFILE.json`.
+
+Osservazione (per costruzione, non un difetto introdotto oggi): l'indice lessicale costruito dall'app contiene passaggi solo per i file di `20_RAW_SOURCES` (`search.rs`, `index_vault_search`); le note delle altre cartelle sono indicizzate come documenti interi, mentre la cache semantica copre i passaggi di tutti i 114 documenti del catalogo.
+
 ---
 
 ## 7. Rilascio e firma
