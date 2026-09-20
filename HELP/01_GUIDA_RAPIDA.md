@@ -1,23 +1,30 @@
 ---
 title: "LIMEN Vault — Guida rapida"
 type: help
-tags: [limen-vault, quickstart]
+created_at: "2026-09-16"
+updated_at: "2026-09-20"
+tags: [limen-vault, quickstart, rag-locale]
 ---
 
 # Guida rapida v3
 
 Torna all’indice: [[00_INDICE]]
 
-1. Apri **LIMEN Vault v3** e apri il Vault esistente oppure creane uno nuovo in una cartella vuota.
-2. Controlla che lo stato sia **Pronto**.
-3. Una volta sola: salva la chiave API in **Impostazioni**; in **Fonti** indica il modello e premi **ATTIVA AUTOMAZIONE**.
-4. Premi **CARICA DOCUMENTI** e scegli i file grezzi. Non convertirli prima.
-5. Lascia l’app aperta: LIMEN converte, normalizza, classifica, collega, indicizza e genera le wiki.
-6. Consulta **Avanzamento e documenti**; i risultati sono in **Conoscenza**, **Ricerca** e **Chiedi al Vault**.
-7. Per una domanda, prepara **ANTEPRIMA FONTI** e invia le fonti mostrate.
-8. Usa **Copie locali** per conservare una copia. La pubblicazione CRM è un’azione distinta.
+1. Apri **LIMEN Vault v3** e seleziona un Vault esistente (es. `~/Documents/VAULT`) oppure creane uno nuovo in una cartella vuota.
+2. Controlla che la Panoramica mostri lo stato **Pronto**.
+3. **Configura il Motore Semantico Locale (Rete Zero)**:
+   - Vai in **Avanzate e Manutenzione → Collegamenti AI & MCP**.
+   - Nel pannello **Motore semantico**, seleziona **Locale (bge-m3, nessun dato esce dal Mac)**.
+   - Premi **SCARICA MODELLO (BGE-M3)** (~605 MB, operazione una-tantum con verifica hash SHA-256) oppure seleziona un file `.gguf` locale.
+   - Premi **AVVIA SERVIZIO LOCALE** (lo stato diventerà *ATTIVO* con una porta dinamica libera).
+   - *(Facoltativo)* Se intendi usare anche la chat generativa remota in *Chiedi al Vault*, salva la chiave OpenAI nel Portachiavi.
+4. Premi il pulsante verde **CARICA DOCUMENTI** e seleziona i file grezzi (PDF, DOCX, presentazioni, immagini, trascrizioni). Non convertirli prima: l'estrattore nativo Swift esegue OCR e chunking sul Mac.
+5. In **Avanzate → Collegamenti AI & MCP → Motore semantico**, controlla che la cache indichi **9.458 passaggi indicizzati** (o il numero corrispondente ai tuoi documenti) e sia *Allineata*. Se necessario, premi **RICALCOLA CACHE SEMANTICA**.
+6. Vai nella scheda **Chiedi**: con la casella **Ricerca Ibrida** spuntata, interroga i tuoi contenuti unendo la precisione del lessicale BM25 e l'intelligenza concettuale dei vettori locali bge-m3.
+7. Se il servizio locale dovesse essere spento, l'app passa automaticamente in **Modalità Degradata** (solo BM25) esponendo un banner giallo senza mai bloccarsi né inviare dati all'esterno.
+8. Usa **Copie locali** per creare snapshot verificati con impronte SHA-256.
 
-La configurazione autorizza le chiamate automatiche a OpenAI per classificazione e wiki. Conversione/OCR avvengono sul Mac. L’app riprende la coda alla riapertura. Errori e limiti sono descritti in [[07_AUTOMAZIONE_DOCUMENTI]].
+---
 
 ## Dove va ogni file
 
@@ -37,6 +44,6 @@ La configurazione autorizza le chiamate automatiche a OpenAI per classificazione
 | (solo AI) risposte salvate | `80_AI_OUTPUTS` |
 | (solo AI / compilatore) bozze e proposte | `90_PROPOSALS` |
 | Archivio | `99_ARCHIVE` |
-| Sistema — non toccare | `00_SYSTEM` |
+| Indici e sistema — non toccare a mano | `00_SYSTEM` |
 
-I nomi delle cartelle e delle proprietà (`client`, `status: approved`…) **non vanno tradotti**.
+I nomi delle cartelle e delle proprietà YAML (`client`, `status: approved`…) **non vanno tradotti**.

@@ -12,7 +12,7 @@ use limen_vault::embeddings::{
     load_embeddings_cache,
     rank_document_semantic,
     resolve_embeddings_endpoint,
-    sync_embeddings,
+    sync_embeddings_with_port,
 };
 use limen_vault::search::{index_vault_search, SearchQuery, SearchResultItem};
 
@@ -148,7 +148,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let vault_path = PathBuf::from("/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/scratch/real_vault_v1");
     let queries_path = PathBuf::from("/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/gold/A04_REAL_QUERIES.json");
-    let evidence_dir = PathBuf::from("/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A04_REAL_LOCAL_V2");
+    // Cartella delle evidenze: da LIMEN_EVIDENCE_DIR, altrimenti la corsa V3 (BM25).
+    let evidence_dir = PathBuf::from(
+        std::env::var("LIMEN_EVIDENCE_DIR").unwrap_or_else(|_| "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A04_REAL_LOCAL_V3_BM25".to_string()),
+    );
+    // Porta del llama-server locale gia' avviato (obbligatoria): l'endpoint non e' persistito, va fornito.
+    let local_port: u16 = std::env::var("LIMEN_LOCAL_PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .ok_or("Variabile LIMEN_LOCAL_PORT mancante: indicare la porta del llama-server locale in ascolto su 127.0.0.1")?;
 
     fs::create_dir_all(&evidence_dir)?;
 
@@ -172,21 +180,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let catalog = load_catalog(&vault_path)?;
     println!("Catalog loaded: {} documents", catalog.documents.len());
 
-    let endpoint = resolve_embeddings_endpoint(&vault_path);
-    println!("Embeddings endpoint resolved: {}", endpoint);
+    let endpoint = format!("http://127.0.0.1:{}/v1/embeddings", local_port);
+    let _ = resolve_embeddings_endpoint(&vault_path);
+    println!("Embeddings endpoint (porta fornita): {}", endpoint);
 
     let rt = tokio::runtime::Runtime::new()?;
 
     // 2. Synchronize embeddings via local llama-server (bge-m3)
     println!("Calculating local embeddings via llama-server (model bge-m3, 1024d)...");
     let emb_calc_start = Instant::now();
-    let status_rep = rt.block_on(sync_embeddings(&vault_path, "", Some("bge-m3")))?;
+    let status_rep = rt.block_on(sync_embeddings_with_port(&vault_path, "", Some("bge-m3"), Some(local_port)))?;
     let elapsed = emb_calc_start.elapsed();
-    let emb_calc_duration_secs = if elapsed.as_secs_f64() < 10.0 && status_rep.cached_passages == 4633 {
-        846.64 // Accurately reflects the measured wall clock time of computing all 4,633 passages on llama-server
-    } else {
-        (elapsed.as_secs_f64() * 100.0).round() / 100.0
-    };
+    // Tempo REALE misurato in questa corsa (con cache completa e' quasi zero: nessun ricalcolo).
+    let emb_calc_duration_secs = (elapsed.as_secs_f64() * 100.0).round() / 100.0;
     println!(
         "Embeddings synchronization complete: {}/{} passages cached (measured calculation time: {:.2}s)",
         status_rep.cached_passages,

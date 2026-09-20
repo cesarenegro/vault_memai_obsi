@@ -1,92 +1,79 @@
 ---
 title: "LIMEN Vault — Problemi comuni e glossario"
 type: help
-tags: [limen-vault, troubleshooting, glossario]
+created_at: "2026-09-16"
+updated_at: "2026-09-20"
+tags: [limen-vault, troubleshooting, glossario, rag-locale, bm25]
 ---
 
 # Problemi comuni e glossario
 
 Torna all'indice: [[00_INDICE]]
 
-**Novità v3:** il percorso quotidiano è automatico, descritto in [[07_AUTOMAZIONE_DOCUMENTI]]. Le lezioni su compilazione e approvazione sotto sono esercizi manuali facoltativi.
+**Novità v3:** RAG 100% Locale, Ricerca Ibrida BM25 con normalizzazione sulla lunghezza e Modalità Degradata automatica.
+
+---
 
 ## Messaggi dell'app e cosa fare
 
-Messaggi tradotti presenti in `apps/desktop/src/locale.tsx`:
-
 | Messaggio | Causa | Cosa fare |
 | --- | --- | --- |
-| Configura la chiave API nelle Impostazioni. | Nessuna chiave salvata | Impostazioni → SALVA CHIAVE |
-| Indica un modello API disponibile nel tuo account. | Campo modello vuoto | Scrivi l'identificativo del modello |
-| Il formato della chiave API non è valido. | Chiave incollata male | Ricopia la chiave completa |
-| Accesso al Portachiavi negato o non disponibile. | macOS ha negato l'accesso | Riprova e autorizza nella finestra macOS |
-| Impossibile rimuovere la chiave dal Portachiavi. | Rimozione non riuscita | Controlla in Accesso Portachiavi |
-| ID del tunnel o dell'organizzazione non valido. | Dati Business errati | Ricontrolla i due ID |
-| Salva la chiave del tunnel nelle Impostazioni. | Chiave tunnel mancante | SALVA CHIAVE TUNNEL |
-| Accesso alla chiave del tunnel nel Portachiavi negato. | Permesso negato | Autorizza nella finestra macOS |
-| Il Vault non ha superato la validazione. | Struttura o frontmatter non validi | Leggi gli errori elencati |
-| Il percorso del Vault non indica una cartella. | Percorso di un file | Indica la cartella |
-| Anteprima scaduta. Seleziona nuovamente le fonti. | Più di 300 s dall'anteprima | ANTEPRIMA FONTI di nuovo |
-| Anteprima scaduta o nessuna fonte utilizzabile… | Scadenza o nessuna nota idonea | Aggiorna indice, controlla note approvate |
-| È già in corso una richiesta AI. | Doppio invio | Attendi o ANNULLA |
-| Una fonte è cambiata dopo l'anteprima… | Nota modificata nel frattempo | Nuova anteprima |
-| Richiesta annullata. | Hai premuto ANNULLA | — |
-| Accesso al documento negato. | Percorso fuori dai limiti consentiti | Apri il documento dal suo elenco |
-| La nota è cambiata durante la lettura… | Modifica simultanea in Obsidian | Aggiorna la schermata |
-| L'anteprima della categoria supera il limite di 8 MiB. | Categoria troppo grande | Consulta tramite Ricerca o Obsidian |
-| Operazione non completata. Consulta il dettaglio tecnico… | Errore non tradotto (sistema/fornitore) | Conserva il *Dettaglio tecnico originale* per l'assistenza |
+| Modalità degradata (solo ricerca lessicale)... | Il servizio semantico locale `llama-server` non risponde o è spento | Clic su **Riavvia Servizio Locale** nel banner, oppure vai in *Avanzate → Collegamenti AI & MCP → Motore semantico* e premi **AVVIA SERVIZIO LOCALE**. Nessun dato esce dal Mac |
+| Le dimensioni della cache (1024d/1536d) non sono allineate... | Cambio di fornitore (es. da OpenAI a Locale bge-m3) o nuovi documenti aggiunti | Nel pannello *Motore semantico*, premi **RICALCOLA CACHE SEMANTICA**. Il ricalcolo usa uno staging atomico senza cancellare la cache in uso |
+| llama-server uscito con codice exit status: 1 | Problema all'avvio del binario o modello mancante/danneggiato | Controlla il log diagnostico in `~/Library/Application Support/LIMEN Vault/models/llama-server.log`. Verifica l'integrità del modello (deve essere *INSTALLATO (SHA-256 OK)*) |
+| Download del modello fallito o interrotto | Connessione di rete persa durante il download di `bge-m3-Q8_0.gguf` (~605 MB) | Riprova il download oppure copia manualmente il file in `~/Library/Application Support/LIMEN Vault/models/` e usa **SELEZIONA FILE GGUF LOCALE** |
+| Configura la chiave API nelle Impostazioni | Nessuna chiave OpenAI salvata (necessaria solo per *Chiedi al Vault* generativo) | Impostazioni → SALVA CHIAVE (non serve per il RAG locale bge-m3) |
+| Indica un modello API disponibile nel tuo account | Campo modello OpenAI vuoto | Scrivi l'identificativo del modello (es. `gpt-4o`) |
+| Accesso al Portachiavi negato o non disponibile | macOS ha negato l'accesso alle chiavi | Riprova e autorizza nella finestra di dialogo di sicurezza macOS |
+| Anteprima scaduta. Seleziona nuovamente le fonti | Trascorsi più di 300 s dall'anteprima locale | Premi nuovamente **ANTEPRIMA FONTI** |
+| Una fonte è cambiata dopo l'anteprima… | Una nota è stata modificata durante l'attesa | Genera una nuova anteprima |
+| Il Vault non ha superato la validazione | Struttura cartelle mancante o frontmatter non valido | Leggi gli errori specifici elencati nella schermata iniziale |
+
+---
 
 ## Situazioni tipiche
 
 | Sintomo | Verifica | Soluzione |
 | --- | --- | --- |
-| Il Vault non si apre | Percorso assoluto? Cartella LIMEN con 15 cartelle e 3 file di sistema? | Correggi; una cartella Obsidian generica non basta. Non cancellare file per forzare |
-| CREA NUOVO VAULT rifiuta | La cartella esiste e non è vuota | Scegli un percorso nuovo |
-| Nessuna nota in Conoscenza | File nella cartella giusta? Estensione `.md`? | AGGIORNA CONOSCENZA |
-| Ricerca vuota | Indice aggiornato? Filtri? Campo `client`/`project` nella nota? | Togli filtri, AGGIORNA INDICE DI RICERCA |
-| Invio a OpenAI disabilitato | Anteprima senza fonti | Approva/indica note, aggiorna indice, nuova anteprima |
-| OpenAI non risponde | Rete, chiave, modello, credito | Leggi il dettaglio; il lavoro locale continua |
-| Fonte non supportata dalla compilazione manuale | PDF/Word | Usa **CARICA DOCUMENTI** con automazione attiva |
-| APPROVA respinta | Destinazione fuori categoria, già esistente, non `.md`, in RAW, o revisione cambiata | Correggi percorso; riapri la proposta |
-| *Differenze rilevate* in Panoramica | Elenco file modificati/mancanti/aggiunti | Se le modifiche sono tue è normale |
-| Copia *Danneggiata* / *Incompleta* | — | Non usarla come copia valida; creane una nuova |
-| Cambio Vault | — | Riavvia l'app e usa APRI VAULT ESISTENTE. Non modificare il campo in Impostazioni |
-| Cloud *Non configurato* | Codice mai inserito | Chiedi il codice all'amministratore |
-| *Conflitto* nei trasferimenti | Esiste una versione remota più recente | Ricarica l'anteprima e riconferma. Non forzare |
-| Trasferimento interrotto | — | Riprendi trasferimento interrotto |
-| CRM mostra `NO_PUBLICATION` | Nessuna pubblicazione completata | Approva note reali e Pubblica conoscenza |
-| MCP non risponde dopo riavvio | L'MCP si spegne al riavvio | ATTIVA MCP LOCALE di nuovo e aggiorna il token nel client |
-| Obsidian non si apre | Sistema → Applicazione Obsidian | Installa Obsidian o registra la cartella (W2) |
+| Compare il banner giallo di Modalità Degradata | La casella *Ricerca Ibrida* è spuntata ma il processo locale è offline | Normale comportamento di sicurezza: la ricerca continua in sola modalità BM25. Clicca su **Riavvia Servizio Locale** |
+| Il servizio locale non parte | C'è un altro processo in ascolto o modello assente | Premi **AGGIORNA STATO** nel Motore Semantico. Se necessario, riavvia l'applicazione LIMEN |
+| Ricerca vuota o risultati parziali | Indice non aggiornato o filtri cliente/progetto attivi | Rimuovi i filtri e premi **AGGIORNA INDICE** in Ricerca |
+| Ricalcolo cache semantica interrotto | L'app è stata chiusa durante l'indicizzazione dei passaggi | Riapri l'app e premi **RICALCOLA CACHE**: il processo riprende dallo staging atomico senza ripartire da zero |
+| Il Vault non si apre | Percorso assoluto corretto? Cartella con 15 cartelle LIMEN? | Correggi il percorso. Non cancellare file per forzare l'apertura |
+| CREA NUOVO VAULT rifiuta la cartella | La cartella selezionata esiste già e contiene file | Scegli una cartella nuova o vuota |
+| APPROVA respinta in Proposte | Destinazione fuori categoria, file già esistente, estensione non `.md` | Correggi il percorso proposto; spunta la casella di verifica obbligatoria |
+| *Differenze rilevate* in Panoramica | Note nuove o modificate rispetto al manifesto precedente | Se le modifiche sono intenzionali è normale. Crea una nuova copia locale |
+| Obsidian non si apre | Percorso applicazione Obsidian | Installa Obsidian o apri prima Obsidian con *Open folder as vault* |
+
+---
 
 ## Cose da non fare
 
-- Non scrivere a mano in `00_SYSTEM`, `80_AI_OUTPUTS`, `90_PROPOSALS`.
-- Lascia a LIMEN la gestione delle note automatiche; non alterare registri o stati per aggirare i controlli.
-- Non tradurre nomi di cartelle o proprietà.
-- Non cancellare file di stato, journal o cartelle `.pending-*` / `.limen-download-*` per "far sparire" un errore.
-- Non aprire una staging di download parziale come Vault.
-- Non condividere token MCP, chiavi o codici di collegamento in chat o nelle note.
-- Non aggirare Gatekeeper né rimuovere la quarantena durante l'installazione.
+- Non modificare manualmente i file in `00_SYSTEM/` (inclusi `EMBEDDINGS_CACHE.json`, `SEARCH_INDEX.json`, `SYNC_PROFILE.json`).
+- Non inserire URL esterni in `SYNC_PROFILE.json`: il fornitore locale accetta unicamente connessioni di loopback `127.0.0.1`.
+- Non tradurre i nomi tecnici delle cartelle o delle proprietà YAML (`client`, `type`, `status: approved`).
+- Non cancellare file `.staging.json` o file temporanei `.pending-*` durante il calcolo della cache o dei trasferimenti.
+- Non disattivare Gatekeeper né rimuovere la quarantena con comandi di bypass non verificati.
+
+---
 
 ## Glossario
 
 | Termine | Significato |
 | --- | --- |
-| Vault | Cartella del Mac con la struttura LIMEN, compatibile con Obsidian |
-| Frontmatter | Blocco proprietà YAML in testa alla nota, tra due righe `---` |
-| Fonte originale (RAW) | File in `20_RAW_SOURCES`, mai modificato e mai inviato all'AI |
-| Compilazione | Estrazione locale del testo da una fonte per creare una bozza |
-| Bozza | Nota con `status: draft` in `90_PROPOSALS` |
-| Proposta | Candidato alla conoscenza approvata, con revisioni conservate |
-| Revisione | Versione di una proposta; ogni modifica ne crea una nuova |
-| Approvazione | Scrittura della revisione in `01`–`10` con `status: approved` |
-| Indice di ricerca | Archivio locale per la ricerca; va aggiornato a mano |
-| Manifesto | Elenco dei file con impronta SHA-256 |
-| SHA-256 | Impronta crittografica che rivela qualsiasi modifica al file |
-| Copia locale (snapshot) | Copia verificata in `00_SYSTEM/SNAPSHOTS` |
-| Pubblicazione | Versione di note approvate leggibile dal CRM |
-| Copia privata | Versione completa nel cloud, non leggibile dal CRM |
-| Portachiavi | Archivio sicuro di macOS per chiavi e token |
-| MCP | Protocollo con cui un client esterno (es. Codex) consulta il Vault in sola lettura |
-| Tunnel Business | Collegamento privato tra il Mac e ChatGPT Business |
-| R2 | Archivio cloud Cloudflare; bucket `m3mai-core-vault`, prefisso `limen/` |
+| **RAG 100% Locale** | Retrieval-Augmented Generation interamente eseguito sul Mac a rete zero, senza dipendere da server cloud per la ricerca. |
+| **bge-m3** | Modello di intelligenza artificiale per embedding multilingua a 1024 dimensioni (BAAI/bge-m3), quantizzato in formato `Q8_0.gguf` (605,2 MB). |
+| **llama-server** | Servizio nativo integrato nel pacchetto dell'applicazione per l'esecuzione locale e accelerata del modello bge-m3 su socket loopback `127.0.0.1`. |
+| **BM25** | Algoritmo probabilistico di ranking lessicale con parametri $k_1=1,2$ e $b=0,75$, frequenze reali dei termini e normalizzazione sulla lunghezza del documento (`dl/avgdl`). |
+| **Ricerca Ibrida** | Fusione intelligente tra punteggio lessicale BM25 e punteggio semantico vettoriale con formula $F_2$, coalescenza identificativi e bonus di concordanza esatta. |
+| **Modalità Degradata** | Meccanismo di ripiego automatico: se il servizio semantico è offline, la ricerca continua istantaneamente in sola modalità BM25 esponendo un banner giallo di avviso. |
+| **Staging Cache** | File temporaneo sicuro (`00_SYSTEM/EMBEDDINGS_CACHE.staging.json`) che raccoglie i nuovi vettori progressivamente senza alterare la cache in uso fino al completamento al 100%. |
+| **Chunking** | Segmentazione automatica dei testi estratti in passaggi da circa 1.200 caratteri con locator di pagina o paragrafo e contestualizzazione di metadati. |
+| **Locator** | Indicazione precisa dell'origine del passaggio all'interno del documento (es. `## Pagina 3` o `Paragrafi 12-14`). |
+| **Vault** | Cartella del Mac strutturata secondo le specifiche LIMEN, pienamente compatibile con Obsidian. |
+| **Frontmatter** | Blocco iniziale di proprietà YAML in testa a ogni file Markdown, compreso tra due righe `---`. |
+| **Fonte originale (RAW)** | Documento memorizzato in `20_RAW_SOURCES`, conservato integro e in sola lettura. |
+| **Proposta** | Bozza di conoscenza in `90_PROPOSALS/` in attesa di revisione e approvazione umana con tracciamento della cronologia. |
+| **SHA-256** | Impronta crittografica digitale che certifica l'integrità matematica esatta di file, passaggi e copie di sicurezza. |
+| **Copia locale (snapshot)** | Backup certificato e immutabile creato all'interno di `00_SYSTEM/SNAPSHOTS/`. |
+| **MCP** | Protocollo Model Context Protocol con cui client esterni autorizzati consultano il Vault in sola lettura. |

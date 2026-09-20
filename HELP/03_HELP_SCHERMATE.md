@@ -1,16 +1,17 @@
 ---
 title: "LIMEN Vault — Help delle schermate"
 type: help
-tags: [limen-vault, reference]
+created_at: "2026-09-16"
+updated_at: "2026-09-20"
+tags: [limen-vault, reference, schermate, rag-locale, bm25]
 ---
 
 # Help delle schermate
 
 Torna all'indice: [[00_INDICE]]
 
-Il menu laterale contiene dodici sezioni, in quest'ordine (da `App.tsx`):
-Panoramica · Chiedi al Vault · Conoscenza · Fonti · Ricerca · Risposte AI · Proposte · Copie locali · Trasferimenti · Sistema · Guida & Aiuto · Impostazioni.
-Accanto ad alcune voci compaiono le sigle **M6**, **M3**, **M10**: sono i codici interni delle fasi di sviluppo, non indicano stati o errori.
+Il menu laterale e le schede principali contengono le seguenti sezioni di lavoro:
+**Panoramica** · **Chiedi** (Ricerca nel Vault & Chat AI) · **Documenti** (elenco e filtri formato) · **Memoria / Conoscenza** (note Markdown 01–10) · **Avanzate e Manutenzione** (Bozze & Proposte, Copie locali, Trasferimenti, Collegamenti AI & MCP con *Motore Semantico*, Compilatore, Stato di Sistema, Guida Vault).
 
 ---
 
@@ -18,22 +19,17 @@ Accanto ad alcune voci compaiono le sigle **M6**, **M3**, **M10**: sono i codici
 
 | Elemento | Funzione |
 | --- | --- |
-| Percorso del Vault (cartella locale) | Percorso assoluto della cartella. Esempio nel campo: `/Users/nome/Documents/IL_MIO_VAULT` |
+| Percorso del Vault (cartella locale) | Percorso assoluto della cartella. Esempio precompilato: `~/Documents/VAULT` |
 | **APRI VAULT ESISTENTE** | Valida in sola lettura una cartella LIMEN esistente |
-| **CREA NUOVO VAULT** | Crea le 15 cartelle e i 3 file di sistema in una cartella nuova o vuota. Non sovrascrive |
-| Modalità anteprima nel browser | Avviso: non sei nell'app nativa, le operazioni sui file sono disattivate |
+| **CREA NUOVO VAULT** | Crea le 15 cartelle e i 3 file di sistema in una cartella nuova o vuota. Non sovrascrive file esistenti |
+| Modalità anteprima nel browser | Avviso: non sei nell'app nativa macOS, le chiamate ai file e ai binari nativi sono disattivate |
 
 Stati possibili del Vault (validazione in `vault.rs`):
-
-| Stato tecnico | Significato |
-| --- | --- |
-| `NO_VAULT` | Nessun Vault selezionato |
-| `NOT_ACCESSIBLE` | Cartella inesistente o non leggibile |
-| `INCOMPLETE` | Manca una cartella obbligatoria |
-| `INVALID` | File di sistema, manifesto, frontmatter o collegamenti simbolici non validi |
-| `READY` → *Pronto* | Struttura valida |
-
-*Pronto* certifica la **struttura**, non l'integrità dei contenuti né la pubblicazione nel CRM.
+- `NO_VAULT`: Nessun Vault selezionato.
+- `NOT_ACCESSIBLE`: Cartella inesistente o permessi insufficienti.
+- `INCOMPLETE`: Manca una cartella obbligatoria della struttura LIMEN.
+- `INVALID`: File di sistema, manifesto, frontmatter YAML o collegamenti simbolici non validi.
+- `READY` → **Pronto**: Struttura valida e registrata.
 
 ---
 
@@ -41,191 +37,110 @@ Stati possibili del Vault (validazione in `vault.rs`):
 
 | Scheda | Che cosa conta |
 | --- | --- |
-| File Markdown | Tutti i `.md` del Vault, inclusi quelli di sistema (le copie in `SNAPSHOTS` sono escluse) |
-| Fonti originali | Documenti in `20_RAW_SOURCES` |
-| File delle proposte | Bozze e revisioni salvate (file, non decisioni in attesa) |
+| File Markdown | Note `.md` presenti nelle cartelle di conoscenza (le copie in `SNAPSHOTS` sono escluse) |
+| Fonti originali | Documenti e trascrizioni in `20_RAW_SOURCES` |
+| File delle proposte | Bozze e revisioni salvate in `90_PROPOSALS` |
 | Integrità SHA-256 | *Verificata* / *Non verificata* / *Differenze rilevate* |
 
-Con *Differenze rilevate* compare un riquadro con **File modificati**, **File mancanti**, **File aggiunti non presenti nel manifesto**.
-Le modifiche legittime (note nuove) producono differenze: non è una diagnosi di perdita dati.
-
-**Accesso rapido**: gli otto pulsanti categoria aprono la sezione Conoscenza; la categoria va poi scelta nella barra in alto (il pulsante non la preseleziona).
-**Integrazione AI** → pulsante **Chiedi al Vault**.
+Con *Differenze rilevate* compare un riquadro con **File modificati**, **File mancanti**, **File aggiunti non presenti nel manifesto**. Le modifiche legittime (nuove note approvate) producono differenze rispetto alla baseline: non è una diagnosi di perdita dati.
 
 ---
 
-## Chiedi al Vault
+## Chiedi — Ricerca nel Vault & Domande AI
+
+La schermata **Chiedi** unisce due strumenti complementari: la **Ricerca nel Vault** (Ricerca Ibrida locale) e le **Domande all'AI** (generazione con OpenAI).
+
+### Ricerca nel Vault (Ricerca Ibrida BM25 + Semantica)
 
 | Elemento | Funzione |
 | --- | --- |
-| Modello OpenAI | Identificativo del modello API. La disponibilità è verificata da OpenAI solo all'invio |
-| Domanda | Massimo 2.000 caratteri |
-| Includi bozze indicizzate e note non approvate | Se spuntata, entrano anche bozze. Le fonti RAW sono sempre escluse |
-| **ANTEPRIMA FONTI** | Prepara il contesto locale e mostra i documenti che verranno inviati. Nessun dato esce dal Mac |
-| **INVIA A OPENAI LE FONTI MOSTRATE** | Trasmette domanda e fonti mostrate a OpenAI |
-| **ANNULLA** | Interrompe l'attesa locale; una richiesta già inviata può essere elaborata comunque |
-| **SALVA RISPOSTA COME BOZZA** | Salva risposta, fornitore, modello e citazioni in `80_AI_OUTPUTS` |
+| Casella di ricerca | Termini, concetti, codici progetto, clienti, passaggi |
+| **Ricerca Ibrida (Semantica + Lessicale)** | Casella di spunta: se attiva, fonde i risultati BM25 e vettoriali bge-m3 |
+| Badge **RAG 100% LOCALE** | Compare quando il fornitore semantico attivo è locale e il servizio è in ascolto su loopback |
+| Filtri | Categorie (01–10, RAW, Proposte) · Filtro cliente · Filtro progetto |
+| **CANCELLA RICERCA** | Azzera il campo e i risultati |
+| **AGGIORNA INDICE** | Ricostruisce l'indice lessicale locale `SEARCH_INDEX.json` con lock di sicurezza |
+| Risultati | Elenco fino a 50 risultati con titolo, locator (es. `## Pagina 12` o `Paragrafi 34-36`), categoria, snippet di anteprima, percorso relativo nel Vault |
+| **Apri nel lettore** | Apre il visualizzatore nativo del passaggio con verifica di integrità dell'impronta crittografica SHA-256 |
 
-Dettagli verificati nel codice (`ai.rs`): l'anteprima scade dopo 300 secondi; la chiamata HTTPS ha un limite di 30 secondi; cambiare domanda, modello o spunta invalida l'anteprima.
+#### Modalità Degradata (Banner Giallo)
+Se la casella *Ricerca Ibrida* è attiva ma il servizio locale `llama-server` non è in esecuzione, non risponde entro il timeout o è caduto:
+- Compare il banner giallo `role="alert"`:  
+  `⚠️ Modalità degradata (solo ricerca lessicale): il servizio semantico locale non è attivo o non ha risposto. I risultati sono calcolati esclusivamente tramite indice lessicale BM25. Nessun dato è uscito dal Mac.`
+- Il badge dei risultati diventa **RAG LOCALE SPENTO (SOLO LESSICALE)**.
+- L'app **non si blocca mai e non invia dati all'esterno**: garantisce la risposta tramite l'indice BM25 con normalizzazione sulla lunghezza.
+- Per ripristinare il canale semantico, premi il pulsante **Riavvia Servizio Locale** oppure recati in *Avanzate → Collegamenti AI & MCP*.
 
----
-
-## Conoscenza
-
-Barra categorie: Clienti (`01_CLIENTS`), Progetti (`02_PROJECTS`), Marchi (`03_BRANDS`), Posizionamento (`04_POSITIONING`), Confezionamento (`05_PACKAGING_KNOWLEDGE`), Metodi (`06_METHODS`), Casi studio (`07_CASE_STUDIES`), Ricerca di mercato (`08_MARKET_RESEARCH`), Concorrenti (`09_COMPETITORS`), Contenuti approvati (`10_APPROVED_OUTPUTS`).
-
-- Legge i file direttamente, senza indice e senza rete.
-- **AGGIORNA CONOSCENZA** dopo modifiche in Obsidian.
-- Categoria vuota → *Nessuna nota Markdown in questa categoria.*
-- Anteprima di categoria limitata a 8 MiB.
-- Sola lettura: per scrivere usa Obsidian.
-
----
-
-## Fonti
-
-**CARICA DOCUMENTI** apre il selettore nativo macOS. **Configurazione dell’automazione** contiene modello, **ATTIVA AUTOMAZIONE** e **METTI IN PAUSA**. **Avanzamento e documenti** mostra esiti e destinazioni; **RIPROVA LE ECCEZIONI RISOLTE** riapre i tentativi dopo la correzione del problema.
-
-Conversione, categorie, collegamenti, indice e wiki sono automatici: formati e limiti in [[07_AUTOMAZIONE_DOCUMENTI]]. La tabella manuale sottostante è facoltativa e gestisce Markdown/testo/HTML, con bozze in `90_PROPOSALS`; non rappresenta l’intero elenco dei documenti automatici.
-
----
-
-## Ricerca
+### Chiedi al Vault (Generazione con OpenAI)
 
 | Elemento | Funzione |
 | --- | --- |
-| **AGGIORNA INDICE DI RICERCA** | Ricostruisce l'indice locale (il ciclo automatico lo aggiorna dopo le elaborazioni) |
-| Stato indice | Numero documenti e data dell'ultima indicizzazione |
-| Campo principale | Parole, titoli, proprietà, etichette |
-| Filtri | Tutte le categorie · Filtra per cliente · Filtra per progetto · Filtra per etichette (separate da virgole) · Filtra per stato (Approvata, Bozza, In revisione, Archiviata) |
-| Risultati | Titolo, categoria, rilevanza, percorso, estratto |
-
-I filtri confrontano i metadati delle note: se la nota non ha il campo `client`, non uscirà filtrando per cliente.
-Un indice danneggiato viene segnalato e conservato, non azzerato.
+| Modello OpenAI | Selettore del modello API (interroga OpenAI tramite la chiave nel Portachiavi) |
+| Area domanda | Massimo 2.000 caratteri |
+| Includi bozze indicizzate | Include nel contesto anche bozze non ancora approvate (le fonti RAW sono escluse) |
+| **ANTEPRIMA FONTI** | Mostra localmente i documenti e i byte esatti che compongono il contesto. Nessun dato esce dal Mac durante l'anteprima |
+| **INVIA A OPENAI LE FONTI MOSTRATE** | Trasmette domanda e sole fonti mostrate a OpenAI via HTTPS con timeout |
+| **SALVA RISPOSTA COME BOZZA** | Salva risposta, fornitore, modello e citazioni in `80_AI_OUTPUTS` per la revisione |
 
 ---
 
-## Risposte AI
+## Avanzate → Collegamenti AI & MCP
 
-| Elemento | Funzione |
+Questa sezione racchiude le connessioni intelligenti del Vault.
+
+### 1. Pannello «Motore semantico» (`SemanticEngineSettings.tsx`)
+Configura il fornitore per il calcolo dei vettori semantici e la ricerca ibrida:
+
+| Elemento | Descrizione e Funzionamento |
 | --- | --- |
-| **AGGIORNA** | Rilegge le risposte salvate |
-| Dettaglio | Testo, fonti, provenienza, cronologia revisioni |
-| Categoria + **CREA PROPOSTA DALLA RISPOSTA SALVATA** | Crea una copia da revisionare in Proposte |
-| **RECUPERA OPERAZIONE INTERROTTA** | Completa o chiude un'operazione locale rimasta a metà |
+| Badge di stato | **RAG 100% LOCALE** (verde) oppure **OPENAI (RETE)** (blu) |
+| Selettore fornitore | Scelta radio button esclusiva: **Locale (bge-m3, nessun dato esce dal Mac)** o **OpenAI (in rete)** |
+| **Modello locale (bge-m3-Q8_0.gguf)** | Riporta lo stato (*INSTALLATO (SHA-256 OK)* / *Non installato*), percorso assoluto (`~/Library/Application Support/LIMEN Vault/models/`) e dimensione esatta (605,2 MB · 634.553.760 byte) |
+| **SCARICA MODELLO (BGE-M3)** | Scarica il modello con barra percentuale di avanzamento e verifica automatica SHA-256 |
+| **SELEZIONA FILE GGUF LOCALE** | Selettore nativo file per importare un file `bge-m3-Q8_0.gguf` già scaricato, con verifica checksum |
+| **Servizio locale di calcolo** | Riporta lo stato: *ATTIVO (PORTA n)* / *SPENTO* / *ERRORE*, con il modello caricato e l'esito del controllo `/health` |
+| **AVVIA / ARRESTA SERVIZIO LOCALE** | Gestisce il ciclo di vita del processo `llama-server`. Il sistema alloca una porta libera loopback `127.0.0.1` a ogni avvio |
+| **AGGIORNA STATO** | Interroga lo stato del processo e l'endpoint di salute locale |
+| **Cache semantica del Vault** | Riporta il numero di passaggi indicizzati a 1024 dimensioni (es. `9458 passaggi indicizzati (1024 dim)`) e segnala se la cache è allineata al fornitore attivo |
+| **RICALCOLA CACHE SEMANTICA** | Avvia il calcolo progressivo della cache tramite file di staging atomico `00_SYSTEM/EMBEDDINGS_CACHE.staging.json`. Non distrugge la cache precedente finché il calcolo non è al 100% |
+| **ANNULLA RICALCOLO** | Interrompe il calcolo salvando i progressi intermedi: l'operazione è riprendibile |
+
+### 2. Collegamenti AI (Chiave OpenAI)
+- **SALVA CHIAVE**: salva la chiave API OpenAI nel Portachiavi sicuro di macOS. Non viene mai salvata in chiaro nei file del Vault né esposta in variabili d'ambiente.
+- **VERIFICA PORTACHIAVI**: verifica la presenza della chiave.
+- **RIMUOVI CHIAVE**: cancella la chiave dal Portachiavi.
+
+### 3. MCP in sola lettura · Vault corrente
+- **ATTIVA MCP LOCALE**: avvia un server locale su `127.0.0.1:<porta>/mcp` con token segreto per consentire a client esterni (es. Codex, Claude Desktop) di consultare il Vault in sola lettura (`list_vaults`, `search_vault`, `read_document`).
+- **REVOCA MCP**: spegne il server e invalida il token.
 
 ---
 
-## Proposte
+## Fonti (`20_RAW_SOURCES`)
 
-| Elemento | Funzione |
-| --- | --- |
-| Importa una bozza compilata da revisionare | Categoria → apri bozza → **IMPORTA BOZZA MOSTRATA** (copia con provenienza, l'originale resta) |
-| Stato *Da revisionare* / *Approvata* / *Rifiutata* | Stato della decisione |
-| Testo della nuova revisione + **SALVA NUOVA REVISIONE (CONSERVA LA PRECEDENTE)** | Nuova revisione; le precedenti restano |
-| Confronta il testo attuale con la revisione proposta | Testo attuale / Testo proposto |
-| Nuova destinazione (.md) | Percorso relativo nella cartella della categoria, file non esistente |
-| Ho verificato questa revisione e la destinazione indicata. | Conferma obbligatoria |
-| **APPROVA REVISIONE MOSTRATA** | Scrive la nota con `status: approved` |
-| Motivo del rifiuto + **RIFIUTA REVISIONE MOSTRATA** | Registra il rifiuto, non cancella |
-| **RECUPERA OPERAZIONE INTERROTTA** | Come in Risposte AI |
-
-Regole di destinazione (`proposals.rs`): la cartella deve essere quella della categoria (`client` → `01_CLIENTS`, …, `approved_output` → `10_APPROVED_OUTPUTS`), il file deve terminare in `.md`, non può esistere già con contenuto diverso, `20_RAW_SOURCES` è escluso, i collegamenti simbolici sono rifiutati, e se la revisione è cambiata dopo la visualizzazione l'approvazione viene respinta.
+- Pulsante verde **CARICA DOCUMENTI**: apre il selettore file nativo macOS per importare PDF, presentazioni, fogli Excel, immagini o trascrizioni.
+- L'estrattore nativo `limen-extract` esegue OCR ed estrazione testo sul Mac, creando i passaggi nel catalogo `00_SYSTEM/VAULT_CATALOG.json`.
+- I file originali rimangono immutabili e in sola lettura.
 
 ---
 
-## Copie locali
+## Proposte (`90_PROPOSALS`)
 
-| Elemento | Funzione |
-| --- | --- |
-| Nota facoltativa per la copia... | Descrizione libera |
-| **CREA COPIA LOCALE** | Copia verificata in `00_SYSTEM/SNAPSHOTS/snap-…/` |
-| **VERIFICA INTEGRITÀ** | Ricalcola le impronte del Vault e delle copie |
-| Colonne | ID copia · Data di creazione · Nota / Descrizione · Numero di file · Stato |
-| Stato | *Verificata (SHA-256)* · *Incompleta* (manifesto assente) · *Danneggiata* |
-
-Non esiste un pulsante di ripristino. Una copia sullo stesso disco non protegge da un guasto del disco.
-Un arresto forzato può lasciare cartelle `.pending-*`: sono ignorate.
+- Elenco delle bozze generate da trascrizioni o risposte AI.
+- **Nuova destinazione (.md)**: percorso proposto nella cartella corretta (es. `01_CLIENTS/acme.md`).
+- Casella di controllo obbligatoria: *“Ho verificato questa revisione e la destinazione indicata”*.
+- Pulsante verde **APPROVA REVISIONE MOSTRATA**: promuove la proposta a nota approvata in `01`–`10` con `status: approved` e registra la decisione con hash crittografico per fini di audit.
 
 ---
 
-## Trasferimenti
+## Copie locali e Ripristino
 
-Due schede: **Operazioni Trasferimento** e **Impostazioni Copia cloud**.
-
-**Impostazioni Copia cloud**
-
-| Elemento | Funzione |
-| --- | --- |
-| Codice di collegamento fornito dall'amministratore | Testo JSON con `endpoint` e `token` (campo nascosto) |
-| **Collega archivio** | Salva configurazione e token (nel Portachiavi) e prova il collegamento |
-| Bucket R2 di destinazione | Sola lettura; prefisso isolato `limen/` |
-| **Test Connessione** | Prova il collegamento senza inviare contenuti |
-| **Disconnetti** | Rimuove configurazione e token da questo Mac. Non ritira pubblicazioni |
-
-**Operazioni Trasferimento**
-
-| Operazione | Contenuto | Visibile al CRM |
-| --- | --- | --- |
-| **Pubblica conoscenza** | Solo note approvate in `01`–`10`, selezionate da te | Sì |
-| **Carica versione** | Copia privata: note, fonti, revisioni | No |
-| **Scarica copia** | Recupero in una **nuova** cartella `LIMEN-copy-<id>` | — |
-
-Altri controlli: **Versioni precedenti da recuperare** → **Carica versioni** → elenco (*Ultima versione* o data — numero file); **Conferma ed Esegui**; **Annulla trasferimento**; **Riprendi trasferimento interrotto**; **Ritira pubblicazione** → **Conferma ritiro** / **Mantieni pubblicazione**.
-
-Stati cloud: *Pronto*, *Non configurato*, *Non connesso*, *Disattivato*, *Verifica in corso*, *Autenticazione richiesta*, *Trasferimento in corso*, *Non riuscito*, *Conflitto*, *Collegamento in corso*, *Scaduto*, *Revocato*.
-
-Ogni nuova pubblicazione **sostituisce** la precedente selezione: includi anche le note che vuoi mantenere pubblicate.
-Limiti del servizio (`docs/SYNC_PROTOCOL.md`): 1.000 documenti per versione, 8 MiB per file, 256 MiB totali.
+- **CREA COPIA LOCALE**: genera uno snapshot immutabile in `00_SYSTEM/SNAPSHOTS/snap-…/` con manifesto crittografico SHA-256.
+- **VERIFICA INTEGRITÀ**: ricalcola le impronte di tutti i file e segnala eventuali discrepanze (*Verificata*, *Incompleta*, *Danneggiata*).
 
 ---
 
-## Sistema
+## Trasferimenti (Cloudflare R2)
 
-Tabella *Stato del sistema locale*: Cartella del Vault · Applicazione Obsidian (*Rilevata e disponibile* / *Non installata o non rilevata*) · Motore delle copie locali · Ambiente di esecuzione (*Applicazione nativa macOS* / *Anteprima nel browser*) · Servizi remoti.
-La riga *Servizi remoti* è un testo fisso: **non** controlla MEMAI, CRM o R2. Per R2 usa **Test Connessione**.
-
----
-
-## Impostazioni
-
-**Collegamenti AI**
-
-| Elemento | Funzione |
-| --- | --- |
-| Chiave API OpenAI + **SALVA CHIAVE** | Salva nel Portachiavi macOS |
-| **VERIFICA PORTACHIAVI** | Controlla che la chiave ci sia (non che sia valida) |
-| **RIMUOVI CHIAVE** | Elimina la chiave usata da LIMEN |
-
-**MCP in sola lettura · Vault corrente**
-
-| Elemento | Funzione |
-| --- | --- |
-| **ATTIVA MCP LOCALE** | Avvia un endpoint `http://127.0.0.1:<porta>/mcp` con token e ID Vault |
-| Mostra il token di collegamento — mantienilo riservato | Rivela il token |
-| **REVOCA MCP** | Ferma l'endpoint e invalida il token |
-
-Strumenti esposti (`mcp.rs`): `list_vaults`, `search_vault`, `read_document`. Nient'altro: sola lettura, note approvate e note/wiki automatiche correnti e indicizzate. Il riavvio dell'app spegne l'MCP.
-
-**ChatGPT Business · tunnel privato** (facoltativo)
-
-| Elemento | Funzione |
-| --- | --- |
-| ID tunnel · ID organizzazione · Chiave di esecuzione del tunnel | Dati forniti dalla configurazione OpenAI Business |
-| **SALVA CHIAVE TUNNEL** | Salva la chiave nel Portachiavi |
-| **AVVIA TUNNEL BUSINESS** | Avvia il tunnel; il Mac e l'app devono restare accesi |
-| **ARRESTA TUNNEL BUSINESS** | Blocca nuove letture. Scollega anche il plugin in ChatGPT per revocare lato remoto |
-
-Il tunnel non si avvia da solo all'apertura dell'app; alla chiusura dell'app viene arrestato.
-
-**Impostazioni del Vault**: il campo *Cartella locale del Vault* mostra il percorso in uso. Non modificarlo: cambia il testo senza validare né spostare nulla. Per cambiare Vault riavvia l'app.
-
----
-
-## Menu nativi macOS
-
-Voci descritte nel manuale UI del 13 settembre 2026 (menu standard macOS, non ricontrollate nel codice): LIMEN Vault (Informazioni, Servizi, Nascondi, Esci) · File (Chiudi finestra) · Modifica (Annulla, Ripeti, Taglia, Copia, Incolla, Seleziona tutto — solo per il testo) · Vista (Schermo intero) · Finestra · Aiuto.
-
-## Guida & Aiuto
-
-Guida integrata offline con ricerca nei titoli/riepiloghi, indice dei capitoli e sezione Fonti automatica. I file HELP e il manuale nel pacchetto completano la consultazione.
+- **Canale Pubblicato (CRM)**: pubblica solo le note approvate delle cartelle `01`–`10` esplicitamente selezionate.
+- **Canale Privato**: copia di sicurezza crittografata del Vault protetta da token dedicato, non leggibile dal CRM.

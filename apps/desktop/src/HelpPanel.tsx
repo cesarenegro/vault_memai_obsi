@@ -21,6 +21,9 @@ import {
   ChevronRight,
   Sparkles,
   RotateCw,
+  Cpu,
+  ShieldCheck,
+  Zap,
 } from 'lucide-react';
 
 interface HelpSection {
@@ -140,7 +143,7 @@ export function HelpPanel({
   onOpenObsidian?: () => void;
   onNavigateTab?: (tab: string) => void;
 }) {
-  const [activeChapterId, setActiveChapterId] = useState('fonti');
+  const [activeChapterId, setActiveChapterId] = useState('rag-locale');
   const [searchQuery, setSearchQuery] = useState('');
 
   const chapters: HelpSection[] = useMemo(
@@ -150,61 +153,55 @@ export function HelpPanel({
         title: '1. I concetti essenziali',
         badge: 'Base',
         icon: <Compass size={16} />,
-        summary: 'Che cos’è un Vault, le 4 azioni da distinguere, ciclo di vita e privacy locale.',
+        summary: 'Cos’è un Vault, distinzione tra RAG locale e OpenAI, ciclo di vita e privacy a rete zero.',
         content: (
           <div>
             <h3>Un Vault è una cartella di lavoro sul tuo Mac</h3>
             <p>
-              Il <strong>Vault</strong> contiene note Markdown, documenti originali, bozze e informazioni di sistema. Rimane salvato sul tuo Mac, indipendente dall’applicazione.
+              Il <strong>Vault</strong> contiene note Markdown, documenti originali, bozze e indici di sistema. Rimane salvato sul tuo Mac ed è pienamente compatibile e consultabile con Obsidian.
             </p>
             <ul>
-              <li><strong>Obsidian</strong> serve per scrivere e modificare le note liberamente.</li>
-              <li><strong>LIMEN Vault</strong> serve per consultarle, indicizzarle, generare automaticamente note e wiki dai documenti grezzi, fare domande all’AI con anteprima locale, revisionare proposte e gestire copie verificate e pubblicazioni.</li>
+              <li><strong>Obsidian</strong> serve per scrivere e modificare liberamente le note di conoscenza.</li>
+              <li><strong>LIMEN Vault</strong> serve per consultarle, indicizzarle, estrarre trascrizioni e documenti con OCR, calcolare vettori semantici sul Mac a rete zero, fare ricerche ibride BM25 + semantiche, interrogare l’AI con anteprima locale e gestire copie verificate.</li>
             </ul>
 
-            <h4>Quattro azioni da non confondere</h4>
+            <h4>Due motori di intelligenza: Locale vs Rete</h4>
             <div style={{ overflowX: 'auto', margin: '14px 0' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #cbd5e1', textAlign: 'left', backgroundColor: '#f1f5f9' }}>
-                    <th style={{ padding: '8px 12px' }}>Azione</th>
-                    <th style={{ padding: '8px 12px' }}>Cosa ottieni</th>
-                    <th style={{ padding: '8px 12px' }}>Dove trovi il risultato</th>
+                    <th style={{ padding: '8px 12px' }}>Funzionalità</th>
+                    <th style={{ padding: '8px 12px' }}>Motore & Tecnologia</th>
+                    <th style={{ padding: '8px 12px' }}>Dati in Rete</th>
+                    <th style={{ padding: '8px 12px' }}>Costo / Token</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>Salvare una risposta AI</td>
-                    <td style={{ padding: '8px 12px' }}>Una bozza locale da controllare</td>
-                    <td style={{ padding: '8px 12px' }}><strong>Risposte AI</strong>, file in <code>80_AI_OUTPUTS</code></td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>Ricerca Ibrida Locale (RAG)</td>
+                    <td style={{ padding: '8px 12px' }}>Indice BM25 + Vettori <strong>bge-m3</strong> via <code>llama-server</code> interno</td>
+                    <td style={{ padding: '8px 12px', color: '#166534', fontWeight: 700 }}>Zero Byte (100% offline su 127.0.0.1)</td>
+                    <td style={{ padding: '8px 12px' }}>Gratuito, illimitato</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>Approvare una proposta</td>
-                    <td style={{ padding: '8px 12px' }}>Una nota approvata nella categoria scelta</td>
-                    <td style={{ padding: '8px 12px' }}><strong>Conoscenza</strong>, cartelle da <code>01</code> a <code>10</code></td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>Pubblicare conoscenza</td>
-                    <td style={{ padding: '8px 12px' }}>Una selezione di note accessibile al CRM</td>
-                    <td style={{ padding: '8px 12px' }}><strong>Trasferimenti</strong>, pubblicazione R2 corrente</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>Chiedi al Vault (AI)</td>
+                    <td style={{ padding: '8px 12px' }}>Modello OpenAI (es. gpt-4o) con chiave nel Portachiavi</td>
+                    <td style={{ padding: '8px 12px', color: '#854d0e' }}>Solo le fonti mostrate in Anteprima Locale</td>
+                    <td style={{ padding: '8px 12px' }}>A consumo API OpenAI</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>Creare una copia</td>
-                    <td style={{ padding: '8px 12px' }}>Una versione protetta per recuperare il lavoro</td>
-                    <td style={{ padding: '8px 12px' }}><strong>Copie locali</strong> (o copia privata cloud)</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>Classificazione Automatica RAW</td>
+                    <td style={{ padding: '8px 12px' }}>Estrattore nativo Swift sul Mac + chiamata OpenAI opt-in</td>
+                    <td style={{ padding: '8px 12px', color: '#854d0e' }}>Solo se automazione attivata dall’utente</td>
+                    <td style={{ padding: '8px 12px' }}>A consumo API OpenAI</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            <Callout type="warning" title="Regola fondamentale">
-              Salvare una risposta non la approva. Approvare una nota non la pubblica automaticamente nel cloud o nel CRM. Una copia privata cloud non è visibile al CRM.
+            <Callout type="info" title="Privacy e Garanzia Rete Zero">
+              Con il fornitore semantico <strong>Locale</strong>, nessun dato lascia mai il tuo Mac. Il calcolo degli embedding semantici e la ricerca lessicale BM25 avvengono esclusivamente sulla memoria del Mac tramite socket di loopback interno (<code>127.0.0.1</code>), verificato e isolato.
             </Callout>
-
-            <h4>Quando il lavoro resta sul Mac</h4>
-            <p>
-              Consultare note, cercare parole nell’indice, compilare fonti in bozze, revisionare proposte e creare copie locali <strong>non richiede alcuna connessione di rete</strong> né invia dati all’esterno. L’automazione attivata invia il testo estratto a OpenAI per classificazione e wiki. Le domande AI e i trasferimenti cloud richiedono anch’essi la rete.
-            </p>
           </div>
         ),
       },
@@ -213,98 +210,224 @@ export function HelpPanel({
         title: '2. Primi passi',
         badge: 'Guida rapida',
         icon: <GraduationCap size={16} />,
-        summary: 'Aprire o creare un Vault, collegare Obsidian, prime note e verifica copie.',
+        summary: 'Aprire o creare un Vault, configurare il RAG locale, collegare Obsidian e prime ricerche.',
         content: (
           <div>
             <h3>Guida rapida in 4 passi</h3>
 
             <h4>Passo 1 — Apri o crea il Vault</h4>
             <ol>
-              <li>Avvia <strong>LIMEN Vault</strong> sul Mac.</li>
-              <li>Nella schermata di benvenuto, inserisci il percorso della cartella locale (es. <code>/Users/nome/Documents/VAULT</code>).</li>
-              <li>Premi <strong>APRI VAULT ESISTENTE</strong> se possiedi già un Vault LIMEN valido, oppure <strong>CREA NUOVO VAULT</strong> se la cartella è vuota.</li>
+              <li>Avvia <strong>LIMEN Vault v3</strong> sul Mac.</li>
+              <li>Nella schermata di benvenuto, seleziona il percorso della cartella locale (es. <code>/Users/nome/Documents/VAULT</code>).</li>
+              <li>Premi <strong>APRI VAULT ESISTENTE</strong> se possiedi già un Vault LIMEN, oppure <strong>CREA NUOVO VAULT</strong> se la cartella è vuota.</li>
             </ol>
-            <p><strong>Risultato atteso:</strong> la finestra si apre sulla <strong>Panoramica</strong> con stato <strong>Pronto</strong>.</p>
+            <p><strong>Risultato atteso:</strong> la schermata si apre sulla <strong>Panoramica</strong> con stato <strong>Pronto</strong>.</p>
 
-            <h4>Passo 2 — Collega Obsidian</h4>
+            <h4>Passo 2 — Configura il RAG Locale (100% Offline)</h4>
+            <ol>
+              <li>Vai in <strong>Avanzate e Manutenzione → Collegamenti AI & MCP</strong>.</li>
+              <li>Nel pannello <strong>Motore semantico</strong>, assicurati che sia selezionato <strong>Locale (bge-m3, nessun dato esce dal Mac)</strong>.</li>
+              <li>Se il modello non è installato, premi <strong>SCARICA MODELLO (BGE-M3)</strong> (~605 MB) oppure seleziona un file <code>.gguf</code> già presente sul disco.</li>
+              <li>Premi <strong>AVVIA SERVIZIO LOCALE</strong>: il sistema avvierà <code>llama-server</code> su una porta libera locale e verificherà la salute (<code>/health</code>).</li>
+              <li>Se la cache indica disallineamento, premi <strong>RICALCOLA CACHE</strong> per generare i vettori semantici sul Mac.</li>
+            </ol>
+
+            <h4>Passo 3 — Collega Obsidian</h4>
             <ol>
               <li>Premi il pulsante <strong>Apri in Obsidian</strong> in basso a sinistra.</li>
-              <li>Se Obsidian non conosce ancora la cartella, scegli <em>Open folder as vault</em> e seleziona la cartella del Vault.</li>
-              <li>Torna in LIMEN e premi di nuovo <em>Apri in Obsidian</em>.</li>
+              <li>Se Obsidian non conosce ancora la cartella, scegli <em>Open folder as vault</em> e indica il percorso del Vault.</li>
+              <li>Torna in LIMEN: ora puoi consultare e scrivere liberamente.</li>
             </ol>
 
-            <h4>Passo 3 — Configura e carica i documenti</h4>
-            <ol>
-              <li>In <strong>Impostazioni</strong> salva la chiave API. In <strong>Fonti</strong> indica il modello e premi <strong>ATTIVA AUTOMAZIONE</strong>.</li>
-              <li>Premi <strong>CARICA DOCUMENTI</strong> e seleziona gli originali. LIMEN converte, classifica e salva note e wiki.</li>
-              <li>Attendi l’esito in <strong>Avanzamento e documenti</strong>, poi consulta <strong>Conoscenza</strong> o <strong>Ricerca</strong>. L’indice delle elaborazioni viene aggiornato automaticamente.</li>
-            </ol>
-
-            <h4>Passo 4 — Salva la prima copia locale</h4>
+            <h4>Passo 4 — Carica documenti e cerca</h4>
             <p>
-              Vai in <strong>Copie locali</strong>, scrivi una nota (es. <em>Configurazione iniziale</em>) e premi <strong>CREA COPIA LOCALE</strong>. Verifica che la card mostri lo stato <strong>Verificata (SHA-256)</strong>.
+              Premi il pulsante verde <strong>CARICA DOCUMENTI</strong> per importare PDF, presentazioni, trascrizioni o fogli di calcolo in <code>20_RAW_SOURCES</code>. L’estrattore nativo estrae il testo in passaggi; poi vai nella scheda <strong>Chiedi (Ricerca nel Vault)</strong>, attiva <strong>Ricerca Ibrida</strong> e interroga i tuoi contenuti per concetto e per parole chiave.
             </p>
           </div>
         ),
       },
       {
-        id: 'routine',
-        title: '3. La routine quotidiana',
-        badge: 'Operativo',
-        icon: <RotateCw size={16} />,
-        summary: 'Cosa aggiornare dopo ogni modifica e come cercare con precisione.',
+        id: 'rag-locale',
+        title: '3. Motore Semantico & RAG 100% Locale',
+        badge: 'RAG Locale',
+        icon: <Sparkles size={16} />,
+        summary: 'Come funziona bge-m3 su Mac: modello Q8_0, porta dinamica, salute /health, zero rete e staging.',
         content: (
           <div>
-            <h3>Quale aggiornamento serve?</h3>
+            <h3>Architettura del RAG Locale integrato</h3>
+            <p>
+              LIMEN Vault v3 integra un motore di intelligenza semantica locale basato su <strong>llama-server</strong> e il modello <strong>BAAI/bge-m3</strong> quantizzato a 8 bit (<code>bge-m3-Q8_0.gguf</code>, 1024 dimensioni).
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, margin: '16px 0' }}>
+              <div style={{ padding: 14, backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #cbd5e1' }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', marginBottom: 4 }}>Caratteristiche del Modello Locale</div>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#475569', lineHeight: 1.6 }}>
+                  <li><strong>Modello:</strong> bge-m3-Q8_0.gguf</li>
+                  <li><strong>Dimensioni vettore:</strong> 1024 float</li>
+                  <li><strong>Dimensione file:</strong> 605,2 MB (634.553.760 byte)</li>
+                  <li><strong>SHA-256 atteso:</strong> <code>950f4a8e5e19477a...</code></li>
+                  <li><strong>Percorso:</strong> <code>~/Library/Application Support/LIMEN Vault/models/</code></li>
+                </ul>
+              </div>
+
+              <div style={{ padding: 14, backgroundColor: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#166534', marginBottom: 4 }}>Isolamento di Sicurezza</div>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#14532d', lineHeight: 1.6 }}>
+                  <li><strong>Endpoint dinamico:</strong> <code>http://127.0.0.1:&lt;porta_libera&gt;/v1/embeddings</code></li>
+                  <li><strong>Nessuna porta cablata:</strong> assegnata a runtime tramite socket OS</li>
+                  <li><strong>Controllo Loopback:</strong> qualsiasi richiesta esterna viene respinta</li>
+                  <li><strong>Nessuna API Key:</strong> non serve e non viene interrogato il Portachiavi</li>
+                  <li><strong>Processo monitorato:</strong> arresto pulito alla chiusura dell’app</li>
+                </ul>
+              </div>
+            </div>
+
+            <h4>Il Pannello «Motore semantico» (Avanzate → Collegamenti AI & MCP)</h4>
+            <p>
+              Dal pannello dedicato puoi controllare ogni aspetto del RAG locale:
+            </p>
+            <ul>
+              <li><strong>Scelta Fornitore:</strong> scegli tra <em>Locale (bge-m3)</em> e <em>OpenAI (text-embedding-3-small)</em> con un clic. Nessun URL da digitare a mano.</li>
+              <li><strong>Installazione Modello:</strong> visualizza lo stato (<em>INSTALLATO (SHA-256 OK)</em>), consente il download progressivo con barra percentuale oppure la selezione di un file <code>.gguf</code> preesistente con verifica automatica del checksum.</li>
+              <li><strong>Controllo Servizio:</strong> mostra lo stato (<em>ATTIVO (PORTA n)</em> / <em>SPENTO</em> / <em>ERRORE</em>), con pulsanti per avviare, arrestare o aggiornare lo stato del processo. In caso di anomalia, le ultime righe di log di <code>llama-server.log</code> vengono mostrate a video.</li>
+              <li><strong>Cache del Vault:</strong> mostra il numero di passaggi vettorializzati nel Vault e segnala se la cache è allineata a 1024 dimensioni. In caso di cambio fornitore o nuovi documenti, un pulsante consente il ricalcolo.</li>
+            </ul>
+
+            <h4>Migrazione Atomica della Cache con Staging</h4>
+            <p>
+              Quando si ricalcola la cache, LIMEN scrive i nuovi vettori in un file temporaneo <code>00_SYSTEM/EMBEDDINGS_CACHE.staging.json</code>. La cache precedente rimane pienamente funzionante durante tutto il calcolo. Solo al raggiungimento del 100% la nuova cache viene promossa atomicamente. Se il processo viene interrotto o l’app chiusa, l’operazione può essere ripresa senza dover ripartire da zero.
+            </p>
+          </div>
+        ),
+      },
+      {
+        id: 'ricerca-ibrida',
+        title: '4. Ricerca Ibrida (BM25 + Semantica)',
+        badge: 'Ricerca v3',
+        icon: <Search size={16} />,
+        summary: 'Come opera la ricerca: formula BM25 normalizzata sulla lunghezza, fusione semantica F2 e banner degradato.',
+        content: (
+          <div>
+            <h3>I due canali della Ricerca Ibrida</h3>
+            <p>
+              Nella scheda <strong>Chiedi</strong>, la casella <strong>Ricerca Ibrida</strong> unisce i punti di forza del testo esatto e dell’intelligenza vettoriale:
+            </p>
+
             <div style={{ overflowX: 'auto', margin: '14px 0' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #cbd5e1', textAlign: 'left', backgroundColor: '#f1f5f9' }}>
-                    <th style={{ padding: '8px 12px' }}>Cosa hai fatto</th>
-                    <th style={{ padding: '8px 12px' }}>Azione consigliata</th>
-                    <th style={{ padding: '8px 12px' }}>Serve aggiornare l’indice?</th>
+                    <th style={{ padding: '8px 12px' }}>Canale</th>
+                    <th style={{ padding: '8px 12px' }}>Algoritmo & Formula</th>
+                    <th style={{ padding: '8px 12px' }}>Cosa trova meglio</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px' }}>Modificato o aggiunto una nota in Obsidian</td>
-                    <td style={{ padding: '8px 12px' }}>Tasto <strong>Aggiorna</strong> in topbar, o in <strong>Conoscenza</strong></td>
-                    <td style={{ padding: '8px 12px' }}>Sì, in <strong>Ricerca</strong></td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px' }}>Aggiunto un file in <code>20_RAW_SOURCES</code></td>
-                    <td style={{ padding: '8px 12px' }}>In <strong>Fonti</strong> controlla <strong>Avanzamento e documenti</strong></td>
-                    <td style={{ padding: '8px 12px' }}>Automatico a fine elaborazione, se attivato</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '8px 12px' }}>Approvato una proposta in Proposte</td>
-                    <td style={{ padding: '8px 12px' }}>La nota è creata; controlla in <strong>Conoscenza</strong></td>
-                    <td style={{ padding: '8px 12px' }}>Sì, per renderla ricercabile</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>1. Lessicale (BM25)</td>
+                    <td style={{ padding: '8px 12px' }}>
+                      BM25 con <code>k1=1,2</code>, <code>b=0,75</code> e fattore di lunghezza documento <code>dl / avgdl</code>
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      Nomi propri, codici di progetto, sigle, termini tecnici esatti, parole rare
+                    </td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '8px 12px' }}>Salvato una risposta AI da Chiedi al Vault</td>
-                    <td style={{ padding: '8px 12px' }}>Vai in <strong>Risposte AI</strong> e controlla la bozza</td>
-                    <td style={{ padding: '8px 12px' }}>Sì, se vuoi cercarla</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>2. Semantico (Vettoriale)</td>
+                    <td style={{ padding: '8px 12px' }}>
+                      Similarità coseno su vettori contestualizzati a 1024 dimensioni (bge-m3)
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      Sinonimi, concetti affini (es. <em>private label</em> per <em>marca privata</em>), parafrasi
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            <Callout type="tip" title="Tasto rapido">
-              Il nuovo pulsante <strong>Aggiorna</strong> al centro della barra superiore ricarica l’intero stato del Vault, il numero di pagine, le fonti e le proposte con un solo clic.
-            </Callout>
+            <h4>Come vengono fusi i risultati (Formula F2)</h4>
+            <p>
+              I candidati dei due motori vengono riconciliati con <strong>coalescenza per documento</strong> (azzerando duplicati in classifica). I punteggi lessicali e semantici vengono normalizzati su scala min-max e combinati con la formula:
+            </p>
+            <div style={{ padding: '10px 14px', backgroundColor: '#f1f5f9', borderRadius: 6, fontFamily: 'monospace', fontSize: 13, margin: '10px 0' }}>
+              Punteggio = max(lessicale, semantico) + 0,20 × min(lessicale, semantico) + bonus_esatto
+            </div>
+            <p style={{ fontSize: 13, color: '#475569' }}>
+              Se un documento eccelle sia nel significato sia nelle parole esatte, riceve un forte incremento; se compare solo in uno dei due rami, non viene penalizzato ingiustamente.
+            </p>
+
+            <h4>Che cos’è la Modalità Degradata (Banner Giallo)?</h4>
+            <div
+              role="alert"
+              style={{
+                padding: '12px 16px',
+                borderRadius: 8,
+                backgroundColor: '#fffbeb',
+                border: '1px solid #fef3c7',
+                color: '#92400e',
+                fontSize: 13,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                margin: '14px 0',
+              }}
+            >
+              <span style={{ fontSize: 20 }}>⚠️</span>
+              <div>
+                <strong>Modalità degradata (solo ricerca lessicale):</strong> se il servizio locale <code>llama-server</code> è spento, è caduto o non risponde entro il timeout, LIMEN non si blocca e non va mai in errore: esegue la ricerca sfruttando l’indice lessicale BM25.
+              </div>
+            </div>
+            <p>
+              Quando scatta la modalità degradata:
+            </p>
+            <ul>
+              <li><strong>Nessun dato esce dal Mac:</strong> l’applicazione non ripiega mai silenziosamente su OpenAI se il fornitore è locale.</li>
+              <li><strong>Segnalazione visiva:</strong> compare il banner giallo e il badge accanto ai risultati indica <em>RAG LOCALE SPENTO (SOLO LESSICALE)</em>.</li>
+              <li><strong>Ripristino:</strong> basta recarsi in <em>Collegamenti AI & MCP</em> o premere <em>Riavvia Servizio Locale</em> per tornare alla ricerca ibrida completa.</li>
+            </ul>
+          </div>
+        ),
+      },
+      {
+        id: 'fonti',
+        title: '5. Caricamento e conoscenza automatica',
+        badge: 'RAW',
+        icon: <FolderArchive size={16} />,
+        summary: 'Carica file grezzi in 20_RAW_SOURCES: OCR nativo Swift, chunking a 1200 caratteri e indicizzazione.',
+        content: (
+          <div>
+            <h3>La pipeline di ingestione dei documenti</h3>
+            <p>
+              La cartella <code>20_RAW_SOURCES/</code> è il deposito protetto per i materiali originali. I file caricati rimangono <strong>immutabili e in sola lettura</strong>.
+            </p>
+
+            <h4>Formati supportati dall’estrattore nativo (limen-extract)</h4>
+            <ul>
+              <li><strong>Testo e Markdown:</strong> <code>.txt</code>, <code>.md</code> letti direttamente.</li>
+              <li><strong>Documenti e Presentazioni:</strong> <code>.pdf</code>, <code>.docx</code>, <code>.pptx</code>, <code>.xlsx</code>.</li>
+              <li><strong>Immagini e Scansioni:</strong> <code>.png</code>, <code>.jpg</code> con OCR integrato tramite framework Vision di Apple macOS.</li>
+            </ul>
+
+            <h4>Come vengono segmentati i passaggi (Chunking)</h4>
+            <p>
+              I testi estratti vengono suddivisi in passaggi di circa <strong>1.200 caratteri</strong> con sovrapposizione di 150 caratteri. I paragrafi lunghi sono spezzati su confini di frase. Le intestazioni di pagina (es. <code>## Pagina 3</code> o <code>## Slide 5</code>) fungono da cesura netta e generano il <strong>locator</strong> del passaggio.
+            </p>
+            <p>
+              Per ogni passaggio, il testo inviato al calcolo semantico viene <strong>contestualizzato</strong>: il titolo del documento, la categoria e il locator vengono anteposti al testo, garantendo che anche passaggi brevi o frammentari mantengano il contesto semantico originale del documento.
+            </p>
           </div>
         ),
       },
       {
         id: 'note',
-        title: '4. Note e cartelle',
+        title: '6. Note e cartelle di conoscenza',
         badge: 'Struttura',
         icon: <FolderTree size={16} />,
-        summary: 'Mappatura delle cartelle da 01 a 10, RAW, Frontmatter e proprietà obbligatorie.',
+        summary: 'Mappatura delle cartelle da 01 a 10, RAW, Frontmatter YAML e proprietà obbligatorie.',
         content: (
           <div>
-            <h3>Dove mettere ogni contenuto</h3>
+            <h3>Struttura del Vault Obsidian-compatibile</h3>
             <div style={{ overflowX: 'auto', margin: '14px 0' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
@@ -330,7 +453,7 @@ export function HelpPanel({
               </table>
             </div>
 
-            <h4>Esempio di nota con Frontmatter corretto</h4>
+            <h4>Esempio di Frontmatter YAML corretto</h4>
             <CodeBlock
               language="markdown"
               code={`---
@@ -340,8 +463,8 @@ title: "Cliente Acme SpA"
 type: client
 client: cliente-acme
 status: approved
-created_at: "2026-09-16T10:00:00Z"
-updated_at: "2026-09-16T10:00:00Z"
+created_at: "2026-09-20T10:00:00Z"
+updated_at: "2026-09-20T10:00:00Z"
 tags: [pasta, packaging, bio]
 ---
 
@@ -350,186 +473,212 @@ tags: [pasta, packaging, bio]
 Produttore italiano di prodotti da forno.
 Richiede soluzioni di packaging compostabile.`}
             />
-
-            <Callout type="info" title="Regola importante">
-              I nomi delle proprietà tecniche (<code>status</code>, <code>client</code>, <code>type</code>) e i relativi valori (<code>approved</code>, <code>draft</code>) non vanno mai tradotti nei file Markdown: l’interfaccia grafica italiana li traduce automaticamente a video.
-            </Callout>
-          </div>
-        ),
-      },
-      {
-        id: 'fonti',
-        title: '5. Caricamento e conoscenza automatica',
-        badge: 'RAW',
-        icon: <FolderArchive size={16} />,
-        summary: 'Carica file grezzi: conversione, organizzazione, ricerca e wiki automatiche.',
-        content: (
-          <div>
-            <h3>Flusso automatico</h3>
-            <p>Configura una volta la chiave API e il modello, poi attiva l’automazione nella sezione Fonti. Da quel momento basta caricare i documenti con CARICA DOCUMENTI oppure copiarli in RAW: LIMEN converte in Markdown, normalizza, classifica, salva nelle cartelle tematiche e aggiorna ricerca e wiki.</p>
-            <p>PDF, scansioni, DOC/DOCX, ODT/RTF, PPTX, Excel/ODS, immagini e testi vengono elaborati sul Mac. L’AI riceve testo per classificazione e sintesi. Gli originali rimangono intatti. Le note automatiche sono consultabili senza approvazione manuale e restano distinguibili dalle note approvate da una persona.</p>
-            <p>L’elaborazione prosegue mentre il Vault è aperto e riprende alla riapertura. La lista mostra le eccezioni: file non leggibili, protetti, limiti o connessione AI assente. Non serve convertire né dividere manualmente i documenti entro i limiti indicati.</p>
-            <h4>Dove trovi note e wiki</h4>
-            <ul>
-              <li><code>20_RAW_SOURCES</code>: originali conservati integri.</li>
-              <li>Cartelle <code>01_CLIENTS</code>–<code>09_COMPETITORS</code>: note <code>auto-source-</code> e wiki <code>auto-wiki-</code>, con titoli leggibili e fonti collegate.</li>
-              <li>Cliente e progetto sono proprietà delle note; le wiki sono raggruppate per questi riferimenti. Non vengono create sottocartelle per ciascuno.</li>
-              <li><code>00_SYSTEM</code>: registro delle elaborazioni e indice.</li>
-            </ul>
-            <p>I documenti lunghi vengono suddivisi in parti con una nota indice. Se cambia o scompare una fonte, i risultati precedenti vengono esclusi dalle risposte AI. Le modifiche manuali alle note generate vengono preservate e segnalate.</p>
-            <h4>Configurazione e limiti</h4>
-            <p>Salva la chiave in <strong>Impostazioni</strong>; in <strong>Fonti</strong> indica un modello API disponibile e premi <strong>ATTIVA AUTOMAZIONE</strong>. Sono previste chiamate OpenAI a consumo. Il controllo avviene ogni 15 secondi mentre l’app è aperta. <strong>METTI IN PAUSA</strong> interrompe i cicli successivi.</p>
-            <p>Massimo 32 MB per file; PDF fino a 500 pagine; OCR fino a 180 secondi; testo estratto Office/fogli/PDF fino a 16 MB. File protetti, corrotti, formati sconosciuti e presentazioni legacy .ppt sono segnalati. L’OCR e le sintesi AI possono contenere errori.</p>
-            <p>Dopo tre tentativi per revisione la coda segnala l’eccezione. Risolvi la causa e usa <strong>RIPROVA LE ECCEZIONI RISOLTE</strong>. Per errori di credenziale o modello correggi la configurazione e riattiva l’automazione.</p>
-            <Callout type="info" title="Automatico e approvazione umana">
-              Le note automatiche restano <code>status: review</code> e sono consultabili da AI e MCP quando aggiornate. La pubblicazione nel CRM richiede ancora una selezione esplicita di note approvate.
-            </Callout>
-            <h4>Compilazione manuale facoltativa</h4>
-
-            <h3>Come funzionano le fonti RAW</h3>
-            <p>
-              La cartella <code>20_RAW_SOURCES/</code> è il punto di ingresso per qualsiasi materiale grezzo: appunti, brief cliente, trascrizioni di riunioni, articoli esterni in formato <code>.md</code>, <code>.txt</code> o <code>.html</code>.
-            </p>
-            <ul>
-              <li>Le fonti originali rimangono <strong>immutabili e in sola lettura</strong>.</li>
-              <li>I file RAW sono esclusi dal contesto diretto di <em>Chiedi al Vault</em>; entrano invece le note estratte e le wiki correnti. Questo non garantisce la correttezza delle sintesi AI.</li>
-              <li>Premendo <strong>COMPILA TUTTE LE FONTI</strong> (oppure il pulsante singolo su un file), il compilatore genera una proposta in <code>90_PROPOSALS/</code> con <code>status: draft</code>.</li>
-            </ul>
-
-            <Callout type="tip" title="Accesso rapido">
-              Puoi raggiungere la gestione delle fonti direttamente dalla scheda principale <strong>Accesso rapido → Vault / RAW (20_RAW_SOURCES)</strong> in Panoramica.
-            </Callout>
           </div>
         ),
       },
       {
         id: 'ai',
-        title: '6. Chiedi al Vault (AI)',
-        badge: 'AI & OpenAI',
+        title: '7. Chiedi al Vault (AI Generativa)',
+        badge: 'OpenAI & Chat',
         icon: <MessageSquare size={16} />,
-        summary: 'Preparare il contesto locale, anteprima fonti verificata e invio sicuro a OpenAI.',
+        summary: 'Domande guidate all’AI con anteprima locale verificata delle fonti prima dell’invio a OpenAI.',
         content: (
           <div>
-            <h3>Domande governate con intelligenza artificiale</h3>
+            <h3>Domande con anteprima e controllo delle fonti</h3>
             <p>
-              In <strong>Chiedi al Vault</strong> puoi interrogare la tua conoscenza locale tramite OpenAI, mantenendo il pieno controllo di cosa viene inviato.
+              In <strong>Chiedi al Vault</strong> puoi porre domande complesse alla conoscenza del Vault sfruttando modelli generativi (es. OpenAI GPT-4o), con la massima riservatezza:
             </p>
             <ol>
-              <li>Scrivi la domanda nel riquadro.</li>
-              <li>Premi <strong>ANTEPRIMA FONTI</strong>: LIMEN seleziona note approvate e note/wiki automatiche correnti pertinenti.</li>
-              <li>Controlla l’anteprima: vedrai l’elenco esatto delle fonti, i byte di contesto e gli hash SHA-256.</li>
-              <li>Se sei soddisfatto, premi <strong>INVIA A OPENAI LE FONTI MOSTRATE</strong>.</li>
-              <li>Puoi salvare la risposta come bozza in <code>80_AI_OUTPUTS/</code> per sottoporla a revisione.</li>
+              <li>Scrivi la domanda nel campo dedicato.</li>
+              <li>Premi <strong>ANTEPRIMA FONTI</strong>: il sistema individua i passaggi pertinenti dalle note approvate ed evidenzia quanti byte e quali documenti compongono il contesto.</li>
+              <li>Nessun dato lascia il Mac durante l’anteprima.</li>
+              <li>Se le fonti sono adeguate, premi <strong>INVIA A OPENAI LE FONTI MOSTRATE</strong>.</li>
+              <li>Puoi salvare la risposta con il pulsante <strong>SALVA RISPOSTA COME BOZZA</strong> (verrà archiviata in <code>80_AI_OUTPUTS/</code>).</li>
             </ol>
-            <Callout type="info" title="Invio delle fonti">
-              Per questa domanda vengono inviate le fonti mostrate nell’anteprima. L’automazione documenti è distinta: la sua attivazione autorizza le chiamate per classificazione e wiki senza conferme per ogni file.
-            </Callout>
           </div>
         ),
       },
       {
         id: 'proposte',
-        title: '7. Revisione e approvazione',
+        title: '8. Revisione e approvazione',
         badge: 'Governance',
         icon: <FileCheck size={16} />,
-        summary: 'Come approvare bozze, proporre nuove revisioni o rifiutare le proposte.',
+        summary: 'Come approvare bozze da 90_PROPOSALS alle cartelle di conoscenza definitiva 01-10.',
         content: (
           <div>
             <h3>Flusso governato delle proposte</h3>
             <p>
-              Nella sezione <strong>Proposte</strong> puoi revisionare le bozze generate dal compilatore RAW o salvate dalle risposte AI.
+              La sezione <strong>Proposte</strong> permette di revisionare bozze prodotte da compilazioni o risposte AI prima che entrino nella conoscenza ufficiale:
             </p>
-            <div style={{ padding: 16, backgroundColor: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: 8, margin: '14px 0' }}>
-              <h4 style={{ margin: '0 0 8px 0', color: '#14532d' }}>Come approvare una proposta:</h4>
-              <ol style={{ margin: 0, paddingLeft: 20, color: '#166534', fontSize: 13, lineHeight: 1.6 }}>
-                <li>Apri la sezione <strong>Proposte</strong> dalla sidebar.</li>
-                <li>Nel riquadro verde in alto, controlla la <strong>Nuova destinazione (.md)</strong>: LIMEN la precompila automaticamente con la cartella corretta (es. <code>01_CLIENTS/nome-nota.md</code>).</li>
-                <li>Attiva la casella di controllo: <em>“Ho verificato questa revisione e la destinazione indicata”</em>.</li>
-                <li>Premi il pulsante verde <strong>APPROVA REVISIONE MOSTRATA</strong>.</li>
-              </ol>
-            </div>
+            <ol>
+              <li>Apri <strong>Proposte</strong> dalla barra laterale.</li>
+              <li>Controlla la <strong>Nuova destinazione (.md)</strong> proposta (es. <code>04_POSITIONING/strategia.md</code>).</li>
+              <li>Spunta la casella obbligatoria: <em>“Ho verificato questa revisione e la destinazione indicata”</em>.</li>
+              <li>Premi il pulsante verde <strong>APPROVA REVISIONE MOSTRATA</strong>.</li>
+            </ol>
             <p>
-              La nota approvata viene inserita istantaneamente nella cartella del Vault con <code>status: approved</code>, preservando la proposta originale per fini di audit.
+              La nota entra istantaneamente nella cartella del Vault con <code>status: approved</code>, preservando la cronologia di audit.
             </p>
           </div>
         ),
       },
       {
         id: 'copie',
-        title: '8. Copie locali e integrità',
+        title: '9. Copie locali e integrità',
         badge: 'Sicurezza',
         icon: <History size={16} />,
-        summary: 'Creare snapshot crittografici, manifesto SHA-256 e ripristino sicuro.',
+        summary: 'Snapshot crittografici SHA-256 in 00_SYSTEM/SNAPSHOTS e ripristino sicuro.',
         content: (
           <div>
-            <h3>Integrità crittografica SHA-256</h3>
+            <h3>Integrità crittografica del Vault</h3>
             <p>
-              La sezione <strong>Copie locali</strong> monitora la corrispondenza dei file rispetto al manifesto delle impronte crittografiche SHA-256.
+              La sezione <strong>Copie locali</strong> confronta l’intero contenuto del Vault rispetto al manifesto crittografico SHA-256.
             </p>
             <ul>
-              <li><strong>Verificata:</strong> tutti i file corrispondono esattamente all’ultima copia certificata.</li>
-              <li><strong>Differenze rilevate:</strong> indica i file modificati, mancanti o aggiunti rispetto all’ultimo manifesto.</li>
-              <li><strong>Crea copia locale:</strong> genera un nuovo snapshot immutabile in <code>00_SYSTEM/SNAPSHOTS/</code>.</li>
+              <li><strong>Verificata:</strong> tutti i file corrispondono esattamente alle impronte registrate.</li>
+              <li><strong>Differenze rilevate:</strong> elenca i file modificati, mancanti o aggiunti rispetto all’ultimo manifesto.</li>
+              <li><strong>Crea copia locale:</strong> genera uno snapshot completo e immutabile in <code>00_SYSTEM/SNAPSHOTS/</code>.</li>
             </ul>
-            <Callout type="tip" title="Backup prima di modifiche importanti">
-              Crea sempre una copia locale prima di sessioni intensive di scrittura o prima di trasferimenti cloud.
-            </Callout>
           </div>
         ),
       },
       {
         id: 'trasferimenti',
-        title: '9. Trasferimenti e Cloud R2',
+        title: '10. Trasferimenti e Cloud R2',
         badge: 'Cloud R2',
         icon: <Cloud size={16} />,
-        summary: 'Sincronizzazione R2, pubblicazione verso il CRM e canale privato.',
+        summary: 'Sincronizzazione su Cloudflare R2: pubblicazione per il CRM e canale privato di backup.',
         content: (
           <div>
-            <h3>Sincronizzazione Cloudflare R2</h3>
+            <h3>Sincronizzazione cloud sicura</h3>
             <p>
-              La sezione <strong>Trasferimenti</strong> gestisce la comunicazione con l’archivio cloud configurato.
+              La sezione <strong>Trasferimenti</strong> gestisce la comunicazione sicura con l’archivio Cloudflare R2:
             </p>
             <ul>
-              <li><strong>Canale Pubblicato (CRM):</strong> include esclusivamente le note approvate delle cartelle da 01 a 10 selezionate esplicitamente per la consultazione nel CRM.</li>
-              <li><strong>Canale Privato:</strong> copia di sicurezza del Vault (esclusi file di sistema temporanei) protetta da token di accesso tenant/vault dedicati.</li>
+              <li><strong>Canale Pubblicato (CRM):</strong> trasmette esclusivamente le note approvate delle cartelle da 01 a 10 selezionate per la consultazione aziendale.</li>
+              <li><strong>Canale Privato:</strong> copia di sicurezza crittografata dell’intero Vault, protetta da chiavi dedicate e non accessibile al CRM.</li>
             </ul>
           </div>
         ),
       },
       {
-        id: 'problemi',
-        title: '13. Problemi e soluzioni',
-        badge: 'FAQ',
-        icon: <AlertCircle size={16} />,
-        summary: 'Guida alla risoluzione dei dubbi e degli errori più frequenti.',
+        id: 'workflows',
+        title: '11. Workflow operativi ed esempi',
+        badge: 'Guide Pratiche',
+        icon: <Compass size={16} />,
+        summary: 'Procedure passo-passo illustrate: primo avvio RAG locale, ricerca ibrida, ripristino e allineamento cache.',
         content: (
           <div>
-            <h3>Domande frequenti e soluzioni</h3>
+            <h3>Procedure operative guidate</h3>
+
+            <h4>Workflow 1 — Configurazione e Primo Avvio del RAG Locale 100% Offline</h4>
+            <div style={{ padding: 14, backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #cbd5e1', marginBottom: 16 }}>
+              <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.7 }}>
+                <li>Apri <strong>Avanzate e Manutenzione → Collegamenti AI & MCP</strong>.</li>
+                <li>Nel riquadro <strong>Motore semantico</strong>, seleziona <strong>Locale (bge-m3, nessun dato esce dal Mac)</strong>.</li>
+                <li>Se il riquadro <em>Modello locale</em> indica <em>Non installato</em>, premi <strong>SCARICA MODELLO (BGE-M3)</strong> e attendi il completamento (~605 MB) con verifica automatica dell’hash SHA-256.</li>
+                <li>Premi <strong>AVVIA SERVIZIO LOCALE</strong>: l’app avvierà <code>llama-server</code> su una porta dinamica libera (es. <code>59667</code>) e mostrerà il badge verde <strong>ATTIVO</strong>.</li>
+                <li>Se il riquadro <em>Cache semantica</em> segnala passaggi mancanti o disallineati, premi <strong>RICALCOLA CACHE</strong> per completare l’indicizzazione vettoriale.</li>
+              </ol>
+            </div>
+
+            <h4>Workflow 2 — Ricerca Ibrida Quotidiana e Gestione Modalità Degradata</h4>
+            <div style={{ padding: 14, backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #cbd5e1', marginBottom: 16 }}>
+              <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.7 }}>
+                <li>Vai nella scheda <strong>Chiedi (Ricerca nel Vault)</strong>.</li>
+                <li>Assicurati che la casella <strong>Ricerca Ibrida</strong> sia spuntata.</li>
+                <li>Digita i termini cercati (es. <em>posizionamento di marca</em> o <em>private label</em>) e premi Invio.</li>
+                <li>I risultati combinano la corrispondenza lessicale BM25 e la vicinanza concettuale bge-m3. Ciascun risultato mostra titolo, snippet e locator di pagina/paragrafo.</li>
+                <li><strong>Se compare il banner giallo ⚠️ Modalità degradata:</strong> significa che il processo locale è caduto o è stato arrestato. La ricerca continua comunque a funzionare in solo lessicale BM25. Per riattivare il semantico, premi <strong>Riavvia Servizio Locale</strong> oppure vai in <em>Collegamenti AI & MCP</em>.</li>
+              </ol>
+            </div>
+
+            <h4>Workflow 3 — Migrazione Fornitore e Ricalcolo Sicuro della Cache</h4>
+            <div style={{ padding: 14, backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #cbd5e1', marginBottom: 16 }}>
+              <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.7 }}>
+                <li>Se decidi di passare da OpenAI (1536 dim) a Locale (1024 dim), apri il pannello <strong>Motore semantico</strong>.</li>
+                <li>Seleziona il fornitore desiderato: LIMEN aggiorna il profilo e segnala che le dimensioni della cache attuale differiscono da quelle del nuovo fornitore.</li>
+                <li>Premi <strong>RICALCOLA CACHE</strong>: il sistema genera un file transitorio sicuro <code>00_SYSTEM/EMBEDDINGS_CACHE.staging.json</code>.</li>
+                <li>La vecchia cache rimane utilizzabile durante tutto il calcolo. Al raggiungimento del 100%, la nuova cache viene promossa automaticamente.</li>
+              </ol>
+            </div>
+
+            <h4>Workflow 4 — Dal Documento Grezzo alla Conoscenza Approvata</h4>
+            <div style={{ padding: 14, backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #cbd5e1' }}>
+              <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.7 }}>
+                <li>Carica il file originale (PDF, DOCX, TXT) premendo <strong>CARICA DOCUMENTI</strong> in alto a sinistra.</li>
+                <li>L’estrattore crea i passaggi e li inserisce nel catalogo e nell’indice di ricerca.</li>
+                <li>Trova il passaggio pertinente tramite <strong>Ricerca Ibrida</strong> e aprilo nel Lettore verificando l’integrità crittografica SHA-256.</li>
+                <li>Usa il compilatore per creare una proposta in <code>90_PROPOSALS/</code>.</li>
+                <li>Apri <strong>Proposte</strong>, revisiona il testo, spunta la conferma e premi <strong>APPROVA</strong>: la nota entra nella cartella di destinazione prescelta (da 01 a 10).</li>
+              </ol>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: 'problemi',
+        title: '12. Problemi comuni e soluzioni',
+        badge: 'FAQ & Guasti',
+        icon: <AlertCircle size={16} />,
+        summary: 'Risoluzione rapida di dubbi, errori di avvio del servizio locale, banner degradato e cache.',
+        content: (
+          <div>
+            <h3>Domande frequenti e risoluzione problemi</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 14 }}>
               <details style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, padding: 12 }}>
                 <summary style={{ fontWeight: 700, color: '#0f172a', cursor: 'pointer' }}>
-                  Obsidian non apre automaticamente il Vault
+                  Perché compare il banner giallo «Modalità degradata (solo ricerca lessicale)»?
                 </summary>
                 <div style={{ marginTop: 8, fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
-                  Alla prima esecuzione Obsidian deve registrare la cartella. In Obsidian seleziona <em>Open folder as vault</em> e scegli il tuo percorso Vault. Al secondo clic su <strong>Apri in Obsidian</strong> da LIMEN, il Vault si aprirà istantaneamente.
+                  Il banner compare quando hai attiva la <em>Ricerca Ibrida</em> ma il servizio semantico locale (<code>llama-server</code>) non è in esecuzione, non risponde entro il timeout o è stato arrestato. In questa modalità, l’applicazione garantisce la continuità operativa calcolando i risultati con il solo motore lessicale BM25. Nessun dato lascia il Mac. Per ripristinare la semantica, vai in <strong>Avanzate → Collegamenti AI & MCP → Motore semantico</strong> e premi <strong>AVVIA SERVIZIO LOCALE</strong>.
                 </div>
               </details>
 
               <details style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, padding: 12 }}>
                 <summary style={{ fontWeight: 700, color: '#0f172a', cursor: 'pointer' }}>
-                  Una nota appena creata non compare nella Ricerca
+                  Il servizio locale segnala errore all’avvio o «exit status 1»
                 </summary>
                 <div style={{ marginTop: 8, fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
-                  L’indice di ricerca non si aggiorna in tempo reale per risparmiare risorse e batteria. Vai nella scheda <strong>Ricerca</strong> e premi <strong>AGGIORNA INDICE DI RICERCA</strong>, oppure premi il pulsante <strong>Aggiorna</strong> al centro della barra superiore.
+                  Verifica che il modello sia integro aprendo la scheda <em>Motore semantico</em> (deve riportare <em>INSTALLATO (SHA-256 OK)</em>). Se l’errore persiste, consulta il file di log dettagliato generato dal processo in:
+                  <br />
+                  <code>~/Library/Application Support/LIMEN Vault/models/llama-server.log</code>.
                 </div>
               </details>
 
               <details style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, padding: 12 }}>
                 <summary style={{ fontWeight: 700, color: '#0f172a', cursor: 'pointer' }}>
-                  Il pulsante di approvazione proposta è disabilitato
+                  La cache semantica mostra «Disallineata con il fornitore attivo»
                 </summary>
                 <div style={{ marginTop: 8, fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
-                  Per ragioni di sicurezza e audit, l’approvazione richiede: 1) un percorso file valido in <em>Nuova destinazione (.md)</em>, e 2) la spunta attiva sulla casella <em>“Ho verificato questa revisione e la destinazione indicata”</em>.
+                  Questo accade se hai cambiato fornitore (es. da OpenAI con 1536 dimensioni a Locale bge-m3 con 1024 dimensioni) o se hai aggiunto nuovi documenti in <code>20_RAW_SOURCES</code>. Premi semplicemente <strong>RICALCOLA CACHE SEMANTICA</strong> nel pannello del motore semantico; i nuovi vettori verranno calcolati in background senza bloccare la consultazione delle note.
+                </div>
+              </details>
+
+              <details style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, padding: 12 }}>
+                <summary style={{ fontWeight: 700, color: '#0f172a', cursor: 'pointer' }}>
+                  Una nota appena creata o modificata non compare nella Ricerca
+                </summary>
+                <div style={{ marginTop: 8, fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
+                  L’indice lessicale non viene riscritto a ogni singola battuta per risparmiare CPU e batteria. Vai nella schermata <strong>Chiedi (Ricerca)</strong> e premi <strong>AGGIORNA INDICE</strong>, oppure usa il pulsante <strong>Aggiorna</strong> al centro della barra superiore dell’applicazione.
+                </div>
+              </details>
+
+              <details style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, padding: 12 }}>
+                <summary style={{ fontWeight: 700, color: '#0f172a', cursor: 'pointer' }}>
+                  Obsidian non apre automaticamente la cartella del Vault
+                </summary>
+                <div style={{ marginTop: 8, fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
+                  Al primissimo avvio Obsidian deve registrare la cartella. In Obsidian seleziona <em>Open folder as vault</em> e indica il percorso del tuo Vault. Al secondo clic su <strong>Apri in Obsidian</strong> da LIMEN, il Vault si aprirà istantaneamente.
+                </div>
+              </details>
+
+              <details style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, padding: 12 }}>
+                <summary style={{ fontWeight: 700, color: '#0f172a', cursor: 'pointer' }}>
+                  Il pulsante di approvazione proposta in Proposte è disabilitato
+                </summary>
+                <div style={{ marginTop: 8, fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
+                  Per ragioni di integrità e audit, l’approvazione richiede due condizioni: 1) un percorso file valido in <em>Nuova destinazione (.md)</em> in una cartella consentita (da 01 a 10), e 2) la spunta attiva sulla casella <em>“Ho verificato questa revisione e la destinazione indicata”</em>.
                 </div>
               </details>
             </div>
@@ -584,14 +733,14 @@ Richiede soluzioni di packaging compostabile.`}
             >
               Documentazione Ufficiale
             </span>
-            <span style={{ fontSize: 12, color: '#94a3b8' }}>v3 · Guida aggiornata</span>
+            <span style={{ fontSize: 12, color: '#94a3b8' }}>v3 · RAG Locale bge-m3 & Ricerca Ibrida BM25</span>
           </div>
 
           <h2 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 8px 0', letterSpacing: '-0.02em' }}>
             Guida & Manuale Utente LIMEN Vault v3
           </h2>
           <p style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.6, margin: '0 0 20px 0' }}>
-            Tutte le procedure operative, la struttura delle cartelle, le regole di approvazione e le soluzioni ai problemi tecnici.
+            Tutte le procedure operative, la configurazione del RAG locale a rete zero, la ricerca ibrida BM25, i workflow di lavoro e le soluzioni ai problemi tecnici.
           </p>
 
           {/* SEARCH BAR */}
@@ -605,7 +754,7 @@ Richiede soluzioni di packaging compostabile.`}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cerca nella guida (es. RAW, Obsidian, Frontmatter, Approva)..."
+              placeholder="Cerca nella guida (es. RAG Locale, bge-m3, BM25, Modalità degradata, Obsidian)..."
               style={{
                 width: '100%',
                 padding: '12px 16px 12px 42px',
@@ -627,36 +776,36 @@ Richiede soluzioni di packaging compostabile.`}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
         {[
           {
-            id: 'primi-passi',
-            title: 'Primi Passi',
-            desc: 'Creazione e collegamento Obsidian',
-            icon: <GraduationCap size={20} color="#0284c7" />,
-            bg: '#f0f9ff',
-            border: '#bae6fd',
-          },
-          {
-            id: 'note',
-            title: 'Note & Cartelle',
-            desc: 'Frontmatter da 01 a 10',
-            icon: <FolderTree size={20} color="#16a34a" />,
+            id: 'rag-locale',
+            title: 'RAG 100% Locale',
+            desc: 'bge-m3, zero rete e calcolo sul Mac',
+            icon: <Sparkles size={20} color="#16a34a" />,
             bg: '#f0fdf4',
             border: '#bbf7d0',
           },
           {
-            id: 'fonti',
-            title: 'Vault RAW',
-            desc: 'Documenti, note e wiki automatiche',
-            icon: <FolderArchive size={20} color="#d97706" />,
-            bg: '#fffbeb',
-            border: '#fde68a',
+            id: 'ricerca-ibrida',
+            title: 'Ricerca Ibrida',
+            desc: 'BM25, vettoriale e modalità degradata',
+            icon: <Search size={20} color="#0284c7" />,
+            bg: '#f0f9ff',
+            border: '#bae6fd',
           },
           {
-            id: 'proposte',
-            title: 'Approvazione',
-            desc: 'Come approvare bozze e revisioni',
-            icon: <FileCheck size={20} color="#7c3aed" />,
+            id: 'workflows',
+            title: 'Workflow Guidati',
+            desc: 'Procedure W1-W4 passo-passo',
+            icon: <Compass size={20} color="#7c3aed" />,
             bg: '#faf5ff',
             border: '#e9d5ff',
+          },
+          {
+            id: 'problemi',
+            title: 'Risoluzione Problemi',
+            desc: 'Guida guasti, banner e log servizio',
+            icon: <AlertCircle size={20} color="#d97706" />,
+            bg: '#fffbeb',
+            border: '#fde68a',
           },
         ].map((card) => (
           <div

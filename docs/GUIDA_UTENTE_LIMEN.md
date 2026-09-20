@@ -323,6 +323,46 @@ La tabella manuale sottostante gestisce Markdown, testo e HTML. **Compila bozza*
 
 ---
 
+<a id="ricerca-ibrida"></a>
+## 5b. Ricerca Ibrida (BM25 + Semantica) e RAG 100% Locale
+
+**Obiettivo:** ritrovare qualsiasi informazione nel Vault unendo parole esatte, concetti sinonimi e passaggi rilevanti, a costo zero e senza che alcun dato lasci il Mac.
+
+### Come funziona il doppio motore di ricerca
+
+Nella scheda **Chiedi**, la casella **Ricerca Ibrida** attiva la combinazione simultanea di due algoritmi:
+
+1. **Indice Lessicale BM25 (k1=1,2, b=0,75)**:
+   - Calcola la frequenza reale dei termini sia nelle note di conoscenza sia nei documenti grezzi di `20_RAW_SOURCES`.
+   - Applica la normalizzazione sulla lunghezza del documento (`dl / avgdl`), evitando che i file molto estesi (es. trascrizioni lunghe centinaia di pagine) vincano arbitrariamente su documenti brevi e mirati.
+   - Fornisce la massima precisione per codici progetto, nomi propri di clienti o fornitori, sigle e terminologia tecnica esatta.
+
+2. **Vettori Semantici Locali (bge-m3, 1024 dimensioni)**:
+   - I passaggi di testo (chunk da circa 1.200 caratteri) vengono vettorializzati tramite il modello integrato `bge-m3-Q8_0.gguf`.
+   - Il calcolo è affidato al servizio nativo `llama-server`, eseguito direttamente sul processore Apple Silicon su socket di loopback interno (`127.0.0.1:<porta_dinamica>`).
+   - Individua documenti anche quando usano parole diverse ma concetti identici (es. ricerca per *"marca privata"* che intercetta passaggi contenenti *"MDD"* o *"private label"*).
+
+### Fusione e Classificazione dei Risultati (Formula F2)
+
+I candidati provenienti dal canale lessicale e da quello semantico vengono unificati con coalescenza per documento (nessun duplicato in classifica). I rispettivi punteggi vengono normalizzati su scala min-max e fusi con la formula:
+
+`Punteggio Finale = max(lessicale, semantico) + 0,20 * min(lessicale, semantico) + bonus`
+
+- Se un documento è eccellente sia nelle parole sia nel concetto, ottiene un deciso balzo in cima alla classifica.
+- Se una query contiene una frase esatta o un codice alfanumerico, viene applicato un bonus supplementare deterministico.
+
+### Modalità Degradata (Banner Giallo)
+
+Se il servizio semantico locale non è in esecuzione, non risponde entro il timeout o cade:
+- La ricerca **non va mai in errore** e continua istantaneamente calcolando i risultati tramite l'indice lessicale BM25.
+- Viene esposto il banner giallo di avviso:  
+  *⚠️ Modalità degradata (solo ricerca lessicale): il servizio semantico locale non è attivo o non ha risposto. I risultati sono calcolati esclusivamente tramite indice lessicale BM25. Nessun dato è uscito dal Mac.*
+- Il badge dei risultati riporta: *RAG LOCALE SPENTO (SOLO LESSICALE)*.
+- **Nessun dato esce mai dal Mac**: l'applicazione non tenta alcun fallback remoto su server esterni se il fornitore configurato è locale.
+- Per ripristinare il canale semantico, basta cliccare sul pulsante **Riavvia Servizio Locale** presente nell'avviso o andare in *Avanzate → Collegamenti AI & MCP*.
+
+---
+
 <a id="ai"></a>
 ## 6. Chiedi al Vault
 
@@ -649,6 +689,14 @@ flowchart TD
 ```
 
 Il tunnel non parte automaticamente all’apertura di LIMEN e si arresta alla chiusura dell’app.
+
+### Motore Semantico Locale (bge-m3) e Gestione Cache
+
+Nel pannello **Avanzate → Collegamenti AI & MCP → Motore semantico**:
+- **Scelta del Fornitore**: puoi commutare liberamente tra *Locale (bge-m3, nessun dato esce dal Mac)* e *OpenAI (in rete)*. Nessun URL viene digitato a mano: l'endpoint loopback viene gestito dinamicamente dal prodotto.
+- **Gestione del Modello**: scarica il file `bge-m3-Q8_0.gguf` (~605 MB) con verifica automatica del checksum crittografico SHA-256 (`950f4a8e5e19477a...`) oppure seleziona un file `.gguf` locale.
+- **Ciclo di Vita del Servizio**: gestisci l'avvio, l'arresto e il controllo di salute del processo integrato `llama-server`. Il sistema alloca a ogni avvio una porta libera loopback (`127.0.0.1:<porta>`), verifica `/health` ed esegue l'arresto pulito alla chiusura dell'applicazione. In caso di errore, lo stderr viene salvato in `~/Library/Application Support/LIMEN Vault/models/llama-server.log`.
+- **Cache Semantica a Staging**: l'allineamento della cache vettoriale a 1024 dimensioni avviene tramite file di staging atomico `00_SYSTEM/EMBEDDINGS_CACHE.staging.json`, garantendo la massima sicurezza dei dati e la riprendibilità immediata del calcolo in caso di interruzione.
 
 [↑ Indice](#indice)
 

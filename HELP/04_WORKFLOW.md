@@ -295,3 +295,112 @@ flowchart LR
 ```
 
 Una configurazione iniziale autorizza le chiamate automatiche; LIMEN deve restare aperta. Dettagli: [[07_AUTOMAZIONE_DOCUMENTI]].
+
+---
+
+## W17 — Configurazione e Primo Avvio del RAG 100% Locale
+
+```mermaid
+flowchart TD
+  A[Avanzate > Collegamenti AI & MCP] --> B[Pannello Motore Semantico]
+  B --> C{Fornitore attivo}
+  C -- OpenAI --> D[Seleziona: Locale bge-m3, nessun dato esce dal Mac]
+  C -- Già Locale --> E{Modello bge-m3 presente?}
+  D --> E
+  E -- No --> F[SCARICA MODELLO BGE-M3 ~605 MB oppure Seleziona file locale]
+  F --> G[Verifica automatica SHA-256: 950f4a8e...]
+  E -- Sì, INSTALLATO SHA-256 OK --> H[AVVIA SERVIZIO LOCALE]
+  G --> H
+  H --> I[Assegnazione porta libera loopback 127.0.0.1]
+  I --> J{Controllo /health entro 25 s}
+  J -- Superato --> K[Stato: ATTIVO PORTA dinamica]
+  J -- Errore --> L[Consulta ~/Library/.../llama-server.log]
+  K --> M{Cache Semantica allineata?}
+  M -- Sì: 1024 dim 100% --> N[Pronto per Ricerca Ibrida]
+  M -- No: disallineata o 0 passaggi --> O[RICALCOLA CACHE SEMANTICA]
+  O --> P[Staging atomico progressivo: riprendibile]
+  P --> N
+```
+
+1. Apri la barra laterale su **Avanzate e Manutenzione** e seleziona **Collegamenti AI & MCP**.
+2. Nel riquadro **Motore semantico**, seleziona **Locale (bge-m3, nessun dato esce dal Mac)**.
+3. Se il modello non è installato, premi **SCARICA MODELLO (BGE-M3)** (~605 MB) o seleziona un file `.gguf` locale.
+4. Premi **AVVIA SERVIZIO LOCALE**: il processo `llama-server` parte su porta libera loopback e supera `/health`.
+5. Se la cache mostra disallineamento, premi **RICALCOLA CACHE**: il calcolo avviene progressivamente sul Mac.
+
+---
+
+## W18 — Ricerca Ibrida Quotidiana e Gestione Modalità Degradata
+
+```mermaid
+sequenceDiagram
+  actor U as Utente
+  participant APP as Schermata Ricerca
+  participant HYB as embeddings.rs (Ibrido)
+  participant BM25 as search.rs (BM25 Lessicale)
+  participant LLAMA as llama-server (127.0.0.1)
+
+  U->>APP: Digita query + spunta "Ricerca Ibrida"
+  APP->>HYB: search_vault_hybrid(query)
+  HYB->>BM25: Calcolo BM25 (k1=1.2, b=0.75, dl/avgdl)
+  BM25-->>HYB: Candidati lessicali normalizzati
+  alt llama-server ATTIVO e SANO
+    HYB->>LLAMA: Vettore query (1024 float)
+    LLAMA-->>HYB: Vettore generato
+    HYB->>HYB: Similarità coseno su EMBEDDINGS_CACHE
+    HYB->>HYB: Coalescenza ID + Fusione F2 max(lex,sem)+0.2min(lex,sem)+bonus
+    HYB-->>APP: 50 risultati ibridi (degraded: false)
+    APP-->>U: Risultati combinati + Badge RAG 100% LOCALE
+  else llama-server SPENTO o NON RISPONDE
+    HYB-->>APP: 50 risultati solo lessicali (degraded: true)
+    APP-->>U: Banner giallo Modalità degradata (solo lessicale)
+    opt Ripristino rapido
+      U->>APP: Clic su "Riavvia Servizio Locale"
+      APP->>LLAMA: Avvio processo su nuova porta libera
+      APP-->>U: Servizio ripristinato, riesegui ricerca
+    end
+  end
+```
+
+- **Ricerca a doppio segnale**: i documenti con parole esatte e concetti affini (es. *MDD* / *private label* per *marca privata*) vengono valorizzati in cima alla classifica.
+- **Se compare il banner giallo**: la ricerca continua in sola modalità lessicale BM25 senza bloccarsi e senza inviare alcun dato all'esterno.
+
+---
+
+## W19 — Migrazione e Ricalcolo Sicuro della Cache Semantica
+
+```mermaid
+flowchart TD
+  A[Cambio fornitore: es. da OpenAI 1536d a Locale 1024d] --> B[SYNC_PROFILE.json aggiornato]
+  B --> C[needsReindex rilevato da catalogo vs cache]
+  C --> D[Avviso: Cache non allineata al fornitore attivo]
+  D --> E[Premi: RICALCOLA CACHE SEMANTICA]
+  E --> F[Creazione file 00_SYSTEM/EMBEDDINGS_CACHE.staging.json]
+  F --> G[Calcolo vettori a batch su loopback: ~180 ms per passaggio]
+  G --> H{Interruzione utente o app chiusa?}
+  H -- Sì: ANNULLA o Chiusura --> I[Staging preservata parzialmente; vecchia cache ancora valida]
+  I --> J[Alla riapertura: riprende dal punto esatto interrotto]
+  H -- No: 100% completato --> K[Scrittura atomica: rinomina staging in EMBEDDINGS_CACHE.json]
+  K --> L[Stato: Allineata 100% - Vecchia cache rimossa in sicurezza]
+```
+
+- **Staging atomico**: la cache esistente rimane valida e utilizzabile per le ricerche fino al completamento al 100%.
+- **Resumability**: alla riapertura dell'app, il calcolo salta i passaggi con hash corrispondente già presenti nello staging.
+
+---
+
+## W20 — Dal Passaggio Semantico al Lettore e alla Conoscenza Approvata
+
+```mermaid
+flowchart LR
+  A[Ricerca Ibrida Locale] -->|Clic su risultato| B[Apri nel Lettore]
+  B --> C[Verifica impronta SHA-256 del passaggio]
+  C --> D{Azione desiderata}
+  D -- Consultazione --> E[Lettura contestualizzata di pagina/paragrafo]
+  D -- Elaborazione Conoscenza --> F[Crea bozza in 90_PROPOSALS]
+  F --> G[Revisione umana in Proposte]
+  G --> H[APPROVA REVISIONE MOSTRATA]
+  H --> I[Inserimento in 01-10 con status: approved]
+  I --> J[Aggiorna Indice: cercabile in BM25 e Semantico]
+```
+
