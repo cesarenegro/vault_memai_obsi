@@ -342,6 +342,7 @@ fn main() {
         .manage(std::sync::Arc::new(limen_vault::sync::State::default()))
         .manage(limen_vault::mcp::McpState::default())
         .manage(limen_vault::tunnel::TunnelState::default())
+        .manage(limen_vault::llama::LlamaServerState::default())
         .manage(std::sync::Arc::new(limen_vault::automation::AutomationScheduler::default()))
         .invoke_handler(tauri::generate_handler![automation_status,automation_configure,automation_run,automation_retry,automation_choose_files,automation_import_files,sync_revoke_publication,sync_select_notes,sync_list_releases,sync_get_status,sync_save_config,sync_save_key,sync_disconnect,sync_test_connection,sync_plan_transfer,sync_execute_transfer,sync_cancel_transfer,
             get_default_vault_path,
@@ -365,11 +366,14 @@ fn main() {
             get_search_index_status,
             ai_list_models,search_read_document,ai_key_status,ai_save_key,ai_delete_key,ai_preview,ai_ask,ai_cancel,ai_read_source,mcp_start,mcp_stop,mcp_status,
             catalog_sync,catalog_list_documents,catalog_process_extractions,catalog_get_document,catalog_get_by_path,catalog_verify_document_passage,catalog_read_verified_text,catalog_read_text,catalog_read_passage,catalog_open_original,catalog_reveal_in_finder,catalog_get_summary,
-            embeddings_get_status,embeddings_sync_vault,search_vault_hybrid
+            embeddings_get_status,embeddings_sync_vault,search_vault_hybrid,
+            embeddings_get_provider,embeddings_set_provider,
+            local_model_status,local_model_download,local_model_select_file,local_model_pick_and_install,
+            local_server_start,local_server_stop,local_server_status,embeddings_cancel_sync
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app,event| { if matches!(event,tauri::RunEvent::ExitRequested{..}|tauri::RunEvent::Exit) {let _=app.state::<limen_vault::tunnel::TunnelState>().stop();} });
+        .run(|app,event| { if matches!(event,tauri::RunEvent::ExitRequested{..}|tauri::RunEvent::Exit) {let _=app.state::<limen_vault::tunnel::TunnelState>().stop();let _=app.state::<limen_vault::llama::LlamaServerState>().stop();} });
 }
 
 #[cfg(test)]
@@ -666,31 +670,186 @@ async fn embeddings_get_status(
 }
 
 #[tauri::command]
+async fn embeddings_get_provider(
+    vault_path: String,
+    llama_state: tauri::State<'_, limen_vault::llama::LlamaServerState>,
+) -> Result<limen_vault::embeddings::EmbeddingsProviderReport, String> {
+    let port = llama_state.status().port;
+    tauri::async_runtime::spawn_blocking(move || {
+        Ok(limen_vault::embeddings::get_embeddings_provider(Path::new(&vault_path), port))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn embeddings_set_provider(
+    vault_path: String,
+    provider: String,
+) -> Result<limen_vault::embeddings::EmbeddingsProviderReport, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::embeddings::set_embeddings_provider(Path::new(&vault_path), &provider)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn local_model_status() -> Result<limen_vault::llama::LocalModelReport, String> {
+    tauri::async_runtime::spawn_blocking(limen_vault::llama::local_model_status)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn local_model_download(
+    app: tauri::AppHandle,
+) -> Result<limen_vault::llama::LocalModelReport, String> {
+    let app_handle = app.clone();
+    limen_vault::llama::download_model_with_progress(move |downloaded, total, percent| {
+        use tauri::Emitter;
+        let _ = app_handle.emit(
+            "local_model_download_progress",
+            serde_json::json!({
+                "downloaded": downloaded,
+                "total": total,
+                "percent": percent,
+            }),
+        );
+    })
+    .await
+}
+
+#[tauri::command]
+async fn local_model_select_file(
+    file_path: String,
+) -> Result<limen_vault::llama::LocalModelReport, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::llama::install_model_from_file(Path::new(&file_path))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn local_model_pick_and_install(
+    app: tauri::AppHandle,
+) -> Result<limen_vault::llama::LocalModelReport, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let file = app
+        .dialog()
+        .file()
+        .set_title("Seleziona file modello GGUF (bge-m3-Q8_0.gguf)")
+        .add_filter("Modello GGUF", &["gguf"])
+        .blocking_pick_file();
+    match file {
+        Some(f) => {
+            let path_buf = f.into_path().map_err(|e| e.to_string())?;
+            tauri::async_runtime::spawn_blocking(move || {
+                limen_vault::llama::install_model_from_file(&path_buf)
+            })
+            .await
+            .map_err(|e| e.to_string())?
+        }
+        None => Err("Selezione file annullata".into()),
+    }
+}
+
+#[tauri::command]
+async fn local_server_start(
+    state: tauri::State<'_, limen_vault::llama::LlamaServerState>,
+) -> Result<limen_vault::llama::LocalServerReport, String> {
+    let state = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || state.start())
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn local_server_stop(
+    state: tauri::State<'_, limen_vault::llama::LlamaServerState>,
+) -> Result<limen_vault::llama::LocalServerReport, String> {
+    let state = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || state.stop())
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn local_server_status(
+    state: tauri::State<'_, limen_vault::llama::LlamaServerState>,
+) -> Result<limen_vault::llama::LocalServerReport, String> {
+    Ok(state.status())
+}
+
+#[tauri::command]
+async fn embeddings_cancel_sync() -> Result<(), String> {
+    limen_vault::embeddings::cancel_sync();
+    Ok(())
+}
+
+#[tauri::command]
 async fn embeddings_sync_vault(
     vault_path: String,
     api_key: Option<String>,
     model: Option<String>,
+    llama_state: tauri::State<'_, limen_vault::llama::LlamaServerState>,
 ) -> Result<limen_vault::embeddings::EmbeddingsStatusReport, String> {
-    limen_vault::embeddings::sync_embeddings(
+    let rep = limen_vault::embeddings::get_embeddings_provider(Path::new(&vault_path), 0);
+    let port = if rep.provider == "local" {
+        Some(llama_state.ensure_running()?)
+    } else {
+        None
+    };
+
+    limen_vault::embeddings::sync_embeddings_with_port(
         Path::new(&vault_path),
         api_key.as_deref().unwrap_or(""),
         model.as_deref(),
+        port,
     )
     .await
 }
 
 #[tauri::command]
 async fn search_vault_hybrid(
+    app: tauri::AppHandle,
     vault_path: String,
     query: search::SearchQuery,
     api_key: Option<String>,
     use_semantic: Option<bool>,
+    llama_state: tauri::State<'_, limen_vault::llama::LlamaServerState>,
 ) -> Result<Vec<search::SearchResultItem>, String> {
-    limen_vault::embeddings::hybrid_search_vault(
+    let rep = limen_vault::embeddings::get_embeddings_provider(Path::new(&vault_path), 0);
+    let is_local = rep.provider == "local";
+
+    let active_port = if is_local && use_semantic.unwrap_or(true) && query.term.as_ref().map(|t| !t.trim().is_empty()).unwrap_or(false) {
+        let status = llama_state.status();
+        if status.healthy && status.port > 0 {
+            Some(status.port)
+        } else {
+            // Auto-start on demand if local provider
+            llama_state.ensure_running().ok()
+        }
+    } else {
+        None
+    };
+
+    let (items, degraded) = limen_vault::embeddings::hybrid_search_vault_with_port(
         Path::new(&vault_path),
         query,
         api_key,
         use_semantic.unwrap_or(true),
+        active_port,
     )
-    .await
+    .await?;
+
+    use tauri::Emitter;
+    let _ = app.emit("search_mode_status", serde_json::json!({
+        "provider": rep.provider,
+        "degraded": degraded,
+        "is_local": is_local,
+    }));
+
+    Ok(items)
 }

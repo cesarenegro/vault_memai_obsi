@@ -22,10 +22,12 @@ with (app/'Contents/Info.plist').open('rb') as f: assert plistlib.load(f)['CFBun
 assert (app/'Contents/Resources/documentation/HELP/07_AUTOMAZIONE_DOCUMENTI.md').is_file()
 assert (app/'Contents/Resources/native/limen-extract').is_file()
 PY
-  xattr -cr "$APP"
-  for helper in mcp/tunnel-client mcp/cloudflared native/limen-extract; do
-    codesign --force --options runtime --timestamp --sign "$LIMEN_SIGN_IDENTITY" "$APP/Contents/Resources/$helper"
+  for helper in mcp/tunnel-client mcp/cloudflared; do
+    if [ -f "$APP/Contents/Resources/$helper" ]; then
+      codesign --force --options runtime --timestamp --sign "$LIMEN_SIGN_IDENTITY" "$APP/Contents/Resources/$helper"
+    fi
   done
+  find "$APP/Contents/Resources/native" -type f \( -name "*.dylib" -o -perm +111 \) -exec codesign --force --options runtime --timestamp --sign "$LIMEN_SIGN_IDENTITY" {} +
   codesign --force --options runtime --timestamp --sign "$LIMEN_SIGN_IDENTITY" "$APP"
   codesign --verify --deep --strict --verbose=2 "$APP" > "$EVIDENCE/app-signature.log" 2>&1
   ditto -c -k --keepParent "$APP" "$OUT/app-v3.zip"

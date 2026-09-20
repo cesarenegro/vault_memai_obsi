@@ -1,0 +1,152 @@
+{
+  "detachment_proof": {
+    "query_degraded": true,
+    "results_count": 2,
+    "server_stopped": true,
+    "top_results": [
+      {
+        "category": "proposal",
+        "client": null,
+        "id": "doc_f6499d5a4abc2ae1fa487a4ac0dabc4573932fcdfa06c673cb941710d0690a25",
+        "matching_locator": "Paragrafi 38-46",
+        "matching_passage_id": "doc_f6499d5a4abc2ae1fa487a4ac0dabc4573932fcdfa06c673cb941710d0690a25_p4",
+        "passages": [
+          {
+            "locator": "Paragrafi 38-46",
+            "passage_id": "doc_f6499d5a4abc2ae1fa487a4ac0dabc4573932fcdfa06c673cb941710d0690a25_p4",
+            "score": 3.98,
+            "snippet": "...corda. Quando è fallita la [00:03:45,280 --> 00:03:50,320] Battistero è fallita perché il controller aveva sbagliato, aveva preso una [00:03:50,320 --> 00:03:57,960] commessa con S..."
+          }
+        ],
+        "project": null,
+        "relative_path": "90_PROPOSALS/src_a265a0064b757f6f33597449d2fb712c97d129ae1fdcc998c9c4ecfeb22cd1ef-c00601975051e575-1789722231207130000-70434-86.md",
+        "score": 3.98,
+        "sha256": "e362a883c2939aae2bd0cb859702c5ab35c916d17001529ae6ff002c9227bf24",
+        "snippet": "...corda. Quando è fallita la [00:03:45,280 --> 00:03:50,320] Battistero è fallita perché il controller aveva sbagliato, aveva preso una [00:03:50,320 --> 00:03:57,960] commessa con S...",
+        "status": "draft",
+        "tags": [
+          "compiled",
+          "txt"
+        ],
+        "title": "c00601975051e575-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper",
+        "updated_at": "2026-09-18T09:03:51.207Z"
+      },
+      {
+        "category": "proposal",
+        "client": null,
+        "id": "doc_73671b65a8b088961e6478856a175486f8898422ad9e4ee15866e68aa1598535",
+        "matching_locator": "Paragrafi 70-74",
+        "matching_passage_id": "doc_73671b65a8b088961e6478856a175486f8898422ad9e4ee15866e68aa1598535_p8",
+        "passages": [
+          {
+            "locator": "Paragrafi 70-74",
+            "passage_id": "doc_73671b65a8b088961e6478856a175486f8898422ad9e4ee15866e68aa1598535_p8",
+            "score": 3.98,
+            "snippet": "...n senso [00:08:31,000 --> 00:08:43,000] e realmente ci sono delle volte, dovrebbe fare il controller, quello che è il controllo di gestione dell'azienda, che abbiamo dei prodotti d..."
+          }
+        ],
+        "project": null,
+        "relative_path": "90_PROPOSALS/src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md",
+        "score": 3.98,
+        "sha256": "77868d5db16c29761d84532c04efa7a5836f8624bb2ea10e4a34abd20b7b8f38",
+        "snippet": "...n senso [00:08:31,000 --> 00:08:43,000] e realmente ci sono delle volte, dovrebbe fare il controller, quello che è il controllo di gestione dell'azienda, che abbiamo dei prodotti d...",
+        "status": "draft",
+        "tags": [
+          "compiled",
+          "txt"
+        ],
+        "title": "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper",
+        "updated_at": "2026-09-18T09:03:48.498Z"
+      }
+    ]
+  },
+  "model": {
+    "bytes": 634553760,
+    "installed": true,
+    "path": "/Users/cesare/Library/Application Support/LIMEN Vault/models/bge-m3-Q8_0.gguf",
+    "sha256Ok": true
+  },
+  "network_proof_lsof": "COMMAND    PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME\nllama-ser 4674 cesare    3u  IPv4 0xbb2cd9f4c5e276b6      0t0  TCP 127.0.0.1:56807 (LISTEN)\n",
+  "provider": {
+    "cacheDimensions": 1024,
+    "cacheEntries": 4633,
+    "dimensions": 1024,
+    "endpoint": "http://127.0.0.1:8088/v1/embeddings",
+    "model": "bge-m3",
+    "needsReindex": false,
+    "provider": "local"
+  },
+  "query_active": {
+    "degraded": false,
+    "results_count": 2,
+    "term": "microprocessore controller",
+    "top_results": [
+      {
+        "category": "proposal",
+        "client": null,
+        "id": "doc_73671b65a8b08896",
+        "matching_locator": "Paragrafi 70-74",
+        "matching_passage_id": "doc_73671b65a8b088961e6478856a175486f8898422ad9e4ee15866e68aa1598535_p8",
+        "passages": [
+          {
+            "locator": "Paragrafi 70-74",
+            "passage_id": "doc_73671b65a8b088961e6478856a175486f8898422ad9e4ee15866e68aa1598535_p8",
+            "score": 3.98,
+            "snippet": "...n senso [00:08:31,000 --> 00:08:43,000] e realmente ci sono delle volte, dovrebbe fare il controller, quello che è il controllo di gestione dell'azienda, che abbiamo dei prodotti d..."
+          }
+        ],
+        "project": null,
+        "relative_path": "90_PROPOSALS/src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md",
+        "score": 1.0,
+        "sha256": "77868d5db16c29761d84532c04efa7a5836f8624bb2ea10e4a34abd20b7b8f38",
+        "snippet": "...n senso [00:08:31,000 --> 00:08:43,000] e realmente ci sono delle volte, dovrebbe fare il controller, quello che è il controllo di gestione dell'azienda, che abbiamo dei prodotti d...",
+        "status": "draft",
+        "tags": [
+          "compiled",
+          "txt"
+        ],
+        "title": "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper",
+        "updated_at": "2026-09-18T09:03:48.498Z"
+      },
+      {
+        "category": "proposal",
+        "client": null,
+        "id": "doc_f6499d5a4abc2ae1",
+        "matching_locator": "Paragrafi 38-46",
+        "matching_passage_id": "doc_f6499d5a4abc2ae1fa487a4ac0dabc4573932fcdfa06c673cb941710d0690a25_p4",
+        "passages": [
+          {
+            "locator": "Paragrafi 38-46",
+            "passage_id": "doc_f6499d5a4abc2ae1fa487a4ac0dabc4573932fcdfa06c673cb941710d0690a25_p4",
+            "score": 3.98,
+            "snippet": "...corda. Quando è fallita la [00:03:45,280 --> 00:03:50,320] Battistero è fallita perché il controller aveva sbagliato, aveva preso una [00:03:50,320 --> 00:03:57,960] commessa con S..."
+          }
+        ],
+        "project": null,
+        "relative_path": "90_PROPOSALS/src_a265a0064b757f6f33597449d2fb712c97d129ae1fdcc998c9c4ecfeb22cd1ef-c00601975051e575-1789722231207130000-70434-86.md",
+        "score": 1.0,
+        "sha256": "e362a883c2939aae2bd0cb859702c5ab35c916d17001529ae6ff002c9227bf24",
+        "snippet": "...corda. Quando è fallita la [00:03:45,280 --> 00:03:50,320] Battistero è fallita perché il controller aveva sbagliato, aveva preso una [00:03:50,320 --> 00:03:57,960] commessa con S...",
+        "status": "draft",
+        "tags": [
+          "compiled",
+          "txt"
+        ],
+        "title": "c00601975051e575-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper",
+        "updated_at": "2026-09-18T09:03:51.207Z"
+      }
+    ]
+  },
+  "server_active_status": {
+    "healthy": true,
+    "lastError": null,
+    "model": "bge-m3-Q8_0.gguf",
+    "pid": 4674,
+    "port": 56807,
+    "running": true
+  },
+  "status": "PASS",
+  "timestamp_end": "2026-09-20T04:31:55.511349+00:00",
+  "timestamp_start": "2026-09-20T04:28:58.763721+00:00",
+  "vault_path": "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/scratch/vault_collaudo_local_rag"
+}

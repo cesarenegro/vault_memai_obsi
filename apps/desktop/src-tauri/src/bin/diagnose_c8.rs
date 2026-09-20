@@ -226,7 +226,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let c9_summary = C9SummaryReport {
         benchmark: "Misura Rilievo C9 — Duplicati in Top 10 su 40 Query Gold".to_string(),
-        timestamp_utc8: "2026-09-20T07:00:00+08:00".to_string(),
+        timestamp_utc8: chrono::Utc::now().to_rfc3339(),
         total_queries: all_queries.len(),
         queries_with_duplicates_count: queries_with_dups.len(),
         queries_with_full_10_distinct_count: all_queries.len() - queries_with_dups.len(),

@@ -39,11 +39,15 @@ export function AiPanel({vaultPath, onOpenDocument}:{vaultPath:string; onOpenDoc
  {opened&&<details open><summary>{opened.title} · SHA-256 {opened.sha256}</summary><pre style={{whiteSpace:'pre-wrap'}}>{opened.content}</pre></details>}
  </div></div>;
 }
+import {SemanticEngineSettings} from './SemanticEngineSettings';
+
 export function AiSettings({vaultPath}:{vaultPath:string}){
  const [key,setKey]=useState('');const [configured,setConfigured]=useState<boolean|null>(null);const [message,setMessage]=useState('');const [busy,setBusy]=useState(false);const [connection,setConnection]=useState<{active:boolean;endpoint?:string;vaultId?:string;token?:string}>({active:false});
  useEffect(()=>{void aiIpc.mcpStatus().then(setConnection).catch(e=>setMessage(String(e)));},[]);
  async function action(f:()=>Promise<void>){setBusy(true);setMessage('');try{await f();}catch(e){setMessage(String(e));}finally{setBusy(false);}}
- return <div className="limen-card" style={{padding:24,marginTop:20}}><h3>Collegamenti AI</h3><p>La chiave API rimane nel Portachiavi macOS. La disponibilità del modello viene verificata dal fornitore all’invio della richiesta.</p>
+ return <>
+ <SemanticEngineSettings vaultPath={vaultPath} />
+ <div className="limen-card" style={{padding:24,marginTop:20}}><h3>Collegamenti AI</h3><p>La chiave API rimane nel Portachiavi macOS. La disponibilità del modello viene verificata dal fornitore all’invio della richiesta.</p>
  <input type="password" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="off" aria-label="Chiave API OpenAI" value={key} onChange={e=>setKey(e.target.value)} style={field}/>
  <button style={button} disabled={busy||!key} onClick={()=>{const value=key;setKey('');void action(async()=>{await aiIpc.saveKey(value);setConfigured(true);setMessage('Salvata nel Portachiavi');})}}>SALVA CHIAVE</button>
  <button style={field} disabled={busy} onClick={()=>action(async()=>setConfigured(await aiIpc.status()))}>VERIFICA PORTACHIAVI</button>
@@ -52,5 +56,6 @@ export function AiSettings({vaultPath}:{vaultPath:string}){
  <button style={button} disabled={busy||connection.active} onClick={()=>action(async()=>{const c=await aiIpc.mcpStart(vaultPath,false);setConnection({...c,active:true});})}>ATTIVA MCP LOCALE</button>
  <button style={field} disabled={busy||!connection.active} onClick={()=>action(async()=>{await aiIpc.mcpStop();setConnection({active:false});})}>REVOCA MCP</button>
  {connection.active&&<div><p>Indirizzo attivo: {connection.endpoint}</p><p>ID Vault: {connection.vaultId}</p>{connection.token&&<details><summary>Mostra il token di collegamento — mantienilo riservato</summary><input aria-label="Token di collegamento MCP" type="password" readOnly value={connection.token} style={{...field,width:'90%'}}/></details>}<p>La revoca invalida questo token. Il riavvio dell’app disattiva il collegamento.</p></div>}
- {message&&<p role="status">{<MessageIt value={message}/>}</p>}<TunnelPanel vaultPath={vaultPath}/></div>;
+ {message&&<p role="status">{<MessageIt value={message}/>}</p>}<TunnelPanel vaultPath={vaultPath}/></div>
+ </>;
 }

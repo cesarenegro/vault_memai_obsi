@@ -8,8 +8,9 @@ import {aiIpc} from './ai-ipc';
 import {AiPanel,AiSettings} from './AiPanel';
 import { DocumentReaderModal } from './DocumentReaderModal';
 import React, { useState, useEffect, useRef } from 'react';
-import {createLatestRequest} from './latest-request';
+import { createLatestRequest } from './latest-request';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import {
   createVaultIpc,
   type VaultIntegrityReportResponse,
@@ -135,6 +136,35 @@ export default function App() {
   const [readerExpectedHash, setReaderExpectedHash] = useState<string | undefined>(undefined);
   const [readerQuery, setReaderQuery] = useState<string | undefined>(undefined);
   const [useSemanticSearch, setUseSemanticSearch] = useState<boolean>(true);
+  const [searchDegraded, setSearchDegraded] = useState<boolean>(false);
+  const [searchProvider, setSearchProvider] = useState<'local' | 'openai'>('local');
+  const [localServerHealthy, setLocalServerHealthy] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void listen<{ provider: 'local' | 'openai'; degraded: boolean; is_local: boolean }>('search_mode_status', (e) => {
+      setSearchDegraded(e.payload.degraded);
+      setSearchProvider(e.payload.provider);
+    }).then((u) => {
+      unlisten = u;
+    });
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (currentTab === 'search' && vaultPath && isTauriEnv) {
+      void aiIpc
+        .embeddingsGetProvider(vaultPath)
+        .then((p) => setSearchProvider(p.provider))
+        .catch(() => {});
+      void aiIpc
+        .localServerStatus()
+        .then((s) => setLocalServerHealthy(s.running && s.healthy))
+        .catch(() => {});
+    }
+  }, [currentTab, vaultPath, isTauriEnv, searchRevision]);
 
   const openReader = (target: string, passageId?: string, query?: string, revision?: number, hash?: string) => {
     setReaderTarget(target);
@@ -1264,11 +1294,65 @@ export default function App() {
                         onChange={(e) => setUseSemanticSearch(e.target.checked)}
                       />
                       <span>Ricerca Ibrida (Semantica + Lessicale)</span>
+                      {useSemanticSearch && (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            backgroundColor:
+                              searchProvider === 'local'
+                                ? searchDegraded || localServerHealthy === false
+                                  ? '#fee2e2'
+                                  : '#dcfce7'
+                                : '#e0e7ff',
+                            color:
+                              searchProvider === 'local'
+                                ? searchDegraded || localServerHealthy === false
+                                  ? '#991b1b'
+                                  : '#166534'
+                                : '#3730a3',
+                          }}
+                        >
+                          {searchProvider === 'local'
+                            ? searchDegraded || localServerHealthy === false
+                              ? '⚠️ RAG LOCALE SPENTO (SOLO LESSICALE)'
+                              : '🟢 RAG 100% LOCALE'
+                            : '🌐 OPENAI (IN RETE)'}
+                        </span>
+                      )}
                     </label>
                   </div>
 
                   {searchLoading && <p style={{ fontSize: 12, color: '#64748b', margin: '10px 0 0 0' }}>Ricerca in corso…</p>}
                 </div>
+
+                {/* DEGRADED MODE WARNING BANNER IF LOCAL SERVICE DOWN */}
+                {useSemanticSearch && searchDegraded && (
+                  <div
+                    role="alert"
+                    style={{
+                      padding: '12px 16px',
+                      borderRadius: 8,
+                      backgroundColor: '#fffbeb',
+                      border: '1px solid #fef3c7',
+                      color: '#92400e',
+                      fontSize: 12,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      marginBottom: 16,
+                    }}
+                  >
+                    <span style={{ fontSize: 18 }}>⚠️</span>
+                    <div>
+                      <strong>Modalità degradata (solo ricerca lessicale):</strong> il servizio semantico locale non è
+                      attivo o non ha risposto. I risultati sono calcolati esclusivamente tramite indice lessicale. Nessun
+                      dato è uscito dal Mac.
+                    </div>
+                  </div>
+                )}
 
                 {/* SEARCH RESULTS PREVIEW IF QUERY PRESENT */}
                 {searchTerm.trim() && searchResults.length > 0 && (

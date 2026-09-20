@@ -18,3 +18,4 @@ pub mod automation;
 pub mod extraction;
 pub mod catalog;
 pub mod embeddings;
+pub mod llama;
