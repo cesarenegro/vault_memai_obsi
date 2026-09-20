@@ -1,8 +1,8 @@
 # LIMEN Vault v3 — Report completo delle implementazioni e modifiche (18–20 settembre 2026)
 
-- **Redatto:** 2026-09-20, ore 17:10 UTC+8
+- **Redatto:** 2026-09-20, ore 17:10 UTC+8 — **aggiornato alle 18:45 UTC+8** con il collaudo del ricalcolo cache (§6.3) e le correzioni `611e943`
 - **Repository:** `/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN`
-- **Ultimo commit descritto:** `e08b106` (codice di prodotto fino a `a08e769545d6c3b61a41deac85cef53c9825fb23`; i commit successivi contengono solo evidenze e questo report)
+- **Ultimo commit descritto:** `77ad616` (codice di prodotto fino a `611e943`; i commit successivi contengono solo evidenze e questo report)
 - **Scopo:** base di riferimento per il manuale utente. Ogni affermazione qui sotto è **verificata** su codice, git, misure o collaudo diretto, salvo dove è marcata **DA VERIFICARE**.
 - **Convenzioni:** percorsi assoluti; orari in UTC+8; i numeri di riga si riferiscono al commit indicato sopra.
 
@@ -12,7 +12,7 @@
 
 In tre giorni l'applicazione è passata da un motore di ricerca ibrido dipendente da OpenAI, misurato solo su un corpus sintetico, a un **RAG interamente locale** (indice lessicale BM25 + vettori semantici `bge-m3` calcolati da un `llama-server` impacchettato e firmato dentro l'app), **misurato sui documenti veri dell'utente**, con un pannello di interfaccia per scegliere il fornitore, gestire il modello e il servizio, e con degradazione esplicita a sola ricerca lessicale quando il servizio locale non è disponibile.
 
-Lungo la strada sono stati trovati e corretti quattro difetti del motore (C8, C9, C10, C11), tre difetti di impacchettamento/permessi che impedivano al RAG locale di funzionare nell'app distribuita, e sono state prodotte evidenze riproducibili per ogni misura.
+Lungo la strada sono stati trovati e corretti quattro difetti del motore (C8, C9, C10, C11), tre difetti di impacchettamento/permessi che impedivano al RAG locale di funzionare nell'app distribuita, e — nell'ultimo collaudo, quello del ricalcolo della cache dall'interfaccia — altri quattro difetti (GPU Metal non caricata, timeout di 60 s, barra di avanzamento mai alimentata, messaggio errato a cache assente), tutti corretti in `611e943` e ricollaudati con esito positivo. Sono state prodotte evidenze riproducibili per ogni misura.
 
 | Area | Prima (18/09) | Dopo (20/09) |
 |---|---|---|
@@ -56,6 +56,9 @@ Tutti i commit sotto sono in `git log`; gli SHA sono abbreviati a 7 caratteri so
 | 20/09 16:06 | `734d0c6` | **C11 seconda metà: BM25** con normalizzazione sulla lunghezza |
 | 20/09 16:24 | `83412df` | **Backend ggml impacchettati e firmati**; stderr di `llama-server` nel log |
 | 20/09 16:5x | `a08e769` | **Capability Tauri** per gli eventi del webview; errori di `listen` non più silenziati |
+| 20/09 17:0x | `99d8fd1`, `ad5a7a2`, `a311045` | Misura ibrida con BM25 sul corpus reale; report; guida in-app e fascicoli HELP aggiornati |
+| 20/09 17:3x | `611e943` | **Ricalcolo cache funzionante nell'app**: Metal caricato via `GGML_BACKEND_PATH`, timeout locale 300 s e lotti da 16, evento di avanzamento emesso dal backend, report a cache assente corretto (test nuovo) |
+| 20/09 17:5x | `77ad616` + evidenze | Collaudo del ricalcolo: prima corsa fallita su `a08e769` (prove), seconda corsa superata sulla build `611e943` |
 
 ---
 
@@ -111,6 +114,7 @@ Regola di sicurezza: con fornitore `local` un endpoint non di loopback viene **r
 - **Binario**: `Contents/Resources/native/llama-server` (llama.cpp, build Homebrew 0.4.0 b10809) con le sue librerie `libllama*`, `libggml*`, `libmtmd`, `libomp`, `libssl`, `libcrypto` e i **backend di calcolo** `libggml-metal.so`, `libggml-cpu-apple_m1.so`, `libggml-cpu-apple_m2_m3.so`, `libggml-cpu-apple_m4.so`, `libggml-blas.so`. Tutti con `install_name` riscritti (0 dipendenze da `/opt/homebrew`, verificato con `otool -L`) e **firmati con il Team ID dell'app** `ZVGX4HFZC3` — necessario perché con il runtime indurito `dyld` rifiuta librerie di Team ID diverso.
 - **Modello**: `~/Library/Application Support/LIMEN Vault/models/bge-m3-Q8_0.gguf`, **634.553.760 byte**, SHA-256 `950f4a8e5e19477a6d3c26d2f162233c20002c601f75e4b002e3239997821167`, scaricato una sola volta da `gpustack/bge-m3-GGUF` con verifica del checksum, oppure installato da file locale (stessa verifica). Non è nel DMG.
 - **Ciclo di vita**: avvio su richiesta (non all'apertura dell'app); porta scelta libera con `TcpListener::bind("127.0.0.1:0")` (`find_free_port`, riga 304); argomenti `-m <modello> --embedding --host 127.0.0.1 --port <p> -ub 2048 -b 2048`; controllo di salute su `/health` entro 25 s; verifica che il vettore abbia esattamente 1024 componenti; istanza unica; spegnimento agganciato a `RunEvent::ExitRequested`/`Exit` in `main.rs` (nessun processo orfano); massimo 3 riavvii dopo caduta.
+- **Backend di calcolo**: ggml cerca i backend prima nella cartella compilata nel binario (`/opt/homebrew/Cellar/ggml/0.24.0/libexec`); su un Mac dove esiste (sviluppo) trova librerie Homebrew firmate ad-hoc, che il runtime indurito rifiuta (`dlopen … different Team IDs`), e non ripiega su quelle incluse: il server partiva con la sola CPU (`--list-devices` → «(none)»). Dal commit `611e943` l'app passa `GGML_BACKEND_PATH=<Resources/native>/libggml-metal.so` al processo: `MTL0: Apple M2` caricato, senza duplicati anche quando la cartella Homebrew non esiste (verificato con `sandbox-exec`). Misura: 0,65 s/passaggio su CPU → 0,09 s/passaggio con Metal (lotti di 16 passaggi reali da ~1.000 caratteri).
 - **Diagnostica**: dal commit `83412df` lo stderr del processo va in `~/Library/Application Support/LIMEN Vault/models/llama-server.log` e le ultime 3 righe compaiono nell'errore in interfaccia (prima: solo «exit status 1»).
 - **Prova di rete** (collaudo su app installata, 20/09 16:33 UTC+8): `lsof -nP -a -p <pid> -i` mostra un solo socket, `TCP 127.0.0.1:59667 (LISTEN)`; processo padre = `limen-vault`.
 
@@ -139,7 +143,7 @@ exact_bonus = 0,20 se la query è un codice (solo alfanumerici con cifre/`-`/`_`
 
 ### 2.6 Migrazione della cache al cambio di fornitore
 
-Passando da OpenAI (1536) a Locale (1024) tutti i vettori vanno ricalcolati. Il ricalcolo scrive in `00_SYSTEM/EMBEDDINGS_CACHE.staging.json` e la cache precedente resta intatta fino al completamento; l'operazione è ripristinabile senza ripartire da zero. Tempo misurato: 4.633 passaggi in 846,64 s (~183 ms/passaggio) su Mac M2 8 GB; 9.458 passaggi nel collaudo su vault reale. `needsReindex` è calcolato confrontando gli identificativi dei passaggi del catalogo con le chiavi della cache (non solo la dimensione).
+Passando da OpenAI (1536) a Locale (1024) tutti i vettori vanno ricalcolati. Il ricalcolo scrive in `00_SYSTEM/EMBEDDINGS_CACHE.staging.json` e la cache precedente resta intatta fino al completamento; l'operazione è ripristinabile senza ripartire da zero. Il valore «846,64 s per 4.633 passaggi» riportato in una versione precedente di questo report **non era una misura**: era una costante cablata nel banco di prova di AG, rimossa in `99d8fd1`. Misura reale dall'app installata (§6.3): **9.458 passaggi in 49 min 01 s = 0,31 s/passaggio** su Mac M2 8 GB con Metal (testo contestualizzato, staging riscritto ogni 320 passaggi, memoria libera 26 %); nel banco a lotti con testo grezzo 0,09 s/passaggio con Metal e 0,65 s su sola CPU. Richieste al server locale con timeout 300 s e lotti da 16 passaggi (`611e943`); l'evento `embeddings_sync_progress` (elaborati, totale, percentuale) è emesso all'avvio e dopo ogni lotto. `needsReindex` è calcolato confrontando gli identificativi dei passaggi del catalogo con le chiavi della cache (non solo la dimensione).
 
 ---
 
@@ -184,7 +188,7 @@ Stato del Vault (PRONTO), percorso, contatori: **File Markdown**, **Fonti origin
 - Scelta esclusiva: **OpenAI (in rete)** — «Modello text-embedding-3-small (1536 dim). Richiede chiave API configurata nel Portachiavi e connessione internet» — oppure **Locale (bge-m3, nessun dato esce dal Mac)** — «Modello bge-m3-Q8_0.gguf (1024 dim) eseguito dal motore integrato. Funzionamento 100% offline a rete zero».
 - Riquadro **Modello locale (bge-m3-Q8_0.gguf)**: stato (INSTALLATO (SHA-256 OK) / non installato), percorso, dimensione (605,2 MB · 634.553.760 byte), pulsante di scaricamento con barra di avanzamento e selettore di file per installazione manuale.
 - Riquadro **Servizio locale di calcolo**: stato **SPENTO** / **ATTIVO (PORTA n)** / **ERRORE** con ultimo errore leggibile; pulsanti **AVVIA SERVIZIO LOCALE** / **ARRESTA SERVIZIO LOCALE** e **AGGIORNA STATO**; testo «Il servizio è in ascolto su loopback http://127.0.0.1:<porta> con modello bge-m3-Q8_0.gguf. Controllo di salute /health superato».
-- Riquadro **Cache semantica del Vault**: «N passaggi indicizzati (1024 dim)» e avviso di allineamento con il fornitore attivo; se le dimensioni non coincidono, pulsante per il ricalcolo con avanzamento.
+- Riquadro **Cache semantica del Vault**: «N passaggi indicizzati (D dim)» oppure «Nessun passaggio indicizzato». Tre avvisi distinti (dal commit `611e943`): **cache assente** («I N passaggi del vault devono essere calcolati»), **dimensioni diverse** dal fornitore attivo («devono essere ricalcolati», la cache precedente resta attiva fino al 100 %), **cache incompleta** («K passaggi su N non sono ancora indicizzati: documenti nuovi o modificati»). Stima di durata misurata (≈0,1 s/passaggio con Metal, fino a 7× senza GPU). Pulsante **RICALCOLA CACHE SEMANTICA (D DIM)**; durante il calcolo: «Ricalcolo cache in corso… K/N passaggi», percentuale, barra, pulsante **ANNULLA (I progressi parziali vengono conservati)**; al termine «Cache semantica ricalcolata e allineata con successo al 100%».
 - Messaggio di esito in fondo (es. «Servizio locale avviato con successo sulla porta 59667»).
 
 ### 3.7 Comandi Tauri aggiunti (interfaccia ↔ motore)
@@ -196,7 +200,7 @@ Stato del Vault (PRONTO), percorso, contatori: **File Markdown**, **Fonti origin
 
 1. **Apertura o creazione del Vault** dalla schermata iniziale.
 2. **Caricamento documenti** (CARICA DOCUMENTI o copia in `20_RAW_SOURCES/`): il catalogo li registra, l'estrattore produce il testo, i passaggi vengono creati. Il modulo `automation.rs` (ingestione RAW persistente, opt-in) può eseguire il ciclo automaticamente: i file generati sono immutabili e mai approvati automaticamente.
-3. **Prima configurazione del motore semantico** (Avanzate → Collegamenti AI & MCP → Motore semantico): scegliere **Locale**, scaricare il modello (una sola volta, ~605 MB), avviare il servizio (o lasciarlo partire su richiesta), attendere il ricalcolo della cache (una sola volta per Vault; per 9.458 passaggi circa 30 minuti su M2 — **misurato** 846,64 s per 4.633).
+3. **Prima configurazione del motore semantico** (Avanzate → Collegamenti AI & MCP → Motore semantico): scegliere **Locale**, scaricare il modello (una sola volta, ~605 MB), avviare il servizio (o lasciarlo partire su richiesta), attendere il ricalcolo della cache (una sola volta per Vault; **misurato** 49 min 01 s per 9.458 passaggi su M2 8 GB con Metal, §6.3).
 4. **Ricerca** (Chiedi): con «Ricerca Ibrida» attiva si ottengono risultati ordinati per fusione; senza, solo lessicale. Ogni risultato apre il lettore con verifica di integrità.
 5. **Domanda all'AI** (facoltativa, va in rete verso OpenAI): ANTEPRIMA FONTI mostra cosa verrà inviato; solo i documenti mostrati vengono inviati; la risposta può essere salvata come bozza in `80_AI_OUTPUTS`.
 6. **Compilazione e proposte**: il compilatore trasforma fonti di testo in bozze in `90_PROPOSALS/`; l'utente le rivede e le **approva** (Bozze e Proposte) → il documento entra nella cartella di conoscenza scelta (es. `07_CASE_STUDIES/`), con decisione registrata e hash. Dopo modifiche manuali: **Aggiorna indice**.
@@ -247,6 +251,7 @@ Effetto della fusione sul semantico: **0 query declassate dal rango 1** (erano 2
 - **C10** penalizzazione dei documenti a solo segnale semantico → formula F2 k = 0,20; 5/5 query senza match lessicale in top 10.
 - **C11** frequenza dei termini sempre 1 in `20_RAW_SOURCES` (righe 559–560 di `search.rs`, `sort()+dedup()`) → rimossa; e BM25 per la lunghezza.
 - **Impacchettamento RAG locale** (tre difetti scoperti solo collaudando l'app installata): (a) backend ggml assenti → «no backends are loaded»; (b) backend presenti ma firmati da Team ID diverso → rifiutati da dyld; (c) `capabilities/` assente → `event.listen` negato, banner e barre di avanzamento muti.
+- **Ricalcolo cache dall'interfaccia** (quattro difetti scoperti nel collaudo del §6.3, corretti in `611e943`): (a) GPU Metal mai caricata su Mac con Homebrew ggml (solo CPU, 7× più lento); (b) timeout HTTP 60 s con lotti da 64 → richiesta annullata a metà (nel log del server «cancel task» esattamente 60 s dopo la richiesta); (c) evento `embeddings_sync_progress` mai emesso dal backend → barra ferma a 0,0 %; (d) con cache assente il report mostrava «0 passaggi (1536 dim)» e un finto «disallineamento» (default della struct). Prove in `COLLAUDO_COMPITO_3_RICALCOLO_CACHE/`.
 
 ### 5.4 Aperti
 - **A04**: sul corpus reale lessicale R@10 1,000 / P@1 0,939 e ibrido R@10 1,000 / P@1 0,927 (82 frasi esatte). Il requisito «100 % dei casi nella vista pertinente» è soddisfatto sui casi di tipo *frase*; i casi di tipo *termine* e *codice* non hanno ancora un set di prova dedicato (nel corpus reale i codici sono rari).
@@ -282,9 +287,25 @@ Prima di questo collaudo, la stessa sequenza sull'app allora installata falliva 
 | 19:18 | Ricerca «naming» a servizio spento | 50 risultati lessicali, badge **«RAG LOCALE SPENTO (SOLO LESSICALE)»** e **banner giallo** «Modalità degradata (solo ricerca lessicale)… Nessun dato è uscito dal Mac» |
 | 19:20 | Riavvio dal pannello | ATTIVO (porta 60470), ricerca ibrida di nuovo attiva |
 
-Resta **DA VERIFICARE** solo la barra di avanzamento del ricalcolo della cache dall'interfaccia (nel collaudo la cache era già completa).
+### 6.3 Ricalcolo della cache dall'interfaccia (barra di avanzamento) — 17:41–18:31 UTC+8
 
-Nota operativa: nella cartella `~/Applications/` esiste ancora **`LIMEN Vault 0.2.0.app`**, una versione precedente con lo stesso identificativo `dev.arkai.limenvault`; Launchpad/Spotlight possono aprirla al posto della v3. Va rimossa dall'utente.
+Vault: `tests/scratch/vault_collaudo_ricalcolo_cache/` (copia del vault reale, 114 documenti, 9.458 passaggi, fornitore Locale, **senza** `EMBEDDINGS_CACHE.json`). Evidenze in `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/COLLAUDO_COMPITO_3_RICALCOLO_CACHE/` (`RUN_NOTE.md`, 12 schermate della sola finestra dell'app catturate per id finestra, log del server, script di misura).
+
+**Prima corsa sulla build `a08e769`: FALLITA.** Dopo 60 s: «Ricalcolo cache fallito o interrotto: Richiesta embeddings fallita verso http://127.0.0.1:62252/v1/embeddings: error sending request for url»; barra rimasta a 0,0 %; riquadro con «0 passaggi indicizzati (1536 dim)» e «Disallineamento dimensioni vettore». Le quattro cause (tutte nel codice) sono in §5.3.
+
+**Seconda corsa sulla build `611e943` installata: SUPERATA.**
+
+| Ora | Azione / osservazione | Prova |
+|---|---|---|
+| 17:41 | Apertura vault → Avanzate → Collegamenti AI & MCP | «Nessun passaggio indicizzato», «Cache semantica assente… I **9458** passaggi devono essere calcolati», pulsante (1024 DIM) — `01_….png` |
+| 17:42:14 | Clic su RICALCOLA: l'app avvia da sola `llama-server` (porta 62980) | `ps -Eww`: `GGML_BACKEND_PATH=…/native/libggml-metal.so` |
+| 17:42:26 → 17:42:41 | «32/9458 passaggi 0.3%» → «144/9458 1.5%» | schermate |
+| 17:47 → 18:22 | barra in avanzamento continuo, es. «7312/9458 passaggi 77.3%» alle 18:22 | `03_…` → `12_….png` |
+| 18:31:15 | `EMBEDDINGS_CACHE.json` scritto (125.687.956 byte), staging rimosso | verifica Python: modello bge-m3, 1024 dim, **9.458 voci = 9.458 passaggi del catalogo, intersezione 100 %** |
+
+Tempo totale **49 min 01 s** (0,31 s/passaggio). Residui non bloccanti: il badge «Servizio locale: SPENTO» non si aggiorna durante il ricalcolo (lo stato è riletto al termine); la schermata del messaggio finale non è stata catturata perché il Mac si è bloccato per inattività alle 18:2x (stato finale provato dal file cache).
+
+Nota operativa: `~/Applications/LIMEN Vault 0.2.0.app` (versione precedente con lo stesso identificativo) è stata **rimossa** il 20/09.
 
 ---
 
@@ -292,7 +313,7 @@ Nota operativa: nella cartella `~/Applications/` esiste ancora **`LIMEN Vault 0.
 
 - Pipeline: `pnpm --filter @limen-vault/desktop tauri build` → `scripts/package-v3.sh prepare` (firma di ogni file in `Contents/Resources/native/` — `*.dylib`, `*.so`, eseguibili — e dell'app; invio ad Apple Notary) → `package` (graffettatura app, DMG con Applications/HELP/guide, invio DMG) → `finish` (graffettatura DMG).
 - Identità: `Developer ID Application: Arkitecna Hong Kong Limited (ZVGX4HFZC3)`; profilo notarile `LIMEN-M9`.
-- Esiti del 20/09: app `07e5abcb-aaee-41fa-9adb-f056209088a0` **Accepted**; DMG `56892416-9783-4033-9fcd-3fd510c65bf9` **Accepted**; verifica indipendente sull'app installata: `spctl` accepted / `source=Notarized Developer ID`, `stapler validate` OK, `codesign --verify --deep --strict` valido. Secondo giro per `a08e769`: app `6b0a0583-4974-4f55-bf96-278c2921c475` **Accepted**, DMG accettato e graffettato, installata in `/Applications` e verificata (`spctl` accepted, `stapler validate` OK, firma profonda valida) alle 18:5x UTC+8. È la build in uso per il collaudo del §6.
+- Esiti del 20/09: app `07e5abcb-aaee-41fa-9adb-f056209088a0` **Accepted**; DMG `56892416-9783-4033-9fcd-3fd510c65bf9` **Accepted**; verifica indipendente sull'app installata: `spctl` accepted / `source=Notarized Developer ID`, `stapler validate` OK, `codesign --verify --deep --strict` valido. Secondo giro per `a08e769`: app `6b0a0583-4974-4f55-bf96-278c2921c475` **Accepted**, DMG accettato e graffettato, installata in `/Applications` e verificata (`spctl` accepted, `stapler validate` OK, firma profonda valida) alle 18:5x UTC+8. È la build usata per i collaudi §6.1–6.2 e per la prima corsa del §6.3. **Terzo giro per `611e943`** (18:39–18:45 UTC+8): app `99caeb1e-ac3a-455e-8e9a-af71ef322fcf` **Accepted**, graffettata (`stapler validate` OK, `spctl` accepted / Notarized Developer ID); DMG `f6d8b2f8-3278-4f00-872e-70ca58f97df9` **Accepted**, graffettato e accettato da Gatekeeper; `LIMEN-Vault-v3-arm64.dmg` SHA-256 `3f7a333d8754d2a99a250412cdb1f5b715ae8ca5c45441584d09110674afd0e8` in `.local/limen-v3-release/` (la release precedente è conservata in `.local/limen-v3-release-a08e769/`). In `/Applications` durante il collaudo §6.3 era installata la copia firmata della stessa build prima della graffetta; va sostituita con la copia graffettata (§6.3, passo finale).
 - Evidenze: `IMPLEMENTATION/V3_EVIDENCE/` (`app-submit.json`, `app-status.json`, `app-staple.log`, `app-gatekeeper.log`, `dmg-*.json/log`, `app-signature.log`).
 
 ---
@@ -353,6 +374,6 @@ Regole da rispettare per qualunque nuovo indice: (1) scrivere in `00_SYSTEM/` co
 | Script di rilascio | `scripts/package-v3.sh` |
 | Banchi di prova | `apps/desktop/src-tauri/src/bin/gold-benchmark.rs`, `a04_real_local.rs`, `collaudo_compito1.rs`, `diagnose_c8.rs`, `c10_tune_dev.rs` |
 | Dataset congelati | `tests/gold/` (A05, A15, `A04_REAL_QUERIES.json`) |
-| Vault di misura | `tests/scratch/real_vault_v1/`, `tests/scratch/vault_collaudo_local_rag_v2/` |
+| Vault di misura | `tests/scratch/real_vault_v1/`, `tests/scratch/vault_collaudo_local_rag_v2/`, `tests/scratch/vault_collaudo_ricalcolo_cache/` |
 | Evidenze | `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/`, `IMPLEMENTATION/V3_EVIDENCE/` |
 | Documentazione utente esistente | `HELP/00_INDICE.md` … `07_AUTOMAZIONE_DOCUMENTI.md`, `docs/GUIDA_UTENTE_LIMEN.md`, `manuale UI utente.txt` |

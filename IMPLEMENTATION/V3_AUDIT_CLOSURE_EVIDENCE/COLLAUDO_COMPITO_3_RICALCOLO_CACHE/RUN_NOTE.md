@@ -37,6 +37,34 @@ Difetti verificati (tutti nel codice, nessuno nel vault):
 
 Correzioni: commit `611e943` (dettaglio nel messaggio di commit). Test: `cargo test` 95 + 17, `tsc --noEmit`, `pnpm test`.
 
-## 2. Seconda corsa sull'app ricostruita (`611e943`) — DA ESEGUIRE
+## 2. Seconda corsa sull'app ricostruita (`611e943`, firmata, notarizzata `99caeb1e-…`) — SUPERATA
 
-Vedi sezione 3 quando completata.
+App installata in `/Applications/LIMEN Vault v3.app` (firma profonda valida). Stesso vault, stessa sequenza, controllo dello
+schermo; schermate della sola finestra dell'app catturate con `screencapture -l<id finestra>` (`01_…` → `12_…`).
+
+| Ora (UTC+8) | Azione / osservazione | Prova |
+|---|---|---|
+| 17:41 | Apertura vault, Avanzate → Collegamenti AI & MCP | «Nessun passaggio indicizzato», «Cache semantica assente… I **9458** passaggi del vault devono essere calcolati», pulsante «RICALCOLA CACHE SEMANTICA (1024 DIM)» | `01_prima_del_ricalcolo_cache_assente_174205.png` |
+| 17:42:14 | Clic sul pulsante → l'app avvia da sola `llama-server` (pid 76504, porta 62980) | `ps -Eww`: `GGML_BACKEND_PATH=/Applications/LIMEN Vault v3.app/Contents/Resources/native/libggml-metal.so` |
+| 17:42:26 | Barra «Ricalcolo cache in corso… 32/9458 passaggi 0.3%» | schermata MCP |
+| 17:42:41 | «144/9458 passaggi 1.5%» | zoom MCP |
+| 17:42:58 → 18:22:16 | Barra in avanzamento continuo (catture ogni 4–5 min) | `02_…` → `12_…` (es. 18:22 ≈ 77 %) |
+| 18:31:15 | `EMBEDDINGS_CACHE.json` scritto (125.687.956 byte), staging rimosso | `ls`, verifica sotto |
+
+Verifica della cache prodotta (Python sul file): modello `bge-m3`, 1024 dimensioni, **9.458 voci = 9.458 passaggi del
+catalogo, intersezione 100 %, 0 voci fuori catalogo**, nessun file di staging residuo.
+
+Tempo totale **49 min 01 s** (17:42:14 → 18:31:15) per 9.458 passaggi = **0,31 s/passaggio** dentro l'app. Il valore e' piu'
+alto dei 0,09 s del banco di prova (§1) per tre fattori verificati: il testo inviato dall'app e' contestualizzato (titolo/
+percorso, fino al 20 % in piu'), il file di staging (fino a 125 MB) viene riscritto ogni 320 passaggi, e la memoria libera
+durante la corsa era al 26 %. Ritmo osservato dal log del server: 501 passaggi nei primi 103 s, poi ~700 ogni 4 min.
+
+Esito: **tutti e quattro i difetti della sezione 1 non si ripresentano** (Metal caricato, nessun timeout, barra alimentata con
+conteggio e percentuale, messaggio corretto a cache assente).
+
+Residui (non bloccanti, non corretti in questa corsa):
+- Il badge «Servizio locale di calcolo: SPENTO» non si aggiorna durante il ricalcolo avviato dal pulsante (il servizio e'
+  in realta' attivo; lo stato viene riletto solo al termine). Cosmetico.
+- La schermata dello stato finale in UI («Cache semantica ricalcolata e allineata con successo al 100%») non e' stata
+  catturata perche' lo schermo del Mac si e' bloccato alle 18:2x (blocco per inattivita': `caffeinate -d` impedisce lo
+  spegnimento del display ma non il salvaschermo). Lo stato finale e' provato dal file cache e dalla sua verifica.
