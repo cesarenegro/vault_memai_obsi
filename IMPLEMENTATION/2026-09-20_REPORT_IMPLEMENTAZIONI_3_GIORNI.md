@@ -227,7 +227,17 @@ Semantico puro 0,975 e lessicale puro 0,650 in tutte e tre. Intervallo di Wilson
 | tf reale senza normalizzazione | 0,146 | 0,585 | 0 | 14 | **227.401** (il file più grande vince 47 volte su 82) |
 | **BM25** (attuale) | **0,939** | **1,000** | 1 | 32 | 48.208 |
 
-Con bge-m3 locale (prima di BM25): semantico P@1 0,598 / R@10 0,890; ibrido R@10 0,915 ma P@1 0,341 perché la fusione declassava 24 dei 49 rango-1 semantici (segnale lessicale allora dominato dai documenti lunghi). **Ibrido con BM25: DA MISURARE.**
+Con bge-m3 locale, **prima** di BM25: semantico P@1 0,598 / R@10 0,890; ibrido R@10 0,915 ma P@1 0,341, perché la fusione declassava 24 dei 49 rango-1 semantici (segnale lessicale allora dominato dai documenti lunghi).
+
+**Ibrido con BM25** (misurato il 20/09, evidenze in `A04_REAL_LOCAL_V3_BM25/`, ricalcolate dal grezzo):
+
+| Modalità | P@1 | R@10 | Pari merito @1 |
+|---|---|---|---|
+| Lessicale BM25 | 0,939 (77/82) | 1,000 (82/82) | 1 |
+| Semantico bge-m3 | 0,610 (50/82) | 0,878 (72/82) | 0 |
+| **Ibrido F2 k=0,20** | **0,927 (76/82)** | **1,000 (82/82)** | **0** |
+
+Effetto della fusione sul semantico: **0 query declassate dal rango 1** (erano 24), 26 guadagnate; 10 recuperate in top 10 rispetto al semantico puro, 0 perse. Il difetto C8 «la fusione espelle ciò che la semantica trova», osservato sul corpus reale, è risolto **senza toccare la formula di fusione**: bastava un segnale lessicale sano.
 
 ### 5.3 Rilievi chiusi in questi tre giorni
 - **C5** corpus omogeneo → corpus v2 diversificato (Jaccard ≤ 0,2154).
@@ -239,7 +249,7 @@ Con bge-m3 locale (prima di BM25): semantico P@1 0,598 / R@10 0,890; ibrido R@10
 - **Impacchettamento RAG locale** (tre difetti scoperti solo collaudando l'app installata): (a) backend ggml assenti → «no backends are loaded»; (b) backend presenti ma firmati da Team ID diverso → rifiutati da dyld; (c) `capabilities/` assente → `event.listen` negato, banner e barre di avanzamento muti.
 
 ### 5.4 Aperti
-- **A04**: R@10 lessicale 1,000 e P@1 0,939 sul corpus reale, ma il requisito recita «100 % dei casi nella vista pertinente» e il ranking ibrido va rimisurato con BM25.
+- **A04**: sul corpus reale lessicale R@10 1,000 / P@1 0,939 e ibrido R@10 1,000 / P@1 0,927 (82 frasi esatte). Il requisito «100 % dei casi nella vista pertinente» è soddisfatto sui casi di tipo *frase*; i casi di tipo *termine* e *codice* non hanno ancora un set di prova dedicato (nel corpus reale i codici sono rari).
 - **A15** è misurato su corpus sintetico da 1.000 documenti; il vault reale ne ha 114.
 - Bonus di frase esatta `0,05`: mai attivo sulle query gold (frasi lunghe); ramo `0,20` mai esercitato da alcun benchmark.
 - Nessuna interfaccia per scegliere fra i backend CPU (`m1`/`m2_m3`/`m4`): li seleziona ggml a runtime.
