@@ -641,6 +641,15 @@ where
             )
         })
         .collect();
+    // BM25 (C11, seconda meta'): normalizzazione sulla lunghezza del documento.
+    // Senza questo fattore, con tf reale i documenti lunghi dominano per costruzione
+    // (misurato: il file piu' grande del corpus al rango 1 in 47 query su 82).
+    const BM25_K1: f64 = 1.2;
+    const BM25_B: f64 = 0.75;
+    let avgdl = {
+        let n = data.documents.len().max(1) as f64;
+        (data.documents.values().map(|d| d.tokens.len() as f64).sum::<f64>() / n).max(1.0)
+    };
     let mut results = Vec::new();
     for d in data.documents.values() {
         if crate::automation::managed(&d.relative_path) && !crate::automation::is_current(path,&d.relative_path,&d.sha256){continue;}
@@ -680,11 +689,15 @@ where
         let mut score = if terms.is_empty() { 1.0 } else { 0.0 };
         let title_tokens = tokenize_text(&d.title);
         let tags_tokens = tokenize_text(&d.tags.join(" "));
+        let dl = d.tokens.len() as f64;
+        let length_norm = 1.0 - BM25_B + BM25_B * dl / avgdl;
         for t in &terms {
             let tf = d.tokens.iter().filter(|x| *x == t).count() as f64;
             let idf =
                 ((data.documents.len() + 1) as f64 / (*df.get(t).unwrap_or(&0) + 1) as f64).ln() + 1.0;
-            score += tf * idf;
+            if tf > 0.0 {
+                score += idf * (tf * (BM25_K1 + 1.0)) / (tf + BM25_K1 * length_norm);
+            }
             if title_tokens.contains(t) {
                 score += 10.0;
             }
@@ -967,6 +980,54 @@ mod tests {
         assert!(
             results[0].score > results[1].score,
             "Document with 5 occurrences (score {}) must strictly outrank document with 1 occurrence (score {})",
+            results[0].score,
+            results[1].score
+        );
+    }
+
+    #[test]
+    fn test_c11_bm25_short_exact_document_beats_long_document_with_common_words() {
+        // C11, seconda meta': con tf reale ma senza normalizzazione sulla lunghezza,
+        // un documento lungo che ripete una parola comune batteva un documento breve
+        // che contiene la frase cercata (misurato sul corpus reale: il file piu' grande
+        // al rango 1 in 47 query su 82). BM25 deve invertire l'ordine.
+        let t = tempfile::tempdir().unwrap();
+        let path = t.path();
+        fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        fs::create_dir_all(path.join("20_RAW_SOURCES")).unwrap();
+
+        // Documento breve e mirato: contiene la frase esatta una sola volta.
+        let short = "Nota tecnica. Confezione termosaldata per salumi affettati con barriera ossigeno.";
+        fs::write(path.join("20_RAW_SOURCES/breve.txt"), short).unwrap();
+
+        // Documento lungo: ripete "confezione" centinaia di volte in un mare di parole di riempimento,
+        // senza mai contenere gli altri termini della frase.
+        let mut long = String::new();
+        for i in 0..500 {
+            long.push_str("confezione ");
+            long.push_str(&format!("parola{} riempimento{} testo{} ", i % 37, i % 53, i % 71));
+        }
+        fs::write(path.join("20_RAW_SOURCES/lungo.txt"), long).unwrap();
+
+        crate::catalog::sync_catalog(path).unwrap();
+        let _ = crate::catalog::process_pending_extractions(path).unwrap();
+        index_vault_search(path).unwrap();
+
+        let results = search_vault(path, SearchQuery {
+            term: Some("confezione termosaldata per salumi affettati".into()),
+            ..Default::default()
+        }).unwrap();
+
+        assert_eq!(results.len(), 2, "entrambi i documenti contengono almeno un termine");
+        assert_eq!(
+            results[0].relative_path, "20_RAW_SOURCES/breve.txt",
+            "il documento breve con la frase esatta deve stare al rango 1 (punteggi: breve {} / lungo {})",
+            results.iter().find(|r| r.relative_path.ends_with("breve.txt")).map(|r| r.score).unwrap_or(0.0),
+            results.iter().find(|r| r.relative_path.ends_with("lungo.txt")).map(|r| r.score).unwrap_or(0.0)
+        );
+        assert!(
+            results[0].score > results[1].score,
+            "il punteggio del documento breve ({}) deve superare strettamente quello del documento lungo ({})",
             results[0].score,
             results[1].score
         );

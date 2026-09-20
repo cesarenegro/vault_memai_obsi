@@ -1,0 +1,13 @@
+{
+ "benchmark": "A04 — Ricerca deterministica lessicale su corpus REALE (28 sessioni, 56 file)",
+ "motore": "limen_vault::search::search_vault (solo lessicale, 100% locale, zero rete)",
+ "vault": "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/scratch/real_vault_v1",
+ "queries": "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/gold/A04_REAL_QUERIES.json",
+ "total_cases": 82,
+ "precision_at_1": 0.9390243902439024,
+ "recall_at_10": 1.0,
+ "hit_at_1": 77,
+ "hit_at_10": 82,
+ "errori": 0,
+ "casi_mancati": []
+}
