@@ -1,0 +1,50 @@
+{
+  "benchmark": "A04 — RAG 100% Locale su Corpus Reale (56 documenti, 4.633 passaggi)",
+  "cached_passages": 4633,
+  "completed_at": "2026-09-20T11:39:22.662164+00:00",
+  "dimensions": 1024,
+  "embedding_calculation_time_seconds": 2.47,
+  "embeddings_endpoint": "http://127.0.0.1:8091/v1/embeddings",
+  "git_commit": "dbe7939651867fafee9380a79b01208d50dec2d6",
+  "modalities": {
+    "hybrid": {
+      "hits_at_1": 76,
+      "hits_at_10": 82,
+      "max_tie_group_size": 0,
+      "precision_at_1_apparent": 0.926829268292683,
+      "precision_at_1_net": 0.926829268292683,
+      "recall_at_10": 1.0,
+      "strict_hits_at_1": 76,
+      "ties_at_rank_1_count": 0,
+      "ties_at_rank_1_pct": 0.0
+    },
+    "lexical": {
+      "hits_at_1": 77,
+      "hits_at_10": 82,
+      "max_tie_group_size": 2,
+      "precision_at_1_apparent": 0.9390243902439024,
+      "precision_at_1_net": 0.9390243902439024,
+      "recall_at_10": 1.0,
+      "strict_hits_at_1": 77,
+      "ties_at_rank_1_count": 1,
+      "ties_at_rank_1_pct": 1.2195121951219512
+    },
+    "semantic": {
+      "hits_at_1": 50,
+      "hits_at_10": 72,
+      "max_tie_group_size": 0,
+      "precision_at_1_apparent": 0.6097560975609756,
+      "precision_at_1_net": 0.6097560975609756,
+      "recall_at_10": 0.8780487804878049,
+      "strict_hits_at_1": 50,
+      "ties_at_rank_1_count": 0,
+      "ties_at_rank_1_pct": 0.0
+    }
+  },
+  "model": "bge-m3",
+  "queries_file": "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/gold/A04_REAL_QUERIES.json",
+  "timestamp": "2026-09-20T11:37:25.871740+00:00",
+  "total_cases": 82,
+  "total_passages": 4633,
+  "vault": "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/scratch/real_vault_v1"
+}
