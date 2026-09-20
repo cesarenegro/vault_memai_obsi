@@ -556,8 +556,8 @@ pub fn index_vault_search(path: &Path) -> Result<IndexStatusReport, String> {
                     for pass in &passages {
                         all_tokens.extend(pass.tokens.clone());
                     }
-                    all_tokens.sort();
-                    all_tokens.dedup();
+                    // C11 fix: do not deduplicate tokens so term frequency (tf) accurately reflects occurrences.
+                    // tokens is never used via binary_search, so full bag-of-words ordering is preserved identically to knowledge documents (line 455).
 
                     let preview = passages.first().map(|pass| pass.text.chars().take(500).collect::<String>()).unwrap_or_default();
 
@@ -916,6 +916,60 @@ mod tests {
             ..Default::default()
         }).unwrap();
         assert_eq!(res3.len(), 0);
+    }
+
+    #[test]
+    fn test_c11_raw_sources_term_frequency_not_deduped() {
+        let t = tempfile::tempdir().unwrap();
+        let path = t.path();
+        fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        fs::create_dir_all(path.join("20_RAW_SOURCES")).unwrap();
+
+        // Doc 1: term "benchmark" appears 1 time
+        let content_single = "benchmark termine comune per test";
+        fs::write(path.join("20_RAW_SOURCES/doc_single.txt"), content_single).unwrap();
+
+        // Doc 2: term "benchmark" appears 5 times
+        let content_multi = "benchmark benchmark benchmark benchmark benchmark termine comune per test";
+        fs::write(path.join("20_RAW_SOURCES/doc_multi.txt"), content_multi).unwrap();
+
+        // Sync catalog and process extractions
+        crate::catalog::sync_catalog(path).unwrap();
+        let _ = crate::catalog::process_pending_extractions(path).unwrap();
+
+        // Index vault search
+        index_vault_search(path).unwrap();
+
+        // Verify SEARCH_INDEX.json tokens
+        let root_dir = root(path).unwrap();
+        let sys_dir = child(&root_dir, "00_SYSTEM").unwrap();
+        let index_data = load(&sys_dir).unwrap().unwrap();
+
+        let doc_single = index_data.documents.get("20_RAW_SOURCES/doc_single.txt").expect("doc_single missing");
+        let doc_multi = index_data.documents.get("20_RAW_SOURCES/doc_multi.txt").expect("doc_multi missing");
+
+        let tf_single = doc_single.tokens.iter().filter(|x| *x == "benchmark").count();
+        let tf_multi = doc_multi.tokens.iter().filter(|x| *x == "benchmark").count();
+
+        // Crucial C11 assertions: tf must be N, not 1
+        assert_eq!(tf_single, 1, "tf for doc_single must be exactly 1");
+        assert_eq!(tf_multi, 5, "tf for doc_multi must be exactly 5, not deduplicated to 1");
+
+        // Search for "benchmark"
+        let results = search_vault(path, SearchQuery {
+            term: Some("benchmark".into()),
+            ..Default::default()
+        }).unwrap();
+
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].relative_path, "20_RAW_SOURCES/doc_multi.txt");
+        assert_eq!(results[1].relative_path, "20_RAW_SOURCES/doc_single.txt");
+        assert!(
+            results[0].score > results[1].score,
+            "Document with 5 occurrences (score {}) must strictly outrank document with 1 occurrence (score {})",
+            results[0].score,
+            results[1].score
+        );
     }
 }
 
