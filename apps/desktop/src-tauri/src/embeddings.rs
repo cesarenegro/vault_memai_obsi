@@ -607,9 +607,13 @@ pub async fn hybrid_search_vault(
     let endpoint = resolve_embeddings_endpoint(vault_path);
     let is_loopback = is_loopback_endpoint(&endpoint).unwrap_or(false);
 
-    let effective_key = match api_key.as_deref() {
-        Some(k) if !k.trim().is_empty() => Some(k.to_string()),
-        _ => crate::keychain::load().ok().flatten().filter(|k| !k.trim().is_empty()),
+    let effective_key = if is_loopback {
+        api_key.filter(|k| !k.trim().is_empty())
+    } else {
+        match api_key.as_deref() {
+            Some(k) if !k.trim().is_empty() => Some(k.to_string()),
+            _ => crate::keychain::load().ok().flatten().filter(|k| !k.trim().is_empty()),
+        }
     };
 
     let query_vector = if is_loopback {
