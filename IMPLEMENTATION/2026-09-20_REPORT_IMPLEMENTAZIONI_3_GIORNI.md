@@ -2,7 +2,7 @@
 
 - **Redatto:** 2026-09-20, ore 17:10 UTC+8
 - **Repository:** `/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN`
-- **Ultimo commit descritto:** `a08e769545d6c3b61a41deac85cef53c9825fb23`
+- **Ultimo commit descritto:** `e08b106` (codice di prodotto fino a `a08e769545d6c3b61a41deac85cef53c9825fb23`; i commit successivi contengono solo evidenze e questo report)
 - **Scopo:** base di riferimento per il manuale utente. Ogni affermazione qui sotto è **verificata** su codice, git, misure o collaudo diretto, salvo dove è marcata **DA VERIFICARE**.
 - **Convenzioni:** percorsi assoluti; orari in UTC+8; i numeri di riga si riferiscono al commit indicato sopra.
 
@@ -262,7 +262,17 @@ Vault di collaudo: copia integrale del Vault reale in `/Users/cesare/Documents/M
 
 Prima di questo collaudo, la stessa sequenza sull'app allora installata falliva ad **AVVIA SERVIZIO LOCALE** con «llama-server uscito con codice exit status: 1»: causa i backend ggml (§5.3).
 
-**DA VERIFICARE** dopo l'installazione del bundle costruito da `a08e769`: (1) comparsa del banner giallo a servizio spento; (2) barra di avanzamento del ricalcolo cache; (3) avvio del servizio dal pannello.
+**Verifica sul bundle `a08e769` installato (19:16–19:20 UTC+8)**, evidenze in `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/COLLAUDO_COMPITO_1_V3_APP_INSTALLATA/` (schermate reali 2880×1864 catturate con la scorciatoia di sistema, più `RUN_NOTE.md`):
+
+| Ora | Azione | Esito |
+|---|---|---|
+| 19:17 | AVVIA SERVIZIO LOCALE dal pannello | **ATTIVO (PORTA 60411)**, `/health` superato |
+| 19:17 | Ricerca ibrida «marca privata e distribuzione» | 50 risultati, badge **RAG 100% LOCALE** |
+| 19:17:57 | `kill` del processo (pid 19379, unico socket `127.0.0.1:60411`) | terminato |
+| 19:18 | Ricerca «naming» a servizio spento | 50 risultati lessicali, badge **«RAG LOCALE SPENTO (SOLO LESSICALE)»** e **banner giallo** «Modalità degradata (solo ricerca lessicale)… Nessun dato è uscito dal Mac» |
+| 19:20 | Riavvio dal pannello | ATTIVO (porta 60470), ricerca ibrida di nuovo attiva |
+
+Resta **DA VERIFICARE** solo la barra di avanzamento del ricalcolo della cache dall'interfaccia (nel collaudo la cache era già completa).
 
 Nota operativa: nella cartella `~/Applications/` esiste ancora **`LIMEN Vault 0.2.0.app`**, una versione precedente con lo stesso identificativo `dev.arkai.limenvault`; Launchpad/Spotlight possono aprirla al posto della v3. Va rimossa dall'utente.
 
@@ -272,7 +282,7 @@ Nota operativa: nella cartella `~/Applications/` esiste ancora **`LIMEN Vault 0.
 
 - Pipeline: `pnpm --filter @limen-vault/desktop tauri build` → `scripts/package-v3.sh prepare` (firma di ogni file in `Contents/Resources/native/` — `*.dylib`, `*.so`, eseguibili — e dell'app; invio ad Apple Notary) → `package` (graffettatura app, DMG con Applications/HELP/guide, invio DMG) → `finish` (graffettatura DMG).
 - Identità: `Developer ID Application: Arkitecna Hong Kong Limited (ZVGX4HFZC3)`; profilo notarile `LIMEN-M9`.
-- Esiti del 20/09: app `07e5abcb-aaee-41fa-9adb-f056209088a0` **Accepted**; DMG `56892416-9783-4033-9fcd-3fd510c65bf9` **Accepted**; verifica indipendente sull'app installata: `spctl` accepted / `source=Notarized Developer ID`, `stapler validate` OK, `codesign --verify --deep --strict` valido. Nuovo giro per `a08e769`: app `6b0a0583-4974-4f55-bf96-278c2921c475` (in corso al momento della stesura).
+- Esiti del 20/09: app `07e5abcb-aaee-41fa-9adb-f056209088a0` **Accepted**; DMG `56892416-9783-4033-9fcd-3fd510c65bf9` **Accepted**; verifica indipendente sull'app installata: `spctl` accepted / `source=Notarized Developer ID`, `stapler validate` OK, `codesign --verify --deep --strict` valido. Secondo giro per `a08e769`: app `6b0a0583-4974-4f55-bf96-278c2921c475` **Accepted**, DMG accettato e graffettato, installata in `/Applications` e verificata (`spctl` accepted, `stapler validate` OK, firma profonda valida) alle 18:5x UTC+8. È la build in uso per il collaudo del §6.
 - Evidenze: `IMPLEMENTATION/V3_EVIDENCE/` (`app-submit.json`, `app-status.json`, `app-staple.log`, `app-gatekeeper.log`, `dmg-*.json/log`, `app-signature.log`).
 
 ---
