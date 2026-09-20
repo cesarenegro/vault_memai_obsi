@@ -18,6 +18,66 @@ use std::{
 pub const EMBEDDINGS_CACHE_FILE: &str = "EMBEDDINGS_CACHE.json";
 pub const DEFAULT_EMBEDDINGS_MODEL: &str = "text-embedding-3-small";
 pub const DEFAULT_EMBEDDINGS_DIMENSIONS: usize = 1536;
+pub const DEFAULT_EMBEDDINGS_ENDPOINT: &str = "https://api.openai.com/v1/embeddings";
+
+/// Read embeddingsEndpoint from 00_SYSTEM/SYNC_PROFILE.json, defaulting to https://api.openai.com/v1/embeddings when absent.
+pub fn resolve_embeddings_endpoint(vault_path: &Path) -> String {
+    let profile_path = vault_path.join("00_SYSTEM").join("SYNC_PROFILE.json");
+    if let Ok(content) = std::fs::read_to_string(&profile_path) {
+        if let Ok(val) = serde_json::from_str::<Value>(&content) {
+            if let Some(ep) = val.get("embeddingsEndpoint").and_then(Value::as_str) {
+                let trimmed = ep.trim();
+                if !trimmed.is_empty() {
+                    return trimmed.to_string();
+                }
+            }
+        }
+    }
+    DEFAULT_EMBEDDINGS_ENDPOINT.to_string()
+}
+
+/// Optional model override from 00_SYSTEM/SYNC_PROFILE.json.
+pub fn resolve_embeddings_model(vault_path: &Path) -> Option<String> {
+    let profile_path = vault_path.join("00_SYSTEM").join("SYNC_PROFILE.json");
+    if let Ok(content) = std::fs::read_to_string(&profile_path) {
+        if let Ok(val) = serde_json::from_str::<Value>(&content) {
+            if let Some(m) = val.get("embeddingsModel").and_then(Value::as_str) {
+                let trimmed = m.trim();
+                if !trimmed.is_empty() {
+                    return Some(trimmed.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Validates an embeddings endpoint URL for security.
+/// Returns Ok(true) if the endpoint is loopback (allowing http://),
+/// Ok(false) if the endpoint is a valid external HTTPS endpoint,
+/// or Err(message) if an external endpoint attempts to use unencrypted HTTP or if the URL is invalid.
+pub fn is_loopback_endpoint(endpoint: &str) -> Result<bool, String> {
+    let url = reqwest::Url::parse(endpoint)
+        .map_err(|e| format!("URL endpoint non valido '{}': {}", endpoint, e))?;
+
+    let host = url.host_str().unwrap_or("").trim();
+    let is_loopback = host == "127.0.0.1" || host == "localhost" || host == "::1" || host == "[::1]";
+
+    match url.scheme() {
+        "http" => {
+            if is_loopback {
+                Ok(true)
+            } else {
+                Err(format!(
+                    "Rifiutato endpoint HTTP non sicuro '{}': http:// è consentito esclusivamente su loopback (127.0.0.1, localhost, ::1)",
+                    endpoint
+                ))
+            }
+        }
+        "https" => Ok(is_loopback),
+        other => Err(format!("Schema URL non supportato '{}': supportati solo http e https", other)),
+    }
+}
 
 fn err(e: impl std::fmt::Display) -> String {
     e.to_string()
@@ -169,8 +229,20 @@ pub fn embeddings_status(vault_path: &Path) -> Result<EmbeddingsStatusReport, St
     })
 }
 
-/// Fetch embeddings for a batch of strings from OpenAI API.
+/// Fetch embeddings for a batch of strings using default OpenAI API endpoint.
 pub async fn fetch_openai_embeddings(
+    api_key: &str,
+    model: &str,
+    texts: &[String],
+) -> Result<Vec<Vec<f32>>, String> {
+    fetch_openai_embeddings_with_endpoint(DEFAULT_EMBEDDINGS_ENDPOINT, api_key, model, texts).await
+}
+
+/// Fetch embeddings for a batch of strings from a configurable endpoint.
+/// Allows http:// ONLY on loopback (127.0.0.1, localhost, ::1); rejects unencrypted HTTP for external hosts.
+/// Does not require or send an API key if the endpoint is loopback and key is empty.
+pub async fn fetch_openai_embeddings_with_endpoint(
+    endpoint: &str,
     api_key: &str,
     model: &str,
     texts: &[String],
@@ -178,14 +250,23 @@ pub async fn fetch_openai_embeddings(
     if texts.is_empty() {
         return Ok(Vec::new());
     }
-    if api_key.trim().is_empty() {
+
+    let is_loopback = is_loopback_endpoint(endpoint)?;
+
+    // Non-loopback endpoints strictly require an API key
+    if !is_loopback && api_key.trim().is_empty() {
         return Err("OpenAI API key non configurata".into());
     }
 
-    let client = reqwest::Client::builder()
-        .https_only(true)
+    let mut client_builder = reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(10))
-        .timeout(Duration::from_secs(45))
+        .timeout(Duration::from_secs(60));
+
+    if !is_loopback {
+        client_builder = client_builder.https_only(true);
+    }
+
+    let client = client_builder
         .build()
         .map_err(|e| format!("HTTP client error: {}", e))?;
 
@@ -194,21 +275,23 @@ pub async fn fetch_openai_embeddings(
         "input": texts
     });
 
-    let resp = client
-        .post("https://api.openai.com/v1/embeddings")
-        .bearer_auth(api_key)
-        .json(&body)
+    let mut req = client.post(endpoint).json(&body);
+    if !api_key.trim().is_empty() {
+        req = req.bearer_auth(api_key);
+    }
+
+    let resp = req
         .send()
         .await
-        .map_err(|e| format!("Richiesta embeddings OpenAI fallita: {}", e))?;
+        .map_err(|e| format!("Richiesta embeddings fallita verso '{}': {}", endpoint, e))?;
 
     if !resp.status().is_success() {
         let status = resp.status().as_u16();
         let err_text = resp.text().await.unwrap_or_default();
         return Err(match status {
-            401 => "Chiave API OpenAI non valida o non autorizzata".into(),
-            429 => "Quota OpenAI esaurita o rate limit raggiunto".into(),
-            code => format!("OpenAI embeddings error HTTP {}: {}", code, err_text),
+            401 => "Chiave API non valida o non autorizzata".into(),
+            429 => "Quota esaurita o rate limit raggiunto".into(),
+            code => format!("Embeddings error HTTP {}: {}", code, err_text),
         });
     }
 
@@ -300,14 +383,21 @@ pub async fn sync_embeddings(
 ) -> Result<EmbeddingsStatusReport, String> {
     let catalog = load_catalog(vault_path)?;
     let mut cache = load_embeddings_cache(vault_path)?;
-    let target_model = model.unwrap_or(DEFAULT_EMBEDDINGS_MODEL);
+    let endpoint = resolve_embeddings_endpoint(vault_path);
+    let is_loopback = is_loopback_endpoint(&endpoint)?;
+    let profile_model = resolve_embeddings_model(vault_path);
+    let target_model = model
+        .or(profile_model.as_deref())
+        .unwrap_or(DEFAULT_EMBEDDINGS_MODEL);
 
-    let key_from_keychain = if api_key.trim().is_empty() {
+    let key_from_keychain = if !is_loopback && api_key.trim().is_empty() {
         crate::keychain::load().ok().flatten().filter(|k| !k.trim().is_empty())
     } else {
         None
     };
-    let effective_key = if !api_key.trim().is_empty() {
+    let effective_key = if is_loopback {
+        api_key
+    } else if !api_key.trim().is_empty() {
         api_key
     } else if let Some(ref k) = key_from_keychain {
         k.as_str()
@@ -317,6 +407,7 @@ pub async fn sync_embeddings(
 
     // If model changed, clear cache
     if cache.model != target_model {
+        println!("Invalidating embeddings cache: model changed from '{}' to '{}'", cache.model, target_model);
         cache.entries.clear();
         cache.model = target_model.to_string();
     }
@@ -403,7 +494,20 @@ pub async fn sync_embeddings(
     let batch_size = 16;
     for chunk in missing.chunks(batch_size) {
         let texts: Vec<String> = chunk.iter().map(|m| m.text_to_embed.clone()).collect();
-        let vectors = fetch_openai_embeddings(effective_key, target_model, &texts).await?;
+        let vectors = fetch_openai_embeddings_with_endpoint(&endpoint, effective_key, target_model, &texts).await?;
+
+        // Cache dimension check and invalidation on dimension change (e.g. 1536 -> 1024)
+        if let Some(first_vec) = vectors.first() {
+            let dim = first_vec.len();
+            if dim > 0 && cache.dimensions != dim {
+                println!(
+                    "Invalidating embeddings cache: vector dimensions changed from {} to {}",
+                    cache.dimensions, dim
+                );
+                cache.entries.clear();
+                cache.dimensions = dim;
+            }
+        }
 
         for (m, vec) in chunk.iter().zip(vectors.into_iter()) {
             cache.entries.insert(
@@ -422,6 +526,10 @@ pub async fn sync_embeddings(
                 },
             );
         }
+    }
+
+    if let Some(first_entry) = cache.entries.values().next() {
+        cache.dimensions = first_entry.dimensions;
     }
 
     save_embeddings_cache(vault_path, &mut cache)?;
@@ -481,19 +589,30 @@ pub async fn hybrid_search_vault(
         _ => return hybrid_search_vault_with_vector(vault_path, q, None, false).await, // Graceful offline fallback
     };
 
+    let endpoint = resolve_embeddings_endpoint(vault_path);
+    let is_loopback = is_loopback_endpoint(&endpoint).unwrap_or(false);
+
     let effective_key = match api_key.as_deref() {
         Some(k) if !k.trim().is_empty() => Some(k.to_string()),
         _ => crate::keychain::load().ok().flatten().filter(|k| !k.trim().is_empty()),
     };
 
-    let query_vector = match effective_key.as_deref() {
-        Some(key) if !key.is_empty() => {
-            match fetch_openai_embeddings(key, &cache.model, &[term.to_string()]).await {
-                Ok(mut vecs) => vecs.pop(),
-                Err(_) => None, // Graceful fallback on network/quota error
-            }
+    let query_vector = if is_loopback {
+        let key_str = effective_key.as_deref().unwrap_or("");
+        match fetch_openai_embeddings_with_endpoint(&endpoint, key_str, &cache.model, &[term.to_string()]).await {
+            Ok(mut vecs) => vecs.pop(),
+            Err(_) => None,
         }
-        _ => None,
+    } else {
+        match effective_key.as_deref() {
+            Some(key) if !key.is_empty() => {
+                match fetch_openai_embeddings_with_endpoint(&endpoint, key, &cache.model, &[term.to_string()]).await {
+                    Ok(mut vecs) => vecs.pop(),
+                    Err(_) => None, // Graceful fallback on network/quota error
+                }
+            }
+            _ => None,
+        }
     };
 
     hybrid_search_vault_with_vector(vault_path, q, query_vector, true).await
@@ -1253,5 +1372,106 @@ mod tests {
         // doc_high_sem MUST strictly outrank doc_mediocre_dual
         assert!(high_sem_idx < mediocre_dual_idx, "doc_high_sem (rank {}) must beat doc_mediocre_dual (rank {})", high_sem_idx + 1, mediocre_dual_idx + 1);
         assert!(res[high_sem_idx].score > res[mediocre_dual_idx].score, "doc_high_sem score ({}) must be > doc_mediocre_dual score ({})", res[high_sem_idx].score, res[mediocre_dual_idx].score);
+    }
+
+    #[test]
+    fn test_resolve_embeddings_endpoint_defaults_to_openai_when_absent() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path();
+        fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        assert_eq!(resolve_embeddings_endpoint(path), DEFAULT_EMBEDDINGS_ENDPOINT);
+
+        // Even with empty SYNC_PROFILE.json
+        fs::write(path.join("00_SYSTEM/SYNC_PROFILE.json"), "{}").unwrap();
+        assert_eq!(resolve_embeddings_endpoint(path), DEFAULT_EMBEDDINGS_ENDPOINT);
+
+        // When embeddingsEndpoint is configured
+        let custom = r#"{"embeddingsEndpoint":"http://127.0.0.1:8088/v1/embeddings","embeddingsModel":"bge-m3"}"#;
+        fs::write(path.join("00_SYSTEM/SYNC_PROFILE.json"), custom).unwrap();
+        assert_eq!(resolve_embeddings_endpoint(path), "http://127.0.0.1:8088/v1/embeddings");
+        assert_eq!(resolve_embeddings_model(path).as_deref(), Some("bge-m3"));
+    }
+
+    #[test]
+    fn test_is_loopback_endpoint_security_rules() {
+        // Loopback HTTP accepted
+        assert_eq!(is_loopback_endpoint("http://127.0.0.1:8088/v1/embeddings").unwrap(), true);
+        assert_eq!(is_loopback_endpoint("http://localhost:8088/v1/embeddings").unwrap(), true);
+        assert_eq!(is_loopback_endpoint("http://[::1]:8088/v1/embeddings").unwrap(), true);
+
+        // External HTTPS accepted
+        assert_eq!(is_loopback_endpoint("https://api.openai.com/v1/embeddings").unwrap(), false);
+        assert_eq!(is_loopback_endpoint("https://custom-ai.company.internal/v1/embeddings").unwrap(), false);
+
+        // Insecure external HTTP REJECTED
+        assert!(is_loopback_endpoint("http://api.openai.com/v1/embeddings").is_err());
+        assert!(is_loopback_endpoint("http://esempio.esterno/v1/embeddings").is_err());
+        assert!(is_loopback_endpoint("http://192.168.1.50:8088/v1/embeddings").is_err());
+    }
+
+    #[tokio::test]
+    async fn test_fetch_embeddings_api_key_rules() {
+        // Non-loopback endpoint requires API key
+        let res_ext = fetch_openai_embeddings_with_endpoint(
+            "https://api.openai.com/v1/embeddings",
+            "",
+            "text-embedding-3-small",
+            &["test".to_string()],
+        ).await;
+        assert!(res_ext.is_err());
+        assert_eq!(res_ext.unwrap_err(), "OpenAI API key non configurata");
+
+        // External unencrypted HTTP rejected immediately
+        let res_insecure = fetch_openai_embeddings_with_endpoint(
+            "http://esempio.esterno/v1/embeddings",
+            "key123",
+            "text-embedding-3-small",
+            &["test".to_string()],
+        ).await;
+        assert!(res_insecure.is_err());
+        assert!(res_insecure.unwrap_err().contains("Rifiutato endpoint HTTP non sicuro"));
+    }
+
+    #[test]
+    fn test_embeddings_cache_invalidates_on_dimension_change() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path();
+        fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+
+        // Create cache with dimensions 1536
+        let mut cache = EmbeddingsCache {
+            version: 1,
+            model: "bge-m3".to_string(),
+            dimensions: 1536,
+            entries: BTreeMap::new(),
+            last_updated_at: now_iso(),
+        };
+        cache.entries.insert("p1".to_string(), PassageEmbeddingEntry {
+            passage_id: "p1".to_string(),
+            document_id: "d1".to_string(),
+            relative_path: "20_RAW_SOURCES/d1.txt".to_string(),
+            locator: "1".to_string(),
+            sha256: "hash".to_string(),
+            embedded_text_sha256: Some("sha".to_string()),
+            model: "bge-m3".to_string(),
+            dimensions: 1536,
+            vector: vec![0.1; 1536],
+            updated_at: now_iso(),
+        });
+        save_embeddings_cache(path, &mut cache).unwrap();
+
+        let loaded = load_embeddings_cache(path).unwrap();
+        assert_eq!(loaded.entries.len(), 1);
+        assert_eq!(loaded.dimensions, 1536);
+
+        // When new dimensions are 1024, cache is detected as invalid
+        let target_dim = 1024;
+        let mut updated_cache = loaded;
+        if updated_cache.dimensions != target_dim {
+            updated_cache.entries.clear();
+            updated_cache.dimensions = target_dim;
+        }
+        assert_eq!(updated_cache.entries.len(), 0);
+        assert_eq!(updated_cache.dimensions, 1024);
     }
 }
