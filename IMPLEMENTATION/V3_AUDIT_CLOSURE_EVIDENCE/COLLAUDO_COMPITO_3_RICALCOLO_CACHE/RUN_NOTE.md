@@ -68,3 +68,24 @@ Residui (non bloccanti, non corretti in questa corsa):
 - La schermata dello stato finale in UI («Cache semantica ricalcolata e allineata con successo al 100%») non e' stata
   catturata perche' lo schermo del Mac si e' bloccato alle 18:2x (blocco per inattivita': `caffeinate -d` impedisce lo
   spegnimento del display ma non il salvaschermo). Lo stato finale e' provato dal file cache e dalla sua verifica.
+
+## 3. Residui risolti — build `04db6a6` (app notarizzata `8cf464f0-…`, DMG `a59789e3-…`), 21:12–21:21 UTC+8
+
+Correzioni (commit `04db6a6`): rilettura dello stato del servizio al primo evento di avanzamento; registrazione del pid del
+figlio in `models/llama-server.pid` e terminazione, all'avvio dell'app e prima di ogni avvio del servizio, di un server
+registrato che risulti orfano (ppid 1 e riga di comando `llama-server … --embedding`). Test: 97 + 17.
+
+**Badge del servizio durante il ricalcolo.** Vault `tests/scratch/vault_collaudo_badge` (copia del vault precedente con 160
+voci tolte dalla cache → «9298 passaggi indicizzati (1024 dim)», «Cache semantica incompleta: 160 passaggi su 9458 non sono
+ancora indicizzati»). Clic su RICALCOLA: a 8 s «0/160 passaggi», badge ancora SPENTO (la rilettura e' asincrona); a 33 s
+**«ATTIVO (PORTA 49462)» con «112/160 passaggi 70.0%»**; fine entro 75 s. Prove: `30_badge_prima_…png`,
+`31_badge_durante_ricalcolo_211858.png`, `32_badge_fine_211929.png`.
+
+**Server orfano.** Con il servizio attivo: `llama-server.pid` = 99236, `ps`: pid 99236, ppid 98487 (= app).
+`kill -9 98487` → app terminata, figlio 99236 vivo con **ppid 1** (orfano), pidfile ancora presente. `open` dell'app →
+dopo 5 s il pid 99236 **non esiste piu'**, pidfile **rimosso**, nessun `llama-server` attivo. Chiusura regolare dell'app →
+nessun processo residuo.
+
+Copia graffettata installata in `/Applications/LIMEN Vault v3.app` (firma profonda valida, `stapler validate` OK,
+`spctl` accepted / Notarized Developer ID). Lo schermo si e' sbloccato dopo la chiusura in coda dell'app (§2): lo stato
+finale «9458 passaggi indicizzati (1024 dim)» e' comunque visibile nella cattura `30_…` (stesso vault con 160 voci in meno).
