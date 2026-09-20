@@ -306,7 +306,7 @@ Vault: `tests/scratch/vault_collaudo_ricalcolo_cache/` (copia del vault reale, 1
 
 Tempo totale **49 min 01 s** (0,31 s/passaggio). La schermata del messaggio finale non è stata catturata perché il Mac si è bloccato per inattività alle 18:2x (stato finale provato dal file cache e dalla cattura `30_…` sullo stesso vault).
 
-**Residui risolti sulla build `04db6a6` (21:12–21:21)**: (a) badge del servizio durante il ricalcolo: su un vault con 160 passaggi mancanti, «SPENTO» a 8 s e **«ATTIVO (PORTA 49462)» a 33 s con «112/160 passaggi 70.0%»** (prima restava SPENTO fino alla fine); (b) server orfano: con il servizio attivo `kill -9` dell'app lascia il figlio con genitore 1; al riavvio l'app lo termina e rimuove il pidfile (verificato con `ps`); la chiusura regolare non lascia processi. Prove `30_…`, `31_…`, `32_….png` e `RUN_NOTE.md` §3.
+**Residui risolti sulla build `04db6a6` (21:12–21:21)**: (a) badge del servizio durante il ricalcolo: su un vault con 160 passaggi mancanti, in due corse, «SPENTO» a 8 s e **«ATTIVO (PORTA n)» a 20–33 s con la barra al 30–70 %** (osservazione diretta dal controllo dello schermo, trascritta nella nota; prima restava SPENTO fino alla fine); (b) server orfano: con il servizio attivo `kill -9` dell'app lascia il figlio con genitore 1; al riavvio l'app lo termina e rimuove il pidfile (verificato con `ps`); la chiusura regolare non lascia processi. Prove `30_….png` e `RUN_NOTE.md` §3 (con l'avvertenza sulle catture `33_`/`34_`, che mostrano la pagina scorsa in fondo e non il pannello).
 
 Nota operativa: `~/Applications/LIMEN Vault 0.2.0.app` (versione precedente con lo stesso identificativo) è stata **rimossa** il 20/09.
 

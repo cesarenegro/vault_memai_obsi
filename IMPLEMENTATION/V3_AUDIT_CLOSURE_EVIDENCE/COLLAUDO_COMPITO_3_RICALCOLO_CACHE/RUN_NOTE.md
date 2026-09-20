@@ -77,9 +77,21 @@ registrato che risulti orfano (ppid 1 e riga di comando `llama-server … --embe
 
 **Badge del servizio durante il ricalcolo.** Vault `tests/scratch/vault_collaudo_badge` (copia del vault precedente con 160
 voci tolte dalla cache → «9298 passaggi indicizzati (1024 dim)», «Cache semantica incompleta: 160 passaggi su 9458 non sono
-ancora indicizzati»). Clic su RICALCOLA: a 8 s «0/160 passaggi», badge ancora SPENTO (la rilettura e' asincrona); a 33 s
-**«ATTIVO (PORTA 49462)» con «112/160 passaggi 70.0%»**; fine entro 75 s. Prove: `30_badge_prima_…png`,
-`31_badge_durante_ricalcolo_211858.png`, `32_badge_fine_211929.png`.
+ancora indicizzati»; cattura `30_badge_prima_cache_incompleta_211721.png`). Due corse identiche (21:18 e 21:24), osservate
+dal controllo dello schermo (ingrandimenti letti in diretta, trascritti qui):
+- corsa 1: a 8 s «0/160 passaggi 0.0%», badge SPENTO; a 33 s **«ATTIVO (PORTA 49462)»** con «112/160 passaggi 70.0%»;
+- corsa 2: a 8 s «0/160 passaggi 0.0%», badge SPENTO; a 20 s **«ATTIVO (PORTA 49548)»**, «ARRESTA SERVIZIO LOCALE», con
+  «48/160 passaggi 30.0%»; a 35 s «96/160 60.0%»; a 65 s stato finale «9458 passaggi indicizzati (1024 dim)», «✓ Le
+  dimensioni della cache (1024d) sono perfettamente allineate con il fornitore attivo (local, 1024d)» e messaggio verde
+  «Cache semantica ricalcolata e allineata con successo al 100%».
+Prima della correzione il badge restava SPENTO per tutta la durata (§2, cattura `02_…`: SPENTO con barra in corso).
+
+*Avvertenza sulle catture su disco della corsa 2* (`33_badge_ricalcolo_t06s…t54s_*.png`, `34_ricalcolo_completato_*.png`,
+prodotte da `screencapture` a intervalli di 8 s): mostrano la stessa finestra scorsa in fondo alla pagina (sezione MCP/tunnel),
+mentre il controllo dello schermo negli stessi istanti mostrava il pannello del motore semantico; prima del clic i due metodi
+davano immagini identiche (`cmp_byid`/`cmp_crop` nello scratch). La discrepanza non e' stata spiegata e non viene
+interpretata: le catture 33/34 provano solo che la finestra era aperta su quel vault in quegli istanti; la prova del badge
+e' l'osservazione diretta sopra trascritta (due corse concordi) e l'evento `embeddings_sync_progress` che la innesca.
 
 **Server orfano.** Con il servizio attivo: `llama-server.pid` = 99236, `ps`: pid 99236, ppid 98487 (= app).
 `kill -9 98487` → app terminata, figlio 99236 vivo con **ppid 1** (orfano), pidfile ancora presente. `open` dell'app →
