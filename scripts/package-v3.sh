@@ -15,8 +15,9 @@ prepare)
   ditto "$ROOT/apps/desktop/src-tauri/target/release/bundle/macos/LIMEN Vault v3.app" "$APP"
   python3 - "$APP" <<'PY'
 import pathlib,sys,plistlib
-app=pathlib.Path(sys.argv[1]); binary=app/'Contents/MacOS/vault-check'
-if binary.is_file() and not binary.is_symlink():binary.unlink()
+app=pathlib.Path(sys.argv[1])
+for b in list((app/'Contents/MacOS').iterdir()):
+    if b.name != 'limen-vault': b.unlink()
 assert [p.name for p in (app/'Contents/MacOS').iterdir()]==['limen-vault']
 with (app/'Contents/Info.plist').open('rb') as f: assert plistlib.load(f)['CFBundleShortVersionString']=='0.3.0'
 assert (app/'Contents/Resources/documentation/HELP/07_AUTOMAZIONE_DOCUMENTI.md').is_file()

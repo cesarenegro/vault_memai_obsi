@@ -90,7 +90,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
       }
     }).then((unlisten) => {
       unlistenDownload = unlisten;
-    });
+    }).catch(() => {});
 
     void listen<{ percent: number; processed: number; total: number }>('embeddings_sync_progress', (e) => {
       if (isMounted.current) {
@@ -98,7 +98,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
       }
     }).then((unlisten) => {
       unlistenSync = unlisten;
-    });
+    }).catch(() => {});
 
     return () => {
       isMounted.current = false;

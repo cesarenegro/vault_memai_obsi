@@ -147,7 +147,7 @@ export default function App() {
       setSearchProvider(e.payload.provider);
     }).then((u) => {
       unlisten = u;
-    });
+    }).catch(() => {});
     return () => {
       if (unlisten) unlisten();
     };

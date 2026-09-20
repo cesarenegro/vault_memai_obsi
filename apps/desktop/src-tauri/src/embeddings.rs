@@ -52,12 +52,6 @@ pub fn get_embeddings_provider(vault_path: &Path, active_port: u16) -> Embedding
                 if trimmed == "local" || trimmed == "openai" {
                     configured_provider = Some(trimmed);
                 }
-            } else if let Some(ep) = val.get("embeddingsEndpoint").and_then(Value::as_str) {
-                if is_loopback_endpoint(ep).unwrap_or(false) {
-                    configured_provider = Some("local".to_string());
-                } else {
-                    configured_provider = Some("openai".to_string());
-                }
             }
         }
     }
@@ -70,9 +64,12 @@ pub fn get_embeddings_provider(vault_path: &Path, active_port: u16) -> Embedding
         DEFAULT_EMBEDDINGS_MODEL.to_string()
     };
     let dimensions = if is_local { 1024 } else { 1536 };
-    let port = if active_port > 0 { active_port } else { 8088 };
     let endpoint = if is_local {
-        format!("http://127.0.0.1:{}/v1/embeddings", port)
+        if active_port > 0 {
+            format!("http://127.0.0.1:{}/v1/embeddings", active_port)
+        } else {
+            String::new()
+        }
     } else {
         DEFAULT_EMBEDDINGS_ENDPOINT.to_string()
     };
@@ -80,7 +77,27 @@ pub fn get_embeddings_provider(vault_path: &Path, active_port: u16) -> Embedding
     let cache = load_embeddings_cache(vault_path).unwrap_or_default();
     let cache_dimensions = cache.dimensions;
     let cache_entries = cache.entries.len();
-    let needs_reindex = cache_entries > 0 && cache_dimensions != dimensions;
+
+    let mut total_passages = 0;
+    let mut matched_passages = 0;
+    if let Ok(catalog) = load_catalog(vault_path) {
+        for doc in catalog.documents.values() {
+            for p in &doc.passages {
+                total_passages += 1;
+                if let Some(entry) = cache.entries.get(&p.passage_id) {
+                    if entry.sha256 == p.sha256 && (cache_dimensions == 0 || cache_dimensions == dimensions) {
+                        matched_passages += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    let needs_reindex = if total_passages > 0 {
+        matched_passages < total_passages || (cache_entries > 0 && cache_dimensions != dimensions)
+    } else {
+        cache_entries > 0 && cache_dimensions != dimensions
+    };
 
     EmbeddingsProviderReport {
         provider,
@@ -94,9 +111,11 @@ pub fn get_embeddings_provider(vault_path: &Path, active_port: u16) -> Embedding
 }
 
 /// Atomically write embeddingsProvider to 00_SYSTEM/SYNC_PROFILE.json.
+/// Endpoint and model are NOT persisted: endpoint is built dynamically at runtime from active_port.
 pub fn set_embeddings_provider(
     vault_path: &Path,
     provider: &str,
+    active_port: u16,
 ) -> Result<EmbeddingsProviderReport, String> {
     let prov = provider.trim().to_lowercase();
     if prov != "local" && prov != "openai" {
@@ -121,23 +140,9 @@ pub fn set_embeddings_provider(
     let obj = val.as_object_mut().unwrap();
     obj.insert("embeddingsProvider".into(), Value::String(prov.clone()));
 
-    // Keep backwards-compatible fields
-    if prov == "local" {
-        obj.insert("embeddingsModel".into(), Value::String("bge-m3".into()));
-        obj.insert(
-            "embeddingsEndpoint".into(),
-            Value::String("http://127.0.0.1:8088/v1/embeddings".into()),
-        );
-    } else {
-        obj.insert(
-            "embeddingsModel".into(),
-            Value::String(DEFAULT_EMBEDDINGS_MODEL.into()),
-        );
-        obj.insert(
-            "embeddingsEndpoint".into(),
-            Value::String(DEFAULT_EMBEDDINGS_ENDPOINT.into()),
-        );
-    }
+    // Never persist endpoint or model: endpoint is runtime-constructed from live server port
+    obj.remove("embeddingsEndpoint");
+    obj.remove("embeddingsModel");
 
     let sys_dir = vault_path.join("00_SYSTEM");
     if !sys_dir.exists() {
@@ -153,11 +158,14 @@ pub fn set_embeddings_provider(
     drop(f);
     std::fs::rename(stage, &profile_path).map_err(|e| e.to_string())?;
 
-    Ok(get_embeddings_provider(vault_path, 0))
+    Ok(get_embeddings_provider(vault_path, active_port))
 }
 
 /// Security validation: if embeddingsProvider is "local", ensure the endpoint is strictly a loopback address.
 pub fn validate_provider_endpoint(vault_path: &Path, endpoint: &str) -> Result<(), String> {
+    if endpoint.trim().is_empty() {
+        return Ok(());
+    }
     let profile_path = vault_path.join("00_SYSTEM").join("SYNC_PROFILE.json");
     if let Ok(content) = std::fs::read_to_string(&profile_path) {
         if let Ok(val) = serde_json::from_str::<Value>(&content) {
@@ -177,12 +185,13 @@ pub fn validate_provider_endpoint(vault_path: &Path, endpoint: &str) -> Result<(
     Ok(())
 }
 
-/// Read embeddingsEndpoint from 00_SYSTEM/SYNC_PROFILE.json, defaulting to local if running, or OpenAI.
+/// Read embeddingsEndpoint from runtime provider configuration, or OpenAI default.
+/// For local provider, returns empty string when no active port is specified.
 pub fn resolve_embeddings_endpoint(vault_path: &Path) -> String {
     get_embeddings_provider(vault_path, 0).endpoint
 }
 
-/// Optional model override from 00_SYSTEM/SYNC_PROFILE.json.
+/// Optional model override from runtime provider configuration.
 pub fn resolve_embeddings_model(vault_path: &Path) -> Option<String> {
     let rep = get_embeddings_provider(vault_path, 0);
     Some(rep.model)
@@ -306,8 +315,8 @@ pub fn load_embeddings_cache(vault_path: &Path) -> Result<EmbeddingsCache, Strin
         return Ok(EmbeddingsCache::default());
     }
     let bytes = read(&sys, EMBEDDINGS_CACHE_FILE)?;
-    if bytes.len() > 64 * 1024 * 1024 {
-        return Err("Embeddings cache file exceeds 64 MB".into());
+    if bytes.len() > 512 * 1024 * 1024 {
+        return Err("Embeddings cache file exceeds 512 MB".into());
     }
     serde_json::from_slice(&bytes).map_err(err)
 }
@@ -531,11 +540,21 @@ pub async fn sync_embeddings_with_port(
     let catalog = load_catalog(vault_path)?;
     let current_cache = load_embeddings_cache(vault_path)?;
     let prov_rep = get_embeddings_provider(vault_path, active_port.unwrap_or(0));
-    let endpoint = if prov_rep.provider == "local" {
-        prov_rep.endpoint.clone()
-    } else {
-        resolve_embeddings_endpoint(vault_path)
-    };
+    let endpoint = prov_rep.endpoint.clone();
+    let is_local = prov_rep.provider == "local";
+
+    if is_local {
+        if endpoint.is_empty() || active_port.unwrap_or(0) == 0 {
+            return Err("Server di embedding locale non attivo. Avvia il server locale da Impostazioni prima di sincronizzare.".into());
+        }
+        let port = active_port.unwrap();
+        if !crate::llama::check_health(port) {
+            return Err(format!(
+                "Server di embedding locale non raggiungibile su {}. Avvia il server locale da Impostazioni prima di sincronizzare.",
+                endpoint
+            ));
+        }
+    }
 
     validate_provider_endpoint(vault_path, &endpoint)?;
     let is_loopback = is_loopback_endpoint(&endpoint)?;
@@ -548,15 +567,6 @@ pub async fn sync_embeddings_with_port(
         None
     };
     let effective_key = if is_loopback {
-        if let Ok(u) = reqwest::Url::parse(&endpoint) {
-            let port = u.port().unwrap_or(crate::llama::DEFAULT_LOCAL_PORT);
-            if !crate::llama::check_health(port) {
-                return Err(format!(
-                    "Server di embedding locale non raggiungibile su {}. Avvia il server locale da Impostazioni prima di sincronizzare.",
-                    endpoint
-                ));
-            }
-        }
         ""
     } else if !api_key.trim().is_empty() {
         api_key
@@ -698,8 +708,8 @@ pub async fn sync_embeddings_with_port(
     // Prune stale passages from working cache
     working_cache.entries.retain(|id, _| valid_passage_ids.contains(id));
 
-    // Process in batches of 16 passages
-    let batch_size = 16;
+    // Process in batches (64 for local loopback or 32 for remote API)
+    let batch_size = if is_loopback { 64 } else { 32 };
     let total_missing = missing.len();
     let mut processed_count = 0;
     if total_missing > 0 {
@@ -736,11 +746,11 @@ pub async fn sync_embeddings_with_port(
         }
 
         processed_count += chunk.len();
-        if is_model_migration {
+        if is_model_migration && (processed_count % 320 == 0 || processed_count == total_missing) {
             let _ = std::fs::write(&staging_path, serde_json::to_string(&working_cache).unwrap_or_default());
         }
 
-        if processed_count % 160 == 0 || processed_count == total_missing {
+        if processed_count % 320 == 0 || processed_count == total_missing {
             println!(
                 "Embedding progress: {}/{} passages ({:.1}%)",
                 processed_count,
@@ -821,14 +831,7 @@ pub async fn hybrid_search_vault_with_port(
 ) -> Result<(Vec<SearchResultItem>, bool), String> {
     let prov_rep = get_embeddings_provider(vault_path, active_port.unwrap_or(0));
     let is_local = prov_rep.provider == "local";
-    let endpoint = if is_local {
-        prov_rep.endpoint.clone()
-    } else {
-        resolve_embeddings_endpoint(vault_path)
-    };
-
-    // Mandatory security validation: local provider strictly forbids non-loopback endpoints
-    validate_provider_endpoint(vault_path, &endpoint)?;
+    let endpoint = prov_rep.endpoint.clone();
 
     if !use_semantic {
         let items = hybrid_search_vault_with_vector(vault_path, q, None, false).await?;
@@ -842,6 +845,15 @@ pub async fn hybrid_search_vault_with_port(
             return Ok((items, false));
         }
     };
+
+    // If local provider and service is offline (port 0 or empty endpoint), immediately degrade to lexical
+    if is_local && (endpoint.is_empty() || active_port.unwrap_or(0) == 0) {
+        let items = hybrid_search_vault_with_vector(vault_path, q, None, false).await?;
+        return Ok((items, true));
+    }
+
+    // Mandatory security validation: local provider strictly forbids non-loopback endpoints
+    validate_provider_endpoint(vault_path, &endpoint)?;
 
     let cache = match load_embeddings_cache(vault_path) {
         Ok(c) if !c.entries.is_empty() => c,
@@ -869,8 +881,8 @@ pub async fn hybrid_search_vault_with_port(
     let query_vector = if is_loopback {
         let key_str = effective_key.as_deref().unwrap_or("");
         if let Ok(u) = reqwest::Url::parse(&endpoint) {
-            let port = u.port().unwrap_or(crate::llama::DEFAULT_LOCAL_PORT);
-            if !crate::llama::check_health(port) {
+            let port = u.port().unwrap_or(0);
+            if port == 0 || !crate::llama::check_health(port) {
                 degraded = true;
                 None
             } else {
@@ -1679,10 +1691,10 @@ mod tests {
         fs::write(path.join("00_SYSTEM/SYNC_PROFILE.json"), "{}").unwrap();
         assert_eq!(resolve_embeddings_endpoint(path), DEFAULT_EMBEDDINGS_ENDPOINT);
 
-        // When embeddingsEndpoint is configured
-        let custom = r#"{"embeddingsEndpoint":"http://127.0.0.1:8088/v1/embeddings","embeddingsModel":"bge-m3"}"#;
+        // When provider is configured as local (endpoint is empty string when port is 0)
+        let custom = r#"{"embeddingsProvider":"local"}"#;
         fs::write(path.join("00_SYSTEM/SYNC_PROFILE.json"), custom).unwrap();
-        assert_eq!(resolve_embeddings_endpoint(path), "http://127.0.0.1:8088/v1/embeddings");
+        assert_eq!(resolve_embeddings_endpoint(path), "");
         assert_eq!(resolve_embeddings_model(path).as_deref(), Some("bge-m3"));
     }
 
@@ -1802,8 +1814,8 @@ mod tests {
 
         search::index_vault_search(path).unwrap();
 
-        // Configure provider as local
-        set_embeddings_provider(path, "local").unwrap();
+        // Configure provider as local (service offline, port 0)
+        set_embeddings_provider(path, "local", 0).unwrap();
 
         // Active port pointing to a closed port (e.g. 59999) where no server is running
         let (results, degraded) = hybrid_search_vault_with_port(

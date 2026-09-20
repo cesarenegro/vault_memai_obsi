@@ -686,9 +686,11 @@ async fn embeddings_get_provider(
 async fn embeddings_set_provider(
     vault_path: String,
     provider: String,
+    llama_state: tauri::State<'_, limen_vault::llama::LlamaServerState>,
 ) -> Result<limen_vault::embeddings::EmbeddingsProviderReport, String> {
+    let port = llama_state.status().port;
     tauri::async_runtime::spawn_blocking(move || {
-        limen_vault::embeddings::set_embeddings_provider(Path::new(&vault_path), &provider)
+        limen_vault::embeddings::set_embeddings_provider(Path::new(&vault_path), &provider, port)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -828,8 +830,7 @@ async fn search_vault_hybrid(
         if status.healthy && status.port > 0 {
             Some(status.port)
         } else {
-            // Auto-start on demand if local provider
-            llama_state.ensure_running().ok()
+            None
         }
     } else {
         None

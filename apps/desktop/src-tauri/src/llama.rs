@@ -15,7 +15,6 @@ pub const EXPECTED_MODEL_SIZE_BYTES: u64 = 634_553_760;
 pub const EXPECTED_MODEL_SHA256: &str =
     "950f4a8e5e19477a6d3c26d2f162233c20002c601f75e4b002e3239997821167";
 pub const EXPECTED_EMBEDDINGS_DIMENSIONS: usize = 1024;
-pub const DEFAULT_LOCAL_PORT: u16 = 8088;
 pub const MODEL_DOWNLOAD_URL: &str =
     "https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-Q8_0.gguf";
 
