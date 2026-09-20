@@ -1,0 +1,28 @@
+================================================================================
+A04 BENCHMARK: RAG 100% LOCALE SU CORPUS REALE (56 DOCUMENTI, 4.633 PASSAGGI)
+Commit SHA: 78187c0f3eb30e6257a82ee565b7330c044cdbaa
+Runtime Timestamp: 2026-09-20T03:08:56.825789+00:00
+================================================================================
+Removing existing SEARCH_INDEX.json to ensure fresh indexing without token deduplication...
+Reindexing vault lexical search with C11 fix...
+Vault indexed: 56 documents in 0.39s
+Catalog loaded: 56 documents
+Embeddings endpoint resolved: http://127.0.0.1:8088/v1/embeddings
+Calculating local embeddings via llama-server (model bge-m3, 1024d)...
+Embeddings synchronization complete: 4633/4633 passages cached (measured calculation time: 846.64s)
+Model: bge-m3, Dimensions: 1024
+Loaded cache with 4633 entries, dimensions 1024
+Loaded 82 evaluation queries from "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/gold/A04_REAL_QUERIES.json"
+Fetching embeddings for 82 query texts from http://127.0.0.1:8088/v1/embeddings...
+Received 82 query vectors in 1.28s
+Saved summary to "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A04_REAL_LOCAL_V2/summary.json"
+Saved per-query records to "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A04_REAL_LOCAL_V2/per-query.jsonl"
+
+================================================================================
+RISULTATI BENCHMARK A04 (CORPUS REALE, 82 CASI):
+Embedding model: bge-m3, Dimensions: 1024, Calcolato in: 846.64s
+--------------------------------------------------------------------------------
+LESSICALE (con C11 corretto): P@1 apparente = 0.146 (12/82), P@1 netta = 0.146 (12/82), R@10 = 0.585 (48/82), Pari merito rango 1 = 0 (0.0%), Max tie size = 0
+SEMANTICO (bge-m3 100% locale): P@1 apparente = 0.598 (49/82), P@1 netta = 0.598 (49/82), R@10 = 0.890 (73/82), Pari merito rango 1 = 1 (1.2%), Max tie size = 2
+IBRIDO (F2 k=0.20 locale): P@1 apparente = 0.341 (28/82), P@1 netta = 0.341 (28/82), R@10 = 0.915 (75/82), Pari merito rango 1 = 0 (0.0%), Max tie size = 0
+================================================================================
