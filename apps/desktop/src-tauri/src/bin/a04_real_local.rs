@@ -146,8 +146,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Runtime Timestamp: {}", runtime_start_iso);
     println!("================================================================================");
 
-    let vault_path = PathBuf::from("/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/scratch/real_vault_v1");
-    let queries_path = PathBuf::from("/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/gold/A04_REAL_QUERIES.json");
+    // Vault e set di prova da variabili d'ambiente (21/09/2026: set di termini sul vault da 114 documenti);
+    // senza variabili restano la corsa A04 originale (56 file) e le 82 frasi.
+    let vault_path = PathBuf::from(std::env::var("LIMEN_A04_VAULT").unwrap_or_else(|_| "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/scratch/real_vault_v1".to_string()));
+    let queries_path = PathBuf::from(std::env::var("LIMEN_A04_QUERIES").unwrap_or_else(|_| "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/tests/gold/A04_REAL_QUERIES.json".to_string()));
     // Cartella delle evidenze: da LIMEN_EVIDENCE_DIR, altrimenti la corsa V3 (BM25).
     let evidence_dir = PathBuf::from(
         std::env::var("LIMEN_EVIDENCE_DIR").unwrap_or_else(|_| "/Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A04_REAL_LOCAL_V3_BM25".to_string()),

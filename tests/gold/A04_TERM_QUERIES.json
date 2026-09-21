@@ -1,0 +1,1835 @@
+[
+ {
+  "queryId": "T001",
+  "text": "personal",
+  "relevantDocumentIds": [
+   "src_65d28f91c6cf869786bdeaeb706798c4d60cac07209c7f0c69967ba1715449ca-4d9020b8d816ea4e-1789722228984698000-70434-30.md",
+   "4d9020b8d816ea4e-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper.txt",
+   "src_5d77b6d19a4c26c30164ff16717cd99c1759cd1087298a8b43582161bafb6216-b9b8e64ae951124d-1789722231183159000-70434-82.md",
+   "factory-2026-storytelling-personal-branding-e-intervista-a-francesca-nonino.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/4d9020b8d816ea4e-Factory_2026_16_03_26_2",
+   "B:20_RAW_SOURCES/Factory_2026_16_03_26_2_CAM_OPERATORE_-_",
+   "D:90_PROPOSALS/b9b8e64ae951124d-Factory_2024_2-3-24_mat",
+   "E:07_CASE_STUDIES/Factory 2026 — Storytelling, personal br"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T002",
+  "text": "privata",
+  "relevantDocumentIds": [
+   "83aa9f3a3c09d9de-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper.txt",
+   "src_844d21df51e0e2abf92741fb6085abc6cbd4ec8c7f2d53cb3460fd01517933b7-83aa9f3a3c09d9de-1789722229423614000-70434-56.md",
+   "src_9bfa4db7a6d7c82da9c6db91cad2ac70ba78bc60086700cfab5a8bd9d5fc0d7b-af381c8b5c34be15-1789722231137528000-70434-74.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2026_18_03_26_2__CAM_OPERATORE_-",
+   "B:90_PROPOSALS/83aa9f3a3c09d9de-Factory_2026_18_03_26_2",
+   "E:90_PROPOSALS/af381c8b5c34be15-Factory_2026_18_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T003",
+  "text": "grana",
+  "relevantDocumentIds": [
+   "54f5c7d6b9db0989-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper__RAG.md",
+   "src_9579578cb1679b4957b658f34470e4400553676172e9908ebefc86d63ab40e66-54f5c7d6b9db0989-1789722229022542000-70434-34.md",
+   "src_8b0420ee8afcb69fe28024e5617df74abd6ebae2df2a31dc49a5bc3321105377-6a59282f4c7c3b39-1789722229092680000-70434-44.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory 2025 — Tavola rotonda: marca ind",
+   "B:90_PROPOSALS/Factory 2025 — Tavola rotonda: marca ind",
+   "E:90_PROPOSALS/Factory 2026 — Posizionamento, percezion"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T004",
+  "text": "padano",
+  "relevantDocumentIds": [
+   "54f5c7d6b9db0989-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper__RAG.md",
+   "src_9579578cb1679b4957b658f34470e4400553676172e9908ebefc86d63ab40e66-54f5c7d6b9db0989-1789722229022542000-70434-34.md",
+   "b350d770cdeb309a-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper.txt",
+   "src_8b0420ee8afcb69fe28024e5617df74abd6ebae2df2a31dc49a5bc3321105377-6a59282f4c7c3b39-1789722229092680000-70434-44.md",
+   "6a59282f4c7c3b39-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper__RAG.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory 2025 — Tavola rotonda: marca ind",
+   "B:90_PROPOSALS/Factory 2025 — Tavola rotonda: marca ind",
+   "C:20_RAW_SOURCES/Factory_2026_17_03_26_2_CAM_OPERATORE_-_",
+   "D:90_PROPOSALS/Factory 2026 — Posizionamento, percezion",
+   "E:20_RAW_SOURCES/Factory 2026 — Posizionamento, percezion"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T005",
+  "text": "reggiano",
+  "relevantDocumentIds": [
+   "c585ead999bda537-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper.txt",
+   "src_47af57a641435cc03343c214c8e0ca2f2dd03b764adbfb7361d48d69c463d540-c585ead999bda537-1789722231218759000-70434-88.md",
+   "src_3286bc798ca06dc936e11ceb882bbeade5ea94f30c4f57a4b1d756b7a26ab6d6-8c78ebd437e557fc-1789722231070370000-70434-64.md",
+   "8c78ebd437e557fc-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper__RAG.md",
+   "src_fc0a18873a8bbc9d6ff8dcf02ff6b59ffc65480cb3ae8a43a50d6e3324858e5e-b350d770cdeb309a-1789722231147643000-70434-76.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2024_1-3-24_pomeriggio_parte_1",
+   "B:90_PROPOSALS/c585ead999bda537-Factory_2024_1-3-24_pom",
+   "C:90_PROPOSALS/Parmareggio e Granterre: sviluppo della ",
+   "D:20_RAW_SOURCES/Parmareggio e Granterre: sviluppo della ",
+   "E:90_PROPOSALS/b350d770cdeb309a-Factory_2026_17_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T006",
+  "text": "metodo",
+  "relevantDocumentIds": [
+   "c00601975051e575-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper.txt",
+   "src_65d28f91c6cf869786bdeaeb706798c4d60cac07209c7f0c69967ba1715449ca-4d9020b8d816ea4e-1789722228984698000-70434-30.md",
+   "4d9020b8d816ea4e-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper.txt",
+   "src_a265a0064b757f6f33597449d2fb712c97d129ae1fdcc998c9c4ecfeb22cd1ef-c00601975051e575-1789722231207130000-70434-86.md",
+   "src_d5eec9bffe42e7808ff044b2e07d3ef5c7c6c8f9843bb3a3e3e2857bd7f3b569-81d8aee3b64cb0f1-1789589119315845000-52990-0.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2025_10_03_25_-_MATTINO_seconda_",
+   "B:90_PROPOSALS/4d9020b8d816ea4e-Factory_2026_16_03_26_2",
+   "C:20_RAW_SOURCES/Factory_2026_16_03_26_2_CAM_OPERATORE_-_",
+   "D:90_PROPOSALS/c00601975051e575-Factory_2025_10_03_25_-",
+   "E:90_PROPOSALS/Factory 2026 — Storytelling, personal br"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T007",
+  "text": "formaggio",
+  "relevantDocumentIds": [
+   "src_47af57a641435cc03343c214c8e0ca2f2dd03b764adbfb7361d48d69c463d540-c585ead999bda537-1789722231218759000-70434-88.md",
+   "c585ead999bda537-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper.txt",
+   "src_3286bc798ca06dc936e11ceb882bbeade5ea94f30c4f57a4b1d756b7a26ab6d6-8c78ebd437e557fc-1789722231070370000-70434-64.md",
+   "8c78ebd437e557fc-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper__RAG.md",
+   "c00601975051e575-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/c585ead999bda537-Factory_2024_1-3-24_pom",
+   "B:20_RAW_SOURCES/Factory_2024_1-3-24_pomeriggio_parte_1",
+   "C:90_PROPOSALS/Parmareggio e Granterre: sviluppo della ",
+   "D:20_RAW_SOURCES/Parmareggio e Granterre: sviluppo della ",
+   "E:20_RAW_SOURCES/Factory_2025_10_03_25_-_MATTINO_seconda_"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T008",
+  "text": "discount",
+  "relevantDocumentIds": [
+   "83aa9f3a3c09d9de-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper.txt",
+   "src_844d21df51e0e2abf92741fb6085abc6cbd4ec8c7f2d53cb3460fd01517933b7-83aa9f3a3c09d9de-1789722229423614000-70434-56.md",
+   "4261ec943855a0c7-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper__RAG.md",
+   "src_f1ef241fd392cd64864f1f97a5cc95306143748d351ef785374baf4184d74ad0-4261ec943855a0c7-1789722228956048000-70434-26.md",
+   "src_55bf8653e9078c384c48027c1735045e49e9ce28138ea75a3fad799dbf553a65-9c224699d2888b7b-1789722231113656000-70434-70.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2026_18_03_26_2__CAM_OPERATORE_-",
+   "B:90_PROPOSALS/83aa9f3a3c09d9de-Factory_2026_18_03_26_2",
+   "C:20_RAW_SOURCES/Factory 2026 — Tavole rotonde su posizio",
+   "D:90_PROPOSALS/Factory 2026 — Tavole rotonde su posizio",
+   "E:90_PROPOSALS/9c224699d2888b7b-Factory_2025_12_03_25_-"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T009",
+  "text": "attributo",
+  "relevantDocumentIds": [
+   "747ebc6b74dbb9a0-Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper.txt",
+   "src_ca4f10d0e967c15a5525c30d2bef91b968d5f155653679fbb4267bbeac87c967-747ebc6b74dbb9a0-1789722229120294000-70434-48.md",
+   "src_a265a0064b757f6f33597449d2fb712c97d129ae1fdcc998c9c4ecfeb22cd1ef-c00601975051e575-1789722231207130000-70434-86.md",
+   "c00601975051e575-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper.txt",
+   "b350d770cdeb309a-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2024_1-3-24_Mattina_parte_2",
+   "B:90_PROPOSALS/747ebc6b74dbb9a0-Factory_2024_1-3-24_Mat",
+   "C:90_PROPOSALS/c00601975051e575-Factory_2025_10_03_25_-",
+   "D:20_RAW_SOURCES/Factory_2025_10_03_25_-_MATTINO_seconda_",
+   "E:20_RAW_SOURCES/Factory_2026_17_03_26_2_CAM_OPERATORE_-_"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T010",
+  "text": "brembo",
+  "relevantDocumentIds": [
+   "747ebc6b74dbb9a0-Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper.txt",
+   "src_ca4f10d0e967c15a5525c30d2bef91b968d5f155653679fbb4267bbeac87c967-747ebc6b74dbb9a0-1789722229120294000-70434-48.md",
+   "1408627ff6d188e2-Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper__RAG.md",
+   "src_a0b63321cd13ecbf62b90e5cabe29b05e91f652a360c1e56de1cc105647a4769-1408627ff6d188e2-1789722228611257000-70434-8.md",
+   "src_65d28f91c6cf869786bdeaeb706798c4d60cac07209c7f0c69967ba1715449ca-4d9020b8d816ea4e-1789722228984698000-70434-30.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2024_1-3-24_Mattina_parte_2",
+   "B:90_PROPOSALS/747ebc6b74dbb9a0-Factory_2024_1-3-24_Mat",
+   "C:20_RAW_SOURCES/Brand positioning: categorie, differenzi",
+   "D:90_PROPOSALS/Brand positioning: categorie, differenzi",
+   "E:90_PROPOSALS/4d9020b8d816ea4e-Factory_2026_16_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T011",
+  "text": "vieni",
+  "relevantDocumentIds": [
+   "src_65d28f91c6cf869786bdeaeb706798c4d60cac07209c7f0c69967ba1715449ca-4d9020b8d816ea4e-1789722228984698000-70434-30.md",
+   "4d9020b8d816ea4e-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper.txt",
+   "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper.txt",
+   "src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md",
+   "src_b8c846c70ba1b5fe971ee640ca57540818729faa0d41d742da4245da271bfb55-ae143c2bf2e8ec3c-1789722231124501000-70434-72.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/4d9020b8d816ea4e-Factory_2026_16_03_26_2",
+   "B:20_RAW_SOURCES/Factory_2026_16_03_26_2_CAM_OPERATORE_-_",
+   "C:20_RAW_SOURCES/Factory_2026_17_03_26_2_CAM_OPERATORE_-_",
+   "D:90_PROPOSALS/102bfbad5a0e72b7-Factory_2026_17_03_26_2",
+   "E:90_PROPOSALS/ae143c2bf2e8ec3c-Factory_2026_17_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T012",
+  "text": "sicilia",
+  "relevantDocumentIds": [
+   "src_65d28f91c6cf869786bdeaeb706798c4d60cac07209c7f0c69967ba1715449ca-4d9020b8d816ea4e-1789722228984698000-70434-30.md",
+   "4d9020b8d816ea4e-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper.txt",
+   "src_d5eec9bffe42e7808ff044b2e07d3ef5c7c6c8f9843bb3a3e3e2857bd7f3b569-81d8aee3b64cb0f1-1789589119315845000-52990-0.md",
+   "b5fbdcdd2ffbf788-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper__RAG.md",
+   "factory-2026-storytelling-personal-branding-e-intervista-a-francesca-nonino.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/4d9020b8d816ea4e-Factory_2026_16_03_26_2",
+   "B:20_RAW_SOURCES/Factory_2026_16_03_26_2_CAM_OPERATORE_-_",
+   "C:90_PROPOSALS/Factory 2026 — Storytelling, personal br",
+   "D:20_RAW_SOURCES/Factory 2026 — Storytelling, personal br",
+   "E:07_CASE_STUDIES/Factory 2026 — Storytelling, personal br"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T013",
+  "text": "francesca",
+  "relevantDocumentIds": [
+   "src_65d28f91c6cf869786bdeaeb706798c4d60cac07209c7f0c69967ba1715449ca-4d9020b8d816ea4e-1789722228984698000-70434-30.md",
+   "4d9020b8d816ea4e-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper.txt",
+   "factory-2026-storytelling-personal-branding-e-intervista-a-francesca-nonino.md",
+   "src_d5eec9bffe42e7808ff044b2e07d3ef5c7c6c8f9843bb3a3e3e2857bd7f3b569-81d8aee3b64cb0f1-1789589119315845000-52990-0.md",
+   "src_d5eec9bffe42e7808ff044b2e07d3ef5c7c6c8f9843bb3a3e3e2857bd7f3b569-81d8aee3b64cb0f1-1789589119315845000-52990-0.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/4d9020b8d816ea4e-Factory_2026_16_03_26_2",
+   "B:20_RAW_SOURCES/Factory_2026_16_03_26_2_CAM_OPERATORE_-_",
+   "C:07_CASE_STUDIES/Factory 2026 — Storytelling, personal br",
+   "D:90_PROPOSALS/Factory 2026 — Storytelling, personal br",
+   "E:90_PROPOSALS/Factory 2026 — Storytelling, personal br"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T014",
+  "text": "piattaforma",
+  "relevantDocumentIds": [
+   "src_5d77b6d19a4c26c30164ff16717cd99c1759cd1087298a8b43582161bafb6216-b9b8e64ae951124d-1789722231183159000-70434-82.md",
+   "b9b8e64ae951124d-Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper.txt",
+   "src_e47d7d0231901bf1a026d07edfb6810bacfe720973a56882bb72b79c3edee8ce-eba39a4d763ec2e6-1789722231265569000-70434-96.md",
+   "eba39a4d763ec2e6-Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper.txt",
+   "src_c22f18f81da2381f87703b829783b0cc94435f4dfd8ef91d7263aeae400ce167-c810c6e0cea9e3d3-1789722231241527000-70434-92.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/b9b8e64ae951124d-Factory_2024_2-3-24_mat",
+   "B:20_RAW_SOURCES/Factory_2024_2-3-24_mattina_parte_2",
+   "C:90_PROPOSALS/eba39a4d763ec2e6-Factory_2025_11_03_25_-",
+   "D:20_RAW_SOURCES/Factory_2025_11_03_25_-_MATTINO_seconda_",
+   "E:90_PROPOSALS/Marketing digitale B2B e LinkedIn: posiz"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T015",
+  "text": "nonna",
+  "relevantDocumentIds": [
+   "src_65d28f91c6cf869786bdeaeb706798c4d60cac07209c7f0c69967ba1715449ca-4d9020b8d816ea4e-1789722228984698000-70434-30.md",
+   "4d9020b8d816ea4e-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper.txt",
+   "src_d5eec9bffe42e7808ff044b2e07d3ef5c7c6c8f9843bb3a3e3e2857bd7f3b569-81d8aee3b64cb0f1-1789589119315845000-52990-0.md",
+   "b5fbdcdd2ffbf788-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper__RAG.md",
+   "factory-2026-storytelling-personal-branding-e-intervista-a-francesca-nonino.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/4d9020b8d816ea4e-Factory_2026_16_03_26_2",
+   "B:20_RAW_SOURCES/Factory_2026_16_03_26_2_CAM_OPERATORE_-_",
+   "C:90_PROPOSALS/Factory 2026 — Storytelling, personal br",
+   "D:20_RAW_SOURCES/Factory 2026 — Storytelling, personal br",
+   "E:07_CASE_STUDIES/Factory 2026 — Storytelling, personal br"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T016",
+  "text": "sostanzialmente",
+  "relevantDocumentIds": [
+   "7812ef47b23bf80d-Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper.txt",
+   "src_f90e62e806b3ba1823673dc161380c5c9ae6c2d2c5ea206c069eb8574b66c9e8-7812ef47b23bf80d-1789722229133967000-70434-50.md",
+   "f9f9794666ad214d-Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper.txt",
+   "src_e0ae97211596b84b29e1aacc12d953816d5e1b1e2ed4d9742adf8617d3775468-f9f9794666ad214d-1789722231338080000-70434-106.md",
+   "src_3117113224c5b684d184ae4b4497bc561d89a0d418fc0d73e89773956e099d80-5b24f5fce99add5f-1789722229037536000-70434-36.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2025_11_03_25_-_POMERIGGIO_secon",
+   "B:90_PROPOSALS/7812ef47b23bf80d-Factory_2025_11_03_25_-",
+   "C:20_RAW_SOURCES/Factory_2025_12_marzo_2025_-_tavola_roro",
+   "D:90_PROPOSALS/f9f9794666ad214d-Factory_2025_12_marzo_2",
+   "E:90_PROPOSALS/5b24f5fce99add5f-Factory_2025_12_marzo_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T017",
+  "text": "lindustria",
+  "relevantDocumentIds": [
+   "4261ec943855a0c7-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper__RAG.md",
+   "src_880d1e4bf4afb0a0f82c39d2fdae961a967dead35921be7dd5f0d76c4ae1ad12-f553e300c78bbd31-1789722231292878000-70434-100.md",
+   "f553e300c78bbd31-Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper__RAG.md",
+   "09209ed09a3d4e40-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper__RAG.md",
+   "src_f1ef241fd392cd64864f1f97a5cc95306143748d351ef785374baf4184d74ad0-4261ec943855a0c7-1789722228956048000-70434-26.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory 2026 — Tavole rotonde su posizio",
+   "B:90_PROPOSALS/Seconda tavola rotonda: retail media, as",
+   "C:20_RAW_SOURCES/Seconda tavola rotonda: retail media, as",
+   "D:20_RAW_SOURCES/Factory 2026 — Pubblicità, private label",
+   "E:90_PROPOSALS/Factory 2026 — Tavole rotonde su posizio"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T018",
+  "text": "classe",
+  "relevantDocumentIds": [
+   "b8a45f9e3f624671-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper.txt",
+   "src_7e3520dee4da44f55ec68b6027b396a7abce60fde1f6d9fcdc9a4ab5dd21df8f-b8a45f9e3f624671-1789722231169938000-70434-80.md",
+   "f567c14c3664fcaa-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper__RAG.md",
+   "src_5f941edd0092980ad4b24dce6de949215b20b036305d57871a6e86f499aa5e4c-f567c14c3664fcaa-1789722231311057000-70434-102.md",
+   "src_a870a34060177c69ad88e64e5bd080caa2d5959f8629f06ae98df735823fe5eb-815733b6b5389e31-1789722229306427000-70434-52.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2025_10_03_25_-_POMERIGGIO",
+   "B:90_PROPOSALS/b8a45f9e3f624671-Factory_2025_10_03_25_-",
+   "C:20_RAW_SOURCES/Factory 2025 — 10 marzo, pomeriggio: pos",
+   "D:90_PROPOSALS/Factory 2025 — 10 marzo, pomeriggio: pos",
+   "E:90_PROPOSALS/Factory 2024 — Auricchio, Paluani e le d"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T019",
+  "text": "panettone",
+  "relevantDocumentIds": [
+   "src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md",
+   "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper.txt",
+   "src_04f0b4227ef7d6d7431c3d0cba8ecd3edddbb9a9f35a54fbfc03eccfce966d13-96bd4b7d2b5cceff-1789722231089592000-70434-66.md",
+   "96bd4b7d2b5cceff-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper__RAG.md",
+   "src_a870a34060177c69ad88e64e5bd080caa2d5959f8629f06ae98df735823fe5eb-815733b6b5389e31-1789722229306427000-70434-52.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/102bfbad5a0e72b7-Factory_2026_17_03_26_2",
+   "B:20_RAW_SOURCES/Factory_2026_17_03_26_2_CAM_OPERATORE_-_",
+   "C:90_PROPOSALS/Factory 2026 — Naming, Bauli, posizionam",
+   "D:20_RAW_SOURCES/Factory 2026 — Naming, Bauli, posizionam",
+   "E:90_PROPOSALS/Factory 2024 — Auricchio, Paluani e le d"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T020",
+  "text": "riconosciuto",
+  "relevantDocumentIds": [
+   "src_235b16116f76657d1d0414e93fbdb15ef9885c40ee59a955e7c235fa8fa044e4-409b8b49a4bafbf5-1789722228940006000-70434-24.md",
+   "409b8b49a4bafbf5-Factory_2025_10_03_25_-_MATTINO_prima_parte_--072eb37c89d5--whisper__RAG.md",
+   "src_8b0420ee8afcb69fe28024e5617df74abd6ebae2df2a31dc49a5bc3321105377-6a59282f4c7c3b39-1789722229092680000-70434-44.md",
+   "6a59282f4c7c3b39-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper__RAG.md",
+   "src_a870a34060177c69ad88e64e5bd080caa2d5959f8629f06ae98df735823fe5eb-815733b6b5389e31-1789722229306427000-70434-52.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/Factory 2025 — Posizionamento, scalabili",
+   "B:20_RAW_SOURCES/Factory 2025 — Posizionamento, scalabili",
+   "C:90_PROPOSALS/Factory 2026 — Posizionamento, percezion",
+   "D:20_RAW_SOURCES/Factory 2026 — Posizionamento, percezion",
+   "E:90_PROPOSALS/Factory 2024 — Auricchio, Paluani e le d"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T021",
+  "text": "topolino",
+  "relevantDocumentIds": [
+   "b8a45f9e3f624671-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper.txt",
+   "src_7e3520dee4da44f55ec68b6027b396a7abce60fde1f6d9fcdc9a4ab5dd21df8f-b8a45f9e3f624671-1789722231169938000-70434-80.md",
+   "src_3286bc798ca06dc936e11ceb882bbeade5ea94f30c4f57a4b1d756b7a26ab6d6-8c78ebd437e557fc-1789722231070370000-70434-64.md",
+   "8c78ebd437e557fc-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper__RAG.md",
+   "src_47af57a641435cc03343c214c8e0ca2f2dd03b764adbfb7361d48d69c463d540-c585ead999bda537-1789722231218759000-70434-88.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2025_10_03_25_-_POMERIGGIO",
+   "B:90_PROPOSALS/b8a45f9e3f624671-Factory_2025_10_03_25_-",
+   "C:90_PROPOSALS/Parmareggio e Granterre: sviluppo della ",
+   "D:20_RAW_SOURCES/Parmareggio e Granterre: sviluppo della ",
+   "E:90_PROPOSALS/c585ead999bda537-Factory_2024_1-3-24_pom"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T022",
+  "text": "restyling",
+  "relevantDocumentIds": [
+   "862f5ad9547acead-Factory_2025_11_03_25_-_MATTINA_prima_parte_--aff27310b6cc--whisper.txt",
+   "ae143c2bf2e8ec3c-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper.txt",
+   "src_ca6057e47dcc2a68c3123e967dee019e26573efb9883dc70523f37782ee4c113-862f5ad9547acead-1789722231042599000-70434-60.md",
+   "src_a870a34060177c69ad88e64e5bd080caa2d5959f8629f06ae98df735823fe5eb-815733b6b5389e31-1789722229306427000-70434-52.md",
+   "815733b6b5389e31-Factory_2024_1-3-24_pomeriggio_parte_2--d8672a102d6a--whisper__RAG.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2025_11_03_25_-_MATTINA_prima_pa",
+   "B:20_RAW_SOURCES/Factory_2026_17_03_26_2_CAM_OPERATORE_-_",
+   "C:90_PROPOSALS/862f5ad9547acead-Factory_2025_11_03_25_-",
+   "D:90_PROPOSALS/Factory 2024 — Auricchio, Paluani e le d",
+   "E:20_RAW_SOURCES/Factory 2024 — Auricchio, Paluani e le d"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T023",
+  "text": "ovvio",
+  "relevantDocumentIds": [
+   "83aa9f3a3c09d9de-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper.txt",
+   "b8a45f9e3f624671-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper.txt",
+   "src_7e3520dee4da44f55ec68b6027b396a7abce60fde1f6d9fcdc9a4ab5dd21df8f-b8a45f9e3f624671-1789722231169938000-70434-80.md",
+   "src_47af57a641435cc03343c214c8e0ca2f2dd03b764adbfb7361d48d69c463d540-c585ead999bda537-1789722231218759000-70434-88.md",
+   "src_844d21df51e0e2abf92741fb6085abc6cbd4ec8c7f2d53cb3460fd01517933b7-83aa9f3a3c09d9de-1789722229423614000-70434-56.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2026_18_03_26_2__CAM_OPERATORE_-",
+   "B:20_RAW_SOURCES/Factory_2025_10_03_25_-_POMERIGGIO",
+   "C:90_PROPOSALS/b8a45f9e3f624671-Factory_2025_10_03_25_-",
+   "D:90_PROPOSALS/c585ead999bda537-Factory_2024_1-3-24_pom",
+   "E:90_PROPOSALS/83aa9f3a3c09d9de-Factory_2026_18_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T024",
+  "text": "ferrari",
+  "relevantDocumentIds": [
+   "b8a45f9e3f624671-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper.txt",
+   "src_7e3520dee4da44f55ec68b6027b396a7abce60fde1f6d9fcdc9a4ab5dd21df8f-b8a45f9e3f624671-1789722231169938000-70434-80.md",
+   "747ebc6b74dbb9a0-Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper.txt",
+   "src_ca4f10d0e967c15a5525c30d2bef91b968d5f155653679fbb4267bbeac87c967-747ebc6b74dbb9a0-1789722229120294000-70434-48.md",
+   "f567c14c3664fcaa-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper__RAG.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2025_10_03_25_-_POMERIGGIO",
+   "B:90_PROPOSALS/b8a45f9e3f624671-Factory_2025_10_03_25_-",
+   "C:20_RAW_SOURCES/Factory_2024_1-3-24_Mattina_parte_2",
+   "D:90_PROPOSALS/747ebc6b74dbb9a0-Factory_2024_1-3-24_Mat",
+   "E:20_RAW_SOURCES/Factory 2025 — 10 marzo, pomeriggio: pos"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T025",
+  "text": "campagne",
+  "relevantDocumentIds": [
+   "src_e47d7d0231901bf1a026d07edfb6810bacfe720973a56882bb72b79c3edee8ce-eba39a4d763ec2e6-1789722231265569000-70434-96.md",
+   "eba39a4d763ec2e6-Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper.txt",
+   "src_0828a46f68893fe2bf0b23d0da56e605e0340e11a5e2c8bbceec7f4f9eb542f7-61aba661f19ce1ab-1789722229066158000-70434-40.md",
+   "src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md",
+   "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/eba39a4d763ec2e6-Factory_2025_11_03_25_-",
+   "B:20_RAW_SOURCES/Factory_2025_11_03_25_-_MATTINO_seconda_",
+   "C:90_PROPOSALS/Factory 2025 — 11 marzo, mattino, second",
+   "D:90_PROPOSALS/102bfbad5a0e72b7-Factory_2026_17_03_26_2",
+   "E:20_RAW_SOURCES/Factory_2026_17_03_26_2_CAM_OPERATORE_-_"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T026",
+  "text": "insegna",
+  "relevantDocumentIds": [
+   "83aa9f3a3c09d9de-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper.txt",
+   "src_844d21df51e0e2abf92741fb6085abc6cbd4ec8c7f2d53cb3460fd01517933b7-83aa9f3a3c09d9de-1789722229423614000-70434-56.md",
+   "src_3117113224c5b684d184ae4b4497bc561d89a0d418fc0d73e89773956e099d80-5b24f5fce99add5f-1789722229037536000-70434-36.md",
+   "5b24f5fce99add5f-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper.txt",
+   "src_1ca52e5cb1dc3a444512c90615b504d494c3563645304c44a3f1154d9515fc49-13a1fc09cc140cd1-1789722228539674000-70434-6.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2026_18_03_26_2__CAM_OPERATORE_-",
+   "B:90_PROPOSALS/83aa9f3a3c09d9de-Factory_2026_18_03_26_2",
+   "C:90_PROPOSALS/5b24f5fce99add5f-Factory_2025_12_marzo_2",
+   "D:20_RAW_SOURCES/Factory_2025_12_marzo_2025_-_tavola_roro",
+   "E:90_PROPOSALS/13a1fc09cc140cd1-Factory_2025_11_03_25_-"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T027",
+  "text": "nonino",
+  "relevantDocumentIds": [
+   "factory-2026-storytelling-personal-branding-e-intervista-a-francesca-nonino.md",
+   "src_d5eec9bffe42e7808ff044b2e07d3ef5c7c6c8f9843bb3a3e3e2857bd7f3b569-81d8aee3b64cb0f1-1789589119315845000-52990-0.md",
+   "src_d5eec9bffe42e7808ff044b2e07d3ef5c7c6c8f9843bb3a3e3e2857bd7f3b569-81d8aee3b64cb0f1-1789589119315845000-52990-0.md",
+   "src_d5eec9bffe42e7808ff044b2e07d3ef5c7c6c8f9843bb3a3e3e2857bd7f3b569-81d8aee3b64cb0f1-1789589119315845000-52990-0.md",
+   "b5fbdcdd2ffbf788-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper__RAG.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:07_CASE_STUDIES/Factory 2026 — Storytelling, personal br",
+   "B:90_PROPOSALS/Factory 2026 — Storytelling, personal br",
+   "C:90_PROPOSALS/Factory 2026 — Storytelling, personal br",
+   "D:90_PROPOSALS/Factory 2026 — Storytelling, personal br",
+   "E:20_RAW_SOURCES/Factory 2026 — Storytelling, personal br"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T028",
+  "text": "cita",
+  "relevantDocumentIds": [
+   "f567c14c3664fcaa-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper__RAG.md",
+   "src_5f941edd0092980ad4b24dce6de949215b20b036305d57871a6e86f499aa5e4c-f567c14c3664fcaa-1789722231311057000-70434-102.md",
+   "1408627ff6d188e2-Factory_2024_1-3-24_Mattina_parte_2--e13c49e3513a--whisper__RAG.md",
+   "src_a0b63321cd13ecbf62b90e5cabe29b05e91f652a360c1e56de1cc105647a4769-1408627ff6d188e2-1789722228611257000-70434-8.md",
+   "f683fb36492a113d-Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper__RAG.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory 2025 — 10 marzo, pomeriggio: pos",
+   "B:90_PROPOSALS/Factory 2025 — 10 marzo, pomeriggio: pos",
+   "C:20_RAW_SOURCES/Brand positioning: categorie, differenzi",
+   "D:90_PROPOSALS/Brand positioning: categorie, differenzi",
+   "E:20_RAW_SOURCES/Fedeltà, abitudini e posizionamento: int"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T029",
+  "text": "evoluzione",
+  "relevantDocumentIds": [
+   "src_55bf8653e9078c384c48027c1735045e49e9ce28138ea75a3fad799dbf553a65-9c224699d2888b7b-1789722231113656000-70434-70.md",
+   "9c224699d2888b7b-Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper.txt",
+   "src_47af57a641435cc03343c214c8e0ca2f2dd03b764adbfb7361d48d69c463d540-c585ead999bda537-1789722231218759000-70434-88.md",
+   "83aa9f3a3c09d9de-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper.txt",
+   "src_844d21df51e0e2abf92741fb6085abc6cbd4ec8c7f2d53cb3460fd01517933b7-83aa9f3a3c09d9de-1789722229423614000-70434-56.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/9c224699d2888b7b-Factory_2025_12_03_25_-",
+   "B:20_RAW_SOURCES/Factory_2025_12_03_25_-_MATTINO",
+   "C:90_PROPOSALS/c585ead999bda537-Factory_2024_1-3-24_pom",
+   "D:20_RAW_SOURCES/Factory_2026_18_03_26_2__CAM_OPERATORE_-",
+   "E:90_PROPOSALS/83aa9f3a3c09d9de-Factory_2026_18_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T030",
+  "text": "notorieta",
+  "relevantDocumentIds": [
+   "c585ead999bda537-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper.txt",
+   "src_3286bc798ca06dc936e11ceb882bbeade5ea94f30c4f57a4b1d756b7a26ab6d6-8c78ebd437e557fc-1789722231070370000-70434-64.md",
+   "8c78ebd437e557fc-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper__RAG.md",
+   "src_47af57a641435cc03343c214c8e0ca2f2dd03b764adbfb7361d48d69c463d540-c585ead999bda537-1789722231218759000-70434-88.md",
+   "src_c22f18f81da2381f87703b829783b0cc94435f4dfd8ef91d7263aeae400ce167-c810c6e0cea9e3d3-1789722231241527000-70434-92.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2024_1-3-24_pomeriggio_parte_1",
+   "B:90_PROPOSALS/Parmareggio e Granterre: sviluppo della ",
+   "C:20_RAW_SOURCES/Parmareggio e Granterre: sviluppo della ",
+   "D:90_PROPOSALS/c585ead999bda537-Factory_2024_1-3-24_pom",
+   "E:90_PROPOSALS/Marketing digitale B2B e LinkedIn: posiz"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T031",
+  "text": "lezione",
+  "relevantDocumentIds": [
+   "f567c14c3664fcaa-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper__RAG.md",
+   "src_5f941edd0092980ad4b24dce6de949215b20b036305d57871a6e86f499aa5e4c-f567c14c3664fcaa-1789722231311057000-70434-102.md",
+   "282b056863b9531c-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper__RAG.md",
+   "src_e13728b81302841ca795f40be1b47105e974f67e3f1132d00cd485039aca0127-282b056863b9531c-1789722228793506000-70434-18.md",
+   "src_0828a46f68893fe2bf0b23d0da56e605e0340e11a5e2c8bbceec7f4f9eb542f7-61aba661f19ce1ab-1789722229066158000-70434-40.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory 2025 — 10 marzo, pomeriggio: pos",
+   "B:90_PROPOSALS/Factory 2025 — 10 marzo, pomeriggio: pos",
+   "C:20_RAW_SOURCES/Factory 2025 — 10 marzo, mattino, second",
+   "D:90_PROPOSALS/Factory 2025 — 10 marzo, mattino, second",
+   "E:90_PROPOSALS/Factory 2025 — 11 marzo, mattino, second"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T032",
+  "text": "registrazione",
+  "relevantDocumentIds": [
+   "b8a45f9e3f624671-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper.txt",
+   "src_7e3520dee4da44f55ec68b6027b396a7abce60fde1f6d9fcdc9a4ab5dd21df8f-b8a45f9e3f624671-1789722231169938000-70434-80.md",
+   "f567c14c3664fcaa-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper__RAG.md",
+   "src_5f941edd0092980ad4b24dce6de949215b20b036305d57871a6e86f499aa5e4c-f567c14c3664fcaa-1789722231311057000-70434-102.md",
+   "src_a870a34060177c69ad88e64e5bd080caa2d5959f8629f06ae98df735823fe5eb-815733b6b5389e31-1789722229306427000-70434-52.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2025_10_03_25_-_POMERIGGIO",
+   "B:90_PROPOSALS/b8a45f9e3f624671-Factory_2025_10_03_25_-",
+   "C:20_RAW_SOURCES/Factory 2025 — 10 marzo, pomeriggio: pos",
+   "D:90_PROPOSALS/Factory 2025 — 10 marzo, pomeriggio: pos",
+   "E:90_PROPOSALS/Factory 2024 — Auricchio, Paluani e le d"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T033",
+  "text": "campagna",
+  "relevantDocumentIds": [
+   "src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md",
+   "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper.txt",
+   "src_c22f18f81da2381f87703b829783b0cc94435f4dfd8ef91d7263aeae400ce167-c810c6e0cea9e3d3-1789722231241527000-70434-92.md",
+   "c810c6e0cea9e3d3-Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper__RAG.md",
+   "src_3286bc798ca06dc936e11ceb882bbeade5ea94f30c4f57a4b1d756b7a26ab6d6-8c78ebd437e557fc-1789722231070370000-70434-64.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/102bfbad5a0e72b7-Factory_2026_17_03_26_2",
+   "B:20_RAW_SOURCES/Factory_2026_17_03_26_2_CAM_OPERATORE_-_",
+   "C:90_PROPOSALS/Marketing digitale B2B e LinkedIn: posiz",
+   "D:20_RAW_SOURCES/Marketing digitale B2B e LinkedIn: posiz",
+   "E:90_PROPOSALS/Parmareggio e Granterre: sviluppo della "
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T034",
+  "text": "natale",
+  "relevantDocumentIds": [
+   "src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md",
+   "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper.txt",
+   "src_04f0b4227ef7d6d7431c3d0cba8ecd3edddbb9a9f35a54fbfc03eccfce966d13-96bd4b7d2b5cceff-1789722231089592000-70434-66.md",
+   "96bd4b7d2b5cceff-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper__RAG.md",
+   "src_a870a34060177c69ad88e64e5bd080caa2d5959f8629f06ae98df735823fe5eb-815733b6b5389e31-1789722229306427000-70434-52.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/102bfbad5a0e72b7-Factory_2026_17_03_26_2",
+   "B:20_RAW_SOURCES/Factory_2026_17_03_26_2_CAM_OPERATORE_-_",
+   "C:90_PROPOSALS/Factory 2026 — Naming, Bauli, posizionam",
+   "D:20_RAW_SOURCES/Factory 2026 — Naming, Bauli, posizionam",
+   "E:90_PROPOSALS/Factory 2024 — Auricchio, Paluani e le d"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T035",
+  "text": "bottiglia",
+  "relevantDocumentIds": [
+   "b8a45f9e3f624671-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper.txt",
+   "src_7e3520dee4da44f55ec68b6027b396a7abce60fde1f6d9fcdc9a4ab5dd21df8f-b8a45f9e3f624671-1789722231169938000-70434-80.md",
+   "f567c14c3664fcaa-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper__RAG.md",
+   "src_5f941edd0092980ad4b24dce6de949215b20b036305d57871a6e86f499aa5e4c-f567c14c3664fcaa-1789722231311057000-70434-102.md",
+   "822373a2b828bd01-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper__RAG.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2025_10_03_25_-_POMERIGGIO",
+   "B:90_PROPOSALS/b8a45f9e3f624671-Factory_2025_10_03_25_-",
+   "C:20_RAW_SOURCES/Factory 2025 — 10 marzo, pomeriggio: pos",
+   "D:90_PROPOSALS/Factory 2025 — 10 marzo, pomeriggio: pos",
+   "E:20_RAW_SOURCES/Factory 2026 — Auricchio, visual hammer "
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T036",
+  "text": "estensione",
+  "relevantDocumentIds": [
+   "c585ead999bda537-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper.txt",
+   "src_47af57a641435cc03343c214c8e0ca2f2dd03b764adbfb7361d48d69c463d540-c585ead999bda537-1789722231218759000-70434-88.md",
+   "src_a265a0064b757f6f33597449d2fb712c97d129ae1fdcc998c9c4ecfeb22cd1ef-c00601975051e575-1789722231207130000-70434-86.md",
+   "c00601975051e575-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper.txt",
+   "src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2024_1-3-24_pomeriggio_parte_1",
+   "B:90_PROPOSALS/c585ead999bda537-Factory_2024_1-3-24_pom",
+   "C:90_PROPOSALS/c00601975051e575-Factory_2025_10_03_25_-",
+   "D:20_RAW_SOURCES/Factory_2025_10_03_25_-_MATTINO_seconda_",
+   "E:90_PROPOSALS/102bfbad5a0e72b7-Factory_2026_17_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T037",
+  "text": "strumento",
+  "relevantDocumentIds": [
+   "src_5d77b6d19a4c26c30164ff16717cd99c1759cd1087298a8b43582161bafb6216-b9b8e64ae951124d-1789722231183159000-70434-82.md",
+   "src_55bf8653e9078c384c48027c1735045e49e9ce28138ea75a3fad799dbf553a65-9c224699d2888b7b-1789722231113656000-70434-70.md",
+   "9c224699d2888b7b-Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper.txt",
+   "b9b8e64ae951124d-Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper.txt",
+   "src_c22f18f81da2381f87703b829783b0cc94435f4dfd8ef91d7263aeae400ce167-c810c6e0cea9e3d3-1789722231241527000-70434-92.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/b9b8e64ae951124d-Factory_2024_2-3-24_mat",
+   "B:90_PROPOSALS/9c224699d2888b7b-Factory_2025_12_03_25_-",
+   "C:20_RAW_SOURCES/Factory_2025_12_03_25_-_MATTINO",
+   "D:20_RAW_SOURCES/Factory_2024_2-3-24_mattina_parte_2",
+   "E:90_PROPOSALS/Marketing digitale B2B e LinkedIn: posiz"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T038",
+  "text": "insegne",
+  "relevantDocumentIds": [
+   "7812ef47b23bf80d-Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper.txt",
+   "src_f90e62e806b3ba1823673dc161380c5c9ae6c2d2c5ea206c069eb8574b66c9e8-7812ef47b23bf80d-1789722229133967000-70434-50.md",
+   "src_1ca52e5cb1dc3a444512c90615b504d494c3563645304c44a3f1154d9515fc49-13a1fc09cc140cd1-1789722228539674000-70434-6.md",
+   "f683fb36492a113d-Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper__RAG.md",
+   "13a1fc09cc140cd1-Factory_2025_11_03_25_-_POMERIGGIO_prima_parte_--7fa602e10ee1--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2025_11_03_25_-_POMERIGGIO_secon",
+   "B:90_PROPOSALS/7812ef47b23bf80d-Factory_2025_11_03_25_-",
+   "C:90_PROPOSALS/13a1fc09cc140cd1-Factory_2025_11_03_25_-",
+   "D:20_RAW_SOURCES/Fedeltà, abitudini e posizionamento: int",
+   "E:20_RAW_SOURCES/Factory_2025_11_03_25_-_POMERIGGIO_prima"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T039",
+  "text": "stampa",
+  "relevantDocumentIds": [
+   "eee2c8ccd3834603-Factory_2024_2-3-24_pomeriggio_parte_2--7c02423c85f3--whisper.txt",
+   "src_1976dc1cd62e539e3e41e1d66bac84da30df29a44e9ed4e2e2563915131af854-eee2c8ccd3834603-1789722231280732000-70434-98.md",
+   "bee0ffd2cfe05ed5-Factory_2024_2-3-24_pomeriggio_parte_2--7c02423c85f3--whisper__RAG.md",
+   "src_b7a661a0cc4b4e96c17a40d41031400cde6a590ffbfcdc2d86c8f724c3d31ee8-bee0ffd2cfe05ed5-1789722231194433000-70434-84.md",
+   "c6c8fbd672a05af3-Factory_2024_2-3-24_pomeriggio_parte_1--5624299f5ae0--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2024_2-3-24_pomeriggio_parte_2",
+   "B:90_PROPOSALS/eee2c8ccd3834603-Factory_2024_2-3-24_pom",
+   "C:20_RAW_SOURCES/Le abitudini nel marketing e workshop su",
+   "D:90_PROPOSALS/Le abitudini nel marketing e workshop su",
+   "E:20_RAW_SOURCES/Factory_2024_2-3-24_pomeriggio_parte_1"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T040",
+  "text": "lead",
+  "relevantDocumentIds": [
+   "src_e47d7d0231901bf1a026d07edfb6810bacfe720973a56882bb72b79c3edee8ce-eba39a4d763ec2e6-1789722231265569000-70434-96.md",
+   "eba39a4d763ec2e6-Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper.txt",
+   "src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md",
+   "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper.txt",
+   "src_0828a46f68893fe2bf0b23d0da56e605e0340e11a5e2c8bbceec7f4f9eb542f7-61aba661f19ce1ab-1789722229066158000-70434-40.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/eba39a4d763ec2e6-Factory_2025_11_03_25_-",
+   "B:20_RAW_SOURCES/Factory_2025_11_03_25_-_MATTINO_seconda_",
+   "C:90_PROPOSALS/102bfbad5a0e72b7-Factory_2026_17_03_26_2",
+   "D:20_RAW_SOURCES/Factory_2026_17_03_26_2_CAM_OPERATORE_-_",
+   "E:90_PROPOSALS/Factory 2025 — 11 marzo, mattino, second"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T041",
+  "text": "conseguenza",
+  "relevantDocumentIds": [
+   "src_079d66ab8b4cf72afbe5d876b95e3dfc294785a4c5f078a35927a2cdc913187f-2d6a9ea1d84c953d-1789722228853943000-70434-20.md",
+   "af381c8b5c34be15-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper.txt",
+   "src_9bfa4db7a6d7c82da9c6db91cad2ac70ba78bc60086700cfab5a8bd9d5fc0d7b-af381c8b5c34be15-1789722231137528000-70434-74.md",
+   "2d6a9ea1d84c953d-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574.txt",
+   "src_ca6057e47dcc2a68c3123e967dee019e26573efb9883dc70523f37782ee4c113-862f5ad9547acead-1789722231042599000-70434-60.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/2d6a9ea1d84c953d-Factory_2026_16_03_26_2",
+   "B:20_RAW_SOURCES/Factory_2026_18_03_26_2_CAM_OPERATORE_-_",
+   "C:90_PROPOSALS/af381c8b5c34be15-Factory_2026_18_03_26_2",
+   "D:20_RAW_SOURCES/Factory_2026_16_03_26_2_CAM_OPERATORE_-_",
+   "E:90_PROPOSALS/862f5ad9547acead-Factory_2025_11_03_25_-"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T042",
+  "text": "colazione",
+  "relevantDocumentIds": [
+   "src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md",
+   "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper.txt",
+   "7812ef47b23bf80d-Factory_2025_11_03_25_-_POMERIGGIO_seconda_parte_--5bbf4095a4e9--whisper.txt",
+   "src_f90e62e806b3ba1823673dc161380c5c9ae6c2d2c5ea206c069eb8574b66c9e8-7812ef47b23bf80d-1789722229133967000-70434-50.md",
+   "src_04f0b4227ef7d6d7431c3d0cba8ecd3edddbb9a9f35a54fbfc03eccfce966d13-96bd4b7d2b5cceff-1789722231089592000-70434-66.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/102bfbad5a0e72b7-Factory_2026_17_03_26_2",
+   "B:20_RAW_SOURCES/Factory_2026_17_03_26_2_CAM_OPERATORE_-_",
+   "C:20_RAW_SOURCES/Factory_2025_11_03_25_-_POMERIGGIO_secon",
+   "D:90_PROPOSALS/7812ef47b23bf80d-Factory_2025_11_03_25_-",
+   "E:90_PROPOSALS/Factory 2026 — Naming, Bauli, posizionam"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T043",
+  "text": "customer",
+  "relevantDocumentIds": [
+   "src_55bf8653e9078c384c48027c1735045e49e9ce28138ea75a3fad799dbf553a65-9c224699d2888b7b-1789722231113656000-70434-70.md",
+   "9c224699d2888b7b-Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper.txt",
+   "src_6b45259eeb7d8711cbdb8676806a0f36930f2565a3887e609da6b13e640eed1b-25065f67bee1d84a-1789722228768721000-70434-16.md",
+   "25065f67bee1d84a-Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper__RAG.md",
+   "af381c8b5c34be15-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/9c224699d2888b7b-Factory_2025_12_03_25_-",
+   "B:20_RAW_SOURCES/Factory_2025_12_03_25_-_MATTINO",
+   "C:90_PROPOSALS/MDD e industria: evoluzione dei prodotti",
+   "D:20_RAW_SOURCES/MDD e industria: evoluzione dei prodotti",
+   "E:20_RAW_SOURCES/Factory_2026_18_03_26_2_CAM_OPERATORE_-_"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T044",
+  "text": "hammer",
+  "relevantDocumentIds": [
+   "src_a53bfeb3b4bce3a7ca44721008baae4775219f91c70ac82134ccf79aa2057a4b-822373a2b828bd01-1789722229377692000-70434-54.md",
+   "822373a2b828bd01-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper__RAG.md",
+   "src_b8c846c70ba1b5fe971ee640ca57540818729faa0d41d742da4245da271bfb55-ae143c2bf2e8ec3c-1789722231124501000-70434-72.md",
+   "ae143c2bf2e8ec3c-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper.txt",
+   "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/Factory 2026 — Auricchio, visual hammer ",
+   "B:20_RAW_SOURCES/Factory 2026 — Auricchio, visual hammer ",
+   "C:90_PROPOSALS/ae143c2bf2e8ec3c-Factory_2026_17_03_26_2",
+   "D:20_RAW_SOURCES/Factory_2026_17_03_26_2_CAM_OPERATORE_-_",
+   "E:20_RAW_SOURCES/Factory_2026_17_03_26_2_CAM_OPERATORE_-_"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T045",
+  "text": "contatti",
+  "relevantDocumentIds": [
+   "src_c22f18f81da2381f87703b829783b0cc94435f4dfd8ef91d7263aeae400ce167-c810c6e0cea9e3d3-1789722231241527000-70434-92.md",
+   "c810c6e0cea9e3d3-Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper__RAG.md",
+   "src_5d77b6d19a4c26c30164ff16717cd99c1759cd1087298a8b43582161bafb6216-b9b8e64ae951124d-1789722231183159000-70434-82.md",
+   "b9b8e64ae951124d-Factory_2024_2-3-24_mattina_parte_2--9e5aedee02d6--whisper.txt",
+   "src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "termine",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/Marketing digitale B2B e LinkedIn: posiz",
+   "B:20_RAW_SOURCES/Marketing digitale B2B e LinkedIn: posiz",
+   "C:90_PROPOSALS/b9b8e64ae951124d-Factory_2024_2-3-24_mat",
+   "D:20_RAW_SOURCES/Factory_2024_2-3-24_mattina_parte_2",
+   "E:90_PROPOSALS/102bfbad5a0e72b7-Factory_2026_17_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T046",
+  "text": "marca privata",
+  "relevantDocumentIds": [
+   "83aa9f3a3c09d9de-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper.txt",
+   "src_844d21df51e0e2abf92741fb6085abc6cbd4ec8c7f2d53cb3460fd01517933b7-83aa9f3a3c09d9de-1789722229423614000-70434-56.md",
+   "src_3117113224c5b684d184ae4b4497bc561d89a0d418fc0d73e89773956e099d80-5b24f5fce99add5f-1789722229037536000-70434-36.md",
+   "5b24f5fce99add5f-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper.txt",
+   "4261ec943855a0c7-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper__RAG.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2026_18_03_26_2__CAM_OPERATORE_-",
+   "B:90_PROPOSALS/83aa9f3a3c09d9de-Factory_2026_18_03_26_2",
+   "C:90_PROPOSALS/5b24f5fce99add5f-Factory_2025_12_marzo_2",
+   "D:20_RAW_SOURCES/Factory_2025_12_marzo_2025_-_tavola_roro",
+   "E:20_RAW_SOURCES/Factory 2026 — Tavole rotonde su posizio"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T047",
+  "text": "grana padano",
+  "relevantDocumentIds": [
+   "54f5c7d6b9db0989-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper__RAG.md",
+   "src_9579578cb1679b4957b658f34470e4400553676172e9908ebefc86d63ab40e66-54f5c7d6b9db0989-1789722229022542000-70434-34.md",
+   "src_8b0420ee8afcb69fe28024e5617df74abd6ebae2df2a31dc49a5bc3321105377-6a59282f4c7c3b39-1789722229092680000-70434-44.md",
+   "6a59282f4c7c3b39-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326--40460cbd04ef--whisper__RAG.md",
+   "5b24f5fce99add5f-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory 2025 — Tavola rotonda: marca ind",
+   "B:90_PROPOSALS/Factory 2025 — Tavola rotonda: marca ind",
+   "C:90_PROPOSALS/Factory 2026 — Posizionamento, percezion",
+   "D:20_RAW_SOURCES/Factory 2026 — Posizionamento, percezion",
+   "E:20_RAW_SOURCES/Factory_2025_12_marzo_2025_-_tavola_roro"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T048",
+  "text": "parmigiano reggiano",
+  "relevantDocumentIds": [
+   "c585ead999bda537-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper.txt",
+   "src_47af57a641435cc03343c214c8e0ca2f2dd03b764adbfb7361d48d69c463d540-c585ead999bda537-1789722231218759000-70434-88.md",
+   "src_3286bc798ca06dc936e11ceb882bbeade5ea94f30c4f57a4b1d756b7a26ab6d6-8c78ebd437e557fc-1789722231070370000-70434-64.md",
+   "8c78ebd437e557fc-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper__RAG.md",
+   "src_fc0a18873a8bbc9d6ff8dcf02ff6b59ffc65480cb3ae8a43a50d6e3324858e5e-b350d770cdeb309a-1789722231147643000-70434-76.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2024_1-3-24_pomeriggio_parte_1",
+   "B:90_PROPOSALS/c585ead999bda537-Factory_2024_1-3-24_pom",
+   "C:90_PROPOSALS/Parmareggio e Granterre: sviluppo della ",
+   "D:20_RAW_SOURCES/Parmareggio e Granterre: sviluppo della ",
+   "E:90_PROPOSALS/b350d770cdeb309a-Factory_2026_17_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T049",
+  "text": "audio domanda",
+  "relevantDocumentIds": [
+   "4261ec943855a0c7-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper__RAG.md",
+   "src_f1ef241fd392cd64864f1f97a5cc95306143748d351ef785374baf4184d74ad0-4261ec943855a0c7-1789722228956048000-70434-26.md",
+   "54f5c7d6b9db0989-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper__RAG.md",
+   "src_9579578cb1679b4957b658f34470e4400553676172e9908ebefc86d63ab40e66-54f5c7d6b9db0989-1789722229022542000-70434-34.md",
+   "src_c22f18f81da2381f87703b829783b0cc94435f4dfd8ef91d7263aeae400ce167-c810c6e0cea9e3d3-1789722231241527000-70434-92.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory 2026 — Tavole rotonde su posizio",
+   "B:90_PROPOSALS/Factory 2026 — Tavole rotonde su posizio",
+   "C:20_RAW_SOURCES/Factory 2025 — Tavola rotonda: marca ind",
+   "D:90_PROPOSALS/Factory 2025 — Tavola rotonda: marca ind",
+   "E:90_PROPOSALS/Marketing digitale B2B e LinkedIn: posiz"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T050",
+  "text": "personal branding",
+  "relevantDocumentIds": [
+   "src_65d28f91c6cf869786bdeaeb706798c4d60cac07209c7f0c69967ba1715449ca-4d9020b8d816ea4e-1789722228984698000-70434-30.md",
+   "4d9020b8d816ea4e-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper.txt",
+   "src_7e3520dee4da44f55ec68b6027b396a7abce60fde1f6d9fcdc9a4ab5dd21df8f-b8a45f9e3f624671-1789722231169938000-70434-80.md",
+   "b8a45f9e3f624671-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper.txt",
+   "src_ca4f10d0e967c15a5525c30d2bef91b968d5f155653679fbb4267bbeac87c967-747ebc6b74dbb9a0-1789722229120294000-70434-48.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/4d9020b8d816ea4e-Factory_2026_16_03_26_2",
+   "B:20_RAW_SOURCES/Factory_2026_16_03_26_2_CAM_OPERATORE_-_",
+   "C:90_PROPOSALS/b8a45f9e3f624671-Factory_2025_10_03_25_-",
+   "D:20_RAW_SOURCES/Factory_2025_10_03_25_-_POMERIGGIO",
+   "E:90_PROPOSALS/747ebc6b74dbb9a0-Factory_2024_1-3-24_Mat"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T051",
+  "text": "marca industriale",
+  "relevantDocumentIds": [
+   "4261ec943855a0c7-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper__RAG.md",
+   "src_f1ef241fd392cd64864f1f97a5cc95306143748d351ef785374baf4184d74ad0-4261ec943855a0c7-1789722228956048000-70434-26.md",
+   "5b24f5fce99add5f-Factory_2025_12_marzo_2025_-_tavola_roronda_prima_parte_--4742211b82ed--whisper.txt",
+   "src_3117113224c5b684d184ae4b4497bc561d89a0d418fc0d73e89773956e099d80-5b24f5fce99add5f-1789722229037536000-70434-36.md",
+   "83aa9f3a3c09d9de-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory 2026 — Tavole rotonde su posizio",
+   "B:90_PROPOSALS/Factory 2026 — Tavole rotonde su posizio",
+   "C:20_RAW_SOURCES/Factory_2025_12_marzo_2025_-_tavola_roro",
+   "D:90_PROPOSALS/5b24f5fce99add5f-Factory_2025_12_marzo_2",
+   "E:20_RAW_SOURCES/Factory_2026_18_03_26_2__CAM_OPERATORE_-"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T052",
+  "text": "brand corporate",
+  "relevantDocumentIds": [
+   "src_65d28f91c6cf869786bdeaeb706798c4d60cac07209c7f0c69967ba1715449ca-4d9020b8d816ea4e-1789722228984698000-70434-30.md",
+   "4d9020b8d816ea4e-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper.txt",
+   "src_4ef6c1ab59fd316007a8a7cea5ae145f19da2a3588a1e0daf6efe70df3ccb1ab-c6c8fbd672a05af3-1789722231230408000-70434-90.md",
+   "c6c8fbd672a05af3-Factory_2024_2-3-24_pomeriggio_parte_1--5624299f5ae0--whisper.txt",
+   "src_d5eec9bffe42e7808ff044b2e07d3ef5c7c6c8f9843bb3a3e3e2857bd7f3b569-81d8aee3b64cb0f1-1789589119315845000-52990-0.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/4d9020b8d816ea4e-Factory_2026_16_03_26_2",
+   "B:20_RAW_SOURCES/Factory_2026_16_03_26_2_CAM_OPERATORE_-_",
+   "C:90_PROPOSALS/c6c8fbd672a05af3-Factory_2024_2-3-24_pom",
+   "D:20_RAW_SOURCES/Factory_2024_2-3-24_pomeriggio_parte_1",
+   "E:90_PROPOSALS/Factory 2026 — Storytelling, personal br"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T053",
+  "text": "personal brand",
+  "relevantDocumentIds": [
+   "src_65d28f91c6cf869786bdeaeb706798c4d60cac07209c7f0c69967ba1715449ca-4d9020b8d816ea4e-1789722228984698000-70434-30.md",
+   "4d9020b8d816ea4e-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper.txt",
+   "src_d5eec9bffe42e7808ff044b2e07d3ef5c7c6c8f9843bb3a3e3e2857bd7f3b569-81d8aee3b64cb0f1-1789589119315845000-52990-0.md",
+   "b5fbdcdd2ffbf788-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper__RAG.md",
+   "factory-2026-storytelling-personal-branding-e-intervista-a-francesca-nonino.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/4d9020b8d816ea4e-Factory_2026_16_03_26_2",
+   "B:20_RAW_SOURCES/Factory_2026_16_03_26_2_CAM_OPERATORE_-_",
+   "C:90_PROPOSALS/Factory 2026 — Storytelling, personal br",
+   "D:20_RAW_SOURCES/Factory 2026 — Storytelling, personal br",
+   "E:07_CASE_STUDIES/Factory 2026 — Storytelling, personal br"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T054",
+  "text": "caso studio",
+  "relevantDocumentIds": [
+   "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper.txt",
+   "src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md",
+   "src_079d66ab8b4cf72afbe5d876b95e3dfc294785a4c5f078a35927a2cdc913187f-2d6a9ea1d84c953d-1789722228853943000-70434-20.md",
+   "src_ca6057e47dcc2a68c3123e967dee019e26573efb9883dc70523f37782ee4c113-862f5ad9547acead-1789722231042599000-70434-60.md",
+   "2d6a9ea1d84c953d-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574.txt"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2026_17_03_26_2_CAM_OPERATORE_-_",
+   "B:90_PROPOSALS/102bfbad5a0e72b7-Factory_2026_17_03_26_2",
+   "C:90_PROPOSALS/2d6a9ea1d84c953d-Factory_2026_16_03_26_2",
+   "D:90_PROPOSALS/862f5ad9547acead-Factory_2025_11_03_25_-",
+   "E:20_RAW_SOURCES/Factory_2026_16_03_26_2_CAM_OPERATORE_-_"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T055",
+  "text": "dell industria",
+  "relevantDocumentIds": [
+   "f9f9794666ad214d-Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper.txt",
+   "src_e0ae97211596b84b29e1aacc12d953816d5e1b1e2ed4d9742adf8617d3775468-f9f9794666ad214d-1789722231338080000-70434-106.md",
+   "af381c8b5c34be15-Factory_2026_18_03_26_2_CAM_OPERATORE_-_PACKAGING_-_180326--c5cf74cbe421--whisper.txt",
+   "src_55bf8653e9078c384c48027c1735045e49e9ce28138ea75a3fad799dbf553a65-9c224699d2888b7b-1789722231113656000-70434-70.md",
+   "9c224699d2888b7b-Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2025_12_marzo_2025_-_tavola_roro",
+   "B:90_PROPOSALS/f9f9794666ad214d-Factory_2025_12_marzo_2",
+   "C:20_RAW_SOURCES/Factory_2026_18_03_26_2_CAM_OPERATORE_-_",
+   "D:90_PROPOSALS/9c224699d2888b7b-Factory_2025_12_03_25_-",
+   "E:20_RAW_SOURCES/Factory_2025_12_03_25_-_MATTINO"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T056",
+  "text": "industria marca",
+  "relevantDocumentIds": [
+   "83aa9f3a3c09d9de-Factory_2026_18_03_26_2__CAM_OPERATORE_-_PACKAGING_-_180326--89150400747a--whisper.txt",
+   "src_844d21df51e0e2abf92741fb6085abc6cbd4ec8c7f2d53cb3460fd01517933b7-83aa9f3a3c09d9de-1789722229423614000-70434-56.md",
+   "f9f9794666ad214d-Factory_2025_12_marzo_2025_-_tavola_roronda_seconda_parte_parte_--e1368c5383cf--whisper.txt",
+   "src_e0ae97211596b84b29e1aacc12d953816d5e1b1e2ed4d9742adf8617d3775468-f9f9794666ad214d-1789722231338080000-70434-106.md",
+   "src_9bfa4db7a6d7c82da9c6db91cad2ac70ba78bc60086700cfab5a8bd9d5fc0d7b-af381c8b5c34be15-1789722231137528000-70434-74.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2026_18_03_26_2__CAM_OPERATORE_-",
+   "B:90_PROPOSALS/83aa9f3a3c09d9de-Factory_2026_18_03_26_2",
+   "C:20_RAW_SOURCES/Factory_2025_12_marzo_2025_-_tavola_roro",
+   "D:90_PROPOSALS/f9f9794666ad214d-Factory_2025_12_marzo_2",
+   "E:90_PROPOSALS/af381c8b5c34be15-Factory_2026_18_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T057",
+  "text": "visual hammer",
+  "relevantDocumentIds": [
+   "src_a53bfeb3b4bce3a7ca44721008baae4775219f91c70ac82134ccf79aa2057a4b-822373a2b828bd01-1789722229377692000-70434-54.md",
+   "822373a2b828bd01-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper__RAG.md",
+   "src_b8c846c70ba1b5fe971ee640ca57540818729faa0d41d742da4245da271bfb55-ae143c2bf2e8ec3c-1789722231124501000-70434-72.md",
+   "ae143c2bf2e8ec3c-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_2--2f7e1a8358eb--whisper.txt",
+   "src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/Factory 2026 — Auricchio, visual hammer ",
+   "B:20_RAW_SOURCES/Factory 2026 — Auricchio, visual hammer ",
+   "C:90_PROPOSALS/ae143c2bf2e8ec3c-Factory_2026_17_03_26_2",
+   "D:20_RAW_SOURCES/Factory_2026_17_03_26_2_CAM_OPERATORE_-_",
+   "E:90_PROPOSALS/102bfbad5a0e72b7-Factory_2026_17_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T058",
+  "text": "operatore packaging",
+  "relevantDocumentIds": [
+   "src_079d66ab8b4cf72afbe5d876b95e3dfc294785a4c5f078a35927a2cdc913187f-2d6a9ea1d84c953d-1789722228853943000-70434-20.md",
+   "src_d5eec9bffe42e7808ff044b2e07d3ef5c7c6c8f9843bb3a3e3e2857bd7f3b569-81d8aee3b64cb0f1-1789589119315845000-52990-0.md",
+   "src_2ddd907dfd59ca94def08bfc6c33b50ad396aed17db6ff84ca9f4160959e4373-85c849bebba15116-1789722230401227000-70434-58.md",
+   "src_9d89c237518b70ca534063f60eb3968586568224b60c1e298fa7d4d70b8bba76-302440a151b94d55-1789722228924859000-70434-22.md",
+   "src_b8c846c70ba1b5fe971ee640ca57540818729faa0d41d742da4245da271bfb55-ae143c2bf2e8ec3c-1789722231124501000-70434-72.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/2d6a9ea1d84c953d-Factory_2026_16_03_26_2",
+   "B:90_PROPOSALS/Factory 2026 — Storytelling, personal br",
+   "C:90_PROPOSALS/Evoluzione della grande distribuzione: a",
+   "D:90_PROPOSALS/302440a151b94d55-Factory_2026_18_03_26_2",
+   "E:90_PROPOSALS/ae143c2bf2e8ec3c-Factory_2026_17_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T059",
+  "text": "factory operatore",
+  "relevantDocumentIds": [
+   "src_d5eec9bffe42e7808ff044b2e07d3ef5c7c6c8f9843bb3a3e3e2857bd7f3b569-81d8aee3b64cb0f1-1789589119315845000-52990-0.md",
+   "src_2ddd907dfd59ca94def08bfc6c33b50ad396aed17db6ff84ca9f4160959e4373-85c849bebba15116-1789722230401227000-70434-58.md",
+   "src_9d89c237518b70ca534063f60eb3968586568224b60c1e298fa7d4d70b8bba76-302440a151b94d55-1789722228924859000-70434-22.md",
+   "src_b8c846c70ba1b5fe971ee640ca57540818729faa0d41d742da4245da271bfb55-ae143c2bf2e8ec3c-1789722231124501000-70434-72.md",
+   "src_079d66ab8b4cf72afbe5d876b95e3dfc294785a4c5f078a35927a2cdc913187f-2d6a9ea1d84c953d-1789722228853943000-70434-20.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/Factory 2026 — Storytelling, personal br",
+   "B:90_PROPOSALS/Evoluzione della grande distribuzione: a",
+   "C:90_PROPOSALS/302440a151b94d55-Factory_2026_18_03_26_2",
+   "D:90_PROPOSALS/ae143c2bf2e8ec3c-Factory_2026_17_03_26_2",
+   "E:90_PROPOSALS/2d6a9ea1d84c953d-Factory_2026_16_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T060",
+  "text": "francesca nonino",
+  "relevantDocumentIds": [
+   "factory-2026-storytelling-personal-branding-e-intervista-a-francesca-nonino.md",
+   "src_d5eec9bffe42e7808ff044b2e07d3ef5c7c6c8f9843bb3a3e3e2857bd7f3b569-81d8aee3b64cb0f1-1789589119315845000-52990-0.md",
+   "src_d5eec9bffe42e7808ff044b2e07d3ef5c7c6c8f9843bb3a3e3e2857bd7f3b569-81d8aee3b64cb0f1-1789589119315845000-52990-0.md",
+   "src_d5eec9bffe42e7808ff044b2e07d3ef5c7c6c8f9843bb3a3e3e2857bd7f3b569-81d8aee3b64cb0f1-1789589119315845000-52990-0.md",
+   "b5fbdcdd2ffbf788-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper__RAG.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:07_CASE_STUDIES/Factory 2026 — Storytelling, personal br",
+   "B:90_PROPOSALS/Factory 2026 — Storytelling, personal br",
+   "C:90_PROPOSALS/Factory 2026 — Storytelling, personal br",
+   "D:90_PROPOSALS/Factory 2026 — Storytelling, personal br",
+   "E:20_RAW_SOURCES/Factory 2026 — Storytelling, personal br"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T061",
+  "text": "profitto genetico",
+  "relevantDocumentIds": [
+   "b8a45f9e3f624671-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper.txt",
+   "src_7e3520dee4da44f55ec68b6027b396a7abce60fde1f6d9fcdc9a4ab5dd21df8f-b8a45f9e3f624671-1789722231169938000-70434-80.md",
+   "862f5ad9547acead-Factory_2025_11_03_25_-_MATTINA_prima_parte_--aff27310b6cc--whisper.txt",
+   "src_ca6057e47dcc2a68c3123e967dee019e26573efb9883dc70523f37782ee4c113-862f5ad9547acead-1789722231042599000-70434-60.md",
+   "f567c14c3664fcaa-Factory_2025_10_03_25_-_POMERIGGIO--111cb1025738--whisper__RAG.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2025_10_03_25_-_POMERIGGIO",
+   "B:90_PROPOSALS/b8a45f9e3f624671-Factory_2025_10_03_25_-",
+   "C:20_RAW_SOURCES/Factory_2025_11_03_25_-_MATTINA_prima_pa",
+   "D:90_PROPOSALS/862f5ad9547acead-Factory_2025_11_03_25_-",
+   "E:20_RAW_SOURCES/Factory 2025 — 10 marzo, pomeriggio: pos"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T062",
+  "text": "diventare brand",
+  "relevantDocumentIds": [
+   "src_079d66ab8b4cf72afbe5d876b95e3dfc294785a4c5f078a35927a2cdc913187f-2d6a9ea1d84c953d-1789722228853943000-70434-20.md",
+   "2d6a9ea1d84c953d-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574.txt",
+   "8aa5ea9d7ba48f72-Factory_2024_2-3-24_pomeriggio_parte_1--5624299f5ae0--whisper__RAG.md",
+   "src_f326278fd8fb9c0cda074255197e941d8b5c7b42dc98e22e8191a0b2168c433b-8aa5ea9d7ba48f72-1789722231056710000-70434-62.md",
+   "src_4ef6c1ab59fd316007a8a7cea5ae145f19da2a3588a1e0daf6efe70df3ccb1ab-c6c8fbd672a05af3-1789722231230408000-70434-90.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/2d6a9ea1d84c953d-Factory_2026_16_03_26_2",
+   "B:20_RAW_SOURCES/Factory_2026_16_03_26_2_CAM_OPERATORE_-_",
+   "C:20_RAW_SOURCES/Famiglie di marca e workshop sul posizio",
+   "D:90_PROPOSALS/Famiglie di marca e workshop sul posizio",
+   "E:90_PROPOSALS/c6c8fbd672a05af3-Factory_2024_2-3-24_pom"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T063",
+  "text": "estensione linea",
+  "relevantDocumentIds": [
+   "c585ead999bda537-Factory_2024_1-3-24_pomeriggio_parte_1--5f606c1668c9--whisper.txt",
+   "src_47af57a641435cc03343c214c8e0ca2f2dd03b764adbfb7361d48d69c463d540-c585ead999bda537-1789722231218759000-70434-88.md",
+   "src_a265a0064b757f6f33597449d2fb712c97d129ae1fdcc998c9c4ecfeb22cd1ef-c00601975051e575-1789722231207130000-70434-86.md",
+   "c00601975051e575-Factory_2025_10_03_25_-_MATTINO_seconda_parte_--8fe534d33c3c--whisper.txt",
+   "src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2024_1-3-24_pomeriggio_parte_1",
+   "B:90_PROPOSALS/c585ead999bda537-Factory_2024_1-3-24_pom",
+   "C:90_PROPOSALS/c00601975051e575-Factory_2025_10_03_25_-",
+   "D:20_RAW_SOURCES/Factory_2025_10_03_25_-_MATTINO_seconda_",
+   "E:90_PROPOSALS/102bfbad5a0e72b7-Factory_2026_17_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T064",
+  "text": "lievito madre",
+  "relevantDocumentIds": [
+   "102bfbad5a0e72b7-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper.txt",
+   "src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md",
+   "src_04f0b4227ef7d6d7431c3d0cba8ecd3edddbb9a9f35a54fbfc03eccfce966d13-96bd4b7d2b5cceff-1789722231089592000-70434-66.md",
+   "96bd4b7d2b5cceff-Factory_2026_17_03_26_2_CAM_OPERATORE_-_PACKAGING_-_170326_3--420e3d7e46a7--whisper__RAG.md",
+   "src_65d28f91c6cf869786bdeaeb706798c4d60cac07209c7f0c69967ba1715449ca-4d9020b8d816ea4e-1789722228984698000-70434-30.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:20_RAW_SOURCES/Factory_2026_17_03_26_2_CAM_OPERATORE_-_",
+   "B:90_PROPOSALS/102bfbad5a0e72b7-Factory_2026_17_03_26_2",
+   "C:90_PROPOSALS/Factory 2026 — Naming, Bauli, posizionam",
+   "D:20_RAW_SOURCES/Factory 2026 — Naming, Bauli, posizionam",
+   "E:90_PROPOSALS/4d9020b8d816ea4e-Factory_2026_16_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T065",
+  "text": "intelligenza artificiale",
+  "relevantDocumentIds": [
+   "src_55bf8653e9078c384c48027c1735045e49e9ce28138ea75a3fad799dbf553a65-9c224699d2888b7b-1789722231113656000-70434-70.md",
+   "9c224699d2888b7b-Factory_2025_12_03_25_-_MATTINO--bd933c7efecc--whisper.txt",
+   "src_e47d7d0231901bf1a026d07edfb6810bacfe720973a56882bb72b79c3edee8ce-eba39a4d763ec2e6-1789722231265569000-70434-96.md",
+   "src_9d89c237518b70ca534063f60eb3968586568224b60c1e298fa7d4d70b8bba76-302440a151b94d55-1789722228924859000-70434-22.md",
+   "eba39a4d763ec2e6-Factory_2025_11_03_25_-_MATTINO_seconda_parte_--2a98fcff46e7--whisper.txt"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/9c224699d2888b7b-Factory_2025_12_03_25_-",
+   "B:20_RAW_SOURCES/Factory_2025_12_03_25_-_MATTINO",
+   "C:90_PROPOSALS/eba39a4d763ec2e6-Factory_2025_11_03_25_-",
+   "D:90_PROPOSALS/302440a151b94d55-Factory_2026_18_03_26_2",
+   "E:20_RAW_SOURCES/Factory_2025_11_03_25_-_MATTINO_seconda_"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ },
+ {
+  "queryId": "T066",
+  "text": "wonderful wonderful",
+  "relevantDocumentIds": [
+   "src_65d28f91c6cf869786bdeaeb706798c4d60cac07209c7f0c69967ba1715449ca-4d9020b8d816ea4e-1789722228984698000-70434-30.md",
+   "4d9020b8d816ea4e-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_160326--0b718ba819f7--whisper.txt",
+   "src_079d66ab8b4cf72afbe5d876b95e3dfc294785a4c5f078a35927a2cdc913187f-2d6a9ea1d84c953d-1789722228853943000-70434-20.md",
+   "2d6a9ea1d84c953d-Factory_2026_16_03_26_2_CAM_OPERATORE_-_PACKAGING_-_16-03-26_2--b396f7b5f574.txt",
+   "src_1095742dfd1204997a38845232d5c3295bd12b990f31baf0b9fec5484fdb2a2b-102bfbad5a0e72b7-1789722228498471000-70434-4.md"
+  ],
+  "relevantPassageIds": [],
+  "_tipo": "espressione",
+  "_lettere": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E"
+  ],
+  "_candidati": [
+   "A:90_PROPOSALS/4d9020b8d816ea4e-Factory_2026_16_03_26_2",
+   "B:20_RAW_SOURCES/Factory_2026_16_03_26_2_CAM_OPERATORE_-_",
+   "C:90_PROPOSALS/2d6a9ea1d84c953d-Factory_2026_16_03_26_2",
+   "D:20_RAW_SOURCES/Factory_2026_16_03_26_2_CAM_OPERATORE_-_",
+   "E:90_PROPOSALS/102bfbad5a0e72b7-Factory_2026_17_03_26_2"
+  ],
+  "_origine": "etichettatura utente 21/09/2026 (A04_TERMINI_DA_COMPILARE.xlsx)"
+ }
+]

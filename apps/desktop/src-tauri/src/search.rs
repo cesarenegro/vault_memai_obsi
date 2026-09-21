@@ -282,6 +282,34 @@ pub fn tokenize_text(raw: &str) -> Vec<String> {
         .map(str::to_string)
         .collect()
 }
+/// Vero se `needle` compare in `hay` delimitato da caratteri non alfanumerici (o dai bordi), cioe' come
+/// parola o sequenza di parole intere: "personal" non e' contenuto in "personale", "lead" non in "leader".
+/// Entrambe le stringhe devono essere gia' normalizzate con `normalize_text`.
+pub fn contains_whole_words(hay: &str, needle: &str) -> bool {
+    let needle = needle.trim();
+    if needle.is_empty() {
+        return false;
+    }
+    let h: Vec<char> = hay.chars().collect();
+    let n: Vec<char> = needle.chars().collect();
+    if n.len() > h.len() {
+        return false;
+    }
+    let is_word = |c: char| c.is_alphanumeric();
+    let mut i = 0;
+    while i + n.len() <= h.len() {
+        if h[i..i + n.len()] == n[..] {
+            let before_ok = i == 0 || !is_word(h[i - 1]);
+            let after_ok = i + n.len() == h.len() || !is_word(h[i + n.len()]);
+            if before_ok && after_ok {
+                return true;
+            }
+        }
+        i += 1;
+    }
+    false
+}
+
 pub fn extract_snippet(content: &str, terms: &[String], max: usize) -> String {
     if max == 0 {
         return String::new();
@@ -742,7 +770,12 @@ where
             if let Some(ref term) = q.term {
                 let norm_term = normalize_text(term);
                 let norm_p = normalize_text(&p.text);
-                if norm_p.contains(&norm_term) {
+                // C12 (21/09/2026): confronto a parola intera. Con `contains` un termine breve prendeva il bonus
+                // anche come sottostringa di altre parole ("personal" in "personale", "lead" in "leader") e,
+                // poiche' il bonus vale solo per i documenti con BM25 zero ed e' piu' alto di qualsiasi BM25,
+                // i documenti con la sola sottostringa superavano quelli con il termine vero: misurato sul
+                // corpus reale, 50 documenti a pari merito con punteggio 15,0 per "personal", "cita", "lead".
+                if contains_whole_words(&norm_p, &norm_term) {
                     p_score += 15.0;
                 }
             }
@@ -983,6 +1016,36 @@ mod tests {
             results[0].score,
             results[1].score
         );
+    }
+
+    #[test]
+    fn test_contains_whole_words_rejects_substrings_of_other_words() {
+        assert!(contains_whole_words("parliamo di personal branding", "personal"));
+        assert!(!contains_whole_words("il posizionamento a livello personale", "personal"));
+        assert!(!contains_whole_words("il leader del mercato", "lead"));
+        assert!(contains_whole_words("genera un lead qualificato", "lead"));
+        assert!(contains_whole_words("marca privata e distribuzione", "marca privata"));
+        assert!(!contains_whole_words("marca privatamente gestita", "marca privata"));
+        assert!(contains_whole_words("codice sku-999-x in listino", "sku-999-x"));
+        assert!(!contains_whole_words("qualsiasi", ""));
+    }
+
+    #[test]
+    fn test_c12_exact_token_document_outranks_substring_only_document() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path();
+        fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        fs::create_dir_all(path.join("20_RAW_SOURCES")).unwrap();
+        // A contiene il token esatto "personal"; B contiene solo "personale"/"personalmente" (sottostringhe).
+        fs::write(path.join("20_RAW_SOURCES/a.txt"), "Oggi parliamo di personal branding e di come costruire il personal brand di un consulente.").unwrap();
+        fs::write(path.join("20_RAW_SOURCES/b.txt"), "Il posizionamento a livello personale conta molto, personalmente credo che la personalizzazione sia decisiva.").unwrap();
+        crate::catalog::sync_catalog_from_vault(path).unwrap();
+        crate::catalog::process_pending_extractions(path).unwrap();
+        index_vault_search(path).unwrap();
+        let res = search_vault(path, SearchQuery { term: Some("personal".into()), ..Default::default() }).unwrap();
+        assert!(!res.is_empty());
+        assert!(res[0].relative_path.ends_with("a.txt"), "il documento con il termine esatto deve essere primo, trovato {}", res[0].relative_path);
+        assert!(res.iter().all(|r| !r.relative_path.ends_with("b.txt")), "un documento con la sola sottostringa non deve entrare tramite il bonus di frase esatta");
     }
 
     #[test]
