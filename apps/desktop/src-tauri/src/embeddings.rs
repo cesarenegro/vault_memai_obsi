@@ -736,7 +736,17 @@ pub async fn sync_embeddings_with_progress(
     working_cache.entries.retain(|id, _| valid_passage_ids.contains(id));
 
     // Lotti: 16 in locale (avanzamento a passi piccoli, annullamento entro un lotto), 32 verso l'API remota.
-    let batch_size = if is_loopback { 16 } else { 32 };
+    // LIMEN_SYNC_BATCH e LIMEN_SYNC_TIMING servono solo alle misure sul banco di prova (21/09/2026):
+    // senza variabili il comportamento e' quello predefinito.
+    let default_batch = if is_loopback { 16 } else { 32 };
+    let batch_size = std::env::var("LIMEN_SYNC_BATCH")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .filter(|n| *n > 0)
+        .unwrap_or(default_batch);
+    let timing = std::env::var("LIMEN_SYNC_TIMING").is_ok();
+    let sync_started = std::time::Instant::now();
+    let (mut t_req_total, mut t_write_total, mut writes) = (0u128, 0u128, 0usize);
     let total_missing = missing.len();
     let mut processed_count = 0;
     if total_missing > 0 {
@@ -755,7 +765,11 @@ pub async fn sync_embeddings_with_progress(
         }
 
         let texts: Vec<String> = chunk.iter().map(|m| m.text_to_embed.clone()).collect();
+        let chars: usize = texts.iter().map(|t| t.chars().count()).sum();
+        let t0 = std::time::Instant::now();
         let vectors = fetch_openai_embeddings_with_endpoint(&endpoint, effective_key, target_model, &texts).await?;
+        let req_ms = t0.elapsed().as_millis();
+        t_req_total += req_ms;
 
         for (m, vec) in chunk.iter().zip(vectors.into_iter()) {
             working_cache.entries.insert(
@@ -779,8 +793,19 @@ pub async fn sync_embeddings_with_progress(
         if let Some(cb) = on_progress {
             cb(processed_count, total_missing);
         }
+        let mut write_ms = 0u128;
         if is_model_migration && (processed_count % 320 == 0 || processed_count == total_missing) {
+            let t1 = std::time::Instant::now();
             let _ = std::fs::write(&staging_path, serde_json::to_string(&working_cache).unwrap_or_default());
+            write_ms = t1.elapsed().as_millis();
+            t_write_total += write_ms;
+            writes += 1;
+        }
+        if timing {
+            eprintln!(
+                "[sync-timing] lotto n={} caratteri={} richiesta_ms={} scrittura_ms={} elaborati={}/{} trascorso_s={:.1}",
+                texts.len(), chars, req_ms, write_ms, processed_count, total_missing, sync_started.elapsed().as_secs_f64()
+            );
         }
 
         if processed_count % 320 == 0 || processed_count == total_missing {
@@ -793,6 +818,12 @@ pub async fn sync_embeddings_with_progress(
         }
     }
 
+    if timing {
+        eprintln!(
+            "[sync-timing] TOTALE passaggi={} lotto={} totale_s={:.1} richieste_s={:.1} scritture_staging={} scritture_s={:.1}",
+            total_missing, batch_size, sync_started.elapsed().as_secs_f64(), t_req_total as f64 / 1000.0, writes, t_write_total as f64 / 1000.0
+        );
+    }
     if let Some(first_entry) = working_cache.entries.values().next() {
         working_cache.dimensions = first_entry.dimensions;
     } else {
