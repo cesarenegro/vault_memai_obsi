@@ -270,7 +270,7 @@ export function createVaultIpc(invoke: Invoke, native: () => boolean) {
     return operation();
   }
   return {
-    create: (path: string) => run(async () => status(await invoke('create_vault', { targetPath: path, vaultName: path.split('/').pop() || 'LIMEN Vault' }))),
+    create: (path: string) => run(async () => status(await invoke('create_vault', { targetPath: path, vaultName: path.split(/[/\\]/).filter(Boolean).pop() || 'LIMEN Vault' }))),
     open: (path: string) => run(async (): Promise<OpenVaultResponse> => {
       const res = await invoke<OpenVaultResponse>('open_vault', { targetPath: path });
       status(res?.status);
@@ -319,5 +319,6 @@ export function createVaultIpc(invoke: Invoke, native: () => boolean) {
     syncEmbeddings: (path: string, apiKey?: string, model?: string) => run(async () => invoke<EmbeddingsStatusReport>('embeddings_sync_vault', { vaultPath: path, apiKey: apiKey ?? null, model: model ?? null })),
     searchVaultHybrid: (path: string, query: SearchQuery, apiKey?: string, useSemantic?: boolean) => readOnly(async () => searchResults(await invoke('search_vault_hybrid', { vaultPath: path, query, apiKey: apiKey ?? null, useSemantic: useSemantic ?? true }))),
     restoreSnapshot: (path: string, snapshotId: string, destinationPath?: string) => run(async () => invoke<SnapshotRestoreReport>('snapshot_restore', { vaultPath: path, snapshotId, destinationPath })),
+    selectVaultFolder: () => readOnly(async () => native() ? invoke<string | null>('select_vault_folder') : null),
   };
 }

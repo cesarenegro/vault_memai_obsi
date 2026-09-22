@@ -185,21 +185,13 @@ export default function App() {
   const finish = (ticket:number) => { if(ticket===generation.current) {busy.current=false;setIsProcessing(false);} };
 
 
-  // Detect Tauri Environment & Default Vault Path
+  // Detect Tauri Environment
   useEffect(() => {
     let cancelled = false;
     const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
     setIsTauriEnv(isTauri);
 
     if (isTauri) {
-      invoke<string>('get_default_vault_path')
-        .then((defaultPath) => {
-          if(!cancelled) setCustomPathInput(current => current || defaultPath);
-        })
-        .catch(() => {
-          if(!cancelled) setCustomPathInput(current => current);
-        });
-
       invoke<boolean>('check_obsidian_installed')
         .then((installed) => {
           if(!cancelled) setObsidianAvailable(installed);
@@ -339,6 +331,26 @@ export default function App() {
     }finally{finish(ticket);}
   };
 
+  const handleBrowseFolder = async (): Promise<string | null> => {
+    setActionError(null);
+    if (!isTauriEnv) {
+      setActionError('Serve l’applicazione nativa LIMEN. Questa è un’anteprima nel browser.');
+      return null;
+    }
+    try {
+      const selected = await ipc.selectVaultFolder();
+      if (selected) {
+        const normalized = selected.replace(/\//g, '\\');
+        setCustomPathInput(normalized);
+        return normalized;
+      }
+      return null;
+    } catch (err) {
+      setActionError(typeof err === 'string' ? err : (err as Error).message);
+      return null;
+    }
+  };
+
   const handleCreateVault = async () => {
     setActionError(null);
     if (!isTauriEnv) {
@@ -346,8 +358,12 @@ export default function App() {
       return;
     }
 
-    const target = customPathInput.trim();
-    if (!target) return;
+    let target = customPathInput.trim();
+    if (!target) {
+      const selected = await handleBrowseFolder();
+      if (!selected) return; // User cancelled
+      target = selected;
+    }
 
     const ticket=begin(); if(ticket===null)return;
     setIntegrityReport(null);setSnapshotsList([]);setIntegrityStatus('unverified');setRawSourcesList([]);setProposalsList([]);setLastBatchReport(null);
@@ -387,8 +403,12 @@ export default function App() {
       return;
     }
 
-    const target = customPathInput.trim();
-    if (!target) return;
+    let target = customPathInput.trim();
+    if (!target) {
+      const selected = await handleBrowseFolder();
+      if (!selected) return; // User cancelled
+      target = selected;
+    }
 
     const ticket=begin(); if(ticket===null)return;
     setIntegrityReport(null);setSnapshotsList([]);setIntegrityStatus('unverified');setRawSourcesList([]);setProposalsList([]);setLastBatchReport(null);
@@ -577,10 +597,10 @@ export default function App() {
             </div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--limen-text-primary)' }}>
-                LIMEN VAULT v3
+                {vaultLoaded && vaultName ? vaultName : 'Nessun Vault'}
               </div>
               <div style={{ fontSize: 10, color: 'var(--limen-text-muted)', fontWeight: 500 }}>
-                Desktop v3 (0.3.0) {isTauriEnv ? '(app nativa)' : '(anteprima browser)'}
+                LIMEN Vault v3 {isTauriEnv ? '(app nativa)' : '(anteprima browser)'}
               </div>
             </div>
           </div>
@@ -759,7 +779,7 @@ export default function App() {
             </span>
             {vaultPath && (
               <span style={{ fontSize: 11, color: '#64748b', backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: 4, fontFamily: 'monospace' }}>
-                {vaultPath.split('/').pop()}
+                {vaultPath.split(/[/\\]/).filter(Boolean).pop()}
               </span>
             )}
           </div>
@@ -897,38 +917,64 @@ export default function App() {
               <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 6 }}>
                 Percorso del Vault (cartella locale)
               </label>
-              <input
-                type="text"
-                value={customPathInput}
-                onChange={(e) => setCustomPathInput(e.target.value)}
-                placeholder="es. /Users/nome/Documents/IL_MIO_VAULT"
-                disabled={isProcessing}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 6,
-                  border: '1px solid #cbd5e1',
-                  fontSize: 13,
-                }}
-              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="text"
+                  value={customPathInput}
+                  onChange={(e) => setCustomPathInput(e.target.value.replace(/\//g, '\\'))}
+                  placeholder="Scegli la cartella del vault"
+                  disabled={isProcessing}
+                  style={{
+                    flex: 1,
+                    padding: '10px 14px',
+                    borderRadius: 6,
+                    border: '1px solid #cbd5e1',
+                    fontSize: 13,
+                    fontFamily: 'monospace',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleBrowseFolder}
+                  disabled={isProcessing}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    backgroundColor: '#f1f5f9',
+                    color: '#0f172a',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 6,
+                    padding: '10px 16px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <FolderOpen size={16} />
+                  <span>Sfoglia…</span>
+                </button>
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
               <button
+                type="button"
                 onClick={handleCreateVault}
-                disabled={!customPathInput.trim() || isProcessing}
+                disabled={isProcessing}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  backgroundColor: customPathInput.trim() && !isProcessing ? '#0f172a' : '#94a3b8',
+                  backgroundColor: isProcessing ? '#94a3b8' : '#0f172a',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: 8,
                   padding: '12px 20px',
                   fontSize: 13,
                   fontWeight: 600,
-                  cursor: customPathInput.trim() && !isProcessing ? 'pointer' : 'not-allowed',
+                  cursor: isProcessing ? 'not-allowed' : 'pointer',
                 }}
               >
                 {isProcessing ? <Loader2 size={16} className="spin" /> : <PlusCircle size={16} />}
@@ -936,20 +982,21 @@ export default function App() {
               </button>
 
               <button
+                type="button"
                 onClick={handleOpenExistingVault}
-                disabled={!customPathInput.trim() || isProcessing}
+                disabled={isProcessing}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
                   backgroundColor: '#ffffff',
-                  color: customPathInput.trim() && !isProcessing ? '#0f172a' : '#94a3b8',
+                  color: isProcessing ? '#94a3b8' : '#0f172a',
                   border: '1px solid #cbd5e1',
                   borderRadius: 8,
                   padding: '12px 20px',
                   fontSize: 13,
                   fontWeight: 600,
-                  cursor: customPathInput.trim() && !isProcessing ? 'pointer' : 'not-allowed',
+                  cursor: isProcessing ? 'not-allowed' : 'pointer',
                 }}
               >
                 {isProcessing ? <Loader2 size={16} className="spin" /> : <FolderOpen size={16} />}
@@ -960,14 +1007,22 @@ export default function App() {
             {/* VALIDATION ERRORS IN WELCOME CARD */}
             {validationErrors.length > 0 && (
               <div style={{ marginTop: 24, textAlign: 'left', backgroundColor: '#fef2f2', padding: 16, borderRadius: 8, border: '1px solid #fecaca' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#991b1b', marginBottom: 8 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#991b1b', marginBottom: 4 }}>
                   Errori di validazione del Vault ({validationErrors.length})
                 </div>
-                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 12, color: '#b91c1c' }}>
-                  {validationErrors.map((err, i) => (
-                    <li key={i}>{<MessageIt value={err}/>}</li>
-                  ))}
-                </ul>
+                <div style={{ fontSize: 12, color: '#7f1d1d', marginBottom: 8 }}>
+                  Trovate {validationErrors.length} note con errori di schema o struttura.
+                </div>
+                <details style={{ marginTop: 6 }}>
+                  <summary style={{ fontSize: 12, fontWeight: 600, color: '#991b1b', cursor: 'pointer' }}>
+                    Consulta il dettaglio tecnico…
+                  </summary>
+                  <ul style={{ margin: '8px 0 0 0', paddingLeft: 20, fontSize: 12, color: '#b91c1c', maxHeight: 180, overflowY: 'auto' }}>
+                    {validationErrors.map((err, i) => (
+                      <li key={i}>{<MessageIt value={err}/>}</li>
+                    ))}
+                  </ul>
+                </details>
               </div>
             )}
           </div>

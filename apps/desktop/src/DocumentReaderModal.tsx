@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import type { createVaultIpc, DocumentRecord, DocumentPassage, DocumentVerificationReport } from './vault-ipc';
 
+import { getPlatformTerms } from './platform';
+
 export interface DocumentReaderModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -202,13 +204,15 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
     }
   };
 
+  const terms = getPlatformTerms();
+
   const handleRevealInFinder = async () => {
     if (!documentId) return;
     try {
       await ipc.revealInFinder(vaultPath, documentId);
-      setActionMessage('File evidenziato in Esplora risorse.');
+      setActionMessage(`File evidenziato in ${terms.fileManager}.`);
     } catch (err) {
-      setActionMessage(`Errore Esplora risorse: ${err instanceof Error ? err.message : String(err)}`);
+      setActionMessage(`Errore ${terms.fileManager}: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -347,10 +351,10 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
             <button
               onClick={handleRevealInFinder}
               className="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 hover:bg-white/10 text-zinc-200 border border-white/10 flex items-center space-x-1.5 transition-colors"
-              title="Mostra in Esplora risorse"
+              title={`Mostra in ${terms.fileManager}`}
             >
               <Folder className="w-3.5 h-3.5" />
-              <span>Mostra in Esplora risorse</span>
+              <span>Mostra in {terms.fileManager}</span>
             </button>
             <button
               onClick={onClose}

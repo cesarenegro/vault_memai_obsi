@@ -53,6 +53,11 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
   const [reindexPercent, setReindexPercent] = useState<number | null>(null);
   const [reindexCounts, setReindexCounts] = useState<{ processed: number; total: number } | null>(null);
 
+  const [openaiConsent, setOpenaiConsent] = useState<boolean>(false);
+  const [selectedOpenaiModel, setSelectedOpenaiModel] = useState<string>(
+    typeof localStorage !== 'undefined' ? localStorage.getItem('limen_openai_model') || 'gpt-4o-mini' : 'gpt-4o-mini'
+  );
+
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -61,21 +66,41 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
   const refreshAll = async () => {
     if (!vaultPath) return;
     try {
-      const [prov, model, srv] = await Promise.all([
+      const [prov, model, srv, consent] = await Promise.all([
         aiIpc.embeddingsGetProvider(vaultPath),
         aiIpc.localModelStatus(),
         aiIpc.localServerStatus(),
+        aiIpc.getConsent(vaultPath).catch(() => false),
       ]);
       if (isMounted.current) {
         setProviderReport(prov);
         setModelReport(model);
         setServerReport(srv);
+        setOpenaiConsent(consent);
       }
     } catch (err) {
       if (isMounted.current) {
         setError(`Errore nel caricamento delle impostazioni semantiche: ${String(err)}`);
       }
     }
+  };
+
+  const handleToggleConsent = async (granted: boolean) => {
+    setOpenaiConsent(granted);
+    try {
+      await aiIpc.setConsent(vaultPath, granted);
+      setSuccessMessage(granted ? 'Consenso all’invio dei passaggi a OpenAI accordato.' : 'Consenso revocato.');
+    } catch (err) {
+      setError(`Impossibile aggiornare il consenso: ${String(err)}`);
+    }
+  };
+
+  const handleSelectOpenaiModel = (modelName: string) => {
+    setSelectedOpenaiModel(modelName);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('limen_openai_model', modelName);
+    }
+    setSuccessMessage(`Modello OpenAI predefinito impostato su ${modelName}.`);
   };
 
   useEffect(() => {
@@ -346,13 +371,15 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
               fontWeight: 600,
               padding: '2px 8px',
               borderRadius: 4,
-              backgroundColor: modelReport?.installed && modelReport.sha256Ok ? '#dcfce7' : '#fee2e2',
-              color: modelReport?.installed && modelReport.sha256Ok ? '#166534' : '#991b1b',
+              backgroundColor: modelReport === null ? '#f1f5f9' : modelReport.installed && modelReport.sha256Ok ? '#dcfce7' : '#fee2e2',
+              color: modelReport === null ? '#64748b' : modelReport.installed && modelReport.sha256Ok ? '#166534' : '#991b1b',
             }}
           >
-            {modelReport?.installed && modelReport.sha256Ok
+            {modelReport === null
+              ? 'VERIFICA IN CORSO…'
+              : modelReport.installed && modelReport.sha256Ok
               ? 'INSTALLATO (SHA-256 OK)'
-              : modelReport?.installed
+              : modelReport.installed
               ? 'INTEGRITÀ NON VALIDA'
               : 'NON INSTALLATO'}
           </span>
@@ -361,7 +388,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
         {modelReport?.installed ? (
           <div style={{ fontSize: 12, color: '#475569', display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div>
-              <strong>Percorso:</strong> <code style={{ fontSize: 11 }}>{modelReport.path}</code>
+              <strong>Percorso:</strong> <code style={{ fontSize: 11 }}>{modelReport.path.replace(/\//g, '\\')}</code>
             </div>
             <div>
               <strong>Dimensione:</strong> {formatBytes(modelReport.bytes)} (634.553.760 byte)
@@ -624,6 +651,66 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
           )}
         </div>
       )}
+
+      {/* 5. CONSENSO ED ELABORAZIONE OPENAI */}
+      <div
+        style={{
+          border: '1px solid #cbd5e1',
+          borderRadius: 8,
+          padding: 18,
+          backgroundColor: '#ffffff',
+          marginBottom: 16,
+        }}
+      >
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
+          Generazione risposte e consenso OpenAI
+        </div>
+        <p style={{ fontSize: 12, color: '#475569', margin: '0 0 14px 0', lineHeight: 1.5 }}>
+          Imposta il consenso all’invio e scegli il modello OpenAI una volta sola nelle Impostazioni.
+          Le domande nella scheda <strong>Chiedi</strong> utilizzeranno automaticamente questa configurazione.
+        </p>
+
+        <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: '#0f172a' }}>
+            <input
+              type="checkbox"
+              checked={openaiConsent}
+              onChange={(e) => void handleToggleConsent(e.target.checked)}
+              style={{ width: 16, height: 16, cursor: 'pointer' }}
+            />
+            <span>Consenti l'invio a OpenAI dei passaggi pertinenti per generare le risposte</span>
+          </label>
+          <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, marginLeft: 26 }}>
+            {openaiConsent
+              ? '✓ Consenso attivo: l’app può inviare i passaggi dei documenti pertinenti a OpenAI per comporre le risposte.'
+              : '✕ Consenso disattivato: la scheda Chiedi mostrerà un avviso prima di inviare dati a OpenAI.'}
+          </div>
+        </div>
+
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 6 }}>
+            Modello OpenAI predefinito
+          </label>
+          <select
+            value={selectedOpenaiModel}
+            onChange={(e) => handleSelectOpenaiModel(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 6,
+              border: '1px solid #cbd5e1',
+              fontSize: 13,
+              backgroundColor: '#ffffff',
+              minWidth: 260,
+            }}
+          >
+            <option value="gpt-4o-mini">gpt-4o-mini (veloce, consigliato)</option>
+            <option value="gpt-4o">gpt-4o (massima qualità)</option>
+            <option value="gpt-4-turbo">gpt-4-turbo</option>
+            <option value="o3-mini">o3-mini (ragionamento avanzato)</option>
+            <option value="o1-mini">o1-mini</option>
+          </select>
+        </div>
+      </div>
 
       {/* FEEDBACK MESSAGES */}
       {error && (

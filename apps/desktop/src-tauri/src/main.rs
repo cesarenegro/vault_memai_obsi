@@ -370,7 +370,7 @@ fn main() {
             catalog_sync,catalog_list_documents,catalog_process_extractions,catalog_get_document,catalog_get_by_path,catalog_verify_document_passage,catalog_read_verified_text,catalog_read_text,catalog_read_passage,catalog_open_original,catalog_reveal_in_finder,catalog_get_summary,
             embeddings_get_status,embeddings_sync_vault,search_vault_hybrid,
             embeddings_get_provider,embeddings_set_provider,
-            local_model_status,local_model_download,local_model_select_file,local_model_pick_and_install,
+            local_model_status,local_model_download,local_model_select_file,local_model_pick_and_install,select_vault_folder,
             local_server_start,local_server_stop,local_server_status,embeddings_cancel_sync
         ])
         .build(tauri::generate_context!())
@@ -753,27 +753,52 @@ async fn local_model_select_file(
 }
 
 #[tauri::command]
+async fn select_vault_folder(
+    app: tauri::AppHandle,
+) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    tauri::async_runtime::spawn_blocking(move || {
+        let folder = app
+            .dialog()
+            .file()
+            .set_title("Seleziona cartella del Vault LIMEN")
+            .blocking_pick_folder();
+        match folder {
+            Some(f) => {
+                let path_buf = f.into_path().map_err(|e| e.to_string())?;
+                let path_str = path_buf.to_string_lossy().to_string();
+                let normalized = path_str.replace('/', "\\");
+                Ok(Some(normalized))
+            }
+            None => Ok(None),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 async fn local_model_pick_and_install(
     app: tauri::AppHandle,
 ) -> Result<limen_vault::llama::LocalModelReport, String> {
     use tauri_plugin_dialog::DialogExt;
-    let file = app
-        .dialog()
-        .file()
-        .set_title("Seleziona file modello GGUF (bge-m3-Q8_0.gguf)")
-        .add_filter("Modello GGUF", &["gguf"])
-        .blocking_pick_file();
-    match file {
-        Some(f) => {
-            let path_buf = f.into_path().map_err(|e| e.to_string())?;
-            tauri::async_runtime::spawn_blocking(move || {
+    tauri::async_runtime::spawn_blocking(move || {
+        let file = app
+            .dialog()
+            .file()
+            .set_title("Seleziona file modello GGUF (bge-m3-Q8_0.gguf)")
+            .add_filter("Modello GGUF", &["gguf"])
+            .blocking_pick_file();
+        match file {
+            Some(f) => {
+                let path_buf = f.into_path().map_err(|e| e.to_string())?;
                 limen_vault::llama::install_model_from_file(&path_buf)
-            })
-            .await
-            .map_err(|e| e.to_string())?
+            }
+            None => Err("Selezione file annullata".into()),
         }
-        None => Err("Selezione file annullata".into()),
-    }
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]

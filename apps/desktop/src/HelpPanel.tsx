@@ -239,9 +239,9 @@ export function HelpPanel({
               <li>Torna in LIMEN: ora puoi consultare e scrivere liberamente.</li>
             </ol>
 
-            <h4>Passo 4 — Carica documenti e cerca</h4>
+            <h4>Passo 4 — Carica documenti e fai domande</h4>
             <p>
-              Premi il pulsante verde <strong>CARICA DOCUMENTI</strong> per importare PDF, presentazioni, trascrizioni o fogli di calcolo in <code>20_RAW_SOURCES</code>. L’estrattore nativo estrae il testo in passaggi; poi vai nella scheda <strong>Chiedi (Ricerca nel Vault)</strong>, attiva <strong>Ricerca Ibrida</strong> e interroga i tuoi contenuti per concetto e per parole chiave.
+              Premi il pulsante verde <strong>CARICA DOCUMENTI</strong> per importare PDF, presentazioni, trascrizioni o fogli di calcolo in <code>20_RAW_SOURCES</code>. L’estrattore nativo estrae il testo in passaggi; poi vai nella scheda <strong>Chiedi</strong>, scrivi la tua domanda e premi Invio o il pulsante <strong>Chiedi</strong>. LIMEN risponderà in prosa in primo piano con le fonti raggruppate in una riga espandibile ("Basata su N documenti").
             </p>
           </div>
         ),
@@ -406,7 +406,7 @@ export function HelpPanel({
             <ul>
               <li><strong>Testo e Markdown:</strong> <code>.txt</code>, <code>.md</code> letti direttamente.</li>
               <li><strong>Documenti e Presentazioni:</strong> <code>.pdf</code>, <code>.docx</code>, <code>.pptx</code>, <code>.xlsx</code>.</li>
-              <li><strong>Immagini e Scansioni:</strong> <code>.png</code>, <code>.jpg</code> con OCR integrato tramite framework Vision di Apple macOS.</li>
+              <li><strong>Immagini e Scansioni:</strong> <code>.png</code>, <code>.jpg</code> con OCR integrato tramite framework Vision su macOS e supporto per estrazione di testi su Windows.</li>
             </ul>
 
             <h4>Come vengono segmentati i passaggi (Chunking)</h4>

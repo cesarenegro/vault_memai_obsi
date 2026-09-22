@@ -1158,6 +1158,32 @@ pub fn verify_document_passage_integrity(
         }
     }
 
+    // Verify expected document hash when passage_id is None
+    if passage_id.is_none() {
+        if let Some(exp_h) = expected_hash {
+            if exp_h != doc.content_hash {
+                return Ok(DocumentVerificationReport {
+                    is_valid: false,
+                    status: "tampered_original".into(),
+                    document_id: doc.document_id.clone(),
+                    original_path: doc.original_path.clone(),
+                    current_revision: doc.revision,
+                    expected_revision,
+                    current_content_hash: doc.content_hash.clone(),
+                    expected_hash: Some(exp_h.into()),
+                    passage_id: None,
+                    passage_locator: None,
+                    passage_text: None,
+                    verified_text: None,
+                    message: format!(
+                        "Hash del documento citato non corrispondente (atteso: {}, registrato: {})",
+                        exp_h, doc.content_hash
+                    ),
+                });
+            }
+        }
+    }
+
     // Verify passage if requested
     let mut p_locator = None;
     let mut p_text = None;
@@ -1186,9 +1212,7 @@ pub fn verify_document_passage_integrity(
                     });
                 }
                 if let Some(exp_h) = expected_hash {
-                    let is_passage_hash = exp_h == p.sha256;
-                    let is_doc_hash = exp_h == doc.content_hash;
-                    if !is_passage_hash && !is_doc_hash {
+                    if exp_h != p.sha256 {
                         return Ok(DocumentVerificationReport {
                             is_valid: false,
                             status: "tampered_passage".into(),
@@ -1203,7 +1227,7 @@ pub fn verify_document_passage_integrity(
                             passage_text: Some(p.text.clone()),
                             verified_text: None,
                             message: format!(
-                                "Hash del passaggio o documento citato non corrispondente (atteso: {}, registrato: {})",
+                                "Hash del passaggio citato non corrispondente (atteso: {}, registrato: {})",
                                 exp_h, p.sha256
                             ),
                         });
@@ -1793,12 +1817,22 @@ mod tests {
         assert_eq!(updated_doc.passages.len(), 1);
         let p0 = &updated_doc.passages[0];
 
-        // 1. Verify with passage text hash -> valid
-        let rep_passage = verify_document_passage_integrity(path, &doc_id, Some(&p0.passage_id), Some(&p0.sha256), Some(1)).unwrap();
-        assert!(rep_passage.is_valid, "Passage text hash must be valid");
+        // 1. Documento integro di un solo passaggio -> nessun allarme
+        let rep_doc = verify_document_passage_integrity(path, &doc_id, None, Some(&updated_doc.content_hash), Some(1)).unwrap();
+        assert!(rep_doc.is_valid, "Intact document check must be valid");
 
-        // 2. Verify with document content hash (e.g. prefix hash of raw source) -> valid (no false positive error!)
-        let rep_doc = verify_document_passage_integrity(path, &doc_id, Some(&p0.passage_id), Some(&updated_doc.content_hash), Some(1)).unwrap();
-        assert!(rep_doc.is_valid, "Document content hash must also be accepted without false positive error");
+        let rep_passage = verify_document_passage_integrity(path, &doc_id, Some(&p0.passage_id), Some(&p0.sha256), Some(1)).unwrap();
+        assert!(rep_passage.is_valid, "Intact passage check must be valid");
+
+        // 2. Passaggio alterato -> segnalato tampered_passage
+        let rep_tampered_p = verify_document_passage_integrity(path, &doc_id, Some(&p0.passage_id), Some("0000000000000000000000000000000000000000000000000000000000000000"), Some(1)).unwrap();
+        assert!(!rep_tampered_p.is_valid);
+        assert_eq!(rep_tampered_p.status, "tampered_passage", "Altered passage hash must be reported as tampered_passage");
+
+        // 3. Documento alterato su disco -> segnalato tampered_original
+        fs::write(&file_path, "# Corrupted file bytes on disk").unwrap();
+        let rep_tampered_doc = verify_document_passage_integrity(path, &doc_id, None, Some(&updated_doc.content_hash), Some(1)).unwrap();
+        assert!(!rep_tampered_doc.is_valid);
+        assert_eq!(rep_tampered_doc.status, "tampered_original", "Altered file on disk must be reported as tampered_original");
     }
 }
