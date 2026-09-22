@@ -47,11 +47,11 @@ export function AiSettings({vaultPath}:{vaultPath:string}){
  async function action(f:()=>Promise<void>){setBusy(true);setMessage('');try{await f();}catch(e){setMessage(String(e));}finally{setBusy(false);}}
  return <>
  <SemanticEngineSettings vaultPath={vaultPath} />
- <div className="limen-card" style={{padding:24,marginTop:20}}><h3>Collegamenti AI</h3><p>La chiave API rimane nel Portachiavi macOS. La disponibilità del modello viene verificata dal fornitore all’invio della richiesta.</p>
+ <div className="limen-card" style={{padding:24,marginTop:20}}><h3>Collegamenti AI</h3><p>La chiave API rimane nel Gestore credenziali. La disponibilità del modello viene verificata dal fornitore all’invio della richiesta.</p>
  <input type="password" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="off" aria-label="Chiave API OpenAI" value={key} onChange={e=>setKey(e.target.value)} style={field}/>
- <button style={button} disabled={busy||!key} onClick={()=>{const value=key;setKey('');void action(async()=>{await aiIpc.saveKey(value);setConfigured(true);setMessage('Salvata nel Portachiavi');})}}>SALVA CHIAVE</button>
- <button style={field} disabled={busy} onClick={()=>action(async()=>setConfigured(await aiIpc.status()))}>VERIFICA PORTACHIAVI</button>
- <button style={field} disabled={busy} onClick={()=>action(async()=>{await aiIpc.deleteKey();setConfigured(false);})}>RIMUOVI CHIAVE</button><p>{configured===null?'Portachiavi non verificato':configured?'Chiave API configurata':'Nessuna chiave API configurata'}</p>
+ <button style={button} disabled={busy||!key} onClick={()=>{const value=key;setKey('');void action(async()=>{await aiIpc.saveKey(value);setConfigured(true);setMessage('Salvata nel Gestore credenziali');})}}>SALVA CHIAVE</button>
+ <button style={field} disabled={busy} onClick={()=>action(async()=>setConfigured(await aiIpc.status()))}>VERIFICA GESTORE CREDENZIALI</button>
+ <button style={field} disabled={busy} onClick={()=>action(async()=>{await aiIpc.deleteKey();setConfigured(false);})}>RIMUOVI CHIAVE</button><p>{configured===null?'Gestore credenziali non verificato':configured?'Chiave API configurata':'Nessuna chiave API configurata'}</p>
  <h4>MCP in sola lettura · Vault corrente</h4><p>Vengono condivise note approvate e note automatiche attuali, con fonti verificate tramite hash. L’indirizzo locale non collega automaticamente ChatGPT Business: il collegamento del client esterno va configurato.</p>
  <button style={button} disabled={busy||connection.active} onClick={()=>action(async()=>{const c=await aiIpc.mcpStart(vaultPath,false);setConnection({...c,active:true});})}>ATTIVA MCP LOCALE</button>
  <button style={field} disabled={busy||!connection.active} onClick={()=>action(async()=>{await aiIpc.mcpStop();setConnection({active:false});})}>REVOCA MCP</button>

@@ -366,7 +366,7 @@ fn main() {
             index_vault_search,
             search_vault,
             get_search_index_status,
-            ai_list_models,search_read_document,ai_key_status,ai_save_key,ai_delete_key,ai_preview,ai_ask,ai_cancel,ai_read_source,mcp_start,mcp_stop,mcp_status,
+            ai_list_models,search_read_document,ai_key_status,ai_save_key,ai_delete_key,ai_get_consent,ai_set_consent,ai_preview,ai_ask,ai_cancel,ai_read_source,mcp_start,mcp_stop,mcp_status,
             catalog_sync,catalog_list_documents,catalog_process_extractions,catalog_get_document,catalog_get_by_path,catalog_verify_document_passage,catalog_read_verified_text,catalog_read_text,catalog_read_passage,catalog_open_original,catalog_reveal_in_finder,catalog_get_summary,
             embeddings_get_status,embeddings_sync_vault,search_vault_hybrid,
             embeddings_get_provider,embeddings_set_provider,
@@ -467,8 +467,25 @@ async fn ai_save_key(key:String)->Result<(),String>{tauri::async_runtime::spawn_
 #[tauri::command]
 async fn ai_delete_key()->Result<(),String>{tauri::async_runtime::spawn_blocking(limen_vault::keychain::delete).await.map_err(|_|"Keychain worker failed")?}
 #[tauri::command]
+async fn ai_get_consent(vault_path: String) -> Result<bool, String> {
+    let p = PathBuf::from(vault_path);
+    tauri::async_runtime::spawn_blocking(move || Ok(limen_vault::ai::get_openai_consent(&p)))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn ai_set_consent(vault_path: String, granted: bool) -> Result<(), String> {
+    let p = PathBuf::from(vault_path);
+    tauri::async_runtime::spawn_blocking(move || limen_vault::ai::set_openai_consent(&p, granted))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 async fn ai_preview(vault_path:String,options:limen_vault::ai::Options,state:tauri::State<'_,std::sync::Arc<limen_vault::ai::AiState>>)->Result<limen_vault::ai::Preview,String>{
- let state=state.inner().clone();tauri::async_runtime::spawn_blocking(move||state.preview(PathBuf::from(vault_path),options)).await.map_err(|_|"Context worker failed")?
+    let state=state.inner().clone();
+    state.preview(PathBuf::from(vault_path),options).await
 }
 #[tauri::command]
 async fn ai_ask(ticket:String,state:tauri::State<'_,std::sync::Arc<limen_vault::ai::AiState>>)->Result<serde_json::Value,String>{

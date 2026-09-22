@@ -257,7 +257,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
 
       <p style={{ fontSize: 13, color: '#475569', margin: '0 0 16px 0' }}>
         Configura il fornitore per il calcolo dei vettori semantici e la ricerca ibrida. Con il motore locale, nessun
-        dato esce dal Mac e il funzionamento è a rete zero.
+        dato esce dal computer e il funzionamento è a rete zero.
       </p>
 
       {/* 1. SCELTA DEL FORNITORE */}
@@ -292,7 +292,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
             <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>OpenAI (in rete)</span>
           </div>
           <span style={{ fontSize: 12, color: '#64748b', marginLeft: 24 }}>
-            Modello <code>text-embedding-3-small</code> (1536 dim). Richiede chiave API configurata nel Portachiavi e
+            Modello <code>text-embedding-3-small</code> (1536 dim). Richiede chiave API configurata nel Gestore credenziali e
             connessione internet.
           </span>
         </label>
@@ -318,7 +318,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
               disabled={loading || downloading || reindexing}
             />
             <span style={{ fontWeight: 700, fontSize: 14, color: isLocal ? '#15803d' : '#0f172a' }}>
-              Locale (bge-m3, nessun dato esce dal Mac)
+              Locale (bge-m3, nessun dato esce dal computer)
             </span>
           </div>
           <span style={{ fontSize: 12, color: '#64748b', marginLeft: 24 }}>
@@ -367,13 +367,13 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
               <strong>Dimensione:</strong> {formatBytes(modelReport.bytes)} (634.553.760 byte)
             </div>
             <div style={{ color: '#166534', fontWeight: 500, marginTop: 4 }}>
-              ✓ Dopo lo scaricamento, il funzionamento è a rete zero. Nessun dato lascia mai questo Mac.
+              ✓ Dopo lo scaricamento, il funzionamento è a rete zero. Nessun dato lascia mai questo computer.
             </div>
           </div>
         ) : (
           <div>
             <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 10px 0' }}>
-              Il modello non è presente sul Mac. È richiesto un download una tantum di 635 MB dal repository gpustack,
+              Il modello non è presente sul computer. È richiesto un download una tantum di 635 MB dal repository gpustack,
               oppure puoi selezionare manualmente un file GGUF precedentemente scaricato.
             </p>
 

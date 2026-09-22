@@ -1234,8 +1234,8 @@ mod tests {
         }
         panic!("Queue did not drain")
     }
-    #[test]
-    fn full_workflow_preserves_originals_deduplicates_and_retrieves() {
+    #[tokio::test]
+    async fn full_workflow_preserves_originals_deduplicates_and_retrieves() {
         let t = fixture();
         let p = import(
             t.path(),
@@ -1267,7 +1267,7 @@ mod tests {
             project: None,
             tags: None,
         };
-        let selected = crate::ai::select(t.path(), &o).unwrap();
+        let selected = crate::ai::select(t.path(), &o).await.unwrap();
         assert_eq!(selected.len(), 2);
         assert!(selected
             .iter()

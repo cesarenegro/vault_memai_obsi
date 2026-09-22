@@ -1186,7 +1186,9 @@ pub fn verify_document_passage_integrity(
                     });
                 }
                 if let Some(exp_h) = expected_hash {
-                    if exp_h != p.sha256 {
+                    let is_passage_hash = exp_h == p.sha256;
+                    let is_doc_hash = exp_h == doc.content_hash;
+                    if !is_passage_hash && !is_doc_hash {
                         return Ok(DocumentVerificationReport {
                             is_valid: false,
                             status: "tampered_passage".into(),
@@ -1201,7 +1203,7 @@ pub fn verify_document_passage_integrity(
                             passage_text: Some(p.text.clone()),
                             verified_text: None,
                             message: format!(
-                                "Hash del passaggio citato non corrispondente (atteso: {}, registrato: {})",
+                                "Hash del passaggio o documento citato non corrispondente (atteso: {}, registrato: {})",
                                 exp_h, p.sha256
                             ),
                         });
@@ -1764,5 +1766,39 @@ mod tests {
         let amb = get_document_by_path(path, "scheda.md");
         assert!(amb.is_err());
         assert!(amb.unwrap_err().contains("Riferimento ambiguo"));
+    }
+
+    #[test]
+    fn test_verify_single_passage_document_integrity_with_doc_hash_and_passage_hash() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path();
+        fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        fs::create_dir_all(path.join("20_RAW_SOURCES")).unwrap();
+
+        let raw_text = "# Progetto BNXT Audit\nQuesto è un documento a singolo passaggio per verificare la risoluzione dei falsi allarmi.";
+        let file_name = "a86061ba2701d614-_Progetto - BNXT AUDIT.md";
+        let file_path = path.join("20_RAW_SOURCES").join(file_name);
+        fs::write(&file_path, raw_text).unwrap();
+
+        sync_catalog_from_vault(path).unwrap();
+
+        let mut cat = load_catalog(path).unwrap();
+        let doc = cat.documents.values_mut().find(|d| d.original_path.contains("BNXT AUDIT")).unwrap();
+        doc.extraction_status = ExtractionStatus::Ready;
+        doc.passages = chunk_text_to_passages(&doc.document_id, raw_text);
+        let doc_id = doc.document_id.clone();
+        save_catalog(path, &mut cat).unwrap();
+
+        let updated_doc = get_document_by_path(path, &format!("20_RAW_SOURCES/{}", file_name)).unwrap();
+        assert_eq!(updated_doc.passages.len(), 1);
+        let p0 = &updated_doc.passages[0];
+
+        // 1. Verify with passage text hash -> valid
+        let rep_passage = verify_document_passage_integrity(path, &doc_id, Some(&p0.passage_id), Some(&p0.sha256), Some(1)).unwrap();
+        assert!(rep_passage.is_valid, "Passage text hash must be valid");
+
+        // 2. Verify with document content hash (e.g. prefix hash of raw source) -> valid (no false positive error!)
+        let rep_doc = verify_document_passage_integrity(path, &doc_id, Some(&p0.passage_id), Some(&updated_doc.content_hash), Some(1)).unwrap();
+        assert!(rep_doc.is_valid, "Document content hash must also be accepted without false positive error");
     }
 }

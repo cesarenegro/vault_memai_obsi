@@ -889,7 +889,7 @@ fn run_a05_diag(vault_path: &Path, queries_path: &Path, out_dir: &Path) -> Resul
     let summary = A05DiagSummary {
         benchmark: "A05 — Misura Diagnostica Semantica vs Lessicale vs Ibrida".into(),
         timestamp_utc8: get_utc8_timestamp(),
-        model: cache.model,
+        model: cache.model.clone(),
         cache_source: cache_source_str,
         indexed_documents: catalog.documents.len(),
         indexed_passages: total_passages,

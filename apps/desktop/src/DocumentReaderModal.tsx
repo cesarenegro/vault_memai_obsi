@@ -206,9 +206,9 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
     if (!documentId) return;
     try {
       await ipc.revealInFinder(vaultPath, documentId);
-      setActionMessage('File evidenziato nel Finder.');
+      setActionMessage('File evidenziato in Esplora risorse.');
     } catch (err) {
-      setActionMessage(`Errore Finder: ${err instanceof Error ? err.message : String(err)}`);
+      setActionMessage(`Errore Esplora risorse: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -347,10 +347,10 @@ export const DocumentReaderModal: React.FC<DocumentReaderModalProps> = ({
             <button
               onClick={handleRevealInFinder}
               className="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 hover:bg-white/10 text-zinc-200 border border-white/10 flex items-center space-x-1.5 transition-colors"
-              title="Mostra nel Finder di macOS"
+              title="Mostra in Esplora risorse"
             >
               <Folder className="w-3.5 h-3.5" />
-              <span>Mostra nel Finder</span>
+              <span>Mostra in Esplora risorse</span>
             </button>
             <button
               onClick={onClose}

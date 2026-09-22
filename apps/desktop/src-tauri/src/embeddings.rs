@@ -14,7 +14,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
-        Mutex,
+        Arc, Mutex,
     },
     time::{Duration, SystemTime},
 };
@@ -30,10 +30,10 @@ struct EmbeddingsCacheEntry {
     size: u64,
     mtime: SystemTime,
     revision: u64,
-    cache: EmbeddingsCache,
+    cache: Arc<EmbeddingsCache>,
 }
 
-static EMBEDDINGS_IN_MEMORY_CACHE: Mutex<Option<EmbeddingsCacheEntry>> = Mutex::new(None);
+static EMBEDDINGS_IN_MEMORY_CACHE: Mutex<BTreeMap<PathBuf, EmbeddingsCacheEntry>> = Mutex::new(BTreeMap::new());
 
 pub fn bump_embeddings_cache_revision() {
     EMBEDDINGS_CACHE_REVISION.fetch_add(1, Ordering::SeqCst);
@@ -328,14 +328,14 @@ pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
 }
 
 /// Load embeddings cache from 00_SYSTEM/EMBEDDINGS_CACHE.json or default if absent.
-pub fn load_embeddings_cache(vault_path: &Path) -> Result<EmbeddingsCache, String> {
+pub fn load_embeddings_cache(vault_path: &Path) -> Result<Arc<EmbeddingsCache>, String> {
     let r = root(vault_path)?;
     let sys = match child(&r, "00_SYSTEM") {
         Ok(d) => d,
-        Err(_) => return Ok(EmbeddingsCache::default()),
+        Err(_) => return Ok(Arc::new(EmbeddingsCache::default())),
     };
     if !names(&sys)?.iter().any(|s| s == EMBEDDINGS_CACHE_FILE) {
-        return Ok(EmbeddingsCache::default());
+        return Ok(Arc::new(EmbeddingsCache::default()));
     }
 
     let emb_file = vault_path.join("00_SYSTEM").join(EMBEDDINGS_CACHE_FILE);
@@ -345,12 +345,11 @@ pub fn load_embeddings_cache(vault_path: &Path) -> Result<EmbeddingsCache, Strin
         let size = meta.len();
         let mtime = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
         if let Ok(guard) = EMBEDDINGS_IN_MEMORY_CACHE.lock() {
-            if let Some(ref entry) = *guard {
-                let is_path_match = entry.vault_path == vault_path || entry.vault_path.as_path() == vault_path;
+            if let Some(entry) = guard.get(vault_path) {
                 let is_mtime_match = entry.mtime == mtime
                     || entry.mtime.duration_since(mtime).map(|d| d.as_millis() < 100).unwrap_or(false)
                     || mtime.duration_since(entry.mtime).map(|d| d.as_millis() < 100).unwrap_or(false);
-                if is_path_match && entry.size == size && is_mtime_match && entry.revision == rev {
+                if entry.size == size && is_mtime_match && entry.revision == rev {
                     return Ok(entry.cache.clone());
                 }
             }
@@ -363,22 +362,23 @@ pub fn load_embeddings_cache(vault_path: &Path) -> Result<EmbeddingsCache, Strin
         return Err("Embeddings cache file exceeds 512 MB".into());
     }
     let cache: EmbeddingsCache = serde_json::from_slice(&bytes).map_err(err)?;
+    let cache_arc = Arc::new(cache);
 
     if let Ok(meta) = std::fs::metadata(&emb_file) {
         let size = meta.len();
         let mtime = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
         if let Ok(mut guard) = EMBEDDINGS_IN_MEMORY_CACHE.lock() {
-            *guard = Some(EmbeddingsCacheEntry {
+            guard.insert(vault_path.to_path_buf(), EmbeddingsCacheEntry {
                 vault_path: vault_path.to_path_buf(),
                 size,
                 mtime,
                 revision: rev,
-                cache: cache.clone(),
+                cache: cache_arc.clone(),
             });
         }
     }
 
-    Ok(cache)
+    Ok(cache_arc)
 }
 
 /// Atomically save embeddings cache to 00_SYSTEM/EMBEDDINGS_CACHE.json
@@ -429,10 +429,10 @@ pub fn embeddings_status(vault_path: &Path) -> Result<EmbeddingsStatusReport, St
         cached_passages,
         missing_passages: missing,
         coverage,
-        model: cache.model,
+        model: cache.model.clone(),
         dimensions: cache.dimensions,
         is_available: cached_passages > 0,
-        last_updated_at: cache.last_updated_at,
+        last_updated_at: cache.last_updated_at.clone(),
     })
 }
 
@@ -707,7 +707,7 @@ pub async fn sync_embeddings_with_progress(
             }
         }
     } else {
-        current_cache.clone()
+        (*current_cache).clone()
     };
 
     // Collect missing or updated passages
@@ -935,7 +935,7 @@ pub async fn hybrid_search_vault(
     api_key: Option<String>,
     use_semantic: bool,
 ) -> Result<Vec<SearchResultItem>, String> {
-    hybrid_search_vault_with_port(vault_path, q, api_key, use_semantic, None)
+    hybrid_search_vault_with_port_filtered::<fn(&search::SearchDocumentRecord) -> bool>(vault_path, q, api_key, use_semantic, None, None)
         .await
         .map(|(items, _)| items)
 }
@@ -947,26 +947,40 @@ pub async fn hybrid_search_vault_with_port(
     use_semantic: bool,
     active_port: Option<u16>,
 ) -> Result<(Vec<SearchResultItem>, bool), String> {
+    hybrid_search_vault_with_port_filtered::<fn(&search::SearchDocumentRecord) -> bool>(vault_path, q, api_key, use_semantic, active_port, None).await
+}
+
+pub async fn hybrid_search_vault_with_port_filtered<F>(
+    vault_path: &Path,
+    q: SearchQuery,
+    api_key: Option<String>,
+    use_semantic: bool,
+    active_port: Option<u16>,
+    filter_fn: Option<F>,
+) -> Result<(Vec<SearchResultItem>, bool), String>
+where
+    F: Fn(&search::SearchDocumentRecord) -> bool,
+{
     let prov_rep = get_embeddings_provider(vault_path, active_port.unwrap_or(0));
     let is_local = prov_rep.provider == "local";
     let endpoint = prov_rep.endpoint.clone();
 
     if !use_semantic {
-        let items = hybrid_search_vault_with_vector(vault_path, q, None, false).await?;
+        let items = hybrid_search_vault_with_vector_filtered(vault_path, q, None, false, filter_fn.as_ref()).await?;
         return Ok((items, false));
     }
 
     let term = match &q.term {
         Some(t) if !t.trim().is_empty() => t.trim(),
         _ => {
-            let items = hybrid_search_vault_with_vector(vault_path, q, None, false).await?;
+            let items = hybrid_search_vault_with_vector_filtered(vault_path, q, None, false, filter_fn.as_ref()).await?;
             return Ok((items, false));
         }
     };
 
     // If local provider and service is offline (port 0 or empty endpoint), immediately degrade to lexical
     if is_local && (endpoint.is_empty() || active_port.unwrap_or(0) == 0) {
-        let items = hybrid_search_vault_with_vector(vault_path, q, None, false).await?;
+        let items = hybrid_search_vault_with_vector_filtered(vault_path, q, None, false, filter_fn.as_ref()).await?;
         return Ok((items, true));
     }
 
@@ -976,7 +990,7 @@ pub async fn hybrid_search_vault_with_port(
     let cache = match load_embeddings_cache(vault_path) {
         Ok(c) if !c.entries.is_empty() => c,
         _ => {
-            let items = hybrid_search_vault_with_vector(vault_path, q, None, false).await?;
+            let items = hybrid_search_vault_with_vector_filtered(vault_path, q, None, false, filter_fn.as_ref()).await?;
             return Ok((items, is_local));
         }
     };
@@ -1038,7 +1052,7 @@ pub async fn hybrid_search_vault_with_port(
         degraded = true;
     }
 
-    let items = hybrid_search_vault_with_vector(vault_path, q, query_vector, true).await?;
+    let items = hybrid_search_vault_with_vector_filtered(vault_path, q, query_vector, true, filter_fn.as_ref()).await?;
     Ok((items, degraded))
 }
 
@@ -1048,6 +1062,19 @@ pub async fn hybrid_search_vault_with_vector(
     query_vector: Option<Vec<f32>>,
     use_semantic: bool,
 ) -> Result<Vec<SearchResultItem>, String> {
+    hybrid_search_vault_with_vector_filtered::<fn(&search::SearchDocumentRecord) -> bool>(vault_path, q, query_vector, use_semantic, None).await
+}
+
+pub async fn hybrid_search_vault_with_vector_filtered<F>(
+    vault_path: &Path,
+    q: SearchQuery,
+    query_vector: Option<Vec<f32>>,
+    use_semantic: bool,
+    filter_fn: Option<&F>,
+) -> Result<Vec<SearchResultItem>, String>
+where
+    F: Fn(&search::SearchDocumentRecord) -> bool,
+{
     let limit = q.limit.unwrap_or(50);
     let offset = q.offset.unwrap_or(0);
 
@@ -1055,7 +1082,7 @@ pub async fn hybrid_search_vault_with_vector(
     let mut lex_query = q.clone();
     lex_query.limit = Some(200);
     lex_query.offset = Some(0);
-    let lexical_results = search::search_vault(vault_path, lex_query)?;
+    let lexical_results = search::search_vault_filtered(vault_path, lex_query, filter_fn)?;
 
     // 2. If semantic search is not requested or no query term, return lexical results with original pagination
     let term = match &q.term {
@@ -1087,6 +1114,30 @@ pub async fn hybrid_search_vault_with_vector(
     let mut semantic_scores: BTreeMap<String, (f32, Option<String>, Option<String>, Option<String>)> = BTreeMap::new();
 
     for doc in catalog.documents.values() {
+        if let Some(f) = filter_fn {
+            let s_doc = search::SearchDocumentRecord {
+                id: doc.document_id.clone(),
+                note_id: None,
+                relative_path: doc.original_path.clone(),
+                sha256: doc.content_hash.clone(),
+                mtime_ms: 0,
+                title: doc.file_name.clone(),
+                category: doc.category.clone().unwrap_or_default(),
+                client: doc.client.clone(),
+                project: doc.project.clone(),
+                brand: None,
+                tags: doc.tags.clone(),
+                status: Some(doc.editorial_status.clone()),
+                created_at: String::new(),
+                updated_at: String::new(),
+                tokens: Vec::new(),
+                content_preview: String::new(),
+                passages: Vec::new(),
+            };
+            if !f(&s_doc) {
+                continue;
+            }
+        }
         // Enforce all filters BEFORE scoring (R3): category, client, project, tags, status
         if let Some(ref cat) = q.category {
             if !cat.is_empty() && doc.category.as_deref() != Some(cat.as_str()) {
@@ -1910,9 +1961,10 @@ mod tests {
         // When new dimensions are 1024, cache is detected as invalid
         let target_dim = 1024;
         let mut updated_cache = loaded;
-        if updated_cache.dimensions != target_dim {
-            updated_cache.entries.clear();
-            updated_cache.dimensions = target_dim;
+        let mut_cache = std::sync::Arc::make_mut(&mut updated_cache);
+        if mut_cache.dimensions != target_dim {
+            mut_cache.entries.clear();
+            mut_cache.dimensions = target_dim;
         }
         assert_eq!(updated_cache.entries.len(), 0);
         assert_eq!(updated_cache.dimensions, 1024);
@@ -1992,16 +2044,13 @@ mod tests {
         });
         save_embeddings_cache(path, &mut cache).unwrap();
 
-        let initial_reads = EMBEDDINGS_CACHE_DISK_READ_COUNT.load(Ordering::SeqCst);
+        if let Ok(mut guard) = EMBEDDINGS_IN_MEMORY_CACHE.lock() { guard.remove(path); }
         let c1 = load_embeddings_cache(path).unwrap();
         assert_eq!(c1.entries.len(), 1);
-        let reads_after_first = EMBEDDINGS_CACHE_DISK_READ_COUNT.load(Ordering::SeqCst);
-        assert!(reads_after_first > initial_reads);
 
         let c2 = load_embeddings_cache(path).unwrap();
         assert_eq!(c2.entries.len(), 1);
-        let reads_after_second = EMBEDDINGS_CACHE_DISK_READ_COUNT.load(Ordering::SeqCst);
-        assert_eq!(reads_after_second, reads_after_first, "La seconda lettura di EMBEDDINGS_CACHE usa la cache in memoria!");
+        assert!(std::sync::Arc::ptr_eq(&c1, &c2), "La seconda lettura di EMBEDDINGS_CACHE usa l'istanza Arc in memoria!");
 
         // Ricalcolo cache -> vettori nuovi usati
         cache.entries.insert("p2".into(), PassageEmbeddingEntry {
@@ -2020,7 +2069,6 @@ mod tests {
 
         let c3 = load_embeddings_cache(path).unwrap();
         assert_eq!(c3.entries.len(), 2, "La ricerca dopo il ricalcolo della cache deve usare i vettori nuovi");
-        let reads_after_third = EMBEDDINGS_CACHE_DISK_READ_COUNT.load(Ordering::SeqCst);
-        assert!(reads_after_third > reads_after_second);
+        assert!(!std::sync::Arc::ptr_eq(&c1, &c3), "Il ricalcolo aggiorna l'istanza Arc!");
     }
 }

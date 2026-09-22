@@ -173,25 +173,26 @@ struct SearchIndexCacheEntry {
     size: u64,
     mtime: std::time::SystemTime,
     revision: u64,
-    data: SearchIndexData,
+    data: std::sync::Arc<SearchIndexData>,
 }
 
-static SEARCH_INDEX_CACHE: std::sync::Mutex<Option<SearchIndexCacheEntry>> = std::sync::Mutex::new(None);
+static SEARCH_INDEX_CACHE: std::sync::Mutex<std::collections::BTreeMap<std::path::PathBuf, SearchIndexCacheEntry>> =
+    std::sync::Mutex::new(std::collections::BTreeMap::new());
 
 pub fn bump_search_index_revision() {
     SEARCH_INDEX_REVISION.fetch_add(1, Ordering::SeqCst);
 }
 
-fn load(system: &Dir) -> Result<Option<SearchIndexData>, String> {
+fn load(system: &Dir) -> Result<Option<std::sync::Arc<SearchIndexData>>, String> {
     load_with_vault_path(system, None)
 }
 
-pub fn load_index_for_vault(path: &Path) -> Result<Option<SearchIndexData>, String> {
+pub fn load_index_for_vault(path: &Path) -> Result<Option<std::sync::Arc<SearchIndexData>>, String> {
     let r = root(path)?;
     load_with_vault_path(&child(&r, "00_SYSTEM")?, Some(path))
 }
 
-pub fn load_with_vault_path(system: &Dir, vault_path: Option<&Path>) -> Result<Option<SearchIndexData>, String> {
+pub fn load_with_vault_path(system: &Dir, vault_path: Option<&Path>) -> Result<Option<std::sync::Arc<SearchIndexData>>, String> {
     if !names(system)?.iter().any(|n| n == "SEARCH_INDEX.json") {
         return Ok(None);
     }
@@ -204,12 +205,11 @@ pub fn load_with_vault_path(system: &Dir, vault_path: Option<&Path>) -> Result<O
             let size = meta.len();
             let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
             if let Ok(guard) = SEARCH_INDEX_CACHE.lock() {
-                if let Some(ref entry) = *guard {
-                    let is_path_match = entry.vault_path == v_path || entry.vault_path.as_path() == v_path;
+                if let Some(entry) = guard.get(v_path) {
                     let is_mtime_match = entry.mtime == mtime
                         || entry.mtime.duration_since(mtime).map(|d| d.as_millis() < 100).unwrap_or(false)
                         || mtime.duration_since(entry.mtime).map(|d| d.as_millis() < 100).unwrap_or(false);
-                    if is_path_match && entry.size == size && is_mtime_match && entry.revision == rev {
+                    if entry.size == size && is_mtime_match && entry.revision == rev {
                         return Ok(Some(entry.data.clone()));
                     }
                 }
@@ -220,14 +220,15 @@ pub fn load_with_vault_path(system: &Dir, vault_path: Option<&Path>) -> Result<O
     SEARCH_INDEX_DISK_READ_COUNT.fetch_add(1, Ordering::SeqCst);
     let value: Value = serde_json::from_slice(&read(system, "SEARCH_INDEX.json")?).map_err(err)?;
     if value["version"] == 1 && value["documents"].is_object() {
-        return Ok(Some(SearchIndexData {
+        return Ok(Some(std::sync::Arc::new(SearchIndexData {
             version: 1,
             last_indexed_at: value["last_indexed_at"].as_str().unwrap_or("").into(),
             documents: BTreeMap::new(),
-        }));
+        })));
     }
     let data: SearchIndexData = serde_json::from_value(value).map_err(err)?;
     validate(&data)?;
+    let data_arc = std::sync::Arc::new(data);
 
     if let Some(v_path) = vault_path {
         let idx_file = v_path.join("00_SYSTEM").join("SEARCH_INDEX.json");
@@ -235,18 +236,18 @@ pub fn load_with_vault_path(system: &Dir, vault_path: Option<&Path>) -> Result<O
             let size = meta.len();
             let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
             if let Ok(mut guard) = SEARCH_INDEX_CACHE.lock() {
-                *guard = Some(SearchIndexCacheEntry {
+                guard.insert(v_path.to_path_buf(), SearchIndexCacheEntry {
                     vault_path: v_path.to_path_buf(),
                     size,
                     mtime,
                     revision: rev,
-                    data: data.clone(),
+                    data: data_arc.clone(),
                 });
             }
         }
     }
 
-    Ok(Some(data))
+    Ok(Some(data_arc))
 }
 fn status(data: Option<&SearchIndexData>) -> IndexStatusReport {
     let state = match data {
@@ -272,7 +273,7 @@ fn status(data: Option<&SearchIndexData>) -> IndexStatusReport {
 }
 pub fn get_search_index_status(path: &Path) -> Result<IndexStatusReport, String> {
     let r = root(path)?;
-    Ok(status(load(&child(&r, "00_SYSTEM")?)?.as_ref()))
+    Ok(status(load(&child(&r, "00_SYSTEM")?)?.as_ref().map(|v| &**v)))
 }
 struct Lock<'a> {
     system: &'a Dir,
@@ -628,7 +629,7 @@ pub fn index_vault_search(path: &Path) -> Result<IndexStatusReport, String> {
     let entries = names(&r)?;
     for (cat, kind) in &spec().categories {
         if entries.contains(cat) {
-            walk(&child(&r, cat)?, cat, kind, 0, old.as_ref(), &mut docs)?;
+            walk(&child(&r, cat)?, cat, kind, 0, old.as_ref().map(|v| &**v), &mut docs)?;
         }
     }
 
@@ -642,6 +643,7 @@ pub fn index_vault_search(path: &Path) -> Result<IndexStatusReport, String> {
                 let p = doc.original_path.clone();
                 let cached = old
                     .as_ref()
+                    .map(|v| &**v)
                     .filter(|i| i.version == VERSION)
                     .and_then(|i| i.documents.get(&p));
                 let search_doc = if let Some(c) = cached.filter(|c| c.sha256 == doc.content_hash) {
