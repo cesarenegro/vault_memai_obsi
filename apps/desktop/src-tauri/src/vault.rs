@@ -140,6 +140,12 @@ pub fn valid_frontmatter(v: &Value) -> bool {
         && strings(v, "source_ids")
 }
 pub fn frontmatter(content: &str) -> Result<Option<Value>, String> {
+    frontmatter_with_validation(content, true)
+}
+pub fn frontmatter_unvalidated(content: &str) -> Result<Option<Value>, String> {
+    frontmatter_with_validation(content, false)
+}
+pub fn frontmatter_with_validation(content: &str, validate_schema: bool) -> Result<Option<Value>, String> {
     let normalized = content.replace("\r\n", "\n");
     if !normalized.starts_with("---\n") && normalized != "---" {
         return Ok(None);
@@ -160,7 +166,7 @@ pub fn frontmatter(content: &str) -> Result<Option<Value>, String> {
     if !value.is_object() {
         return Err("Invalid YAML syntax: frontmatter must be a mapping".into());
     }
-    if !valid_frontmatter(&value) {
+    if validate_schema && !valid_frontmatter(&value) {
         return Err("Invalid frontmatter schema".into());
     }
     Ok(Some(value))
@@ -245,14 +251,16 @@ fn walk(
                         result.page_count += 1;
                         if label.starts_with("20_RAW_SOURCES/") {
                             result.source_count += 1;
-                        }
-                        if label.starts_with("90_PROPOSALS/") {
-                            result.proposal_count += 1;
-                        }
-                        if frontmatter(&content)?.is_none() && !label.starts_with("00_SYSTEM/") {
-                            result
-                                .warnings
-                                .push(format!("Markdown file missing YAML frontmatter: {label}"));
+                            let _ = frontmatter_unvalidated(&content);
+                        } else {
+                            if label.starts_with("90_PROPOSALS/") {
+                                result.proposal_count += 1;
+                            }
+                            if frontmatter(&content)?.is_none() && !label.starts_with("00_SYSTEM/") {
+                                result
+                                    .warnings
+                                    .push(format!("Markdown file missing YAML frontmatter: {label}"));
+                            }
                         }
                     }
                 }
@@ -592,5 +600,22 @@ mod tests {
                 assert!(dir.read("01_CLIENTS/jlink/data.txt").is_err());
             }
         }
+    }
+    #[test]
+    fn raw_sources_foreign_yaml_frontmatter_allows_vault_opening() {
+        let t = tempfile::tempdir().unwrap();
+        let p = t.path().join("vault");
+        let template = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../vault-template");
+        create(&p, None, &template).unwrap();
+
+        let foreign_yaml = "---\nforeign_key: 123\ncustom_meta: test\n---\nRaw imported document body\n";
+        std::fs::write(p.join("20_RAW_SOURCES/raw_doc.md"), foreign_yaml).unwrap();
+
+        let res = open(&p);
+        assert_eq!(res.status.state, "READY", "Vault with foreign YAML frontmatter in 20_RAW_SOURCES must be READY");
+
+        std::fs::write(p.join("01_CLIENTS/bad_doc.md"), foreign_yaml).unwrap();
+        let res_outside = open(&p);
+        assert_eq!(res_outside.status.state, "INVALID", "Vault with foreign YAML frontmatter in 01_CLIENTS must be INVALID");
     }
 }
