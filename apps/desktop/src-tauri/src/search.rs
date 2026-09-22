@@ -164,11 +164,60 @@ fn validate(data: &SearchIndexData) -> Result<(), String> {
     }
     Ok(())
 }
-// Legacy v1 is identifiable but cannot be queried or used as an incremental cache.
+pub static SEARCH_INDEX_REVISION: AtomicU64 = AtomicU64::new(1);
+pub static SEARCH_INDEX_DISK_READ_COUNT: AtomicU64 = AtomicU64::new(0);
+
+#[derive(Clone)]
+struct SearchIndexCacheEntry {
+    vault_path: std::path::PathBuf,
+    size: u64,
+    mtime: std::time::SystemTime,
+    revision: u64,
+    data: SearchIndexData,
+}
+
+static SEARCH_INDEX_CACHE: std::sync::Mutex<Option<SearchIndexCacheEntry>> = std::sync::Mutex::new(None);
+
+pub fn bump_search_index_revision() {
+    SEARCH_INDEX_REVISION.fetch_add(1, Ordering::SeqCst);
+}
+
 fn load(system: &Dir) -> Result<Option<SearchIndexData>, String> {
+    load_with_vault_path(system, None)
+}
+
+pub fn load_index_for_vault(path: &Path) -> Result<Option<SearchIndexData>, String> {
+    let r = root(path)?;
+    load_with_vault_path(&child(&r, "00_SYSTEM")?, Some(path))
+}
+
+pub fn load_with_vault_path(system: &Dir, vault_path: Option<&Path>) -> Result<Option<SearchIndexData>, String> {
     if !names(system)?.iter().any(|n| n == "SEARCH_INDEX.json") {
         return Ok(None);
     }
+
+    let rev = SEARCH_INDEX_REVISION.load(Ordering::SeqCst);
+
+    if let Some(v_path) = vault_path {
+        let idx_file = v_path.join("00_SYSTEM").join("SEARCH_INDEX.json");
+        if let Ok(meta) = std::fs::metadata(&idx_file) {
+            let size = meta.len();
+            let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+            if let Ok(guard) = SEARCH_INDEX_CACHE.lock() {
+                if let Some(ref entry) = *guard {
+                    let is_path_match = entry.vault_path == v_path || entry.vault_path.as_path() == v_path;
+                    let is_mtime_match = entry.mtime == mtime
+                        || entry.mtime.duration_since(mtime).map(|d| d.as_millis() < 100).unwrap_or(false)
+                        || mtime.duration_since(entry.mtime).map(|d| d.as_millis() < 100).unwrap_or(false);
+                    if is_path_match && entry.size == size && is_mtime_match && entry.revision == rev {
+                        return Ok(Some(entry.data.clone()));
+                    }
+                }
+            }
+        }
+    }
+
+    SEARCH_INDEX_DISK_READ_COUNT.fetch_add(1, Ordering::SeqCst);
     let value: Value = serde_json::from_slice(&read(system, "SEARCH_INDEX.json")?).map_err(err)?;
     if value["version"] == 1 && value["documents"].is_object() {
         return Ok(Some(SearchIndexData {
@@ -179,6 +228,24 @@ fn load(system: &Dir) -> Result<Option<SearchIndexData>, String> {
     }
     let data: SearchIndexData = serde_json::from_value(value).map_err(err)?;
     validate(&data)?;
+
+    if let Some(v_path) = vault_path {
+        let idx_file = v_path.join("00_SYSTEM").join("SEARCH_INDEX.json");
+        if let Ok(meta) = std::fs::metadata(&idx_file) {
+            let size = meta.len();
+            let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+            if let Ok(mut guard) = SEARCH_INDEX_CACHE.lock() {
+                *guard = Some(SearchIndexCacheEntry {
+                    vault_path: v_path.to_path_buf(),
+                    size,
+                    mtime,
+                    revision: rev,
+                    data: data.clone(),
+                });
+            }
+        }
+    }
+
     Ok(Some(data))
 }
 fn status(data: Option<&SearchIndexData>) -> IndexStatusReport {
@@ -656,7 +723,7 @@ where
     }
     let r = root(path)?;
     let _sys = child(&r, "00_SYSTEM")?;
-    let data = load(&child(&r, "00_SYSTEM")?)?
+    let data = load_with_vault_path(&child(&r, "00_SYSTEM")?, Some(path))?
         .filter(|d| d.version == VERSION)
         .ok_or("Search index missing or outdated; re-index required")?;
     let terms: Vec<_> = tokenize_text(q.term.as_deref().unwrap_or(""))
@@ -1105,6 +1172,37 @@ mod tests {
             results[0].score,
             results[1].score
         );
+    }
+
+    #[test]
+    fn test_in_memory_search_cache_consecutive_no_disk_re_read() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path();
+        std::fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        std::fs::create_dir_all(path.join("01_CLIENTS")).unwrap();
+
+        std::fs::write(path.join("01_CLIENTS/client_a.md"), "---\ntitle: Client A Note\ntags: [demo]\n---\nStrategic marketing notes.").unwrap();
+        index_vault_search(path).unwrap();
+
+        let initial_reads = SEARCH_INDEX_DISK_READ_COUNT.load(Ordering::SeqCst);
+        let res1 = search_vault(path, SearchQuery { term: Some("marketing".into()), ..Default::default() }).unwrap();
+        assert!(!res1.is_empty());
+        let reads_after_first = SEARCH_INDEX_DISK_READ_COUNT.load(Ordering::SeqCst);
+        assert!(reads_after_first > initial_reads, "La prima ricerca legge da disco");
+
+        let res2 = search_vault(path, SearchQuery { term: Some("marketing".into()), ..Default::default() }).unwrap();
+        assert!(!res2.is_empty());
+        let reads_after_second = SEARCH_INDEX_DISK_READ_COUNT.load(Ordering::SeqCst);
+        assert_eq!(reads_after_second, reads_after_first, "La seconda ricerca usa la cache in memoria e NON rilegge il disco!");
+
+        // Aggiorna indice -> vede nuovi documenti e incrementa il contatore alla ricerca successiva
+        std::fs::write(path.join("01_CLIENTS/client_b.md"), "---\ntitle: Client B Note\ntags: [demo]\n---\nStrategic marketing expansion.").unwrap();
+        index_vault_search(path).unwrap();
+
+        let res3 = search_vault(path, SearchQuery { term: Some("expansion".into()), ..Default::default() }).unwrap();
+        assert!(!res3.is_empty(), "La ricerca dopo aggiornamento indice deve vedere i documenti nuovi");
+        let reads_after_third = SEARCH_INDEX_DISK_READ_COUNT.load(Ordering::SeqCst);
+        assert!(reads_after_third > reads_after_second, "Dopo l'aggiornamento dell'indice i dati vengono ricaricati");
     }
 }
 

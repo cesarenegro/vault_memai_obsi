@@ -11,12 +11,33 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
     collections::{BTreeMap, BTreeSet},
-    path::Path,
-    sync::atomic::{AtomicBool, Ordering},
-    time::Duration,
+    path::{Path, PathBuf},
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Mutex,
+    },
+    time::{Duration, SystemTime},
 };
 
 static SYNC_CANCELLED: AtomicBool = AtomicBool::new(false);
+
+pub static EMBEDDINGS_CACHE_REVISION: AtomicU64 = AtomicU64::new(1);
+pub static EMBEDDINGS_CACHE_DISK_READ_COUNT: AtomicU64 = AtomicU64::new(0);
+
+#[derive(Clone)]
+struct EmbeddingsCacheEntry {
+    vault_path: PathBuf,
+    size: u64,
+    mtime: SystemTime,
+    revision: u64,
+    cache: EmbeddingsCache,
+}
+
+static EMBEDDINGS_IN_MEMORY_CACHE: Mutex<Option<EmbeddingsCacheEntry>> = Mutex::new(None);
+
+pub fn bump_embeddings_cache_revision() {
+    EMBEDDINGS_CACHE_REVISION.fetch_add(1, Ordering::SeqCst);
+}
 
 pub fn cancel_sync() {
     SYNC_CANCELLED.store(true, Ordering::SeqCst);
@@ -316,11 +337,48 @@ pub fn load_embeddings_cache(vault_path: &Path) -> Result<EmbeddingsCache, Strin
     if !names(&sys)?.iter().any(|s| s == EMBEDDINGS_CACHE_FILE) {
         return Ok(EmbeddingsCache::default());
     }
+
+    let emb_file = vault_path.join("00_SYSTEM").join(EMBEDDINGS_CACHE_FILE);
+    let rev = EMBEDDINGS_CACHE_REVISION.load(Ordering::SeqCst);
+
+    if let Ok(meta) = std::fs::metadata(&emb_file) {
+        let size = meta.len();
+        let mtime = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+        if let Ok(guard) = EMBEDDINGS_IN_MEMORY_CACHE.lock() {
+            if let Some(ref entry) = *guard {
+                let is_path_match = entry.vault_path == vault_path || entry.vault_path.as_path() == vault_path;
+                let is_mtime_match = entry.mtime == mtime
+                    || entry.mtime.duration_since(mtime).map(|d| d.as_millis() < 100).unwrap_or(false)
+                    || mtime.duration_since(entry.mtime).map(|d| d.as_millis() < 100).unwrap_or(false);
+                if is_path_match && entry.size == size && is_mtime_match && entry.revision == rev {
+                    return Ok(entry.cache.clone());
+                }
+            }
+        }
+    }
+
+    EMBEDDINGS_CACHE_DISK_READ_COUNT.fetch_add(1, Ordering::SeqCst);
     let bytes = read(&sys, EMBEDDINGS_CACHE_FILE)?;
     if bytes.len() > 512 * 1024 * 1024 {
         return Err("Embeddings cache file exceeds 512 MB".into());
     }
-    serde_json::from_slice(&bytes).map_err(err)
+    let cache: EmbeddingsCache = serde_json::from_slice(&bytes).map_err(err)?;
+
+    if let Ok(meta) = std::fs::metadata(&emb_file) {
+        let size = meta.len();
+        let mtime = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+        if let Ok(mut guard) = EMBEDDINGS_IN_MEMORY_CACHE.lock() {
+            *guard = Some(EmbeddingsCacheEntry {
+                vault_path: vault_path.to_path_buf(),
+                size,
+                mtime,
+                revision: rev,
+                cache: cache.clone(),
+            });
+        }
+    }
+
+    Ok(cache)
 }
 
 /// Atomically save embeddings cache to 00_SYSTEM/EMBEDDINGS_CACHE.json
@@ -334,6 +392,8 @@ pub fn save_embeddings_cache(vault_path: &Path, cache: &mut EmbeddingsCache) -> 
     let res = sys.rename(&tmp, &sys, EMBEDDINGS_CACHE_FILE).map_err(err);
     if res.is_err() {
         let _ = sys.remove_file(&tmp);
+    } else {
+        bump_embeddings_cache_revision();
     }
     res
 }
@@ -1910,5 +1970,57 @@ mod tests {
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].title, "Documento Locale Offline");
         assert!(degraded, "Search must be marked as degraded when local service is offline");
+    }
+
+    #[test]
+    fn test_embeddings_in_memory_cache_no_disk_re_read() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path();
+        fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        let mut cache = EmbeddingsCache::default();
+        cache.entries.insert("p1".into(), PassageEmbeddingEntry {
+            passage_id: "p1".into(),
+            document_id: "d1".into(),
+            relative_path: "01_CLIENTS/c1.md".into(),
+            locator: "1".into(),
+            sha256: "0000000000000000000000000000000000000000000000000000000000000000".into(),
+            embedded_text_sha256: Some("sha".into()),
+            model: "bge-m3".into(),
+            dimensions: 1024,
+            vector: vec![0.1; 1024],
+            updated_at: now_iso(),
+        });
+        save_embeddings_cache(path, &mut cache).unwrap();
+
+        let initial_reads = EMBEDDINGS_CACHE_DISK_READ_COUNT.load(Ordering::SeqCst);
+        let c1 = load_embeddings_cache(path).unwrap();
+        assert_eq!(c1.entries.len(), 1);
+        let reads_after_first = EMBEDDINGS_CACHE_DISK_READ_COUNT.load(Ordering::SeqCst);
+        assert!(reads_after_first > initial_reads);
+
+        let c2 = load_embeddings_cache(path).unwrap();
+        assert_eq!(c2.entries.len(), 1);
+        let reads_after_second = EMBEDDINGS_CACHE_DISK_READ_COUNT.load(Ordering::SeqCst);
+        assert_eq!(reads_after_second, reads_after_first, "La seconda lettura di EMBEDDINGS_CACHE usa la cache in memoria!");
+
+        // Ricalcolo cache -> vettori nuovi usati
+        cache.entries.insert("p2".into(), PassageEmbeddingEntry {
+            passage_id: "p2".into(),
+            document_id: "d2".into(),
+            relative_path: "01_CLIENTS/c2.md".into(),
+            locator: "1".into(),
+            sha256: "1111111111111111111111111111111111111111111111111111111111111111".into(),
+            embedded_text_sha256: Some("sha".into()),
+            model: "bge-m3".into(),
+            dimensions: 1024,
+            vector: vec![0.2; 1024],
+            updated_at: now_iso(),
+        });
+        save_embeddings_cache(path, &mut cache).unwrap();
+
+        let c3 = load_embeddings_cache(path).unwrap();
+        assert_eq!(c3.entries.len(), 2, "La ricerca dopo il ricalcolo della cache deve usare i vettori nuovi");
+        let reads_after_third = EMBEDDINGS_CACHE_DISK_READ_COUNT.load(Ordering::SeqCst);
+        assert!(reads_after_third > reads_after_second);
     }
 }
