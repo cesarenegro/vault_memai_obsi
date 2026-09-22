@@ -6,7 +6,7 @@
   "types": "./dist/index.d.ts",
   "type": "module",
   "scripts": {
-    "build": "tsc && cp src/styles.css dist/styles.css",
+    "build": "tsc && node -e \"require('fs').copyFileSync('src/styles.css','dist/styles.css')\"",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'ui clean'",
     "test": "echo 'ui tests pass'"

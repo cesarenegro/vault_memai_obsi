@@ -157,14 +157,8 @@ pub fn set_embeddings_provider(
         std::fs::create_dir_all(&sys_dir).map_err(|e| e.to_string())?;
     }
 
-    // Atomic stage and rename
-    let stage = profile_path.with_extension("stage");
     let serialized = serde_json::to_string_pretty(&val).map_err(|e| e.to_string())?;
-    std::fs::write(&stage, serialized.as_bytes()).map_err(|e| e.to_string())?;
-    let f = std::fs::File::open(&stage).map_err(|e| e.to_string())?;
-    f.sync_all().map_err(|e| e.to_string())?;
-    drop(f);
-    std::fs::rename(stage, &profile_path).map_err(|e| e.to_string())?;
+    std::fs::write(&profile_path, serialized.as_bytes()).map_err(|e| e.to_string())?;
 
     Ok(get_embeddings_provider(vault_path, active_port))
 }

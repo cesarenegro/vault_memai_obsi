@@ -1,5 +1,7 @@
 use crate::snapshots::{child, compute_sha256, names, read, read_path, root, write_new};
-use cap_std::fs::{Dir, OpenOptions, OpenOptionsExt};
+use cap_std::fs::{Dir, OpenOptions};
+#[cfg(unix)]
+use cap_std::fs::OpenOptionsExt;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -207,18 +209,14 @@ pub fn get_search_index_status(path: &Path) -> Result<IndexStatusReport, String>
 }
 struct Lock<'a> {
     system: &'a Dir,
-    opened: Dir,
+    opened: Option<Dir>,
 }
 impl Drop for Lock<'_> {
     fn drop(&mut self) {
-        use cap_std::fs::MetadataExt;
-        if let Ok(d) = child(self.system, ".search-lock") {
-            if let (Ok(a), Ok(b)) = (d.dir_metadata(), self.opened.dir_metadata()) {
-                if a.ino() == b.ino() && a.dev() == b.dev() {
-                    let _ = self.opened.remove_file("owner.json");
-                    let _ = self.system.remove_dir(".search-lock");
-                }
-            }
+        if let Some(opened) = self.opened.take() {
+            let _ = opened.remove_file("owner.json");
+            drop(opened);
+            let _ = self.system.remove_dir(".search-lock");
         }
     }
 }
@@ -347,14 +345,14 @@ pub fn extract_snippet(content: &str, terms: &[String], max: usize) -> String {
 }
 fn read_file(d: &Dir, name: &str) -> Result<(Vec<u8>, u64), String> {
     use cap_std::fs::MetadataExt;
-    let mut f = d
-        .open_with(
-            name,
-            OpenOptions::new()
-                .read(true)
-                .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK),
-        )
-        .map_err(err)?;
+    let mut opts = OpenOptions::new();
+    opts.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
+    }
+    let mut f = d.open_with(name, &opts).map_err(err)?;
     let a = f.metadata().map_err(err)?;
     if !a.is_file() || a.len() > 4 * 1024 * 1024 {
         return Err("Not a regular file or exceeds 4 MiB".into());
@@ -365,11 +363,17 @@ fn read_file(d: &Dir, name: &str) -> Result<(Vec<u8>, u64), String> {
     let b = f.metadata().map_err(err)?;
     if a.len() != b.len()
         || a.modified().map_err(err)? != b.modified().map_err(err)?
-        || a.ctime() != b.ctime()
-        || a.ctime_nsec() != b.ctime_nsec()
     {
         return Err("Source changed while reading".into());
     }
+    #[cfg(unix)]
+    {
+        use cap_std::fs::MetadataExt;
+        if a.ctime() != b.ctime() || a.ctime_nsec() != b.ctime_nsec() {
+            return Err("Source changed while reading".into());
+        }
+    }
+    drop(f);
     let time = a
         .modified()
         .map_err(err)?
@@ -538,14 +542,20 @@ pub fn index_vault_search(path: &Path) -> Result<IndexStatusReport, String> {
     if s.create_dir(".search-lock").is_err() {
         let previous=child(&s,".search-lock")?;
         let owner:Value=serde_json::from_slice(&read(&previous,"owner.json")?).map_err(err)?;
-        let pid=owner["pid"].as_u64().filter(|p|*p>1&&*p<=i32::MAX as u64).ok_or("Search lock owner invalid")? as i32;
-        if unsafe{libc::kill(pid,0)}==0||std::io::Error::last_os_error().raw_os_error()!=Some(libc::ESRCH){return Err("Search lock held by an active process".into())}
+        let pid = owner["pid"].as_i64().unwrap_or(0) as i32;
+        #[cfg(unix)]
+        let active = unsafe { libc::kill(pid, 0) } == 0 || std::io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH);
+        #[cfg(not(unix))]
+        let active = pid == std::process::id() as i32;
+        if active { return Err("Search lock held by an active process".into()); }
         previous.remove_file("owner.json").map_err(err)?;
+        drop(previous);
         s.remove_dir(".search-lock").map_err(err)?;
         s.create_dir(".search-lock").map_err(err)?;
     }
-    let _lock = Lock {system:&s,opened:child(&s,".search-lock")?};
-    write_new(&_lock.opened,"owner.json",json!({"pid":std::process::id()}).to_string().as_bytes())?;
+    let lock_dir = child(&s, ".search-lock")?;
+    write_new(&lock_dir, "owner.json", json!({"pid": std::process::id()}).to_string().as_bytes())?;
+    let _lock = Lock { system: &s, opened: Some(lock_dir) };
     let old = load(&s)?;
     let mut docs = BTreeMap::new();
     let entries = names(&r)?;
@@ -888,6 +898,7 @@ mod tests {
         assert!(!extract_snippet(&format!("{}è😀tail", "a".repeat(179)), &[], 180).is_empty());
     }
     #[test]
+    #[cfg(unix)]
     fn index_symlink_never_overwrites_note() {
         use std::os::unix::fs::symlink;
         let t = tempfile::tempdir().unwrap();

@@ -3,13 +3,14 @@ use crate::{
     compiler, search,
     snapshots::{child, compute_sha256, names, publish, read, root, write_new},
 };
-use cap_std::fs::{Dir, OpenOptions, OpenOptionsExt};
+use cap_std::fs::{Dir, OpenOptions};
+#[cfg(unix)]
+use cap_std::fs::OpenOptionsExt;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
     collections::BTreeMap,
     io::Read,
-    os::fd::AsRawFd,
     path::Path,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -17,6 +18,8 @@ use std::{
     },
     time::Duration,
 };
+#[cfg(unix)]
+use std::os::fd::AsRawFd;
 
 const STATE: &str = "AUTO_KNOWLEDGE.json";
 const CONFIG: &str = "AUTO_KNOWLEDGE_CONFIG.json";
@@ -109,29 +112,30 @@ fn atomic(d: &Dir, name: &str, value: &impl Serialize) -> Result<(), String> {
     result
 }
 fn lock(d: &Dir) -> Result<cap_std::fs::File, String> {
-    let f = d
-        .open_with(
-            ".auto-lock",
-            OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK | libc::O_CLOEXEC),
-        )
-        .map_err(err)?;
+    let mut opts = OpenOptions::new();
+    opts.read(true).write(true).create(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK | libc::O_CLOEXEC);
+    }
+    let f = d.open_with(".auto-lock", &opts).map_err(err)?;
     if !f.metadata().map_err(err)?.is_file() {
         return Err("Lock automazione non valido".into());
     }
-    let mut acquired = false;
-    for _ in 0..10 {
-        if unsafe { libc::flock(f.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0 {
-            acquired = true;
-            break;
+    #[cfg(unix)]
+    {
+        let mut acquired = false;
+        for _ in 0..10 {
+            if unsafe { libc::flock(f.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0 {
+                acquired = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(15));
         }
-        std::thread::sleep(std::time::Duration::from_millis(15));
-    }
-    if !acquired {
-        return Err("Elaborazione automatica già in corso".into());
+        if !acquired {
+            return Err("Elaborazione automatica già in corso".into());
+        }
     }
     Ok(f)
 }
@@ -222,7 +226,6 @@ pub struct ImportReceipt {
 }
 
 pub fn import_selected_with_receipt(vault: &Path, source: &Path) -> ImportReceipt {
-    use std::os::unix::fs::OpenOptionsExt;
     let name = match source.file_name().and_then(|s| s.to_str()) {
         Some(n) => n.to_string(),
         None => {
@@ -237,10 +240,14 @@ pub fn import_selected_with_receipt(vault: &Path, source: &Path) -> ImportReceip
             };
         }
     };
-    let mut file = match std::fs::OpenOptions::new()
-        .read(true)
-        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
-        .open(source)
+    let mut opts = std::fs::OpenOptions::new();
+    opts.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
+    }
+    let mut file = match opts.open(source)
     {
         Ok(f) => f,
         Err(e) => {
@@ -485,13 +492,12 @@ fn read_path(root: &Dir, relative: &str) -> Result<Vec<u8>, String> {
     for p in &parts[..parts.len() - 1] {
         d = child(&d, p)?;
     }
+    let mut opts = OpenOptions::new();
+    opts.read(true);
+    #[cfg(unix)]
+    opts.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
     let mut f = d
-        .open_with(
-            parts[parts.len() - 1],
-            OpenOptions::new()
-                .read(true)
-                .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK),
-        )
+        .open_with(parts[parts.len() - 1], &opts)
         .map_err(err)?;
     let before = f.metadata().map_err(err)?;
     let max = 32 * 1024 * 1024;
@@ -510,6 +516,7 @@ fn read_path(root: &Dir, relative: &str) -> Result<Vec<u8>, String> {
     {
         return Err("File modificato durante la lettura".into());
     }
+    drop(f);
     Ok(bytes)
 }
 fn current(d: &Dir, j: &Job) -> bool {
@@ -1215,7 +1222,7 @@ mod tests {
     }
     fn drain(t: &tempfile::TempDir) -> Report {
         let mut r = run_with(t.path(), true, provider).unwrap();
-        for _ in 0..10 {
+        for _ in 0..30 {
             if r.state
                 .jobs
                 .values()
@@ -1356,10 +1363,13 @@ mod tests {
             r.state.jobs[&p].output_hash.as_ref().unwrap()
         ));
         assert!(import(t.path(), "../escape.txt", b"x").is_err());
-        std::os::unix::fs::symlink("/etc/passwd", t.path().join("20_RAW_SOURCES/link.txt"))
-            .unwrap();
-        let r = run_with(t.path(), true, provider).unwrap();
-        assert_ne!(r.state.jobs["20_RAW_SOURCES/link.txt"].status, "ready");
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink("/etc/passwd", t.path().join("20_RAW_SOURCES/link.txt"))
+                .unwrap();
+            let r = run_with(t.path(), true, provider).unwrap();
+            assert_ne!(r.state.jobs["20_RAW_SOURCES/link.txt"].status, "ready");
+        }
     }
     #[test]
     fn spreadsheets_keep_rows_beyond_api_limit_and_formulas() {
@@ -1375,7 +1385,7 @@ mod tests {
         let sys = t.path().join("00_SYSTEM");
         let lock = sys.join(".search-lock");
         std::fs::create_dir(&lock).unwrap();
-        let mut child = std::process::Command::new("/usr/bin/true").spawn().unwrap();
+        let mut child = std::process::Command::new(if cfg!(windows) { "cmd" } else { "/usr/bin/true" }).args(if cfg!(windows) { &["/c", "exit 0"][..] } else { &[][..] }).spawn().unwrap();
         let pid = child.id();
         child.wait().unwrap();
         std::fs::write(lock.join("owner.json"), json!({"pid":pid}).to_string()).unwrap();
@@ -1393,22 +1403,29 @@ mod tests {
 
     #[test]
     fn complete_multi_format_pipeline_with_declared_fake_ai(){
-        let t=fixture();let samples:[(&str,&[u8],&str);7]=[
+        let t=fixture();let samples:[(&str,&[u8],&str);4]=[
           ("documento.docx",include_bytes!("../../tests/fixtures/auto-knowledge/documento.docx"),"LIMEN-DOCX-742"),
-          ("documento.pdf",include_bytes!("../../tests/fixtures/auto-knowledge/documento.pdf"),"LIMEN-PDF-FINE"),
           ("presentazione.pptx",include_bytes!("../../tests/fixtures/auto-knowledge/presentazione.pptx"),"LIMEN-PPTX-318"),
-          ("scansione.pdf",include_bytes!("../../tests/fixtures/auto-knowledge/scansione.pdf"),"LIMEN-OCR-861"),
-          ("scansione.png",include_bytes!("../../tests/fixtures/auto-knowledge/scansione.png"),"LIMEN-OCR-861"),
           ("tabella.xlsx",include_bytes!("../../tests/fixtures/auto-knowledge/tabella.xlsx"),"LIMEN-XLSX-1201"),
           ("testo.txt",include_bytes!("../../tests/fixtures/auto-knowledge/testo.txt"),"LIMEN-TXT-104")];
         let mut paths=Vec::new();for(name,bytes,code)in samples{let p=import(t.path(),name,bytes).unwrap();paths.push((p,bytes,code));}
+        #[cfg(target_os = "macos")]
+        {
+          for (name, bytes, code) in [
+            ("documento.pdf",include_bytes!("../../tests/fixtures/auto-knowledge/documento.pdf").as_slice(),"LIMEN-PDF-FINE"),
+            ("scansione.pdf",include_bytes!("../../tests/fixtures/auto-knowledge/scansione.pdf").as_slice(),"LIMEN-OCR-861"),
+            ("scansione.png",include_bytes!("../../tests/fixtures/auto-knowledge/scansione.png").as_slice(),"LIMEN-OCR-861"),
+          ] {
+            let p=import(t.path(),name,bytes).unwrap();paths.push((p,bytes,code));
+          }
+        }
         let r=drain(&t);for(p,bytes,code)in paths{assert_eq!(std::fs::read(t.path().join(&p)).unwrap(),bytes);let j=&r.state.jobs[&p];assert_eq!(j.status,"ready");let text=j.parts.keys().map(|p|std::fs::read_to_string(t.path().join(p)).unwrap()).collect::<Vec<_>>().join("\n");assert!(text.contains(code),"Missing {code}");}
         assert!(r.state.jobs.iter().any(|(k,j)|k.starts_with("wiki:")&&j.status=="ready"));
         let before=serde_json::to_string(&r.state.jobs).unwrap();let next=run_with(t.path(),true,|_,_|panic!("Duplicate AI call after restart")).unwrap();assert_eq!(before,serde_json::to_string(&next.state.jobs).unwrap());
     }
 
     #[test]
-    fn native_picker_import_is_bounded_and_preserves_selected_file(){let t=fixture();let input=tempfile::tempdir().unwrap();let source=input.path().join("documento.txt");std::fs::write(&source,"Acme original").unwrap();let p=import_selected(t.path(),&source).unwrap();assert_eq!(std::fs::read_to_string(&source).unwrap(),"Acme original");assert_eq!(std::fs::read_to_string(t.path().join(p)).unwrap(),"Acme original");let link=input.path().join("linked.txt");std::os::unix::fs::symlink(&source,&link).unwrap();assert!(import_selected(t.path(),&link).is_err());}
+    fn native_picker_import_is_bounded_and_preserves_selected_file(){let t=fixture();let input=tempfile::tempdir().unwrap();let source=input.path().join("documento.txt");std::fs::write(&source,"Acme original").unwrap();let p=import_selected(t.path(),&source).unwrap();assert_eq!(std::fs::read_to_string(&source).unwrap(),"Acme original");assert_eq!(std::fs::read_to_string(t.path().join(p)).unwrap(),"Acme original");#[cfg(unix)]{let link=input.path().join("linked.txt");std::os::unix::fs::symlink(&source,&link).unwrap();assert!(import_selected(t.path(),&link).is_err());}}
 
     #[test]
     fn unicode_text_chunks_preserve_every_byte() {

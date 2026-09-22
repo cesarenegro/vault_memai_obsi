@@ -2,11 +2,12 @@ use crate::{
     snapshots::{child, compute_sha256 as hash, names, publish, read_path, root, write_new},
     vault,
 };
-use cap_std::fs::{Dir, OpenOptions, OpenOptionsExt};
+use cap_std::fs::{Dir, OpenOptions};
+#[cfg(unix)]
+use cap_std::fs::OpenOptionsExt;
 use serde_json::{json, Value};
 use std::{
     collections::{BTreeMap, BTreeSet},
-    os::fd::AsRawFd,
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -14,6 +15,8 @@ use std::{
     },
     time::Duration,
 };
+#[cfg(unix)]
+use std::os::fd::AsRawFd;
 use unicode_normalization::UnicodeNormalization;
 const SERVICE: &str = "dev.arkai.limenvault.sync";
 const LIMIT: usize = 8 * 1024 * 1024;
@@ -66,16 +69,40 @@ pub struct State {
     progress: Mutex<Value>,
 }
 fn key() -> Result<String, String> {
-    security_framework::passwords::get_generic_password(SERVICE, "token")
-        .map_err(|_| "AUTH_REQUIRED".to_string())
-        .and_then(|v| String::from_utf8(v).map_err(err))
+    #[cfg(target_os = "macos")]
+    {
+        security_framework::passwords::get_generic_password(SERVICE, "token")
+            .map_err(|_| "AUTH_REQUIRED".to_string())
+            .and_then(|v| String::from_utf8(v).map_err(err))
+    }
+    #[cfg(target_os = "windows")]
+    {
+        crate::keychain::win_load(SERVICE)?
+            .ok_or_else(|| "AUTH_REQUIRED".to_string())
+    }
+    #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
+    {
+        Err("AUTH_REQUIRED".to_string())
+    }
 }
 pub fn save_key(token: String) -> Result<(), String> {
     if token.len() < 24 || token.len() > 2048 || token.chars().any(char::is_whitespace) {
         return Err("Invalid connection token".into());
     }
-    security_framework::passwords::set_generic_password(SERVICE, "token", token.as_bytes())
-        .map_err(|_| "Keychain unavailable".into())
+    #[cfg(target_os = "macos")]
+    {
+        security_framework::passwords::set_generic_password(SERVICE, "token", token.as_bytes())
+            .map_err(|_| "Keychain unavailable".into())
+    }
+    #[cfg(target_os = "windows")]
+    {
+        crate::keychain::win_save(SERVICE, "token", &token)
+            .map_err(|_| "Windows Credential Manager unavailable".into())
+    }
+    #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
+    {
+        Err("Keychain unavailable".into())
+    }
 }
 fn persist(data: &Path, operation: &str, p: &Plan) -> Result<(), String> {
     std::fs::create_dir_all(data).map_err(err)?;
@@ -83,6 +110,7 @@ fn persist(data: &Path, operation: &str, p: &Plan) -> Result<(), String> {
     let name = format!("sync-operation-{operation}");
     d.create_dir(&name).map_err(err)?;
     let op = child(&d, &name)?;
+    #[cfg(unix)]
     if unsafe { libc::fchmod(op.as_raw_fd(), 0o700) } != 0 {
         return Err("Cannot protect transfer capture".into());
     }
@@ -190,10 +218,22 @@ pub fn disconnect(data: &Path) -> Result<(), String> {
     if data.join("sync-config.json").exists() {
         std::fs::remove_file(data.join("sync-config.json")).map_err(err)?;
     }
-    match security_framework::passwords::delete_generic_password(SERVICE, "token") {
-        Ok(()) => Ok(()),
-        Err(e) if e.code() == -25300 => Ok(()),
-        Err(_) => Err("Keychain unavailable".into()),
+    #[cfg(target_os = "macos")]
+    {
+        match security_framework::passwords::delete_generic_password(SERVICE, "token") {
+            Ok(()) => Ok(()),
+            Err(e) if e.code() == -25300 => Ok(()),
+            Err(_) => Err("Keychain unavailable".into()),
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        crate::keychain::win_delete(SERVICE)
+            .map_err(|_| "Windows Credential Manager unavailable".into())
+    }
+    #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
+    {
+        Ok(())
     }
 }
 fn request(
@@ -434,16 +474,15 @@ impl State {
         } else {
             let d = root(vault_path)?;
             let sys = child(&d, "00_SYSTEM")?;
-            let lock = sys
-                .open_with(
-                    ".m7-lock",
-                    OpenOptions::new()
-                        .read(true)
-                        .write(true)
-                        .create(true)
-                        .custom_flags(libc::O_NOFOLLOW),
-                )
-                .map_err(err)?;
+            let mut lock_opts = OpenOptions::new();
+            lock_opts.read(true).write(true).create(true);
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::OpenOptionsExt;
+                lock_opts.custom_flags(libc::O_NOFOLLOW);
+            }
+            let lock = sys.open_with(".m7-lock", &lock_opts).map_err(err)?;
+            #[cfg(unix)]
             if unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_SH | libc::LOCK_NB) } != 0 {
                 return Err("M7 operation active".into());
             }
@@ -691,16 +730,19 @@ mod tests {
         inspect(&dir, "", false, &mut bytes, &mut vec![], &mut vec![]).unwrap();
         std::fs::write(tmp.path().join("01_CLIENTS/a.txt"), "second").unwrap();
         assert_eq!(bytes["01_CLIENTS/a.txt"], b"first");
-        std::os::unix::fs::symlink(tmp.path(), tmp.path().join("link")).unwrap();
-        assert!(inspect(
-            &dir,
-            "",
-            false,
-            &mut BTreeMap::new(),
-            &mut vec![],
-            &mut vec![]
-        )
-        .is_err());
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(tmp.path(), tmp.path().join("link")).unwrap();
+            assert!(inspect(
+                &dir,
+                "",
+                false,
+                &mut BTreeMap::new(),
+                &mut vec![],
+                &mut vec![]
+            )
+            .is_err());
+        }
     }
     #[test]
     fn sync_config_rejects_insecure_endpoints() {

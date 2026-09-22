@@ -9,7 +9,33 @@ impl Drop for Connection {fn drop(&mut self){self.stop.store(true,Ordering::SeqC
 #[derive(Serialize)]
 #[serde(rename_all="camelCase")]
 pub struct ConnectionInfo {pub endpoint:String,pub token:String,pub vault_id:String}
+#[cfg(unix)]
 fn identity(path:&std::path::Path)->Result<(u64,u64),String>{use std::os::unix::fs::MetadataExt;let m=std::fs::symlink_metadata(path).map_err(|_|"Vault unavailable")?;if !m.is_dir(){return Err("Vault root changed".into())}Ok((m.dev(),m.ino()))}
+#[cfg(windows)]
+fn identity(path:&std::path::Path)->Result<(u64,u64),String>{
+ use std::os::windows::fs::OpenOptionsExt;
+ use windows_sys::Win32::Storage::FileSystem::{
+  GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_FLAG_BACKUP_SEMANTICS,
+  FILE_FLAG_OPEN_REPARSE_POINT, FILE_ATTRIBUTE_REPARSE_POINT,
+ };
+ let mut opts=std::fs::OpenOptions::new();
+ opts.read(true);
+ opts.custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT);
+ let f=opts.open(path).map_err(|_|"Vault unavailable")?;
+ let meta=f.metadata().map_err(|_|"Vault unavailable")?;
+ if !meta.is_dir(){return Err("Vault root changed".into())}
+ use std::os::windows::fs::MetadataExt;
+ if (meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT) != 0 {
+  return Err("Symlink or junction directory rejected".into());
+ }
+ use std::os::windows::io::AsRawHandle;
+ let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
+ let res = unsafe { GetFileInformationByHandle(f.as_raw_handle() as *mut _, &mut info) };
+ if res == 0 { return Err("Vault identification failed".into()); }
+ let dev = info.dwVolumeSerialNumber as u64;
+ let ino = ((info.nFileIndexHigh as u64) << 32) | (info.nFileIndexLow as u64);
+ Ok((dev, ino))
+}
 fn token_matches(actual:Option<&str>,expected:&str)->bool {let a=crate::snapshots::compute_sha256(actual.unwrap_or("").as_bytes());let b=crate::snapshots::compute_sha256(expected.as_bytes());a.bytes().zip(b.bytes()).fold(0u8,|diff,(x,y)|diff|(x^y))==0}
 pub fn tools()->Value {
  let annotations=json!({"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false});
@@ -106,4 +132,6 @@ mod tests {
  use super::*;
  #[test] fn rpc_readonly_lifecycle(){let t=tempfile::tempdir().unwrap();let mut init=false;let req=|method:&str,params:Value|json!({"jsonrpc":"2.0","id":1,"method":method,"params":params});assert!(rpc(t.path(),"v",false,&req("tools/list",json!({})),&mut init).unwrap().get("error").is_some());let r=rpc(t.path(),"v",false,&req("initialize",json!({"protocolVersion":"2025-03-26"})),&mut init).unwrap();assert_eq!(r["result"]["protocolVersion"],"2025-03-26");assert_eq!(rpc(t.path(),"v",false,&req("tools/list",json!({})),&mut init).unwrap()["result"]["tools"].as_array().unwrap().len(),3);for name in ["write_document","approve_proposal","delete_file"]{assert_eq!(rpc(t.path(),"v",false,&req("tools/call",json!({"name":name,"arguments":{}})),&mut init).unwrap()["result"]["isError"],true);}assert!(rpc(t.path(),"v",false,&json!({"jsonrpc":"2.0","method":"notifications/initialized"}),&mut init).is_none());}
  #[test] fn http_auth_origin_and_revocation(){let t=tempfile::tempdir().unwrap();std::fs::create_dir(t.path().join("00_SYSTEM")).unwrap();let state=McpState::default();let c=state.start(t.path().into(),false).unwrap();let client=reqwest::blocking::Client::new();let req=json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}});assert_eq!(client.post(&c.endpoint).json(&req).send().unwrap().status().as_u16(),401);assert_eq!(client.post(&c.endpoint).bearer_auth(&c.token).header("Origin","https://evil.invalid").json(&req).send().unwrap().status().as_u16(),403);assert!(client.post(&c.endpoint).bearer_auth(&c.token).json(&req).send().unwrap().status().is_success());state.stop();assert_eq!(state.status()["active"],false);let r=client.post(&c.endpoint).bearer_auth(&c.token).json(&req).send();assert!(r.is_err()||!r.unwrap().status().is_success());}
+ #[cfg(windows)]
+ #[test] fn windows_identity_stable_and_distinct(){let t=tempfile::tempdir().unwrap();let dir_a=t.path().join("dir_a");let dir_b=t.path().join("dir_b");std::fs::create_dir(&dir_a).unwrap();std::fs::create_dir(&dir_b).unwrap();let id1=identity(&dir_a).unwrap();let id2=identity(&dir_a).unwrap();let id3=identity(&dir_b).unwrap();assert_eq!(id1,id2);assert_ne!(id1,id3);}
 }

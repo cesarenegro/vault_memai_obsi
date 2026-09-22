@@ -1,7 +1,9 @@
 use cap_std::{
     ambient_authority,
-    fs::{Dir, OpenOptions, OpenOptionsExt},
+    fs::{Dir, OpenOptions},
 };
+#[cfg(unix)]
+use cap_std::fs::OpenOptionsExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
@@ -169,13 +171,12 @@ fn readable_file(root: &Dir, relative: &Path) -> Result<String, String> {
         return Err("Not a regular file (symlinks are not allowed)".into());
     }
     // cap-std resolves all components relative to the opened capability, including during races.
+    let mut opts = OpenOptions::new();
+    opts.read(true);
+    #[cfg(unix)]
+    opts.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
     let mut file = root
-        .open_with(
-            relative,
-            OpenOptions::new()
-                .read(true)
-                .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK),
-        )
+        .open_with(relative, &opts)
         .map_err(|e| e.to_string())?;
     if !file.metadata().map_err(|e| e.to_string())?.is_file() {
         return Err("Not a regular file".into());
@@ -202,10 +203,14 @@ fn walk(
         .map_err(|e| e.to_string())?;
     names.sort();
     for name in names {
-        let child = rel.join(&name);
-        let label = child.to_string_lossy().trim_start_matches("./").to_string();
+        let child_path = rel.join(&name);
+        let raw_label = child_path.to_string_lossy().replace('\\', "/");
+        let label = raw_label
+            .trim_start_matches("./")
+            .trim_start_matches('/')
+            .to_string();
         let operation = (|| -> Result<(), String> {
-            let meta = root.symlink_metadata(&child).map_err(|e| e.to_string())?;
+            let meta = root.symlink_metadata(&child_path).map_err(|e| e.to_string())?;
             if meta.file_type().is_symlink() {
                 return Err("Symlinks inside the Vault are not allowed".into());
             }
@@ -214,16 +219,15 @@ fn walk(
                     && !name.to_string_lossy().starts_with('.')
                     && name != "node_modules"
                 {
-                    walk(root, &child, depth + 1, result, system)?;
+                    walk(root, &child_path, depth + 1, result, system)?;
                 }
             } else if meta.is_file() {
+                let mut opts = OpenOptions::new();
+                opts.read(true);
+                #[cfg(unix)]
+                opts.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
                 let mut opened = root
-                    .open_with(
-                        &child,
-                        OpenOptions::new()
-                            .read(true)
-                            .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK),
-                    )
+                    .open_with(&child_path, &opts)
                     .map_err(|e| e.to_string())?;
                 if !opened.metadata().map_err(|e| e.to_string())?.is_file() {
                     return Err("Not a regular file".into());
@@ -408,10 +412,9 @@ pub fn create(
         .map_err(|e| format!("TEMPLATE_UNAVAILABLE: {e}"))?;
     let mut files = BTreeMap::new();
     for file in ["HOME.md", "VAULT_RULES.md", "VAULT_MANIFEST.json"] {
-        files.insert(
-            file,
-            readable_file(&template, Path::new(&format!("00_SYSTEM/{file}")))?,
-        );
+        let content = readable_file(&template, Path::new(&format!("00_SYSTEM/{file}")))?;
+        let content = if file.ends_with(".md") { content.replace("\r\n", "\n") } else { content };
+        files.insert(file, content);
     }
     let mut manifest: Value =
         serde_json::from_str(&files["VAULT_MANIFEST.json"]).map_err(|e| e.to_string())?;
@@ -560,9 +563,34 @@ mod tests {
         let template = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../vault-template");
         create(&p, None, &template).unwrap();
         std::fs::write(t.path().join("outside"), "external data must never be read").unwrap();
-        std::os::unix::fs::symlink(t.path(), p.join("01_CLIENTS/link")).unwrap();
-        assert_eq!(open(&p).status.state, "INVALID");
-        let dir = Dir::open_ambient_dir(&p, ambient_authority()).unwrap();
-        assert!(dir.read("01_CLIENTS/link/outside").is_err());
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(t.path(), p.join("01_CLIENTS/link")).unwrap();
+            assert_eq!(open(&p).status.state, "INVALID");
+            let dir = Dir::open_ambient_dir(&p, ambient_authority()).unwrap();
+            assert!(dir.read("01_CLIENTS/link/outside").is_err());
+        }
+    }
+    #[cfg(windows)]
+    #[test]
+    fn capability_blocks_external_junctions() {
+        let t = tempfile::tempdir().unwrap();
+        let p = t.path().join("vault");
+        let template = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../vault-template");
+        create(&p, None, &template).unwrap();
+        let outside = t.path().join("outside_dir");
+        std::fs::create_dir(&outside).unwrap();
+        std::fs::write(outside.join("data.txt"), "external data").unwrap();
+        let target_link = p.join("01_CLIENTS/jlink");
+        let status = std::process::Command::new("cmd")
+            .args(["/c", "mklink", "/J", target_link.to_str().unwrap(), outside.to_str().unwrap()])
+            .output();
+        if let Ok(out) = status {
+            if out.status.success() {
+                assert_eq!(open(&p).status.state, "INVALID");
+                let dir = Dir::open_ambient_dir(&p, ambient_authority()).unwrap();
+                assert!(dir.read("01_CLIENTS/jlink/data.txt").is_err());
+            }
+        }
     }
 }

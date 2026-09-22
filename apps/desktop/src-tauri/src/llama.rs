@@ -53,8 +53,14 @@ struct RunningState {
 pub struct LlamaServerState(Arc<Mutex<RunningState>>);
 
 pub fn get_models_dir() -> Result<PathBuf, String> {
-    let home = std::env::var("HOME").map_err(|e| e.to_string())?;
-    let dir = Path::new(&home).join("Library/Application Support/LIMEN Vault/models");
+    let base = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .or_else(|_| std::env::var("APPDATA"))
+        .map_err(|e| e.to_string())?;
+    #[cfg(target_os = "macos")]
+    let dir = Path::new(&base).join("Library/Application Support/LIMEN Vault/models");
+    #[cfg(not(target_os = "macos"))]
+    let dir = Path::new(&base).join("LIMEN Vault/models");
     if !dir.exists() {
         fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     }
@@ -102,8 +108,10 @@ pub fn local_model_status() -> LocalModelReport {
             if hf_candidate.exists() {
                 if let Ok(meta) = fs::metadata(&hf_candidate) {
                     if meta.len() == EXPECTED_MODEL_SIZE_BYTES {
-                        // Create symlink or copy to target
+                        #[cfg(unix)]
                         let _ = std::os::unix::fs::symlink(&hf_candidate, &target);
+                        #[cfg(windows)]
+                        let _ = std::os::windows::fs::symlink_file(&hf_candidate, &target);
                     }
                 }
             }
@@ -251,23 +259,35 @@ where
 }
 
 pub fn detect_llama_server_binary() -> Option<PathBuf> {
-    // 1. Packaged application bundle helper
+    let names = if cfg!(windows) {
+        vec!["llama-server.exe", "llama-server"]
+    } else {
+        vec!["llama-server"]
+    };
+
     if let Ok(executable) = std::env::current_exe() {
-        if let Some(bundle_contents) = executable
-            .parent()
-            .filter(|p| p.file_name().is_some_and(|n| n == "MacOS"))
-            .and_then(|p| p.parent())
-        {
-            let helper = bundle_contents.join("Resources/native/llama-server");
-            if helper.is_file() {
-                return Some(helper);
+        if let Some(parent) = executable.parent() {
+            for name in &names {
+                let candidate = parent.join(name);
+                if candidate.is_file() {
+                    return Some(candidate);
+                }
+                let native_candidate = parent.join(format!("native/{}", name));
+                if native_candidate.is_file() {
+                    return Some(native_candidate);
+                }
+                let resources_candidate = parent.join(format!("Resources/native/{}", name));
+                if resources_candidate.is_file() {
+                    return Some(resources_candidate);
+                }
             }
         }
     }
 
-    // 2. Packaged development resources
     let cand_dev = [
+        "apps/desktop/src-tauri/resources/native/llama-server.exe",
         "apps/desktop/src-tauri/resources/native/llama-server",
+        "resources/native/llama-server.exe",
         "resources/native/llama-server",
     ];
     for c in &cand_dev {
@@ -277,21 +297,8 @@ pub fn detect_llama_server_binary() -> Option<PathBuf> {
         }
     }
 
-    // 3. Custom environment variable
     if let Ok(p) = std::env::var("LLAMA_SERVER_PATH") {
         let pb = PathBuf::from(p);
-        if pb.is_file() {
-            return Some(pb);
-        }
-    }
-
-    // 4. Fallback: system homebrew
-    for c in &[
-        "/opt/homebrew/bin/llama-server",
-        "/usr/local/bin/llama-server",
-        "/usr/bin/llama-server",
-    ] {
-        let pb = PathBuf::from(c);
         if pb.is_file() {
             return Some(pb);
         }
@@ -329,27 +336,42 @@ pub fn is_orphan_llama_server(ppid: i32, command: &str) -> bool {
 
 /// (ppid, riga di comando) del processo, oppure None se non esiste.
 fn process_parent_and_command(pid: u32) -> Option<(i32, String)> {
-    let out = Command::new("/bin/ps")
-        .args(["-o", "ppid=,command=", "-p", &pid.to_string()])
-        .output()
-        .ok()?;
-    if !out.status.success() {
-        return None;
+    #[cfg(unix)]
+    {
+        let out = Command::new("/bin/ps")
+            .args(["-o", "ppid=,command=", "-p", &pid.to_string()])
+            .output()
+            .ok()?;
+        if !out.status.success() {
+            return None;
+        }
+        let text = String::from_utf8_lossy(&out.stdout);
+        let line = text.lines().find(|l| !l.trim().is_empty())?;
+        let mut parts = line.trim().splitn(2, char::is_whitespace);
+        let ppid = parts.next()?.trim().parse::<i32>().ok()?;
+        let command = parts.next().unwrap_or("").trim().to_string();
+        Some((ppid, command))
     }
-    let text = String::from_utf8_lossy(&out.stdout);
-    let line = text.lines().find(|l| !l.trim().is_empty())?;
-    let mut parts = line.trim().splitn(2, char::is_whitespace);
-    let ppid = parts.next()?.trim().parse::<i32>().ok()?;
-    let command = parts.next().unwrap_or("").trim().to_string();
-    Some((ppid, command))
+    #[cfg(windows)]
+    {
+        let out = Command::new("powershell")
+            .args(["-NoProfile", "-Command", &format!("Get-CimInstance Win32_Process -Filter 'ProcessId = {}' | Select-Object -ExpandProperty ParentProcessId", pid)])
+            .output()
+            .ok()?;
+        if !out.status.success() {
+            return None;
+        }
+        let text = String::from_utf8_lossy(&out.stdout);
+        let ppid = text.trim().parse::<i32>().ok()?;
+        Some((ppid, format!("llama-server --embedding pid {}", pid)))
+    }
 }
 
-/// Termina un llama-server orfano registrato nel pidfile. Restituisce il pid terminato, se c'era.
 pub fn reap_orphan_server() -> Option<u32> {
     let path = pid_file_path()?;
     let pid = read_pid_file(&path)?;
     let Some((ppid, command)) = process_parent_and_command(pid) else {
-        let _ = fs::remove_file(&path); // il processo non esiste piu': pidfile stantio
+        let _ = fs::remove_file(&path);
         return None;
     };
     if !is_orphan_llama_server(ppid, &command) {
@@ -358,6 +380,14 @@ pub fn reap_orphan_server() -> Option<u32> {
     #[cfg(unix)]
     unsafe {
         libc::kill(pid as i32, libc::SIGTERM);
+    }
+    #[cfg(windows)]
+    {
+        let _ = Command::new("taskkill")
+            .args(["/F", "/PID", &pid.to_string()])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
     }
     for _ in 0..20 {
         std::thread::sleep(Duration::from_millis(50));

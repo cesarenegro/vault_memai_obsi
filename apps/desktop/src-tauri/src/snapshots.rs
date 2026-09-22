@@ -1,7 +1,9 @@
 use cap_std::{
     ambient_authority,
-    fs::{Dir, OpenOptions, OpenOptionsExt},
+    fs::{Dir, OpenOptions},
 };
+#[cfg(unix)]
+use cap_std::fs::OpenOptionsExt;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -9,10 +11,11 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     ffi::CString,
     io::{Read, Write},
-    os::fd::AsRawFd,
     path::Path,
     sync::atomic::{AtomicU64, Ordering},
 };
+#[cfg(unix)]
+use std::os::fd::AsRawFd;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct VaultIntegrityReportResponse {
@@ -64,30 +67,44 @@ pub(crate) fn root(path: &Path) -> Result<Dir, String> {
     if !path.is_absolute() {
         return Err("Absolute vault path required".into());
     }
-    Dir::open_ambient_dir(path.canonicalize().map_err(err)?, ambient_authority()).map_err(err)
+    let p = path.canonicalize().map_err(err)?;
+    #[cfg(windows)]
+    let p = {
+        let s = p.to_string_lossy();
+        if let Some(stripped) = s.strip_prefix(r"\\?\") {
+            std::path::PathBuf::from(stripped)
+        } else {
+            p
+        }
+    };
+    Dir::open_ambient_dir(&p, ambient_authority()).map_err(err)
 }
 pub(crate) fn child(dir: &Dir, name: &str) -> Result<Dir, String> {
     component(name)?;
-    let f = dir
-        .open_with(
-            name,
-            OpenOptions::new()
-                .read(true)
-                .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK | libc::O_DIRECTORY),
-        )
-        .map_err(err)?;
-    Ok(Dir::from_std_file(f.into_std()))
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        opts.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK | libc::O_DIRECTORY);
+        let f = dir.open_with(name, &opts).map_err(err)?;
+        Ok(Dir::from_std_file(f.into_std()))
+    }
+    #[cfg(not(unix))]
+    {
+        dir.open_dir(name).map_err(err)
+    }
 }
 pub(crate) fn read(dir: &Dir, name: &str) -> Result<Vec<u8>, String> {
     component(name)?;
-    let mut f = dir
-        .open_with(
-            name,
-            OpenOptions::new()
-                .read(true)
-                .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK),
-        )
-        .map_err(err)?;
+    let mut opts = OpenOptions::new();
+    opts.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
+    }
+    let mut f = dir.open_with(name, &opts).map_err(err)?;
     let before = f.metadata().map_err(err)?;
     if !before.is_file() {
         return Err("Not a regular file".into());
@@ -95,6 +112,7 @@ pub(crate) fn read(dir: &Dir, name: &str) -> Result<Vec<u8>, String> {
     let mut bytes = Vec::new();
     f.read_to_end(&mut bytes).map_err(err)?;
     let after = f.metadata().map_err(err)?;
+    drop(f);
     if before.len() != after.len()
         || before.modified().map_err(err)? != after.modified().map_err(err)?
     {
@@ -133,15 +151,14 @@ fn excluded(rel: &str) -> bool {
 }
 pub(crate) fn write_new(d: &Dir, name: &str, bytes: &[u8]) -> Result<(), String> {
     component(name)?;
-    let mut f = d
-        .open_with(
-            name,
-            OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .custom_flags(libc::O_NOFOLLOW),
-        )
-        .map_err(err)?;
+    let mut opts = OpenOptions::new();
+    opts.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.custom_flags(libc::O_NOFOLLOW);
+    }
+    let mut f = d.open_with(name, &opts).map_err(err)?;
     f.write_all(bytes).map_err(err)?;
     f.sync_all().map_err(err)
 }
@@ -331,32 +348,42 @@ pub fn verify_snapshot_integrity(path: &Path, id: &str) -> VaultIntegrityReportR
 pub(crate) fn publish(c: &Dir, from: &str, to: &str) -> Result<(), String> {
     component(from)?;
     component(to)?;
-    let a = CString::new(from).map_err(err)?;
-    let b = CString::new(to).map_err(err)?;
-    #[cfg(target_os = "macos")]
-    let result = unsafe {
-        libc::renameatx_np(
-            c.as_raw_fd(),
-            a.as_ptr(),
-            c.as_raw_fd(),
-            b.as_ptr(),
-            libc::RENAME_EXCL,
-        )
-    };
-    #[cfg(target_os = "linux")]
-    let result = unsafe {
-        libc::renameat2(
-            c.as_raw_fd(),
-            a.as_ptr(),
-            c.as_raw_fd(),
-            b.as_ptr(),
-            libc::RENAME_NOREPLACE,
-        )
-    };
-    if result != 0 {
-        return Err(err(std::io::Error::last_os_error()));
+    #[cfg(unix)]
+    {
+        let a = CString::new(from).map_err(err)?;
+        let b = CString::new(to).map_err(err)?;
+        #[cfg(target_os = "macos")]
+        let result = unsafe {
+            libc::renameatx_np(
+                c.as_raw_fd(),
+                a.as_ptr(),
+                c.as_raw_fd(),
+                b.as_ptr(),
+                libc::RENAME_EXCL,
+            )
+        };
+        #[cfg(target_os = "linux")]
+        let result = unsafe {
+            libc::renameat2(
+                c.as_raw_fd(),
+                a.as_ptr(),
+                c.as_raw_fd(),
+                b.as_ptr(),
+                libc::RENAME_NOREPLACE,
+            )
+        };
+        if result != 0 {
+            return Err(err(std::io::Error::last_os_error()));
+        }
+        Ok(())
     }
-    Ok(())
+    #[cfg(not(unix))]
+    {
+        if c.symlink_metadata(to).is_ok() {
+            return Err("Destination already exists".into());
+        }
+        c.rename(from, c, to).map_err(err)
+    }
 }
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 pub fn create_snapshot(path: &Path, note: Option<String>) -> Result<SnapshotItemResponse, String> {
@@ -408,6 +435,7 @@ fn create_in(
         if !check.is_integrity_valid {
             return Err(format!("Snapshot verification failed: {check:?}"));
         }
+        drop(stage);
         publish(c, &pending, id)?;
         Ok(SnapshotItemResponse {
             id: id.into(),
@@ -424,13 +452,7 @@ fn create_in(
         })
     })();
     if result.is_err() {
-        // Only our opened staging directory is cleaned. Published snapshots are never rollback targets.
-        if let Err(cleanup) = stage.remove_open_dir_all() {
-            return Err(format!(
-                "{}; staging cleanup failed: {cleanup}",
-                result.unwrap_err()
-            ));
-        }
+        let _ = c.remove_dir_all(&pending);
     }
     result
 }
@@ -682,6 +704,7 @@ mod tests {
         assert_eq!(std::fs::metadata(home).unwrap().modified().unwrap(), before);
     }
     #[test]
+    #[cfg(unix)]
     fn links_and_rollback_cannot_touch_outside() {
         use std::os::unix::fs::symlink;
         let (t, p) = fixture();

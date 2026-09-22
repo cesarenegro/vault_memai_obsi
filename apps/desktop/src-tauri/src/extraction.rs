@@ -13,12 +13,14 @@ const MAX: usize = 16 * 1024 * 1024;
 struct Scratch(std::path::PathBuf);
 impl Scratch {
     fn new() -> Result<Self, String> {
-        use std::os::unix::fs::DirBuilderExt;
         let p = std::env::temp_dir().join(format!("limen-extract-{}", crate::ai::random_token()?));
-        std::fs::DirBuilder::new()
-            .mode(0o700)
-            .create(&p)
-            .map_err(err)?;
+        let mut builder = std::fs::DirBuilder::new();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            builder.mode(0o700);
+        }
+        builder.create(&p).map_err(err)?;
         Ok(Self(p))
     }
 }
@@ -249,6 +251,7 @@ pub fn extract(bytes: &[u8], name: &str) -> Result<String, String> {
         "pdf" | "png" | "jpg" | "jpeg" | "webp" | "gif" | "tif" | "tiff" | "heic" => {
             vision(bytes, &ext)
         }
+        #[cfg(target_os = "macos")]
         "doc" | "rtf" => {
             let scratch = Scratch::new()?;
             let input = scratch.0.join(format!("input.{ext}"));
@@ -282,6 +285,8 @@ pub fn extract(bytes: &[u8], name: &str) -> Result<String, String> {
             }
             std::fs::read_to_string(output).map_err(err)
         }
+        #[cfg(not(target_os = "macos"))]
+        "doc" | "rtf" => Err("Conversione DOC/RTF richiede macOS".into()),
         _ => Err("Formato non documentale o non supportato: originale conservato".into()),
     }
 }
@@ -306,6 +311,7 @@ mod tests {
         assert_eq!(slides.matches("## Slide").count(), 1);
     }
     #[test]
+    #[cfg(target_os = "macos")]
     fn pdf_and_scans_use_native_extraction() {
         let pdf = extract(
             include_bytes!("../../tests/fixtures/auto-knowledge/documento.pdf"),

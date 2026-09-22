@@ -31,6 +31,7 @@ apps/desktop/src-tauri/gen/
 apps/desktop/src-tauri/resources/mcp/tunnel-client
 apps/desktop/src-tauri/resources/mcp/cloudflared
 scripts/__pycache__/
-apps/desktop/src-tauri/resources/native/limen-extract
+apps/desktop/src-tauri/resources/native/*
+!apps/desktop/src-tauri/resources/native/.gitkeep
 tests/scratch/
 USER INSTALL/

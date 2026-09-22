@@ -148,17 +148,27 @@ fn save_index(system: &Dir, index: &CompilerIndex) -> Result<(), String> {
 // Cooperative cross-runtime lock. A lock left by process termination is deliberately not stolen.
 struct Lock<'a> {
     system: &'a Dir,
-    opened: Dir,
+    opened: Option<Dir>,
 }
 impl Drop for Lock<'_> {
     fn drop(&mut self) {
-        use cap_std::fs::MetadataExt;
-        if let Ok(current) = child(self.system, ".compiler-lock") {
-            if let (Ok(a), Ok(b)) = (current.dir_metadata(), self.opened.dir_metadata()) {
-                if a.ino() == b.ino() && a.dev() == b.dev() {
-                    let _ = self.system.remove_dir(".compiler-lock");
+        #[cfg(unix)]
+        {
+            use cap_std::fs::MetadataExt;
+            if let Some(opened) = &self.opened {
+                if let Ok(current) = child(self.system, ".compiler-lock") {
+                    if let (Ok(a), Ok(b)) = (current.dir_metadata(), opened.dir_metadata()) {
+                        if a.ino() == b.ino() && a.dev() == b.dev() {
+                            let _ = self.system.remove_dir(".compiler-lock");
+                        }
+                    }
                 }
             }
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = self.opened.take();
+            let _ = self.system.remove_dir(".compiler-lock");
         }
     }
 }
@@ -168,7 +178,7 @@ fn lock(system: &Dir) -> Result<Lock<'_>, String> {
     })?;
     Ok(Lock {
         system,
-        opened: child(system, ".compiler-lock")?,
+        opened: Some(child(system, ".compiler-lock")?),
     })
 }
 pub fn sanitize_html(raw: &str) -> String {

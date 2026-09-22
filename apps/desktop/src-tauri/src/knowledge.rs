@@ -1,6 +1,8 @@
 //! Direct read-only browsing, independent of the search index and cloud services.
 use crate::{snapshots::{root,child,names,compute_sha256},vault::frontmatter};
-use cap_std::fs::{Dir,OpenOptions,OpenOptionsExt};
+use cap_std::fs::{Dir,OpenOptions};
+#[cfg(unix)]
+use cap_std::fs::OpenOptionsExt;
 use serde_json::{json,Value};
 use std::{path::Path,io::Read};
 const FOLDERS:[&str;10]=["01_CLIENTS","02_PROJECTS","03_BRANDS","04_POSITIONING","05_PACKAGING_KNOWLEDGE","06_METHODS","07_CASE_STUDIES","08_MARKET_RESEARCH","09_COMPETITORS","10_APPROVED_OUTPUTS"];
@@ -17,7 +19,9 @@ fn walk(dir:&Dir,prefix:&str,depth:usize,items:&mut Vec<Value>,total:&mut usize)
  if meta.file_type().is_symlink(){return Err(format!("Symlink rejected: {relative}"))}
  if meta.is_dir(){walk(&child(dir,&name)?,&relative,depth+1,items,total)?;continue}
  if !name.to_lowercase().ends_with(".md"){continue}if !meta.is_file()||meta.len()>512*1024||items.len()>=1000{return Err(format!("Invalid or oversized knowledge category: {relative}"))}
- let mut file=dir.open_with(&name,OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW|libc::O_NONBLOCK)).map_err(err)?;
+ let mut opts=OpenOptions::new();opts.read(true);
+ #[cfg(unix)]{use std::os::unix::fs::OpenOptionsExt;opts.custom_flags(libc::O_NOFOLLOW|libc::O_NONBLOCK);}
+ let mut file=dir.open_with(&name,&opts).map_err(err)?;
  let before=file.metadata().map_err(err)?;if !before.is_file(){return Err("Not a regular document".into())}
  let mut data=Vec::new();std::io::Read::by_ref(&mut file).take(512*1024+1).read_to_end(&mut data).map_err(err)?;
  let after=file.metadata().map_err(err)?;if data.len()>512*1024||before.len()!=after.len()||before.modified().map_err(err)?!=after.modified().map_err(err)?{return Err("Knowledge document changed during read".into())}
@@ -27,5 +31,5 @@ fn walk(dir:&Dir,prefix:&str,depth:usize,items:&mut Vec<Value>,total:&mut usize)
 }
 #[cfg(test)]mod tests{use super::*;use std::fs;
  #[test]fn actual_notes_without_index_and_no_mutations(){let t=tempfile::tempdir().unwrap();fs::create_dir_all(t.path().join("01_CLIENTS/nested")).unwrap();let p=t.path().join("01_CLIENTS/nested/note.md");let text="---\nschema_version: 1\nid: knowledge-test\ntitle: Aurora\ntype: client\nstatus: approved\ncreated_at: \"2026-09-12T00:00:00Z\"\nupdated_at: \"2026-09-12T00:00:00Z\"\ntags: []\nsource_ids: []\n---\nActual local note";fs::write(&p,text).unwrap();let rows=list(t.path(),"01_CLIENTS").unwrap();assert_eq!(rows.len(),1);assert_eq!(rows[0]["title"],"Aurora");assert_eq!(rows[0]["sha256"],compute_sha256(text.as_bytes()));assert_eq!(fs::read_to_string(p).unwrap(),text);assert!(!t.path().join("00_SYSTEM").exists());}
- #[test]fn symlink_and_oversized_notes_fail_explicitly(){let t=tempfile::tempdir().unwrap();fs::create_dir(t.path().join("01_CLIENTS")).unwrap();let p=t.path().join("01_CLIENTS/link.md");std::os::unix::fs::symlink("/etc/passwd",&p).unwrap();assert!(list(t.path(),"01_CLIENTS").is_err());fs::remove_file(&p).unwrap();fs::write(&p,vec![b'x';512*1024+1]).unwrap();assert!(list(t.path(),"01_CLIENTS").is_err());assert!(list(t.path(),"20_RAW_SOURCES").is_err());}
+ #[test]fn symlink_and_oversized_notes_fail_explicitly(){let t=tempfile::tempdir().unwrap();fs::create_dir(t.path().join("01_CLIENTS")).unwrap();let p=t.path().join("01_CLIENTS/link.md");#[cfg(unix)]{std::os::unix::fs::symlink("/etc/passwd",&p).unwrap();assert!(list(t.path(),"01_CLIENTS").is_err());fs::remove_file(&p).unwrap();}fs::write(&p,vec![b'x';512*1024+1]).unwrap();assert!(list(t.path(),"01_CLIENTS").is_err());assert!(list(t.path(),"20_RAW_SOURCES").is_err());}
 }
