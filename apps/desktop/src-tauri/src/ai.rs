@@ -1283,7 +1283,9 @@ pub fn parse_response(r: Value, sources: &[Source]) -> Result<Value, String> {
     if !r["model"].is_string() {
         return Err("Incomplete or invalid provider response".into());
     }
-    let status = r["status"].as_str().unwrap_or("completed");
+    let status = r["status"]
+        .as_str()
+        .ok_or_else(|| "Incomplete or invalid provider response: missing status".to_string())?;
     let incomplete_reason = r["incomplete_details"]["reason"].as_str().map(|s| s.to_string());
 
     if status != "completed" && status != "incomplete" {
@@ -1299,7 +1301,7 @@ pub fn parse_response(r: Value, sources: &[Source]) -> Result<Value, String> {
         .filter(|v| v["type"] == "output_text")
         .collect();
 
-    if texts.is_empty() {
+    if texts.len() != 1 {
         return Err("Provider refusal or missing answer".into());
     }
 
@@ -1408,8 +1410,9 @@ pub fn parse_response(r: Value, sources: &[Source]) -> Result<Value, String> {
     let tokens_completion = usage["output_tokens"]
         .as_u64()
         .or_else(|| usage["completion_tokens"].as_u64());
-    let tokens_reasoning = usage["output_token_details"]["reasoning_tokens"]
+    let tokens_reasoning = usage["output_tokens_details"]["reasoning_tokens"]
         .as_u64()
+        .or_else(|| usage["output_token_details"]["reasoning_tokens"].as_u64())
         .or_else(|| usage["completion_tokens_details"]["reasoning_tokens"].as_u64());
     let tokens_used = usage["total_tokens"].as_u64().or_else(|| {
         match (tokens_prompt, tokens_completion) {
@@ -2821,6 +2824,123 @@ mod tests {
       // Aggiornamento a nuovo modello
       assert!(save_selected_model("gpt-6-sol").is_ok());
       assert_eq!(load_selected_model(), Some("gpt-6-sol".to_string()));
+  }
+
+  #[tokio::test]
+  async fn test_parse_response_validation_and_incomplete_rules() {
+      let t = fixture();
+      let s = select(t.path(), &options()).await.unwrap();
+
+      // 1. Risposta senza campo status -> errore
+      let no_status = json!({
+          "model": "gpt-4o",
+          "output": [{
+              "type": "message",
+              "content": [{
+                  "type": "output_text",
+                  "text": json!({"answer": "Ok", "citation_ids": ["S1"]}).to_string()
+              }]
+          }]
+      });
+      let err_no_status = parse_response(no_status, &s);
+      assert!(err_no_status.is_err());
+      assert!(err_no_status.unwrap_err().contains("missing status"));
+
+      // 2. Risposta con due output_text -> errore
+      let two_output_texts = json!({
+          "status": "completed",
+          "model": "gpt-4o",
+          "output": [{
+              "type": "message",
+              "content": [
+                  {
+                      "type": "output_text",
+                      "text": json!({"answer": "First", "citation_ids": ["S1"]}).to_string()
+                  },
+                  {
+                      "type": "output_text",
+                      "text": json!({"answer": "Second", "citation_ids": ["S1"]}).to_string()
+                  }
+              ]
+          }]
+      });
+      let err_two = parse_response(two_output_texts, &s);
+      assert!(err_two.is_err());
+      assert!(err_two.unwrap_err().contains("Provider refusal or missing answer"));
+
+      // 3. status: "incomplete" con JSON valido -> accettata con avviso e citazioni
+      let incomplete_valid_json = json!({
+          "status": "incomplete",
+          "incomplete_details": { "reason": "max_output_tokens" },
+          "model": "gpt-4o",
+          "output": [{
+              "type": "message",
+              "content": [{
+                  "type": "output_text",
+                  "text": json!({"answer": "Risposta parziale ma integra", "citation_ids": ["S1"]}).to_string()
+              }]
+          }]
+      });
+      let res_inc_valid = parse_response(incomplete_valid_json, &s).unwrap();
+      assert_eq!(res_inc_valid["status"], "incomplete");
+      assert_eq!(res_inc_valid["incomplete"], true);
+      assert_eq!(res_inc_valid["answer"], "Risposta parziale ma integra");
+      assert_eq!(res_inc_valid["citations"].as_array().unwrap().len(), 1);
+      assert!(res_inc_valid["warning"].as_str().is_some());
+
+      // 4. status: "incomplete" con JSON troncato -> messaggio di interruzione senza citazioni
+      let incomplete_truncated_json = json!({
+          "status": "incomplete",
+          "incomplete_details": { "reason": "max_output_tokens" },
+          "model": "gpt-4o",
+          "output": [{
+              "type": "message",
+              "content": [{
+                  "type": "output_text",
+                  "text": "{\"answer\": \"Risposta interrotta a met"
+              }]
+          }]
+      });
+      let res_inc_trunc = parse_response(incomplete_truncated_json, &s).unwrap();
+      assert_eq!(res_inc_trunc["status"], "incomplete");
+      assert_eq!(res_inc_trunc["incomplete"], true);
+      assert!(res_inc_trunc["answer"].as_str().unwrap().contains("interrotta"));
+      assert_eq!(res_inc_trunc["citations"].as_array().unwrap().len(), 0);
+      assert_eq!(res_inc_trunc["citedIndices"].as_array().unwrap().len(), 0);
+      assert!(res_inc_trunc["warning"].as_str().is_some());
+  }
+
+  #[tokio::test]
+  async fn test_parse_response_reads_reasoning_tokens_from_output_tokens_details() {
+      let t = fixture();
+      let s = select(t.path(), &options()).await.unwrap();
+
+      let response_with_reasoning = json!({
+          "status": "completed",
+          "model": "o3-mini",
+          "output": [{
+              "type": "message",
+              "content": [{
+                  "type": "output_text",
+                  "text": json!({"answer": "Risposta elaborata con ragionamento profondo", "citation_ids": ["S1"]}).to_string()
+              }]
+          }],
+          "usage": {
+              "total_tokens": 820,
+              "input_tokens": 500,
+              "output_tokens": 320,
+              "output_tokens_details": {
+                  "reasoning_tokens": 128
+              }
+          }
+      });
+
+      let res = parse_response(response_with_reasoning, &s).unwrap();
+      assert_eq!(res["status"], "completed");
+      assert_eq!(res["tokensUsed"], 820);
+      assert_eq!(res["tokensPrompt"], 500);
+      assert_eq!(res["tokensCompletion"], 320);
+      assert_eq!(res["tokensReasoning"], 128);
   }
 }
 #[cfg(test)]

@@ -196,23 +196,28 @@ Conformemente alle direttive e alle due correzioni deliberate da Cesare:
    - Inserita in testata all'elenco fonti in `AiPanel.tsx`:
      > **"Basata su N documenti citati tra M consultati"**
 
-6. **Test Suite Completa FASE 4 (161 passati, 0 falliti)**:
-   - `cargo test` parallelo: **161 passed; 0 failed** (143 lib + 18 bin). Log: `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-4-parallel.log`.
-   - `cargo test -- --test-threads=1`: **161 passed; 0 failed** (143 lib + 18 bin). Log: `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-4-single.log`.
-   - TypeScript frontend check: `npx tsc --noEmit` completato con codice 0.
+6. **Esito del Benchmark di Cesare e Chiusura FASE 4**:
+   - Rapporto redatto in [fase4-benchmark.md](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase4-benchmark.md) con dati reali da `ask_timing.log`.
+   - **Decisione di Cesare**: `gpt-4o` confermato come modello predefinito (voti 9-10 contro 7–8/9 di `gpt-6-luna`, risposte più concise e token di output inferiori).
+   - Accertamento token di ragionamento: assenti nel log perché il valore restituito da OpenAI è nullo per i modelli generativi standard testati (`gpt-4o` e `gpt-6-luna`), non consumando token interni di reasoning.
+
+7. **Correzione Regole Risposte Incomplete in `parse_response` (162 test passati)**:
+   - Rifiutata qualsiasi risposta senza campo `status` esplicito (`ok_or_else("missing status")`).
+   - Ripristinato il controllo `texts.len() == 1` ("esattamente un output_text").
+   - Test unitario completo `test_parse_response_validation_and_incomplete_rules` aggiunto e verificato (144 lib + 18 bin = **162 passed, 0 failed**).
+   - Dichiarato il cambio di regola: degradazione controllata (accettata con avviso e citazioni se JSON integro; messaggio di interruzione senza citazioni se JSON troncato per limite token).
+
+8. **Piano FASE 5 Predisposto (senza codice)**:
+   - Documento in [fase5-piano.md](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase5-piano.md) con analisi comparativa delle opzioni di streaming (Opzione A raccomandata: streaming del testo con unescaping incrementale e validazione citazioni a chiusura flusso) e Task List dettagliata conforme alla regola `.agents/AGENTS.md`.
 
 ---
 
 ## 2. Stato Attuale e Consegna
 
-- **STATO ATTUALE**: **STOP OPERATIVO BLOCCANTE PER LA PROVA DI CESARE**.
-- **Patch completa**: `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-4.patch`.
+- **STATO ATTUALE**: **FASE 4 CHIUSA — PIANO FASE 5 PREDISPOSTO**.
+- **Test suite**: **162 passati; 0 falliti**.
 - **ZERO chiamate OpenAI** effettuate dall'assistente.
 - **ZERO processi terminati** senza autorizzazione.
-- **Pronto per la prova live di Cesare**:
-  - Modello A: `gpt-4o` (continuità con le Fasi 1, 2 e 3)
-  - Modello B: Modello più veloce ed economico presente nell'account (es. `gpt-6-luna`)
-  - Eventuale Modello C: `gpt-6-sol`
-  - Tre domande canoniche: BNXT, ARKAI, SCENA.
+
 
 
