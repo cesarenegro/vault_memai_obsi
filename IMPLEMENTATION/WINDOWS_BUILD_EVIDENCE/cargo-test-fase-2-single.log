@@ -1,5 +1,5 @@
 ﻿
-running 124 tests
+running 127 tests
 test ai::index_policy_test::forged_approval_is_rejected ... ok
 test ai::model_tests::models_are_validated_and_deduplicated ... ok
 test ai::tests::approved_policy_and_context_hash ... ok
@@ -75,7 +75,9 @@ test extraction::tests::word_and_slides_are_literal ... ok
 test keychain::test_windows_credential_manager_roundtrip ... ok
 test knowledge::tests::actual_notes_without_index_and_no_mutations ... ok
 test knowledge::tests::symlink_and_oversized_notes_fail_explicitly ... ok
+test llama::tests::test_cache_with_unexpected_hash_triggers_recomputation ... ok
 test llama::tests::test_detect_llama_server_binary ... ok
+test llama::tests::test_execution_does_not_modify_userprofile_limen_vault ... ok
 test llama::tests::test_find_free_port ... ok
 test llama::tests::test_install_from_file_single_io_pass ... ok
 test llama::tests::test_local_model_status_returns_struct ... ok
@@ -85,6 +87,7 @@ test llama::tests::test_model_replaced_same_size_detected ... ok
 test llama::tests::test_pid_file_roundtrip_and_orphan_decision ... ok
 test llama::tests::test_process_parent_and_command_reads_live_process_only ... ok
 test llama::tests::test_second_status_call_uses_cache_zero_hash_recalculation ... ok
+test llama::tests::test_unexpected_size_reports_not_installed ... ok
 test mcp::tests::http_auth_origin_and_revocation ... ok
 test mcp::tests::rpc_readonly_lifecycle ... ok
 test mcp::tests::windows_identity_stable_and_distinct ... ok
@@ -125,7 +128,7 @@ test vault::tests::manifest_is_consumed_without_reopening ... ok
 test vault::tests::raw_sources_foreign_yaml_frontmatter_allows_vault_opening ... ok
 test vault::tests::shared_frontmatter_fixtures ... ok
 
-test result: ok. 124 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.99s
+test result: ok. 127 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.01s
 
 
 running 0 tests
@@ -188,7 +191,7 @@ test vault::tests::manifest_is_consumed_without_reopening ... ok
 test vault::tests::raw_sources_foreign_yaml_frontmatter_allows_vault_opening ... ok
 test vault::tests::shared_frontmatter_fixtures ... ok
 
-test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.50s
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.02s
 
 
 running 0 tests

@@ -836,7 +836,7 @@ async fn local_model_pick_and_install(
     .map_err(|e| e.to_string())??;
     let elapsed = t0.elapsed().as_millis() as u64;
     limen_vault::llama::log_local_model_timing(
-        "FILE_SELECTION",
+        "FILE_SELECTION_TOTAL_WITH_DIALOG",
         elapsed,
         &format!("installed={}, sha256_ok={}", rep.installed, rep.sha256_ok),
     );

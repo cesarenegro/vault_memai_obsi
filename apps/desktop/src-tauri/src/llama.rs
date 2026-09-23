@@ -67,10 +67,27 @@ pub struct ModelVerificationCache {
 }
 
 pub fn get_local_model_timing_log_path() -> PathBuf {
-    let base = std::env::var("USERPROFILE")
-        .or_else(|_| std::env::var("HOME"))
-        .unwrap_or_else(|_| ".".into());
-    PathBuf::from(base).join(".limen-vault").join("local_model_timing.log")
+    if let Ok(override_path) = std::env::var("LIMEN_LOCAL_MODEL_TIMING_LOG") {
+        if !override_path.trim().is_empty() {
+            return PathBuf::from(override_path);
+        }
+    }
+    if let Ok(timing_dir) = std::env::var("LIMEN_TIMING_LOG_DIR") {
+        if !timing_dir.trim().is_empty() {
+            return PathBuf::from(timing_dir).join("local_model_timing.log");
+        }
+    }
+    #[cfg(test)]
+    {
+        return std::env::temp_dir().join("limen_test_local_model_timing.log");
+    }
+    #[allow(unreachable_code)]
+    {
+        let base = std::env::var("USERPROFILE")
+            .or_else(|_| std::env::var("HOME"))
+            .unwrap_or_else(|_| ".".into());
+        PathBuf::from(base).join(".limen-vault").join("local_model_timing.log")
+    }
 }
 
 pub fn log_local_model_timing(event: &str, elapsed_ms: u64, details: &str) {
@@ -191,6 +208,18 @@ pub fn model_status_for_paths(
         .unwrap_or(0);
     let target_str = target.to_string_lossy().to_string();
 
+    // Se la dimensione su disco non coincide con quella attesa per il modello, non è il modello atteso.
+    if bytes != expected_size {
+        eprintln!("[llama] File size mismatch on {}: {} vs expected {}", target.display(), bytes, expected_size);
+        let _ = fs::remove_file(cache_file);
+        return LocalModelReport {
+            installed: false,
+            path: target_str,
+            bytes,
+            sha256_ok: false,
+        };
+    }
+
     // 1. Fast path: verifica tramite cache dei metadati (se non è richiesto force_recheck)
     if !force_recheck {
         if let Some(cache) = read_model_cache(cache_file) {
@@ -201,7 +230,11 @@ pub fn model_status_for_paths(
                 cache.mtime_ms.abs_diff(mtime_ms) <= 2000
             };
 
-            if cache.bytes == bytes && mtime_matches && cache.sha256_ok {
+            let path_matches = Path::new(&cache.path) == target || cache.path == target_str;
+            let sha256_matches = cache.sha256.eq_ignore_ascii_case(expected_sha256);
+            let size_matches = cache.bytes == expected_size && bytes == expected_size;
+
+            if size_matches && path_matches && sha256_matches && mtime_matches && cache.sha256_ok {
                 return LocalModelReport {
                     installed: true,
                     path: target_str,
@@ -213,31 +246,28 @@ pub fn model_status_for_paths(
     }
 
     // 2. Slow path: verifica completa SHA-256 su disco
-    let sha256_ok = if bytes == expected_size {
-        match compute_file_sha256(target) {
-            Ok(hash) => {
-                let ok = hash.to_lowercase() == expected_sha256.to_lowercase();
-                if ok {
-                    let _ = save_model_cache(cache_file, &ModelVerificationCache {
-                        path: target_str.clone(),
-                        bytes,
-                        mtime_ms,
-                        sha256: hash,
-                        sha256_ok: true,
-                        verified_at: chrono::Utc::now().to_rfc3339(),
-                    });
-                } else {
-                    eprintln!("[llama] Hash mismatch on {}: {} vs expected {}", target.display(), hash, expected_sha256);
-                    let _ = fs::remove_file(cache_file);
-                }
-                ok
+    let sha256_ok = match compute_file_sha256(target) {
+        Ok(hash) => {
+            let ok = hash.eq_ignore_ascii_case(expected_sha256);
+            if ok {
+                let _ = save_model_cache(cache_file, &ModelVerificationCache {
+                    path: target_str.clone(),
+                    bytes,
+                    mtime_ms,
+                    sha256: hash,
+                    sha256_ok: true,
+                    verified_at: chrono::Utc::now().to_rfc3339(),
+                });
+            } else {
+                eprintln!("[llama] Hash mismatch on {}: {} vs expected {}", target.display(), hash, expected_sha256);
+                let _ = fs::remove_file(cache_file);
             }
-            Err(_) => false,
+            ok
         }
-    } else {
-        eprintln!("[llama] File size mismatch on {}: {} vs expected {}", target.display(), bytes, expected_size);
-        let _ = fs::remove_file(cache_file);
-        false
+        Err(_) => {
+            let _ = fs::remove_file(cache_file);
+            false
+        }
     };
 
     LocalModelReport {
@@ -1088,6 +1118,100 @@ mod tests {
         assert_eq!(rep.bytes, size);
         assert!(target.exists());
         assert!(cache_file.exists());
+    }
+
+    #[test]
+    fn test_cache_with_unexpected_hash_triggers_recomputation() {
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join("model.gguf");
+        let cache_file = tmp.path().join("model.gguf.sha256.json");
+        let content = b"real-model-content-abc";
+        fs::write(&target, content).unwrap();
+        let meta = fs::metadata(&target).unwrap();
+        let size = meta.len();
+        let mtime_ms = meta
+            .modified()
+            .unwrap()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+        let real_hash = compute_file_sha256(&target).unwrap();
+
+        // Scrive una cache con un hash vecchio o di un altro modello
+        save_model_cache(
+            &cache_file,
+            &ModelVerificationCache {
+                path: target.to_string_lossy().to_string(),
+                bytes: size,
+                mtime_ms,
+                sha256: "0000000000000000000000000000000000000000000000000000000000000000".into(),
+                sha256_ok: true,
+                verified_at: chrono::Utc::now().to_rfc3339(),
+            },
+        ).unwrap();
+
+        // Chiamata con l'hash atteso reale
+        let rep = model_status_for_paths(&target, &cache_file, size, &real_hash, false);
+        // Poiché la cache aveva un hash diverso, la via rapida NON deve accettarla;
+        // passa alla verifica completa, riscontra l'hash reale e aggiorna la cache.
+        assert!(rep.installed);
+        assert!(rep.sha256_ok);
+        let updated_cache = read_model_cache(&cache_file).unwrap();
+        assert_eq!(updated_cache.sha256, real_hash);
+    }
+
+    #[test]
+    fn test_unexpected_size_reports_not_installed() {
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join("model.gguf");
+        let cache_file = tmp.path().join("model.gguf.sha256.json");
+        fs::write(&target, b"short-content").unwrap();
+        let meta = fs::metadata(&target).unwrap();
+        let actual_size = meta.len();
+
+        // Chiamata con dimensione attesa diversa
+        let rep = model_status_for_paths(
+            &target,
+            &cache_file,
+            actual_size + 100, // dimensione attesa differente
+            "any-sha256",
+            false,
+        );
+        assert!(!rep.installed, "Dimensione diversa deve restituire non installato");
+        assert!(!rep.sha256_ok);
+        assert!(!cache_file.exists());
+    }
+
+    #[test]
+    fn test_execution_does_not_modify_userprofile_limen_vault() {
+        let test_log_path = get_local_model_timing_log_path();
+        assert!(
+            test_log_path.starts_with(std::env::temp_dir()),
+            "Nei test il registro deve andare nella directory temporanea: {:?}",
+            test_log_path
+        );
+
+        let user_vault_dir = PathBuf::from(std::env::var("USERPROFILE").unwrap_or_else(|_| ".".into()))
+            .join(".limen-vault");
+        let user_log = user_vault_dir.join("local_model_timing.log");
+        let before_mod = if user_log.exists() {
+            fs::metadata(&user_log).ok().and_then(|m| m.modified().ok())
+        } else {
+            None
+        };
+
+        log_local_model_timing("TEST_EVENT", 42, "unit-test-verification");
+
+        let after_mod = if user_log.exists() {
+            fs::metadata(&user_log).ok().and_then(|m| m.modified().ok())
+        } else {
+            None
+        };
+
+        assert_eq!(
+            before_mod, after_mod,
+            "L'esecuzione dei test NON deve modificare o scrivere nel log reale in ~/.limen-vault"
+        );
     }
 
     #[test]

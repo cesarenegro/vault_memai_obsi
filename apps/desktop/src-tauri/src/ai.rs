@@ -83,10 +83,27 @@ pub struct AskTimingBreakdown {
 }
 
 pub fn get_ask_timing_log_path() -> PathBuf {
-    let base = std::env::var("USERPROFILE")
-        .or_else(|_| std::env::var("HOME"))
-        .unwrap_or_else(|_| ".".into());
-    PathBuf::from(base).join(".limen-vault").join("ask_timing.log")
+    if let Ok(override_path) = std::env::var("LIMEN_ASK_TIMING_LOG") {
+        if !override_path.trim().is_empty() {
+            return PathBuf::from(override_path);
+        }
+    }
+    if let Ok(timing_dir) = std::env::var("LIMEN_TIMING_LOG_DIR") {
+        if !timing_dir.trim().is_empty() {
+            return PathBuf::from(timing_dir).join("ask_timing.log");
+        }
+    }
+    #[cfg(test)]
+    {
+        return std::env::temp_dir().join("limen_test_ask_timing.log");
+    }
+    #[allow(unreachable_code)]
+    {
+        let base = std::env::var("USERPROFILE")
+            .or_else(|_| std::env::var("HOME"))
+            .unwrap_or_else(|_| ".".into());
+        PathBuf::from(base).join(".limen-vault").join("ask_timing.log")
+    }
 }
 
 pub fn log_ask_timing_detailed(entry: &AskTimingLogEntry) {
