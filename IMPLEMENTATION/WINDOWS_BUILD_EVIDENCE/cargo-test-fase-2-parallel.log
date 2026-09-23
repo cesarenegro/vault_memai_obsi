@@ -1,0 +1,392 @@
+﻿cargo : warning: unused import: `cap_std::fs::MetadataExt`
+At line:1 char:1
++ cargo test 2>&1 | Out-File -Encoding utf8 "E:\Projects\vault_memai_ob ...
++ ~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: unused...s::MetadataExt`:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+   --> src\search.rs:448:9
+    |
+448 |     use cap_std::fs::MetadataExt;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `ffi::CString`
+  --> src\snapshots.rs:12:5
+   |
+12 |     ffi::CString,
+   |     ^^^^^^^^^^^^
+
+warning: unused imports: `Command`, `Duration`, `Instant`, and `Stdio`
+ --> src\extraction.rs:6:15
+  |
+6 |     process::{Command, Stdio},
+  |               ^^^^^^^  ^^^^^
+7 |     time::{Duration, Instant},
+  |            ^^^^^^^^  ^^^^^^^
+
+warning: unused variable: `lock`
+   --> src\sync.rs:484:17
+    |
+484 |             let lock = sys.open_with(".m7-lock", &lock_opts).map_err(err)?;
+    |                 ^^^^ help: if this is intentional, prefix it with an underscore: `_lock`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> src\extraction.rs:17:13
+   |
+17 |         let mut builder = std::fs::DirBuilder::new();
+   |             ----^^^^^^^
+   |             |
+   |             help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `vault_path` is never read
+   --> src\search.rs:176:5
+    |
+175 | struct SearchIndexCacheEntry {
+    |        --------------------- field in this struct
+176 |     vault_path: std::path::PathBuf,
+    |     ^^^^^^^^^^
+    |
+    = note: `SearchIndexCacheEntry` has a derived impl for the trait `Clone`, but this is intentionally ignored during 
+dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `load` is never used
+   --> src\search.rs:214:4
+    |
+214 | fn load(system: &Dir) -> Result<Option<std::sync::Arc<SearchIndexData>>, String> {
+    |    ^^^^
+
+warning: constant `SERVICE` is never used
+   --> src\tunnel.rs:177:7
+    |
+177 | const SERVICE:&str="dev.arkai.limenvault.tunnel";
+    |       ^^^^^^^
+
+warning: struct `Scratch` is never constructed
+  --> src\extraction.rs:13:8
+   |
+13 | struct Scratch(std::path::PathBuf);
+   |        ^^^^^^^
+
+warning: associated function `new` is never used
+  --> src\extraction.rs:15:8
+   |
+14 | impl Scratch {
+   | ------------ associated function in this implementation
+15 |     fn new() -> Result<Self, String> {
+   |        ^^^
+
+warning: field `vault_path` is never read
+  --> src\catalog.rs:29:5
+   |
+28 | struct CatalogCacheEntry {
+   |        ----------------- field in this struct
+29 |     vault_path: std::path::PathBuf,
+   |     ^^^^^^^^^^
+   |
+   = note: `CatalogCacheEntry` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead 
+code analysis
+
+warning: field `vault_path` is never read
+  --> src\embeddings.rs:31:5
+   |
+30 | struct EmbeddingsCacheEntry {
+   |        -------------------- field in this struct
+31 |     vault_path: PathBuf,
+   |     ^^^^^^^^^^
+   |
+   = note: `EmbeddingsCacheEntry` has a derived impl for the trait `Clone`, but this is intentionally ignored during 
+dead code analysis
+
+warning: `limen-vault` (lib) generated 12 warnings (run `cargo fix --lib -p limen-vault` to apply 5 suggestions)
+   Compiling limen-vault v0.3.0 (E:\Projects\vault_memai_obsi\apps\desktop\src-tauri)
+warning: variable does not need to be mutable
+   --> src\tunnel.rs:224:13
+    |
+224 |         let mut child = Command::new("cmd")
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> src\extraction.rs:17:13
+   |
+17 |         let mut builder = std::fs::DirBuilder::new();
+   |             ----^^^^^^^
+   |             |
+   |             help: remove this `mut`
+
+warning: unused variable: `doc_id`
+    --> src\catalog.rs:2026:13
+     |
+2026 |         let doc_id = make_document_id("20_RAW_SOURCES/doc.md");
+     |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_doc_id`
+
+warning: `limen-vault` (lib test) generated 13 warnings (10 duplicates) (run `cargo fix --lib -p limen-vault --tests` 
+to apply 3 suggestions)
+warning: unused variable: `t0`
+  --> src\bin\diagnose_fase1.rs:46:9
+   |
+46 |     let t0 = std::time::Instant::now();
+   |         ^^ help: if this is intentional, prefix it with an underscore: `_t0`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `exact_bonus` is never read
+   --> src\bin\diagnose_fase1.rs:227:9
+    |
+214 |     struct FusedRecord {
+    |            ----------- field in this struct
+...
+227 |         exact_bonus: f64,
+    |         ^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `limen-vault` (bin "diagnose_fase1" test) generated 2 warnings (run `cargo fix --bin "diagnose_fase1" -p 
+limen-vault --tests` to apply 1 suggestion)
+warning: unused import: `ffi::CString`
+  --> src\snapshots.rs:12:5
+   |
+12 |     ffi::CString,
+   |     ^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `limen-vault` (bin "limen-vault" test) generated 1 warning (run `cargo fix --bin "limen-vault" -p limen-vault 
+--tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.56s
+     Running unittests src\lib.rs (target\debug\deps\limen_vault-b7ab620e0196d8b2.exe)
+
+running 124 tests
+test ai::model_tests::models_are_validated_and_deduplicated ... ok
+test ai::index_policy_test::forged_approval_is_rejected ... ok
+test ai::tests::source_stale_symlink_and_preview_cancel ... ok
+test ai::tests::test_consecutive_read_indexed_document_and_read_source_zero_disk_reads ... ok
+test ai::tests::approved_policy_and_context_hash ... ok
+test ai::tests::test_citation_locators_and_tamper_detection ... ok
+test ai::tests::preview_bounds_and_untrusted_data_role ... ok
+test ai::tests::citation_ids_and_incomplete_rejected ... ok
+test ai::tests::binary_raw_source_extracted_text_is_read_in_ai ... ok
+test ai::tests::test_diagnosis_passage_id_and_relative_path_citations_resolved ... ok
+test ai::tests::test_multi_vault_cache_isolation ... ok
+test ai::tests::test_corrections_a_b_c_d_schema_short_ids_warning_and_system_instructions ... ok
+test ai::tests::test_source_integrity_ntfs_vs_non_ntfs ... ok
+test ai::tests::test_verify_post_source_changed_during_request_rejected ... ok
+test ai::tests::test_openai_consent_persisted_and_enforced ... ok
+test ai::tests::test_offline_llama_server_hybrid_fallback_no_error ... ok
+test ai::tests::test_eligibility_before_limits_regression_50_drafts_do_not_hide_approved_source ... ok
+test automation::tests::concurrency_and_scheduler_background_reconciliation ... ok
+test ai::tests::test_verify_source_ineligible_rejected ... ok
+test automation::tests::batch_import_receipts_deduplication_and_isolation ... ok
+test ai::tests::test_verify_pre_source_changed_since_preview_rejected ... ok
+test ai::tests::test_verify_source_generated_obsolete_rejected ... ok
+test automation::tests::native_picker_import_is_bounded_and_preserves_selected_file ... ok
+test automation::tests::forged_citations_human_edits_and_symlinks ... ok
+test automation::tests::offline_ingestion_and_extraction_without_ai_key ... ok
+test automation::tests::full_workflow_preserves_originals_deduplicates_and_retrieves ... ok
+test automation::tests::inventory_visible_before_activation_and_after_source_changes ... ok
+test automation::tests::unicode_text_chunks_preserve_every_byte ... ok
+test automation::tests::spreadsheets_keep_rows_beyond_api_limit_and_formulas ... ok
+test automation::tests::bounded_retries_resume_and_key_absence ... ok
+test automation::tests::long_documents_are_split_without_manual_work ... ok
+test catalog::tests::test_catalog_reloaded_after_vault_modification ... ok
+test catalog::tests::test_chunk_text_to_passages_locators ... ok
+test catalog::tests::test_catalog_in_memory_caching_and_zero_disk_reads_on_consecutive_calls ... ok
+test catalog::tests::test_catalog_save_and_load_lifecycle ... ok
+test catalog::tests::test_catalog_rewrite_same_size_reloaded ... ok
+test catalog::tests::test_deduplication_preserves_aliases ... ok
+test automation::tests::stale_search_lock_recovers_and_active_lock_is_preserved ... ok
+test catalog::tests::test_document_pruning_on_file_deletion ... ok
+test catalog::tests::test_document_revision_bump_on_content_change ... ok
+test catalog::tests::test_catalog_multivault_isolation ... ok
+test catalog::tests::test_passage_integrity_and_tamper_detection ... ok
+test catalog::tests::test_double_migration_idempotent_and_rollback ... ok
+test catalog::tests::test_proposals_stay_legacy_drafts_and_human_notes_preserved ... ok
+test automation::tests::source_changes_and_deletion_invalidate_wiki_before_next_tick ... ok
+test compiler::tests::test_rust_compiler_compiles_draft_with_status_draft ... ok
+test catalog::tests::test_verify_single_passage_document_integrity_with_doc_hash_and_passage_hash ... ok
+test compiler::tests::test_rust_compiler_deduplication ... ok
+test catalog::tests::test_verify_document_passage_integrity_all_cases ... ok
+test embeddings::tests::test_cosine_similarity ... ok
+test catalog::tests::test_sync_catalog_and_offline_extraction ... ok
+test embeddings::tests::test_embedded_text_sha256_cache_invalidation_on_prefix_change ... ok
+test embeddings::tests::test_fetch_embeddings_api_key_rules ... ok
+test catalog::tests::test_lookup_by_path_beyond_50_documents_and_homonyms ... ok
+test embeddings::tests::test_embeddings_cache_invalidates_on_dimension_change ... ok
+test compiler::tests::test_rust_compiler_sanitizes_html ... ok
+test embeddings::tests::test_embeddings_cache_lifecycle ... ok
+test embeddings::tests::test_embeddings_in_memory_cache_no_disk_re_read ... ok
+test embeddings::tests::test_hybrid_fusion_coalescence_single_row_when_found_by_both_engines ... ok
+test embeddings::tests::test_is_loopback_endpoint_security_rules ... ok
+test embeddings::tests::test_hybrid_fusion_coalesced_beats_single_engine_at_score_parity ... ok
+test embeddings::tests::test_hybrid_fusion_ranks_exact_code_first ... ok
+test embeddings::tests::test_passage_embedding_text_context_and_20_percent_cap ... ok
+test embeddings::tests::test_local_provider_rejects_non_loopback_endpoint ... ok
+test embeddings::tests::test_hybrid_search_local_offline_graceful_fallback ... ok
+test extraction::tests::word_and_slides_are_literal ... ok
+test embeddings::tests::test_resolve_embeddings_endpoint_defaults_to_openai_when_absent ... ok
+test embeddings::tests::test_hybrid_search_offline_graceful_fallback ... ok
+test llama::tests::test_detect_llama_server_binary ... ok
+test llama::tests::test_find_free_port ... ok
+test embeddings::tests::test_hybrid_fusion_high_sem_pure_beats_mediocre_dual_signals ... ok
+test embeddings::tests::test_hybrid_fusion_pure_semantic_enters_top_ten ... ok
+test llama::tests::test_model_expected_constants ... ok
+test knowledge::tests::symlink_and_oversized_notes_fail_explicitly ... ok
+test knowledge::tests::actual_notes_without_index_and_no_mutations ... ok
+test llama::tests::test_local_model_status_returns_struct ... ok
+test llama::tests::test_install_from_file_single_io_pass ... ok
+test embeddings::tests::test_provider_report_with_empty_cache_reports_zero_dims_and_total_passages ... ok
+test llama::tests::test_pid_file_roundtrip_and_orphan_decision ... ok
+test llama::tests::test_model_modified_mtime_triggers_recomputation ... ok
+test mcp::tests::rpc_readonly_lifecycle ... ok
+test llama::tests::test_second_status_call_uses_cache_zero_hash_recalculation ... ok
+test keychain::test_windows_credential_manager_roundtrip ... ok
+test llama::tests::test_model_replaced_same_size_detected ... ok
+test mcp::tests::windows_identity_stable_and_distinct ... ok
+test proposals::tests::m7_corrupt_state_and_journal_preserved ... ok
+test mcp::tests::http_auth_origin_and_revocation ... ok
+test proposals::tests::m7_raw_collision_symlink_and_changed_bytes_denied ... ok
+test search::tests::metadata_filters_unicode_and_readonly ... ok
+test proposals::tests::m7_import_keeps_compiler_draft_and_rejection ... ok
+test proposals::tests::m7_metadata_secrets_and_output_provenance ... ok
+test proposals::tests::m7_recovery_after_document_published ... ok
+test search::tests::test_contains_whole_words_rejects_substrings_of_other_words ... ok
+test proposals::tests::m7_revisions_exclusive_approval_and_idempotence ... ok
+test search::tests::test_c11_raw_sources_term_frequency_not_deduped ... ok
+test search::tests::search_passages_and_catalog_indexing ... ok
+test search::tests::test_c12_exact_token_document_outranks_substring_only_document ... ok
+test search::tests::test_in_memory_search_cache_consecutive_no_disk_re_read ... ok
+test search::tests::test_search_detects_removed_and_modified_files_without_blocking ... ok
+test search::tests::test_search_index_rewrite_same_size_reloaded ... ok
+test search::tests::test_search_index_multivault_isolation ... ok
+test search::tests::test_c11_bm25_short_exact_document_beats_long_document_with_common_words ... ok
+test snapshots::tests::failure_at_manifest_write_cleans_only_staging ... ok
+test sync::tests::sync_capture_rejects_symlink_and_freezes_bytes ... ok
+test snapshots::tests::test_rust_snapshot_creation_and_integrity ... ok
+test sync::tests::sync_config_rejects_insecure_endpoints ... ok
+test snapshots::tests::snapshot_corruption_and_readonly ... ok
+test sync::tests::sync_persisted_capture_survives_state_restart_and_detects_corruption ... ok
+test sync::tests::sync_import_receipt_recovers_commit_window_without_overwrite ... ok
+test snapshots::tests::concurrent_publication_and_collision ... ok
+test snapshots::tests::test_snapshot_restore_to_separate_folder_verifies_hashes ... ok
+test sync::tests::sync_rejects_paths_and_collisions ... ok
+test tunnel::tests::invalid_config_and_symlink_do_not_overwrite_files ... ok
+test vault::tests::capability_blocks_external_symlinks_and_broken_links ... ok
+test sync::tests::sync_selection_persists_only_selected_frozen_notes ... ok
+test tunnel::tests::test_job_object_process_tree_kill ... ok
+test vault::tests::shared_frontmatter_fixtures ... ok
+test vault::tests::exclusive_creation_preserves_existing_bytes ... ok
+test vault::tests::capability_blocks_external_junctions ... ok
+test automation::tests::complete_multi_format_pipeline_with_declared_fake_ai ... ok
+test vault::tests::manifest_is_consumed_without_reopening ... ok
+test vault::tests::concurrent_creation_has_one_winner ... ok
+test vault::tests::raw_sources_foreign_yaml_frontmatter_allows_vault_opening ... ok
+test llama::tests::test_process_parent_and_command_reads_live_process_only ... ok
+
+test result: ok. 124 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.80s
+
+     Running unittests src\bin\a04_real_local.rs (target\debug\deps\a04_real_local-20417175db04e0a5.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\answer_compare.rs (target\debug\deps\answer_compare-278af9b893fe2f21.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\c10_tune_dev.rs (target\debug\deps\c10_tune_dev-c8cf6d5abcbe379a.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\collaudo_compito1.rs (target\debug\deps\collaudo_compito1-d527ea8ef2d164aa.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\diagnose_bnxt.rs (target\debug\deps\diagnose_bnxt-99b44144db5482de.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\diagnose_c8.rs (target\debug\deps\diagnose_c8-9c5ae0262f62da9f.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\diagnose_fase1.rs (target\debug\deps\diagnose_fase1-58785d216e2f5089.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\gold-benchmark.rs (target\debug\deps\gold_benchmark-f5e3bbd2936f0e35.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\main.rs (target\debug\deps\limen_vault-dc16fa893d5aac5c.exe)
+
+running 18 tests
+test compiler::tests::test_rust_compiler_sanitizes_html ... ok
+test compiler::tests::test_rust_compiler_compiles_draft_with_status_draft ... ok
+test compiler::tests::test_rust_compiler_deduplication ... ok
+test tests::obsidian_registration_matches_canonical_path ... ok
+test tests::test_rust_vault_validation ... ok
+test snapshots::tests::test_rust_snapshot_creation_and_integrity ... ok
+test tests::test_rust_invalid_yaml_rejection ... ok
+test vault::tests::capability_blocks_external_junctions ... ok
+test vault::tests::exclusive_creation_preserves_existing_bytes ... ok
+test vault::tests::capability_blocks_external_symlinks_and_broken_links ... ok
+test vault::tests::shared_frontmatter_fixtures ... ok
+test vault::tests::concurrent_creation_has_one_winner ... ok
+test snapshots::tests::failure_at_manifest_write_cleans_only_staging ... ok
+test snapshots::tests::snapshot_corruption_and_readonly ... ok
+test snapshots::tests::test_snapshot_restore_to_separate_folder_verifies_hashes ... ok
+test vault::tests::manifest_is_consumed_without_reopening ... ok
+test vault::tests::raw_sources_foreign_yaml_frontmatter_allows_vault_opening ... ok
+test snapshots::tests::concurrent_publication_and_collision ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.42s
+
+     Running unittests src\bin\search_benchmark.rs (target\debug\deps\search_benchmark-3965c69f87794315.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\sync_timing.rs (target\debug\deps\sync_timing-5bbe42fbc8a008cb.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\vault-check.rs (target\debug\deps\vault_check-a37c9b7465d0ba38.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests limen_vault
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

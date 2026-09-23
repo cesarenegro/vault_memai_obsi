@@ -370,7 +370,7 @@ fn main() {
             catalog_sync,catalog_list_documents,catalog_process_extractions,catalog_get_document,catalog_get_by_path,catalog_verify_document_passage,catalog_read_verified_text,catalog_read_text,catalog_read_passage,catalog_open_original,catalog_reveal_in_finder,catalog_get_summary,
             embeddings_get_status,embeddings_sync_vault,search_vault_hybrid,
             embeddings_get_provider,embeddings_set_provider,
-            local_model_status,local_model_download,local_model_select_file,local_model_pick_and_install,select_vault_folder,
+            local_model_status,local_model_download,local_model_select_file,local_model_pick_and_install,local_model_verify_integrity,select_vault_folder,
             local_server_start,local_server_stop,local_server_status,embeddings_cancel_sync
         ])
         .build(tauri::generate_context!())
@@ -743,9 +743,17 @@ async fn embeddings_set_provider(
 
 #[tauri::command]
 async fn local_model_status() -> Result<limen_vault::llama::LocalModelReport, String> {
-    tauri::async_runtime::spawn_blocking(limen_vault::llama::local_model_status)
+    let t0 = std::time::Instant::now();
+    let rep = tauri::async_runtime::spawn_blocking(limen_vault::llama::local_model_status)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    let elapsed = t0.elapsed().as_millis() as u64;
+    limen_vault::llama::log_local_model_timing(
+        "PANEL_OPEN_STATUS",
+        elapsed,
+        &format!("installed={}, sha256_ok={}", rep.installed, rep.sha256_ok),
+    );
+    Ok(rep)
 }
 
 #[tauri::command]
@@ -808,7 +816,8 @@ async fn local_model_pick_and_install(
     app: tauri::AppHandle,
 ) -> Result<limen_vault::llama::LocalModelReport, String> {
     use tauri_plugin_dialog::DialogExt;
-    tauri::async_runtime::spawn_blocking(move || {
+    let t0 = std::time::Instant::now();
+    let rep = tauri::async_runtime::spawn_blocking(move || {
         let file = app
             .dialog()
             .file()
@@ -824,7 +833,31 @@ async fn local_model_pick_and_install(
         }
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())??;
+    let elapsed = t0.elapsed().as_millis() as u64;
+    limen_vault::llama::log_local_model_timing(
+        "FILE_SELECTION",
+        elapsed,
+        &format!("installed={}, sha256_ok={}", rep.installed, rep.sha256_ok),
+    );
+    Ok(rep)
+}
+
+#[tauri::command]
+async fn local_model_verify_integrity() -> Result<limen_vault::llama::LocalModelReport, String> {
+    let t0 = std::time::Instant::now();
+    let rep = tauri::async_runtime::spawn_blocking(|| {
+        limen_vault::llama::local_model_status_with_recheck(true)
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    let elapsed = t0.elapsed().as_millis() as u64;
+    limen_vault::llama::log_local_model_timing(
+        "MANUAL_VERIFY",
+        elapsed,
+        &format!("installed={}, sha256_ok={}", rep.installed, rep.sha256_ok),
+    );
+    Ok(rep)
 }
 
 #[tauri::command]

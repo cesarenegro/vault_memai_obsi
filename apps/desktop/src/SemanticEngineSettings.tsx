@@ -49,6 +49,12 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
   const [downloadProgress, setDownloadProgress] = useState<LocalModelProgress | null>(null);
 
   const [startingServer, setStartingServer] = useState(false);
+  const [stoppingServer, setStoppingServer] = useState(false);
+  const [pickingModelFile, setPickingModelFile] = useState(false);
+  const [verifyingIntegrity, setVerifyingIntegrity] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [optimisticProvider, setOptimisticProvider] = useState<'openai' | 'local' | null>(null);
+
   const [reindexing, setReindexing] = useState(false);
   const [reindexPercent, setReindexPercent] = useState<number | null>(null);
   const [reindexCounts, setReindexCounts] = useState<{ processed: number; total: number } | null>(null);
@@ -65,6 +71,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
 
   const refreshAll = async () => {
     if (!vaultPath) return;
+    setRefreshing(true);
     try {
       const [prov, model, srv, consent] = await Promise.all([
         aiIpc.embeddingsGetProvider(vaultPath),
@@ -77,10 +84,15 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
         setModelReport(model);
         setServerReport(srv);
         setOpenaiConsent(consent);
+        setOptimisticProvider(null);
       }
     } catch (err) {
       if (isMounted.current) {
         setError(`Errore nel caricamento delle impostazioni semantiche: ${String(err)}`);
+      }
+    } finally {
+      if (isMounted.current) {
+        setRefreshing(false);
       }
     }
   };
@@ -146,6 +158,8 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
   }, [vaultPath]);
 
   const handleSelectProvider = async (provider: 'openai' | 'local') => {
+    if (loading || downloading || reindexing) return;
+    setOptimisticProvider(provider);
     setError(null);
     setSuccessMessage(null);
     setLoading(true);
@@ -155,6 +169,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
       setSuccessMessage(`Fornitore semantico aggiornato a: ${provider === 'local' ? 'Locale (bge-m3)' : 'OpenAI'}`);
       await refreshAll();
     } catch (err) {
+      setOptimisticProvider(null);
       setError(`Impossibile impostare il fornitore: ${String(err)}`);
     } finally {
       setLoading(false);
@@ -162,6 +177,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
   };
 
   const handleDownloadModel = async () => {
+    if (downloading || loading) return;
     setError(null);
     setSuccessMessage(null);
     setDownloading(true);
@@ -180,22 +196,49 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
   };
 
   const handlePickModelFile = async () => {
+    if (pickingModelFile || loading || downloading) return;
     setError(null);
     setSuccessMessage(null);
-    setLoading(true);
+    setPickingModelFile(true);
     try {
       const rep = await aiIpc.localModelPickAndInstall();
       setModelReport(rep);
-      setSuccessMessage('Modello selezionato installato con successo e SHA-256 verificato.');
+      if (rep.sha256Ok) {
+        setSuccessMessage('Modello selezionato installato con successo e SHA-256 verificato.');
+      } else {
+        setError('Modello selezionato installato ma la verifica SHA-256 non è valida.');
+      }
     } catch (err) {
       setError(`Installazione del file fallita: ${String(err)}`);
     } finally {
-      setLoading(false);
+      setPickingModelFile(false);
+      await refreshAll();
+    }
+  };
+
+  const handleVerifyIntegrity = async () => {
+    if (verifyingIntegrity || loading || downloading) return;
+    setError(null);
+    setSuccessMessage(null);
+    setVerifyingIntegrity(true);
+    try {
+      const rep = await aiIpc.localModelVerifyIntegrity();
+      setModelReport(rep);
+      if (rep.sha256Ok) {
+        setSuccessMessage('Verifica integrità completata: SHA-256 integro e cache allineata.');
+      } else {
+        setError('Verifica integrità fallita: SHA-256 non corrispondente al modello bge-m3-Q8_0.');
+      }
+    } catch (err) {
+      setError(`Errore durante la verifica di integrità: ${String(err)}`);
+    } finally {
+      setVerifyingIntegrity(false);
       await refreshAll();
     }
   };
 
   const handleStartServer = async () => {
+    if (startingServer || loading) return;
     setError(null);
     setSuccessMessage(null);
     setStartingServer(true);
@@ -216,9 +259,10 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
   };
 
   const handleStopServer = async () => {
+    if (stoppingServer || loading) return;
     setError(null);
     setSuccessMessage(null);
-    setLoading(true);
+    setStoppingServer(true);
     try {
       const rep = await aiIpc.localServerStop();
       setServerReport(rep);
@@ -226,7 +270,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
     } catch (err) {
       setError(`Arresto del servizio non riuscito: ${String(err)}`);
     } finally {
-      setLoading(false);
+      setStoppingServer(false);
       await refreshAll();
     }
   };
@@ -259,7 +303,8 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
     }
   };
 
-  const isLocal = providerReport?.provider === 'local';
+  const effectiveProvider = optimisticProvider ?? providerReport?.provider ?? 'local';
+  const isLocal = effectiveProvider === 'local';
 
   return (
     <div className="limen-card" style={{ padding: 24, marginTop: 20 }}>
@@ -371,12 +416,14 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
               fontWeight: 600,
               padding: '2px 8px',
               borderRadius: 4,
-              backgroundColor: modelReport === null ? '#f1f5f9' : modelReport.installed && modelReport.sha256Ok ? '#dcfce7' : '#fee2e2',
-              color: modelReport === null ? '#64748b' : modelReport.installed && modelReport.sha256Ok ? '#166534' : '#991b1b',
+              backgroundColor: modelReport === null || verifyingIntegrity ? '#fef3c7' : modelReport.installed && modelReport.sha256Ok ? '#dcfce7' : '#fee2e2',
+              color: modelReport === null || verifyingIntegrity ? '#92400e' : modelReport.installed && modelReport.sha256Ok ? '#166534' : '#991b1b',
             }}
           >
-            {modelReport === null
+            {verifyingIntegrity
               ? 'VERIFICA IN CORSO…'
+              : modelReport === null
+              ? 'CONTROLLO IN CORSO…'
               : modelReport.installed && modelReport.sha256Ok
               ? 'INSTALLATO (SHA-256 OK)'
               : modelReport.installed
@@ -395,6 +442,34 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
             </div>
             <div style={{ color: '#166534', fontWeight: 500, marginTop: 4 }}>
               ✓ Dopo lo scaricamento, il funzionamento è a rete zero. Nessun dato lascia mai questo computer.
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+              <button
+                style={{
+                  ...buttonSecondary,
+                  backgroundColor: verifyingIntegrity ? '#fef3c7' : '#f8fafc',
+                  color: verifyingIntegrity ? '#92400e' : '#1e293b',
+                  borderColor: verifyingIntegrity ? '#f59e0b' : '#cbd5e1',
+                  cursor: loading || downloading || verifyingIntegrity || pickingModelFile ? 'not-allowed' : 'pointer',
+                }}
+                disabled={loading || downloading || verifyingIntegrity || pickingModelFile}
+                onClick={handleVerifyIntegrity}
+              >
+                {verifyingIntegrity ? 'VERIFICA IN CORSO…' : 'VERIFICA INTEGRITÀ'}
+              </button>
+              <button
+                style={{
+                  ...buttonSecondary,
+                  backgroundColor: pickingModelFile ? '#fef3c7' : '#f8fafc',
+                  color: pickingModelFile ? '#92400e' : '#1e293b',
+                  borderColor: pickingModelFile ? '#f59e0b' : '#cbd5e1',
+                  cursor: loading || downloading || verifyingIntegrity || pickingModelFile ? 'not-allowed' : 'pointer',
+                }}
+                disabled={loading || downloading || verifyingIntegrity || pickingModelFile}
+                onClick={handlePickModelFile}
+              >
+                {pickingModelFile ? 'SELEZIONE E VERIFICA IN CORSO…' : 'SOSTITUISCI FILE GGUF DA DISCO…'}
+              </button>
             </div>
           </div>
         ) : (
@@ -439,17 +514,23 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
               <div style={{ display: 'flex', gap: 10 }}>
                 <button
                   style={buttonPrimary}
-                  disabled={loading || downloading}
+                  disabled={loading || downloading || pickingModelFile}
                   onClick={handleDownloadModel}
                 >
                   SCARICA MODELLO (635 MB)
                 </button>
                 <button
-                  style={buttonSecondary}
-                  disabled={loading || downloading}
+                  style={{
+                    ...buttonSecondary,
+                    backgroundColor: pickingModelFile ? '#fef3c7' : '#f8fafc',
+                    color: pickingModelFile ? '#92400e' : '#1e293b',
+                    borderColor: pickingModelFile ? '#f59e0b' : '#cbd5e1',
+                    cursor: loading || downloading || pickingModelFile ? 'not-allowed' : 'pointer',
+                  }}
+                  disabled={loading || downloading || pickingModelFile}
                   onClick={handlePickModelFile}
                 >
-                  SELEZIONA FILE GGUF DA DISCO…
+                  {pickingModelFile ? 'SELEZIONE E VERIFICA IN CORSO…' : 'SELEZIONA FILE GGUF DA DISCO…'}
                 </button>
               </div>
             )}
@@ -524,23 +605,42 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
         <div style={{ display: 'flex', gap: 10 }}>
           {serverReport?.running ? (
             <button
-              style={{ ...buttonSecondary, color: '#b91c1c', border: '1px solid #fecaca' }}
-              disabled={loading || startingServer}
+              style={{
+                ...buttonSecondary,
+                color: '#b91c1c',
+                border: '1px solid #fecaca',
+                backgroundColor: stoppingServer ? '#fee2e2' : '#f8fafc',
+                cursor: loading || startingServer || stoppingServer ? 'not-allowed' : 'pointer',
+              }}
+              disabled={loading || startingServer || stoppingServer}
               onClick={handleStopServer}
             >
-              ARRESTA SERVIZIO LOCALE
+              {stoppingServer ? 'ARRESTO IN CORSO…' : 'ARRESTA SERVIZIO LOCALE'}
             </button>
           ) : (
             <button
-              style={buttonSecondary}
-              disabled={loading || startingServer || !modelReport?.installed}
+              style={{
+                ...buttonSecondary,
+                backgroundColor: startingServer ? '#fef3c7' : '#f8fafc',
+                color: startingServer ? '#92400e' : '#1e293b',
+                borderColor: startingServer ? '#f59e0b' : '#cbd5e1',
+                cursor: loading || startingServer || stoppingServer || !modelReport?.installed ? 'not-allowed' : 'pointer',
+              }}
+              disabled={loading || startingServer || stoppingServer || !modelReport?.installed}
               onClick={handleStartServer}
             >
               {startingServer ? 'AVVIO IN CORSO…' : 'AVVIA SERVIZIO LOCALE'}
             </button>
           )}
-          <button style={buttonSecondary} onClick={refreshAll} disabled={loading}>
-            AGGIORNA STATO
+          <button
+            style={{
+              ...buttonSecondary,
+              cursor: loading || refreshing ? 'not-allowed' : 'pointer',
+            }}
+            onClick={refreshAll}
+            disabled={loading || refreshing}
+          >
+            {refreshing ? 'AGGIORNAMENTO…' : 'AGGIORNA STATO'}
           </button>
         </div>
       </div>

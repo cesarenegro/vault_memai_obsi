@@ -52,6 +52,39 @@ struct RunningState {
 #[derive(Clone, Default)]
 pub struct LlamaServerState(Arc<Mutex<RunningState>>);
 
+use std::sync::atomic::{AtomicU64, Ordering};
+
+pub static MODEL_SHA256_COMPUTE_COUNT: AtomicU64 = AtomicU64::new(0);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelVerificationCache {
+    pub path: String,
+    pub bytes: u64,
+    pub mtime_ms: u64,
+    pub sha256: String,
+    pub sha256_ok: bool,
+    pub verified_at: String,
+}
+
+pub fn get_local_model_timing_log_path() -> PathBuf {
+    let base = std::env::var("USERPROFILE")
+        .or_else(|_| std::env::var("HOME"))
+        .unwrap_or_else(|_| ".".into());
+    PathBuf::from(base).join(".limen-vault").join("local_model_timing.log")
+}
+
+pub fn log_local_model_timing(event: &str, elapsed_ms: u64, details: &str) {
+    let log_path = get_local_model_timing_log_path();
+    if let Some(parent) = log_path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let now = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let line = format!("{} | event={} | elapsed_ms={} | details={}\n", now, event, elapsed_ms, details);
+    if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(&log_path) {
+        let _ = f.write_all(line.as_bytes());
+    }
+}
+
 pub fn get_models_dir() -> Result<PathBuf, String> {
     let base = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
@@ -71,7 +104,25 @@ pub fn get_target_model_path() -> Result<PathBuf, String> {
     Ok(get_models_dir()?.join(EXPECTED_MODEL_FILE_NAME))
 }
 
+pub fn get_model_cache_meta_path() -> Result<PathBuf, String> {
+    Ok(get_models_dir()?.join("bge-m3-Q8_0.gguf.sha256.json"))
+}
+
+pub fn read_model_cache(cache_file: &Path) -> Option<ModelVerificationCache> {
+    if !cache_file.exists() {
+        return None;
+    }
+    let content = fs::read_to_string(cache_file).ok()?;
+    serde_json::from_str(&content).ok()
+}
+
+pub fn save_model_cache(cache_file: &Path, cache: &ModelVerificationCache) -> Result<(), String> {
+    let json = serde_json::to_string_pretty(cache).map_err(|e| e.to_string())?;
+    fs::write(cache_file, json).map_err(|e| e.to_string())
+}
+
 pub fn compute_file_sha256(path: &Path) -> Result<String, String> {
+    MODEL_SHA256_COMPUTE_COUNT.fetch_add(1, Ordering::Relaxed);
     let mut file = fs::File::open(path).map_err(|e| e.to_string())?;
     let mut hasher = Sha256::new();
     let mut buffer = [0u8; 65536];
@@ -85,9 +136,215 @@ pub fn compute_file_sha256(path: &Path) -> Result<String, String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
-/// Detects if model exists at target path or in local caches.
-/// If found in existing HuggingFace cache and valid, links or copies it to target path.
+/// Parametric verification function for production and unit testing.
+pub fn model_status_for_paths(
+    target: &Path,
+    cache_file: &Path,
+    expected_size: u64,
+    expected_sha256: &str,
+    force_recheck: bool,
+) -> LocalModelReport {
+    // If target does not exist, check common local huggingface snapshot location
+    if !target.exists() {
+        if let Ok(home) = std::env::var("HOME") {
+            let hf_candidate = Path::new(&home)
+                .join(".cache/huggingface/hub/models--gpustack--bge-m3-GGUF/snapshots/2d48f1737679ad900d5c26c5aad5410e9c70fdca/bge-m3-Q8_0.gguf");
+            if hf_candidate.exists() {
+                if let Ok(meta) = fs::metadata(&hf_candidate) {
+                    if meta.len() == expected_size {
+                        #[cfg(unix)]
+                        let _ = std::os::unix::fs::symlink(&hf_candidate, target);
+                        #[cfg(windows)]
+                        let _ = std::os::windows::fs::symlink_file(&hf_candidate, target);
+                    }
+                }
+            }
+        }
+    }
+
+    if !target.exists() {
+        return LocalModelReport {
+            installed: false,
+            path: target.to_string_lossy().to_string(),
+            bytes: 0,
+            sha256_ok: false,
+        };
+    }
+
+    let meta = match fs::metadata(target) {
+        Ok(m) => m,
+        Err(_) => {
+            return LocalModelReport {
+                installed: false,
+                path: target.to_string_lossy().to_string(),
+                bytes: 0,
+                sha256_ok: false,
+            };
+        }
+    };
+    let bytes = meta.len();
+    let mtime_ms = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    let target_str = target.to_string_lossy().to_string();
+
+    // 1. Fast path: verifica tramite cache dei metadati (se non è richiesto force_recheck)
+    if !force_recheck {
+        if let Some(cache) = read_model_cache(cache_file) {
+            let is_ntfs = crate::ai::is_high_precision_fs(target);
+            let mtime_matches = if is_ntfs {
+                cache.mtime_ms == mtime_ms
+            } else {
+                cache.mtime_ms.abs_diff(mtime_ms) <= 2000
+            };
+
+            if cache.bytes == bytes && mtime_matches && cache.sha256_ok {
+                return LocalModelReport {
+                    installed: true,
+                    path: target_str,
+                    bytes,
+                    sha256_ok: true,
+                };
+            }
+        }
+    }
+
+    // 2. Slow path: verifica completa SHA-256 su disco
+    let sha256_ok = if bytes == expected_size {
+        match compute_file_sha256(target) {
+            Ok(hash) => {
+                let ok = hash.to_lowercase() == expected_sha256.to_lowercase();
+                if ok {
+                    let _ = save_model_cache(cache_file, &ModelVerificationCache {
+                        path: target_str.clone(),
+                        bytes,
+                        mtime_ms,
+                        sha256: hash,
+                        sha256_ok: true,
+                        verified_at: chrono::Utc::now().to_rfc3339(),
+                    });
+                } else {
+                    eprintln!("[llama] Hash mismatch on {}: {} vs expected {}", target.display(), hash, expected_sha256);
+                    let _ = fs::remove_file(cache_file);
+                }
+                ok
+            }
+            Err(_) => false,
+        }
+    } else {
+        eprintln!("[llama] File size mismatch on {}: {} vs expected {}", target.display(), bytes, expected_size);
+        let _ = fs::remove_file(cache_file);
+        false
+    };
+
+    LocalModelReport {
+        installed: sha256_ok,
+        path: target_str,
+        bytes,
+        sha256_ok,
+    }
+}
+
+/// Install model from source file with SINGLE I/O pass (streaming copy + simultaneous hash computation).
+pub fn install_model_for_paths(
+    source_path: &Path,
+    target: &Path,
+    cache_file: &Path,
+    expected_size: u64,
+    expected_sha256: &str,
+) -> Result<LocalModelReport, String> {
+    let t0 = Instant::now();
+    if !source_path.is_file() {
+        return Err(format!("File non trovato: {:?}", source_path));
+    }
+    let meta = fs::metadata(source_path).map_err(|e| e.to_string())?;
+    let bytes = meta.len();
+    if bytes != expected_size {
+        return Err(format!(
+            "Dimensione file non corretta: {} byte (richiesti esattamente {} byte)",
+            bytes,
+            expected_size
+        ));
+    }
+
+    // Copia e calcolo hash in UN'UNICA passata di I/O (singola lettura del file sorgente)
+    let temp_target = target.with_extension("installing");
+    let _ = fs::remove_file(&temp_target);
+
+    let mut source_file = fs::File::open(source_path).map_err(|e| e.to_string())?;
+    let mut dest_file = fs::File::create(&temp_target).map_err(|e| e.to_string())?;
+    let mut hasher = Sha256::new();
+    let mut buffer = vec![0u8; 1024 * 1024];
+
+    loop {
+        let count = source_file.read(&mut buffer).map_err(|e| e.to_string())?;
+        if count == 0 {
+            break;
+        }
+        dest_file.write_all(&buffer[..count]).map_err(|e| e.to_string())?;
+        hasher.update(&buffer[..count]);
+    }
+    dest_file.flush().map_err(|e| e.to_string())?;
+    drop(dest_file);
+    drop(source_file);
+
+    MODEL_SHA256_COMPUTE_COUNT.fetch_add(1, Ordering::Relaxed);
+
+    let hash = format!("{:x}", hasher.finalize());
+    if hash.to_lowercase() != expected_sha256.to_lowercase() {
+        let _ = fs::remove_file(&temp_target);
+        return Err(format!(
+            "Verifica SHA-256 fallita: calcolato {} vs atteso {}",
+            hash, expected_sha256
+        ));
+    }
+
+    if target.exists() {
+        let _ = fs::remove_file(target);
+    }
+    fs::rename(&temp_target, target).or_else(|_| {
+        fs::copy(&temp_target, target).map(|_| ())?;
+        let _ = fs::remove_file(&temp_target);
+        Ok::<(), std::io::Error>(())
+    }).map_err(|e| e.to_string())?;
+
+    let dest_meta = fs::metadata(target).map_err(|e| e.to_string())?;
+    let dest_mtime_ms = dest_meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    let target_str = target.to_string_lossy().to_string();
+
+    save_model_cache(cache_file, &ModelVerificationCache {
+        path: target_str.clone(),
+        bytes,
+        mtime_ms: dest_mtime_ms,
+        sha256: hash,
+        sha256_ok: true,
+        verified_at: chrono::Utc::now().to_rfc3339(),
+    })?;
+
+    let elapsed = t0.elapsed().as_millis() as u64;
+    log_local_model_timing("FILE_SELECTION", elapsed, &format!("path={}, bytes={}", target_str, bytes));
+
+    Ok(LocalModelReport {
+        installed: true,
+        path: target_str,
+        bytes,
+        sha256_ok: true,
+    })
+}
+
 pub fn local_model_status() -> LocalModelReport {
+    local_model_status_with_recheck(false)
+}
+
+pub fn local_model_status_with_recheck(force_recheck: bool) -> LocalModelReport {
     let target = match get_target_model_path() {
         Ok(p) => p,
         Err(_) => {
@@ -99,97 +356,17 @@ pub fn local_model_status() -> LocalModelReport {
             };
         }
     };
-
-    // If target does not exist, check common local huggingface snapshot location
-    if !target.exists() {
-        if let Ok(home) = std::env::var("HOME") {
-            let hf_candidate = Path::new(&home)
-                .join(".cache/huggingface/hub/models--gpustack--bge-m3-GGUF/snapshots/2d48f1737679ad900d5c26c5aad5410e9c70fdca/bge-m3-Q8_0.gguf");
-            if hf_candidate.exists() {
-                if let Ok(meta) = fs::metadata(&hf_candidate) {
-                    if meta.len() == EXPECTED_MODEL_SIZE_BYTES {
-                        #[cfg(unix)]
-                        let _ = std::os::unix::fs::symlink(&hf_candidate, &target);
-                        #[cfg(windows)]
-                        let _ = std::os::windows::fs::symlink_file(&hf_candidate, &target);
-                    }
-                }
-            }
-        }
-    }
-
-    if target.exists() {
-        let meta = match fs::metadata(&target) {
-            Ok(m) => m,
-            Err(_) => {
-                return LocalModelReport {
-                    installed: false,
-                    path: target.to_string_lossy().to_string(),
-                    bytes: 0,
-                    sha256_ok: false,
-                };
-            }
-        };
-        let bytes = meta.len();
-
-        let sha256_ok = if bytes == EXPECTED_MODEL_SIZE_BYTES {
-            match compute_file_sha256(&target) {
-                Ok(hash) => {
-                    let ok = hash.to_lowercase() == EXPECTED_MODEL_SHA256.to_lowercase();
-                    if !ok {
-                        eprintln!("[llama] Hash mismatch on {}: {} vs expected {}", target.display(), hash, EXPECTED_MODEL_SHA256);
-                        let _ = fs::remove_file(&target);
-                    }
-                    ok
-                }
-                Err(_) => false,
-            }
-        } else {
-            eprintln!("[llama] File size mismatch on {}: {} vs expected {}", target.display(), bytes, EXPECTED_MODEL_SIZE_BYTES);
-            let _ = fs::remove_file(&target);
-            false
-        };
-
-        LocalModelReport {
-            installed: sha256_ok,
-            path: target.to_string_lossy().to_string(),
-            bytes,
-            sha256_ok,
-        }
-    } else {
-        LocalModelReport {
-            installed: false,
-            path: target.to_string_lossy().to_string(),
-            bytes: 0,
-            sha256_ok: false,
-        }
-    }
+    let cache_file = match get_model_cache_meta_path() {
+        Ok(p) => p,
+        Err(_) => return model_status_for_paths(&target, Path::new(""), EXPECTED_MODEL_SIZE_BYTES, EXPECTED_MODEL_SHA256, force_recheck),
+    };
+    model_status_for_paths(&target, &cache_file, EXPECTED_MODEL_SIZE_BYTES, EXPECTED_MODEL_SHA256, force_recheck)
 }
 
 pub fn install_model_from_file(source_path: &Path) -> Result<LocalModelReport, String> {
-    if !source_path.is_file() {
-        return Err(format!("File non trovato: {:?}", source_path));
-    }
     let target = get_target_model_path()?;
-    let meta = fs::metadata(source_path).map_err(|e| e.to_string())?;
-    if meta.len() != EXPECTED_MODEL_SIZE_BYTES {
-        return Err(format!(
-            "Dimensione file non corretta: {} byte (richiesti esattamente {} byte)",
-            meta.len(),
-            EXPECTED_MODEL_SIZE_BYTES
-        ));
-    }
-
-    let hash = compute_file_sha256(source_path)?;
-    if hash.to_lowercase() != EXPECTED_MODEL_SHA256.to_lowercase() {
-        return Err(format!(
-            "Verifica SHA-256 fallita: calcolato {} vs atteso {}",
-            hash, EXPECTED_MODEL_SHA256
-        ));
-    }
-
-    fs::copy(source_path, &target).map_err(|e| e.to_string())?;
-    Ok(local_model_status())
+    let cache_file = get_model_cache_meta_path()?;
+    install_model_for_paths(source_path, &target, &cache_file, EXPECTED_MODEL_SIZE_BYTES, EXPECTED_MODEL_SHA256)
 }
 
 pub async fn download_model_with_progress<F>(on_progress: F) -> Result<LocalModelReport, String>
@@ -255,7 +432,33 @@ where
     }
 
     fs::rename(&temp_target, &target).map_err(|e| e.to_string())?;
-    Ok(local_model_status())
+
+    let dest_meta = fs::metadata(&target).map_err(|e| e.to_string())?;
+    let dest_mtime_ms = dest_meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    let target_str = target.to_string_lossy().to_string();
+
+    if let Ok(cache_file) = get_model_cache_meta_path() {
+        let _ = save_model_cache(&cache_file, &ModelVerificationCache {
+            path: target_str.clone(),
+            bytes: dest_meta.len(),
+            mtime_ms: dest_mtime_ms,
+            sha256: final_hash,
+            sha256_ok: true,
+            verified_at: chrono::Utc::now().to_rfc3339(),
+        });
+    }
+
+    Ok(LocalModelReport {
+        installed: true,
+        path: target_str,
+        bytes: dest_meta.len(),
+        sha256_ok: true,
+    })
 }
 
 pub fn detect_llama_server_binary() -> Option<PathBuf> {
@@ -576,6 +779,7 @@ impl LlamaServerState {
     }
 
     pub fn start(&self) -> Result<LocalServerReport, String> {
+        let t_start = Instant::now();
         // 1. Verify model is installed
         let model_rep = local_model_status();
         if !model_rep.installed || !model_rep.sha256_ok {
@@ -702,6 +906,17 @@ impl LlamaServerState {
             return Err(format!("Controllo dimensioni vettore fallito: {}", e));
         }
 
+        let elapsed = t_start.elapsed().as_millis() as u64;
+        let child_pid = {
+            let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+            s.child.as_ref().map(|c| c.id())
+        };
+        log_local_model_timing(
+            "SERVICE_START",
+            elapsed,
+            &format!("port={}, pid={:?}", port, child_pid),
+        );
+
         Ok(self.status())
     }
 
@@ -769,6 +984,110 @@ mod tests {
         let rep = local_model_status();
         println!("Local model status: {:?}", rep);
         assert!(rep.bytes == 0 || rep.bytes == EXPECTED_MODEL_SIZE_BYTES);
+    }
+
+    #[test]
+    fn test_second_status_call_uses_cache_zero_hash_recalculation() {
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join("model.gguf");
+        let cache_file = tmp.path().join("model.gguf.sha256.json");
+        let content = b"dummy-model-content-for-test-cache";
+        fs::write(&target, content).unwrap();
+        let meta = fs::metadata(&target).unwrap();
+        let size = meta.len();
+        let expected_hash = compute_file_sha256(&target).unwrap();
+
+        // 1. Prima chiamata: calcola lo SHA-256 e scrive la cache
+        let rep1 = model_status_for_paths(&target, &cache_file, size, &expected_hash, false);
+        assert!(rep1.installed);
+        assert!(rep1.sha256_ok);
+        assert!(cache_file.exists());
+
+        let cache_meta1 = fs::metadata(&cache_file).unwrap();
+        let cache_mtime1 = cache_meta1.modified().unwrap();
+
+        // 2. Seconda chiamata: deve entrare nel fast-path della cache
+        let rep2 = model_status_for_paths(&target, &cache_file, size, &expected_hash, false);
+        assert!(rep2.installed);
+        assert!(rep2.sha256_ok);
+
+        let cache_meta2 = fs::metadata(&cache_file).unwrap();
+        assert_eq!(
+            cache_meta2.modified().unwrap(),
+            cache_mtime1,
+            "La seconda chiamata deve usare la cache esistente senza riscriverla né ricalcolare"
+        );
+    }
+
+    #[test]
+    fn test_model_modified_mtime_triggers_recomputation() {
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join("model.gguf");
+        let cache_file = tmp.path().join("model.gguf.sha256.json");
+        let content = b"initial-valid-content";
+        fs::write(&target, content).unwrap();
+        let size = fs::metadata(&target).unwrap().len();
+        let expected_hash = compute_file_sha256(&target).unwrap();
+
+        // Popola la cache iniziale
+        let rep1 = model_status_for_paths(&target, &cache_file, size, &expected_hash, false);
+        assert!(rep1.sha256_ok);
+        assert!(cache_file.exists());
+
+        // Modifica del file (stessa dimensione ma contenuto diverso)
+        std::thread::sleep(Duration::from_millis(50));
+        fs::write(&target, b"altered-bytes-content").unwrap();
+
+        // Su NTFS (confronto esatto mtime) la modifica dell'mtime invalida la cache e forza il ricalcolo
+        let rep2 = model_status_for_paths(&target, &cache_file, size, &expected_hash, false);
+        assert!(!rep2.sha256_ok, "Il file modificato deve fallire la verifica di integrità");
+        assert!(!cache_file.exists(), "La cache non valida deve essere rimossa");
+    }
+
+    #[test]
+    fn test_model_replaced_same_size_detected() {
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join("model.gguf");
+        let cache_file = tmp.path().join("model.gguf.sha256.json");
+        let content = b"original-data-123";
+        fs::write(&target, content).unwrap();
+        let size = fs::metadata(&target).unwrap().len();
+        let expected_hash = compute_file_sha256(&target).unwrap();
+
+        // Crea cache valida iniziale
+        let rep1 = model_status_for_paths(&target, &cache_file, size, &expected_hash, false);
+        assert!(rep1.sha256_ok);
+
+        // Sostituzione con contenuto differente di identica lunghezza (17 byte)
+        std::thread::sleep(Duration::from_millis(50));
+        fs::write(&target, b"replaced-data-456").unwrap();
+
+        // 1. Verifica automatica tramite mtime
+        let rep2 = model_status_for_paths(&target, &cache_file, size, &expected_hash, false);
+        assert!(!rep2.sha256_ok, "Il file sostituito con stessa dimensione deve essere rilevato");
+
+        // 2. Verifica forzata (pulsante 'Verifica integrità')
+        let rep_forced = model_status_for_paths(&target, &cache_file, size, &expected_hash, true);
+        assert!(!rep_forced.sha256_ok, "La verifica forzata deve rilevare l'impronta non valida");
+    }
+
+    #[test]
+    fn test_install_from_file_single_io_pass() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source.gguf");
+        let target = tmp.path().join("installed.gguf");
+        let cache_file = tmp.path().join("installed.gguf.sha256.json");
+        let content = b"model-binary-stream-test";
+        fs::write(&source, content).unwrap();
+        let size = fs::metadata(&source).unwrap().len();
+        let expected_hash = compute_file_sha256(&source).unwrap();
+
+        let rep = install_model_for_paths(&source, &target, &cache_file, size, &expected_hash).unwrap();
+        assert!(rep.installed);
+        assert!(rep.sha256_ok);
+        assert_eq!(rep.bytes, size);
+        assert!(target.exists());
+        assert!(cache_file.exists());
     }
 
     #[test]

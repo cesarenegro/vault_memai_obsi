@@ -85,7 +85,7 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
       };
       return mockProvider as unknown as T;
     }
-    if (command === 'local_model_status') return mockModel as unknown as T;
+    if (command === 'local_model_status' || command === 'local_model_verify_integrity') return mockModel as unknown as T;
     if (command === 'local_server_status') return mockServer as unknown as T;
     if (command === 'local_server_start') {
       mockServer = { running: true, port: 57471, model: 'bge-m3-Q8_0.gguf', healthy: true, lastError: null };
@@ -183,6 +183,7 @@ export const aiIpc = {
   localModelDownload: () => call<LocalModelReport>('local_model_download'),
   localModelSelectFile: (filePath: string) => call<LocalModelReport>('local_model_select_file', { filePath }),
   localModelPickAndInstall: () => call<LocalModelReport>('local_model_pick_and_install'),
+  localModelVerifyIntegrity: () => call<LocalModelReport>('local_model_verify_integrity'),
   localServerStart: () => call<LocalServerReport>('local_server_start'),
   localServerStop: () => call<LocalServerReport>('local_server_stop'),
   localServerStatus: () => call<LocalServerReport>('local_server_status'),
