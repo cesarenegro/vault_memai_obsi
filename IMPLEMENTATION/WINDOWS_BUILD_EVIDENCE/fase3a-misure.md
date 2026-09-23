@@ -188,3 +188,31 @@ Come da procedura di congelamento, dopo il commit `226d4fd` è stata eseguita un
 - Esecuzione test a thread singolo: [cargo-test-fase-3a-single.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-3a-single.log)  
   `test result: ok. 133 passed; 0 failed; 0 ignored (lib); 18 passed (main); Total: 151 passed, 0 failed.`
 - Inclusi tutti i 6 test dedicati per il Metodo c e il fallback con servizio offline in `ai.rs`.
+
+---
+
+## 7. Rilievi Formali Registrati sul Passo 3a
+
+In conformità alle disposizioni di revisione, vengono registrati formalmente i seguenti tre rilievi emersi durante l'esecuzione del Passo 3a:
+
+### 7.1 Chiamate ad OpenAI nella Misura Gold A05 e Oggetto della Misura
+- **Numero Chiamate Eseguite**: nella misurazione Gold A05 su `tests/scratch/a05_eval_vault` sono state effettuate **184 chiamate ad OpenAI API** (`model: text-embedding-3-small`):
+  - **144 chiamate** per calcolare gli embedding dei passaggi del catalogo isolato e sincronizzare `EMBEDDINGS_CACHE.json`;
+  - **40 chiamate** per calcolare i vettori semantici delle 40 query gold.
+- **Rilievo Metodologico**: si verbalizza chiaramente che il benchmark Gold A05 misura unicamente la **qualità della ricerca ibrida** (capacità di posizionare il documento atteso nella Top 10, Recall@10) e **NON misura la scelta o la composizione delle fonti inviate al modello di risposta** (`select_with_port_timed` / Metodo c). Pertanto, il superamento di A05 attesta la tenuta del motore di indicizzazione e recupero, ma non certifica da solo la qualità della risposta di OpenAI, che dipende dalla composizione effettiva del contesto.
+
+### 7.2 Domande di Sviluppo Non Discriminanti sulla Soglia del Bonus Titolo
+- Sulle 30 query di sviluppo disaccoppiate ([tests/gold/A05_DEV_QUERIES.json](file:///E:/Projects/vault_memai_obsi/tests/gold/A05_DEV_QUERIES.json)), tutte le 4 soglie di frequenza documentale $df$ del bonus titolo testate (10%, 20%, 30%, 40%) hanno restituito esattamente lo **stesso identico punteggio di Recall@10 = 0,833 (25/30 hit)**.
+- Il set di sviluppo non è risultato discriminante per calibrare questo parametro specifico. La determinazione della soglia ottimale al **30%** è stata guidata dall'evidenza sul vault aziendale reale `E:\VAULT WIN TEST DEV` ($N = 376$), dove il 30% discrimina in modo netto marchi e progetti (`"arkai"`, $df = 100$, 26,6% $\le 30\%$, bonus concesso) da termini generici ad alta frequenza (`"progetto"`, $df = 133$, 35,4% $> 30\%$, bonus negato).
+
+### 7.3 Modifica dei Ritorni a Capo in `catalog.rs` (Normalizzazione CRLF)
+- **Documenti Coinvolti nel Vault di Test (`E:\VAULT WIN TEST DEV`)**:
+  - Totale file Markdown in `20_RAW_SOURCES`: **376 documenti**
+  - File con terminatori di riga Windows CRLF (`\r\n`): **22 documenti** (5,85%)
+  - File con terminatori di riga Unix LF (`\n`): **354 documenti** (94,15%)
+- **Effetti sul Prossimo Aggiornamento del Catalogo (`sync_catalog_from_vault`)**:
+  - Il campo `content_hash` è calcolato sui byte binari grezzi del file su disco. Per i 22 file non modificati, `content_hash` non muta e `sync_catalog_from_vault` non altera i passaggi esistenti in cache.
+  - Alla prima modifica su disco di uno di questi file, o in caso di reindicizzazione da zero del vault, la normalizzazione CRLF entra in funzione: i paragrafi separati da `\r\n\r\n` o le intestazioni `## Pagina` non collassano più in un unico blocco informe, ma vengono partizionati correttamente nei singoli passaggi corrispondenti, allineando determinismo e granularità tra Windows e macOS.
+- **Test Unitario di Parità Crittografica**:
+  - Implementato in [catalog.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/catalog.rs) il test `test_chunk_text_to_passages_crlf_and_lf_produce_identical_passages`.
+  - Il test certifica formalmente che lo stesso documento con ritorni a capo Windows (`\r\n`) e Unix (`\n`) produce lo stesso numero di passaggi, gli stessi identificativi, gli stessi localizzatori, lo stesso testo normalizzato e gli **stessi identici hash SHA-256**.

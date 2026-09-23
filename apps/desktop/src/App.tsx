@@ -82,7 +82,16 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<NavTab>('home');
   const [vaultLoaded, setVaultLoaded] = useState<boolean>(false);
   const [vaultState, setVaultState] = useState<'READY' | 'INITIALIZING' | 'INVALID' | 'NO_VAULT' | 'NOT_ACCESSIBLE' | 'INCOMPLETE'>('NO_VAULT');
-  const [customPathInput, setCustomPathInput] = useState<string>('');
+  const [customPathInput, setCustomPathInput] = useState<string>(() => {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        return localStorage.getItem('limen_last_vault_path') || '';
+      } catch {
+        return '';
+      }
+    }
+    return '';
+  });
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   useEffect(() => { void aiIpc.mcpStop().catch(() => {}); void aiIpc.tunnelStop().catch(() => {}); }, [vaultPath]);
   const automation=useAutomation(vaultLoaded&&vaultState==='READY'?vaultPath:null);
@@ -342,6 +351,11 @@ export default function App() {
       if (selected) {
         const normalized = selected.replace(/\//g, '\\');
         setCustomPathInput(normalized);
+        if (typeof localStorage !== 'undefined') {
+          try {
+            localStorage.setItem('limen_last_vault_path', normalized);
+          } catch {}
+        }
         return normalized;
       }
       return null;
@@ -382,6 +396,13 @@ export default function App() {
       setVaultLoaded(res.state === 'READY');
 
       if (res.path) {
+        const normalized = res.path.replace(/\//g, '\\');
+        setCustomPathInput(normalized);
+        if (typeof localStorage !== 'undefined') {
+          try {
+            localStorage.setItem('limen_last_vault_path', normalized);
+          } catch {}
+        }
         await refreshSnapshotsAndIntegrity(res.path,ticket);
         await refreshCompiler(res.path,ticket);
         await refreshCatalog(res.path,ticket);
@@ -427,6 +448,13 @@ export default function App() {
       setVaultLoaded(res.validation.is_valid);
 
       if (res.status.path && res.validation.is_valid) {
+        const normalized = res.status.path.replace(/\//g, '\\');
+        setCustomPathInput(normalized);
+        if (typeof localStorage !== 'undefined') {
+          try {
+            localStorage.setItem('limen_last_vault_path', normalized);
+          } catch {}
+        }
         await refreshSnapshotsAndIntegrity(res.status.path,ticket);
         await refreshCompiler(res.status.path,ticket);
         await refreshCatalog(res.status.path,ticket);
@@ -921,7 +949,15 @@ export default function App() {
                 <input
                   type="text"
                   value={customPathInput}
-                  onChange={(e) => setCustomPathInput(e.target.value.replace(/\//g, '\\'))}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\//g, '\\');
+                    setCustomPathInput(val);
+                    if (typeof localStorage !== 'undefined') {
+                      try {
+                        localStorage.setItem('limen_last_vault_path', val);
+                      } catch {}
+                    }
+                  }}
                   placeholder="Scegli la cartella del vault"
                   disabled={isProcessing}
                   style={{

@@ -1575,6 +1575,24 @@ mod tests {
     }
 
     #[test]
+    fn test_chunk_text_to_passages_crlf_and_lf_produce_identical_passages() {
+        let text_lf = "## Pagina 1\n\nContenuto introduttivo della prima pagina del documento.\n\n## Pagina 2\n\nSeconda pagina con dettagli operativi e tecnici del progetto.";
+        let text_crlf = text_lf.replace("\n", "\r\n");
+
+        let passages_lf = chunk_text_to_passages("doc_test", text_lf);
+        let passages_crlf = chunk_text_to_passages("doc_test", &text_crlf);
+
+        assert_eq!(passages_lf.len(), passages_crlf.len(), "Il numero di passaggi deve essere identico tra LF e CRLF");
+        for (p_lf, p_crlf) in passages_lf.iter().zip(passages_crlf.iter()) {
+            assert_eq!(p_lf.passage_id, p_crlf.passage_id);
+            assert_eq!(p_lf.locator, p_crlf.locator);
+            assert_eq!(p_lf.text, p_crlf.text, "Il testo dei passaggi deve essere normalizzato e identico");
+            assert_eq!(p_lf.sha256, p_crlf.sha256, "L'hash SHA-256 del passaggio deve essere identico tra Windows e Unix");
+            assert_eq!(p_lf.char_count, p_crlf.char_count);
+        }
+    }
+
+    #[test]
     fn test_catalog_save_and_load_lifecycle() {
         let tmp = tempfile::tempdir().unwrap();
         let path = tmp.path();
