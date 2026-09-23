@@ -96,7 +96,15 @@ Conformemente alle direttive e alle due correzioni deliberate da Cesare:
 ### FASE 3 — PASSO 3b-2b COMPLETATO (Rettifica ARKAI, Zero Sovrapposizioni, Zero Asterischi, Prestazioni)
 
 1. **Rettifica Rapporto ARKAI (dal registro reale dell'app ask_timing.log)**:
-   - Delle 7 fonti selezionate e inviate nell'app per la domanda ARKAI (registro di Cesare ore 10:48, 11:02 e 12:04 UTC), **5 appartengono alle 12 canoniche ARKAI FASE 1**: `540e37c638dd2045`, `0bc92121a0ad46f7`, `aa217245dfd86aeb`, `f4fd17ebca858f34`, `86e2218e7ed905f1`.
+   - Delle 7 fonti selezionate e inviate nell'app per la domanda ARKAI (registro di Cesare ore 10:48, 11:02 e 12:04 UTC):
+     1. `20_RAW_SOURCES/540e37c638dd2045-2026-03-31 - Presentazione investitori Arkai.archi.md` (Canonico FASE 1 - 1/5, citata)
+     2. `20_RAW_SOURCES/0bc92121a0ad46f7-2026-03-26 - Arkai.Dev expansion into Italian market.md` (Canonico FASE 1 - 2/5, citata)
+     3. `20_RAW_SOURCES/aa217245dfd86aeb-nuovo LLM AI Arkai.md` (Canonico FASE 1 - 3/5)
+     4. `20_RAW_SOURCES/98de5fb0d0fac3db-2026-04-12 - AI model development with LORA for floorplan recognition.md` (Fonte grezza collegata)
+     5. `20_RAW_SOURCES/f4fd17ebca858f34-ARKAI.DEV Software Developer.md` (Canonico FASE 1 - 4/5, citata)
+     6. `20_RAW_SOURCES/410dbac00663f59c-2026-06-03 - Analisi Excel investitori e outreach personalizzate.md` (Fonte grezza collegata, citata)
+     7. `20_RAW_SOURCES/86e2218e7ed905f1-ARKAI FLOORPLAN NICE.md` (Canonico FASE 1 - 5/5)
+   - I 5 documenti canonici Arkai della FASE 1 sono esattamente: `540e37c638dd2045`, `0bc92121a0ad46f7`, `aa217245dfd86aeb`, `f4fd17ebca858f34`, `86e2218e7ed905f1`.
    - Le restanti 2 fonti sono file grezzi correlati nel vault con menzione del dominio: `98de5fb0d0fac3db` e `410dbac00663f59c`.
    - Le 4 fonti citate nella risposta dell'app (voto 9) sono state: `540e37c638dd2045`, `0bc92121a0ad46f7`, `f4fd17ebca858f34` e `410dbac00663f59c`.
    - **Criterio Primario di Valutazione**: Viene confermato che il criterio primario di approvazione per Cesare è il suo **voto qualitativo** (9 per Arkai, 9 per BNXT, 9 per Scena), con zero passaggi sovrapposti e rispetto del budget.
@@ -156,16 +164,55 @@ Conformemente alle direttive e alle due correzioni deliberate da Cesare:
    - Ripristinati i comandi di build da npm a pnpm (`beforeDevCommand: "pnpm dev"`, `beforeBuildCommand: "pnpm build"`).
    - Ripristinato il branding a `LIMEN Vault v3` in `App.tsx`.
 
-4. **Piano FASE 4 Predisposto (senza codice)**:
-   - Documento creato in `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase4-piano.md` con Task List dettagliata conforme alla regola di progetto `.agents/AGENTS.md`.
+4. **Piano FASE 4 Approvato con Correzioni**:
+   - Documento aggiornato in `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase4-piano.md` con Task List dettagliata conforme alla regola di progetto `.agents/AGENTS.md`.
+
+---
+
+### FASE 4 — IMPLEMENTATA (v4, Persistenza Modello Utente, Etichetta Fonti, Supporto Ragionamento)
+
+1. **Nome e Versione Ufficiali: LIMEN Vault v4 (0.4.0)**:
+   - Cesare ha confermato la richiesta originale: il prodotto si chiama **"LIMEN Vault v4"**, versione **"0.4.0"**.
+   - Aggiornato `tauri.conf.json`: `productName: "LIMEN Vault v4"`, `version: "0.4.0"`, `title: "LIMEN Vault v4"`.
+   - Preservati invariati `beforeDevCommand: "pnpm dev"` e `beforeBuildCommand: "pnpm build"`.
+   - Aggiornato `App.tsx` con i testi "LIMEN Vault v4".
+   - Verificato `HelpPanel.tsx` (nessuna menzione di v3).
+   - *Nota firma digitale/notarizzazione Windows rimandata alla FASE 7*.
+
+2. **Elenco Modelli Dinamico (Nessun Nome Hardcoded a Codice)**:
+   - Riuso del comando `ai_list_models` e filtro esistente `is_chat_model` in `ai.rs` (esclusione audio, embedding, immagini, realtime).
+   - Rimosso qualsiasi nome fisso a codice; l'app espone i modelli reali restituiti dall'account OpenAI di Cesare (inclusi modelli correnti come `gpt-6-sol` e `gpt-6-luna`).
+
+3. **Salvataggio della Scelta nella Cartella Dati Utente (Isolamento Assoluto dal Vault)**:
+   - Percorso assoluto configurazione: `C:\Users\user\.limen-vault\ai_settings.json`.
+   - Il Vault non viene mai toccato (rispetto assoluto del principio "le domande non modificano le note").
+   - **Blocco Preventivo**: se nessun modello è selezionato dall'utente, il pulsante "Chiedi" è disabilitato, la domanda non parte e l'interfaccia richiede esplicitamente la selezione del modello.
+
+4. **Modelli con Ragionamento e Tracciamento Risposte Incomplete**:
+   - Gestito il consumo di token interni di ragionamento (`reasoning_tokens`): se si raggiunge `max_output_tokens: 1500`, la risposta viene preservata senza errori e l'utente visualizza un banner esplicito e semplice.
+   - `C:\Users\user\.limen-vault\ask_timing.log` registra ora lo stato (`completata` / `INCOMPLETA (<motivo>)`) e i token separati: totale, input (`tokens_prompt`), output (`tokens_completion`) e ragionamento (`tokens_reasoning`).
+
+5. **Etichetta Trasparente Fonti Citate vs Consultate**:
+   - Inserita in testata all'elenco fonti in `AiPanel.tsx`:
+     > **"Basata su N documenti citati tra M consultati"**
+
+6. **Test Suite Completa FASE 4 (161 passati, 0 falliti)**:
+   - `cargo test` parallelo: **161 passed; 0 failed** (143 lib + 18 bin). Log: `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-4-parallel.log`.
+   - `cargo test -- --test-threads=1`: **161 passed; 0 failed** (143 lib + 18 bin). Log: `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-4-single.log`.
+   - TypeScript frontend check: `npx tsc --noEmit` completato con codice 0.
 
 ---
 
 ## 2. Stato Attuale e Consegna
 
-- **STATO ATTUALE**: **STOP OPERATIVO BLOCCANTE**.
-- **Patch completa**: `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-3b2c.patch`.
+- **STATO ATTUALE**: **STOP OPERATIVO BLOCCANTE PER LA PROVA DI CESARE**.
+- **Patch completa**: `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-4.patch`.
 - **ZERO chiamate OpenAI** effettuate dall'assistente.
 - **ZERO processi terminati** senza autorizzazione.
+- **Pronto per la prova live di Cesare**:
+  - Modello A: `gpt-4o` (continuità con le Fasi 1, 2 e 3)
+  - Modello B: Modello più veloce ed economico presente nell'account (es. `gpt-6-luna`)
+  - Eventuale Modello C: `gpt-6-sol`
+  - Tre domande canoniche: BNXT, ARKAI, SCENA.
 
 

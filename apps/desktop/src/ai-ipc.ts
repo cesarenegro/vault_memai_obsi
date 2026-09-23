@@ -2,7 +2,22 @@ import {invoke} from '@tauri-apps/api/core';
 export interface AiOptions {prompt:string;model:string;includeDrafts:boolean;sourceIds:string[];category?:string;client?:string;project?:string;tags?:string[]}
 export interface AiSource {documentId:string;relativePath:string;title:string;category:string;status?:string;sha256:string;content:string;locator?:string;passageId?:string;revision?:number}
 export interface AiPreview {ticket:string;sources:AiSource[];contextBytes:number}
-export interface AiAnswer {answer:string;provider:string;model:string;citations:Omit<AiSource,'content'>[];tokensUsed?:number;uiTotalMs?:number}
+export interface AiAnswer {
+  answer: string;
+  provider: string;
+  model: string;
+  status?: string;
+  incomplete?: boolean;
+  incompleteReason?: string;
+  warning?: string;
+  citations: Omit<AiSource, 'content'>[];
+  citedIndices?: number[];
+  tokensUsed?: number;
+  tokensPrompt?: number;
+  tokensCompletion?: number;
+  tokensReasoning?: number;
+  uiTotalMs?: number;
+}
 
 export interface EmbeddingsProviderReport {
   provider: 'local' | 'openai';
@@ -101,7 +116,15 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
       return { total_passages: 9458, cached_passages: 9458, missing_passages: 0, coverage: 1.0, is_available: true } as unknown as T;
     }
     if (command === 'ai_key_status') return false as unknown as T;
-    if (command === 'ai_list_models') return ['gpt-4o', 'gpt-4o-mini', 'gpt-6-sol'] as unknown as T;
+    if (command === 'ai_list_models') return [] as unknown as T;
+    if (command === 'ai_get_selected_model') {
+      return (localStorage.getItem('limen_selected_ai_model') || null) as unknown as T;
+    }
+    if (command === 'ai_save_selected_model') {
+      const m = (args as any)?.model || '';
+      localStorage.setItem('limen_selected_ai_model', m);
+      return undefined as unknown as T;
+    }
     if (command === 'ai_preview') {
       return {
         ticket: 't_mock_123',
@@ -161,6 +184,8 @@ export const aiIpc = {
   getConsent: (vaultPath: string) => call<boolean>('ai_get_consent', { vaultPath }),
   setConsent: (vaultPath: string, granted: boolean) => call<void>('ai_set_consent', { vaultPath, granted }),
   models: () => call<string[]>('ai_list_models'),
+  getSelectedModel: () => call<string | null>('ai_get_selected_model'),
+  saveSelectedModel: (model: string) => call<void>('ai_save_selected_model', { model }),
   status: () => call<boolean>('ai_key_status'),
   saveKey: (key: string) => call<void>('ai_save_key', { key }),
   deleteKey: () => call<void>('ai_delete_key'),

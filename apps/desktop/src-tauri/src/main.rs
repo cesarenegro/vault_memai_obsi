@@ -366,7 +366,7 @@ fn main() {
             index_vault_search,
             search_vault,
             get_search_index_status,
-            ai_list_models,search_read_document,ai_key_status,ai_save_key,ai_delete_key,ai_get_consent,ai_set_consent,ai_preview,ai_ask,ai_cancel,ai_read_source,mcp_start,mcp_stop,mcp_status,
+            ai_list_models,ai_get_selected_model,ai_save_selected_model,search_read_document,ai_key_status,ai_save_key,ai_delete_key,ai_get_consent,ai_set_consent,ai_preview,ai_ask,ai_cancel,ai_read_source,mcp_start,mcp_stop,mcp_status,
             catalog_sync,catalog_list_documents,catalog_process_extractions,catalog_get_document,catalog_get_by_path,catalog_verify_document_passage,catalog_read_verified_text,catalog_read_text,catalog_read_passage,catalog_open_original,catalog_reveal_in_finder,catalog_get_summary,
             embeddings_get_status,embeddings_sync_vault,search_vault_hybrid,
             embeddings_get_provider,embeddings_set_provider,
@@ -455,6 +455,18 @@ mod tests {
 async fn ai_list_models()->Result<Vec<String>,String>{
  let key=tauri::async_runtime::spawn_blocking(limen_vault::keychain::load).await.map_err(|_|"Portachiavi non disponibile")??.filter(|k|!k.is_empty()).ok_or("Configura la chiave API OpenAI in Impostazioni per vedere i modelli disponibili")?;
  limen_vault::ai::list_models(key).await
+}
+#[tauri::command]
+async fn ai_get_selected_model() -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(limen_vault::ai::load_selected_model)
+        .await
+        .map_err(|e| e.to_string())
+}
+#[tauri::command]
+async fn ai_save_selected_model(model: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || limen_vault::ai::save_selected_model(&model))
+        .await
+        .map_err(|e| e.to_string())?
 }
 #[tauri::command]
 async fn search_read_document(vault_path:String,document_id:String,sha256:String)->Result<String,String>{

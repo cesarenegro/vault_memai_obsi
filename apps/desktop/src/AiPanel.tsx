@@ -54,7 +54,8 @@ export function AiPanel({
 }) {
   const terms = getPlatformTerms();
   const [prompt, setPrompt] = useState('');
-  const [model, setModel] = useState('gpt-4o');
+  const [model, setModel] = useState<string>('');
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [drafts, setDrafts] = useState(false);
   const [consentGranted, setConsentGranted] = useState<boolean | null>(null);
 
@@ -70,6 +71,35 @@ export function AiPanel({
   const [saveMessage, setSaveMessage] = useState('');
   const saveOperation = useRef(operationId());
   const seq = useRef(0);
+
+  // Carica i modelli disponibili e il modello selezionato memorizzato
+  useEffect(() => {
+    let live = true;
+    void aiIpc.models().then(list => {
+      if (!live) return;
+      if (list && list.length > 0) {
+        setAvailableModels(list);
+      }
+    }).catch(() => {});
+
+    void aiIpc.getSelectedModel().then(saved => {
+      if (!live) return;
+      if (saved) {
+        setModel(saved);
+      }
+    }).catch(() => {});
+
+    return () => { live = false; };
+  }, []);
+
+  async function handleModelChange(newModel: string) {
+    setModel(newModel);
+    try {
+      await aiIpc.saveSelectedModel(newModel);
+    } catch (e) {
+      console.error('Impossibile salvare il modello selezionato:', e);
+    }
+  }
 
   // Check consent status on mount or vaultPath change
   useEffect(() => {
@@ -97,6 +127,10 @@ export function AiPanel({
 
   async function executeAsk(queryText: string) {
     if (!queryText || loadingStep) return;
+    if (!model) {
+      setError('Seleziona un modello AI prima di inviare una domanda.');
+      return;
+    }
 
     const currentSeq = ++seq.current;
     setError(null);
@@ -121,7 +155,7 @@ export function AiPanel({
       // Step 1: Preview / Select sources automatically
       const preview = await aiIpc.preview(vaultPath, {
         prompt: queryText,
-        model: model || 'gpt-4o',
+        model: model,
         includeDrafts: drafts,
         sourceIds: [],
       });
@@ -176,17 +210,54 @@ export function AiPanel({
 
         {/* Question Input Box */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Model selection row */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
+              <label htmlFor="ai-model-select" style={{ fontSize: 13, fontWeight: 600, color: '#334155', whiteSpace: 'nowrap' }}>
+                Modello:
+              </label>
+              <select
+                id="ai-model-select"
+                aria-label="Seleziona modello AI"
+                value={model}
+                onChange={e => void handleModelChange(e.target.value)}
+                style={{
+                  ...fieldStyle,
+                  width: 'auto',
+                  flex: 1,
+                  padding: '6px 12px',
+                  fontSize: 13,
+                  borderColor: !model ? '#f59e0b' : '#cbd5e1',
+                  backgroundColor: !model ? '#fffbeb' : '#ffffff',
+                }}
+              >
+                {!model && <option value="">-- Seleziona un modello --</option>}
+                {availableModels.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+                {model && !availableModels.includes(model) && (
+                  <option key={model} value={model}>{model}</option>
+                )}
+              </select>
+            </div>
+            {!model && (
+              <span style={{ fontSize: 12, color: '#b45309', fontWeight: 500 }}>
+                ⚠️ Seleziona un modello per poter procedere
+              </span>
+            )}
+          </div>
+
           <div style={{ position: 'relative' }}>
             <textarea
               aria-label="Domanda al Vault"
-              placeholder="Es. Cosa è il progetto BNXT e quali requisiti prevede?"
+              placeholder={model ? "Es. Cosa è il progetto BNXT e quali requisiti prevede?" : "Seleziona prima un modello sopra per fare una domanda..."}
               maxLength={2000}
               value={prompt}
               onChange={e => setPrompt(e.target.value)}
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  if (prompt.trim()) executeAsk(prompt.trim());
+                  if (prompt.trim() && model) executeAsk(prompt.trim());
                 }
               }}
               style={{
@@ -205,9 +276,11 @@ export function AiPanel({
                 right: 10,
                 bottom: 14,
                 padding: '8px 16px',
+                opacity: (!model || !prompt.trim() || !!loadingStep) ? 0.6 : 1,
               }}
-              disabled={!!loadingStep || !prompt.trim()}
-              onClick={() => prompt.trim() && executeAsk(prompt.trim())}
+              disabled={!!loadingStep || !prompt.trim() || !model}
+              onClick={() => prompt.trim() && model && executeAsk(prompt.trim())}
+              title={!model ? "Seleziona un modello per abilitare l'invio" : undefined}
             >
               Chiedi
             </button>
@@ -309,32 +382,63 @@ export function AiPanel({
       {/* Prose Answer Result Block */}
       {answer && !loadingStep && (
         <div className="limen-card" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Banner Risposta Incompleta per modelli con limite token o ragionamento esteso */}
+          {answer.incomplete && (
+            <div
+              style={{
+                padding: '12px 16px',
+                borderRadius: 8,
+                backgroundColor: '#fffbeb',
+                border: '1px solid #fde68a',
+                color: '#92400e',
+                fontSize: 13,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              <AlertCircle size={18} style={{ flexShrink: 0, color: '#d97706' }} />
+              <div>
+                <strong>Risposta incompleta:</strong>{' '}
+                {answer.incompleteReason === 'max_output_tokens'
+                  ? 'Il modello ha raggiunto il limite massimo di token generabili (anche a causa dei token di ragionamento interni). La risposta parziale è stata preservata.'
+                  : (answer.incompleteReason || 'La generazione della risposta è stata interrotta prima del completamento.')}
+              </div>
+            </div>
+          )}
+
           {/* Answer Foreground Prose */}
           <div style={{ fontSize: 15, lineHeight: 1.7, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
             {answer.answer}
           </div>
 
-          {/* Collapsible Sources Line: "Basata su N documenti" */}
+          {/* Collapsible Sources Line: "Basata su N documenti citati tra M consultati" */}
           {answer.citations && answer.citations.length > 0 && (
             <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 16 }}>
-              <button
-                onClick={() => setSourcesOpen(!sourcesOpen)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#2563eb',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                {sourcesOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                Basata su {answer.citations.length} document{answer.citations.length === 1 ? 'o' : 'i'}
-              </button>
+              {(() => {
+                const citedCount = answer.citations.length;
+                const consultedCount = previewData?.sources?.length ?? citedCount;
+                return (
+                  <button
+                    onClick={() => setSourcesOpen(!sourcesOpen)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#2563eb',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    {sourcesOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    Basata su {citedCount} document{citedCount === 1 ? 'o citato' : 'i citati'} tra {consultedCount} consultat{consultedCount === 1 ? 'o' : 'i'}
+                  </button>
+                );
+              })()}
 
               {sourcesOpen && (
                 <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -457,9 +561,15 @@ export function AiPanel({
               <div style={{ marginTop: 8, padding: 12, backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div><strong>Fornitore:</strong> {answer.provider}</div>
                 <div><strong>Modello:</strong> {answer.model}</div>
-                <div><strong>Token usati:</strong> {answer.tokensUsed ?? 'N/A'}</div>
+                <div><strong>Stato risposta:</strong> {answer.status || (answer.incomplete ? 'incompleta' : 'completa')} {answer.incompleteReason ? `(${answer.incompleteReason})` : ''}</div>
+                <div>
+                  <strong>Token usati:</strong> {answer.tokensUsed ?? 'N/A'}
+                  {(answer.tokensPrompt !== undefined || answer.tokensCompletion !== undefined) && (
+                    <span> (input: {answer.tokensPrompt ?? 'N/A'}, output: {answer.tokensCompletion ?? 'N/A'}{answer.tokensReasoning !== undefined ? `, ragionamento: ${answer.tokensReasoning}` : ''})</span>
+                  )}
+                </div>
                 {answer.uiTotalMs && <div><strong>Tempo interfaccia (totale):</strong> {(answer.uiTotalMs / 1000).toFixed(1)} s ({answer.uiTotalMs} ms)</div>}
-                {previewData && <div><strong>Dimensione contesto:</strong> {previewData.contextBytes} byte</div>}
+                {previewData && <div><strong>Dimensione contesto:</strong> {previewData.contextBytes} byte (passaggi consultati: {previewData.sources.length})</div>}
                 <div><strong>Citazioni grezze:</strong></div>
                 {answer.citations.map((c, i) => (
                   <div key={i} style={{ fontSize: 11, fontFamily: 'monospace', color: '#475569' }}>
@@ -480,8 +590,8 @@ export function AiSettings({ vaultPath }: { vaultPath: string }) {
   const [key, setKey] = useState('');
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [consent, setConsent] = useState<boolean>(true);
-  const [selectedModel, setSelectedModel] = useState('gpt-4o');
-  const [availableModels, setAvailableModels] = useState<string[]>(['gpt-4o', 'gpt-4o-mini', 'gpt-6-sol']);
+  const [selectedModel, setSelectedModel] = useState('');
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [connection, setConnection] = useState<{ active: boolean; endpoint?: string; vaultId?: string; token?: string }>({ active: false });
@@ -490,6 +600,7 @@ export function AiSettings({ vaultPath }: { vaultPath: string }) {
     void aiIpc.mcpStatus().then(setConnection).catch(e => setMessage(String(e)));
     void aiIpc.getConsent(vaultPath).then(setConsent).catch(() => {});
     void aiIpc.models().then(m => { if (m && m.length > 0) setAvailableModels(m); }).catch(() => {});
+    void aiIpc.getSelectedModel().then(m => { if (m) setSelectedModel(m); }).catch(() => {});
   }, [vaultPath]);
 
   async function action(f: () => Promise<void>) {
@@ -552,13 +663,22 @@ export function AiSettings({ vaultPath }: { vaultPath: string }) {
               Modello OpenAI predefinito
             </label>
             <select
+              aria-label="Modello OpenAI predefinito"
               value={selectedModel}
-              onChange={e => setSelectedModel(e.target.value)}
+              onChange={e => {
+                const val = e.target.value;
+                setSelectedModel(val);
+                void aiIpc.saveSelectedModel(val);
+              }}
               style={fieldStyle}
             >
+              {!selectedModel && <option value="">-- Seleziona un modello --</option>}
               {availableModels.map(m => (
                 <option key={m} value={m}>{m}</option>
               ))}
+              {selectedModel && !availableModels.includes(selectedModel) && (
+                <option key={selectedModel} value={selectedModel}>{selectedModel}</option>
+              )}
             </select>
           </div>
 

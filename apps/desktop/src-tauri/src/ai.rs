@@ -69,11 +69,25 @@ pub struct SourceAuditEntry {
     pub cited: bool,
 }
 
+fn default_status_completed() -> String {
+    "completed".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AskTimingLogEntry {
     pub timestamp: String,
     pub model: String,
+    #[serde(default = "default_status_completed")]
+    pub status: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub incomplete_reason: Option<String>,
     pub tokens_used: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tokens_prompt: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tokens_completion: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tokens_reasoning: Option<u64>,
     pub t_ui_total_ms: Option<u64>,
     pub t_backend_total_ms: u64,
     pub preview: PreviewTimingBreakdown,
@@ -81,6 +95,50 @@ pub struct AskTimingLogEntry {
     pub ask: AskTimingBreakdown,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sources: Vec<SourceAuditEntry>,
+}
+
+/// Percorso del file di impostazioni utente per il modello AI predefinito.
+/// Salvato nella cartella dati dell'app (es. `C:\Users\user\.limen-vault\ai_settings.json`),
+/// rigorosamente separato dal vault per non modificare le note dell'utente.
+pub fn get_ai_settings_path() -> PathBuf {
+    if let Ok(override_path) = std::env::var("LIMEN_AI_SETTINGS_FILE") {
+        if !override_path.trim().is_empty() {
+            return PathBuf::from(override_path);
+        }
+    }
+    #[cfg(test)]
+    {
+        return std::env::temp_dir().join("limen_test_ai_settings.json");
+    }
+    #[allow(unreachable_code)]
+    {
+        let base = std::env::var("USERPROFILE")
+            .or_else(|_| std::env::var("HOME"))
+            .unwrap_or_else(|_| ".".into());
+        PathBuf::from(base).join(".limen-vault").join("ai_settings.json")
+    }
+}
+
+pub fn load_selected_model() -> Option<String> {
+    let path = get_ai_settings_path();
+    let text = std::fs::read_to_string(path).ok()?;
+    let val: serde_json::Value = serde_json::from_str(&text).ok()?;
+    val.get("selected_model")
+        .and_then(|v| v.as_str())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
+pub fn save_selected_model(model: &str) -> Result<(), String> {
+    let path = get_ai_settings_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let data = serde_json::json!({
+        "selected_model": model.trim()
+    });
+    std::fs::write(&path, serde_json::to_string_pretty(&data).unwrap_or_default())
+        .map_err(|e| format!("Impossibile salvare il modello selezionato in {:?}: {}", path, e))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -137,10 +195,28 @@ pub fn log_ask_timing_detailed(entry: &AskTimingLogEntry) {
         .t_ui_total_ms
         .map(|ms| format!("{} ms", ms))
         .unwrap_or_else(|| "non misurato".into());
-    let tokens_str = entry
-        .tokens_used
-        .map(|t| t.to_string())
-        .unwrap_or_else(|| "null".into());
+    let status_str = if entry.status == "incomplete" {
+        format!("INCOMPLETA ({})", entry.incomplete_reason.as_deref().unwrap_or("max_output_tokens"))
+    } else {
+        "completata".to_string()
+    };
+
+    let mut breakdown_parts = Vec::new();
+    if let Some(inp) = entry.tokens_prompt {
+        breakdown_parts.push(format!("input: {}", inp));
+    }
+    if let Some(out) = entry.tokens_completion {
+        breakdown_parts.push(format!("output: {}", out));
+    }
+    if let Some(reas) = entry.tokens_reasoning {
+        breakdown_parts.push(format!("ragionamento: {}", reas));
+    }
+    let tokens_str = match (entry.tokens_used, breakdown_parts.is_empty()) {
+        (Some(t), false) => format!("{} ({})", t, breakdown_parts.join(", ")),
+        (Some(t), true) => t.to_string(),
+        (None, false) => format!("({})", breakdown_parts.join(", ")),
+        (None, true) => "null".into(),
+    };
 
     let mut sources_section = String::new();
     if !entry.sources.is_empty() {
@@ -190,7 +266,7 @@ pub fn log_ask_timing_detailed(entry: &AskTimingLogEntry) {
     let formatted_block = format!(
         "================================================================================\n\
          REGISTRO TEMPI RISPOSTA [{}]\n\
-         Modello: {} | Token usati: {}\n\
+         Modello: {} | Stato: {} | Token usati: {}\n\
          Tempo visto da UI (click -> risposta): {}\n\
          Tempo totale Backend: {} ms\n\
            ├─ 1. ANTEPRIMA (Preview): {} ms\n\
@@ -214,6 +290,7 @@ pub fn log_ask_timing_detailed(entry: &AskTimingLogEntry) {
          ================================================================================\n\n",
         entry.timestamp,
         entry.model,
+        status_str,
         tokens_str,
         ui_str,
         entry.t_backend_total_ms,
@@ -263,7 +340,12 @@ pub fn log_ask_timing(
     log_ask_timing_detailed(&AskTimingLogEntry {
         timestamp: now,
         model: model.to_string(),
+        status: "completed".to_string(),
+        incomplete_reason: None,
         tokens_used,
+        tokens_prompt: None,
+        tokens_completion: None,
+        tokens_reasoning: None,
         t_ui_total_ms: None,
         t_backend_total_ms: t_total_ms,
         preview: PreviewTimingBreakdown {
@@ -1198,9 +1280,16 @@ pub fn sanitize_answer_prose(text: &str) -> String {
 }
 
 pub fn parse_response(r: Value, sources: &[Source]) -> Result<Value, String> {
-    if r["status"] != "completed" || !r["model"].is_string() {
+    if !r["model"].is_string() {
         return Err("Incomplete or invalid provider response".into());
     }
+    let status = r["status"].as_str().unwrap_or("completed");
+    let incomplete_reason = r["incomplete_details"]["reason"].as_str().map(|s| s.to_string());
+
+    if status != "completed" && status != "incomplete" {
+        return Err("Incomplete or invalid provider response".into());
+    }
+
     let texts: Vec<_> = r["output"]
         .as_array()
         .ok_or("Missing response")?
@@ -1209,22 +1298,40 @@ pub fn parse_response(r: Value, sources: &[Source]) -> Result<Value, String> {
         .flat_map(|v| v["content"].as_array().into_iter().flatten())
         .filter(|v| v["type"] == "output_text")
         .collect();
-    if texts.len() != 1 {
+
+    if texts.is_empty() {
         return Err("Provider refusal or missing answer".into());
     }
-    let a: Value = serde_json::from_str(texts[0]["text"].as_str().ok_or("Missing answer")?)
-        .map_err(|_| "Invalid answer JSON")?;
-    let raw_answer = a["answer"].as_str().ok_or("Missing answer")?;
+
+    let raw_text = texts[0]["text"].as_str().ok_or("Missing answer")?;
+    let parsed_answer_json: Result<Value, _> = serde_json::from_str(raw_text);
+
+    let (raw_answer, citation_array, was_truncated) = match parsed_answer_json {
+        Ok(a) => {
+            let ans = a["answer"].as_str().unwrap_or("").to_string();
+            let cites = a["citation_ids"].as_array().cloned();
+            (ans, cites, false)
+        }
+        Err(_) if status == "incomplete" => {
+            // Risposta troncata a metà per limite token (max_output_tokens)
+            let fallback_msg = "La risposta è stata interrotta perché il modello ha consumato il limite massimo di output (1500 token), inclusi eventuali token di ragionamento interno. Prova a riformulare la richiesta o a scegliere un modello differente.".to_string();
+            (fallback_msg, None, true)
+        }
+        Err(_) => {
+            return Err("Invalid answer JSON".into());
+        }
+    };
+
     if raw_answer.trim().is_empty() {
         return Err("Empty answer".into());
     }
-    let sanitized_answer = sanitize_answer_prose(raw_answer);
+    let sanitized_answer = sanitize_answer_prose(&raw_answer);
 
     let mut matched_indices = BTreeSet::new();
     let mut has_unknown_citation = false;
 
-    if let Some(citation_array) = a["citation_ids"].as_array() {
-        for id_val in citation_array {
+    if let Some(cites) = citation_array {
+        for id_val in cites {
             if let Some(raw_id) = id_val.as_str() {
                 let trimmed = raw_id.trim();
                 let mut found = false;
@@ -1286,19 +1393,44 @@ pub fn parse_response(r: Value, sources: &[Source]) -> Result<Value, String> {
         })
         .collect();
 
-    let warning = if has_unknown_citation {
+    let warning = if status == "incomplete" || was_truncated {
+        Some("Risposta incompleta: il modello ha consumato il limite massimo di token generabili (1500 token), inclusi eventuali token di ragionamento. Seleziona un modello con un budget differente o riformula la richiesta.".to_string())
+    } else if has_unknown_citation {
         Some("Una citazione restituita dal modello non corrisponde alle fonti inviate ed è stata esclusa".to_string())
     } else {
         None
     };
 
+    let usage = &r["usage"];
+    let tokens_prompt = usage["input_tokens"]
+        .as_u64()
+        .or_else(|| usage["prompt_tokens"].as_u64());
+    let tokens_completion = usage["output_tokens"]
+        .as_u64()
+        .or_else(|| usage["completion_tokens"].as_u64());
+    let tokens_reasoning = usage["output_token_details"]["reasoning_tokens"]
+        .as_u64()
+        .or_else(|| usage["completion_tokens_details"]["reasoning_tokens"].as_u64());
+    let tokens_used = usage["total_tokens"].as_u64().or_else(|| {
+        match (tokens_prompt, tokens_completion) {
+            (Some(p), Some(c)) => Some(p + c),
+            _ => None,
+        }
+    });
+
     let mut res = json!({
         "answer": sanitized_answer,
         "provider": "openai",
         "model": r["model"],
+        "status": status,
+        "incomplete": status == "incomplete" || was_truncated,
+        "incompleteReason": incomplete_reason,
         "citations": cites,
         "citedIndices": cited_indices,
-        "tokensUsed": r["usage"]["total_tokens"].as_u64()
+        "tokensUsed": tokens_used,
+        "tokensPrompt": tokens_prompt,
+        "tokensCompletion": tokens_completion,
+        "tokensReasoning": tokens_reasoning,
     });
 
     if let Some(w) = warning {
@@ -1428,12 +1560,22 @@ pub async fn ask(
     let t_ui_total_ms = ui_elapsed_ms.map(|prev_ms| prev_ms + t_ask_total_ms);
 
     let model_str = parsed["model"].as_str().unwrap_or(p.options.model.as_str());
+    let status_str = parsed["status"].as_str().unwrap_or("completed");
+    let incomplete_reason = parsed["incompleteReason"].as_str().map(|s| s.to_string());
     let tokens_used = parsed["tokensUsed"].as_u64();
+    let tokens_prompt = parsed["tokensPrompt"].as_u64();
+    let tokens_completion = parsed["tokensCompletion"].as_u64();
+    let tokens_reasoning = parsed["tokensReasoning"].as_u64();
 
     log_ask_timing_detailed(&AskTimingLogEntry {
         timestamp: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
         model: model_str.to_string(),
+        status: status_str.to_string(),
+        incomplete_reason,
         tokens_used,
+        tokens_prompt,
+        tokens_completion,
+        tokens_reasoning,
         t_ui_total_ms,
         t_backend_total_ms,
         preview: PreviewTimingBreakdown {
@@ -2258,7 +2400,12 @@ mod tests {
       let entry = AskTimingLogEntry {
           timestamp: "2026-09-23T17:40:00.000Z".to_string(),
           model: "gpt-4o".to_string(),
+          status: "completed".to_string(),
+          incomplete_reason: None,
           tokens_used: Some(1500),
+          tokens_prompt: Some(1000),
+          tokens_completion: Some(500),
+          tokens_reasoning: None,
           t_ui_total_ms: Some(4890),
           t_backend_total_ms: 4890,
           preview: PreviewTimingBreakdown {
@@ -2656,6 +2803,24 @@ mod tests {
       let mut corrupted_source = valid_source.clone();
       corrupted_source.passage_hashes = vec![("pass_1".into(), "bad_corrupted_hash_value".into())];
       assert!(verify_source_integrity(t.path(), &corrupted_source, false).is_err());
+  }
+
+  #[test]
+  fn test_selected_model_persistence_in_app_data_dir() {
+      let temp_dir = tempfile::tempdir().unwrap();
+      let settings_file = temp_dir.path().join("ai_settings.json");
+      std::env::set_var("LIMEN_AI_SETTINGS_FILE", &settings_file);
+
+      // All'inizio nessun modello è salvato
+      assert_eq!(load_selected_model(), None);
+
+      // Salvataggio modello
+      assert!(save_selected_model("gpt-6-luna").is_ok());
+      assert_eq!(load_selected_model(), Some("gpt-6-luna".to_string()));
+
+      // Aggiornamento a nuovo modello
+      assert!(save_selected_model("gpt-6-sol").is_ok());
+      assert_eq!(load_selected_model(), Some("gpt-6-sol".to_string()));
   }
 }
 #[cfg(test)]
