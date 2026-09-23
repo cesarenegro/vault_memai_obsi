@@ -85,13 +85,21 @@ async fn run_diagnosis_for_query(
     )?;
 
     // Map document id -> lexical score and title bonus
-    let mut lex_scores: BTreeMap<String, (f64, f64)> = BTreeMap::new(); // doc_id -> (score, title_bonus)
+    let search_idx_opt = search::load_index_for_vault(vault_path)?;
+    let doc_count = search_idx_opt.as_ref().map(|idx| idx.documents.len()).unwrap_or(cat.documents.len()).max(1);
+    let mut lex_scores: BTreeMap<String, (f64, f64)> = BTreeMap::new();
     for item in &lex_results {
-        // Calculate title bonus specifically
+        // Calculate title bonus specifically (matching search.rs frequency-aware condition)
         let title_tokens = search::tokenize_text(&item.title);
         let mut title_bonus = 0.0f64;
         for t in &tokens {
-            if title_tokens.contains(t) {
+            let term_df = if let Some(ref idx) = search_idx_opt {
+                idx.documents.values().filter(|d| d.tokens.contains(t)).count()
+            } else {
+                0
+            };
+            let is_infrequent = term_df <= 2 || (term_df as f64 / doc_count as f64) <= 0.30;
+            if title_tokens.contains(t) && is_infrequent {
                 title_bonus += 10.0;
             }
         }
@@ -155,10 +163,11 @@ async fn run_diagnosis_for_query(
 
     for id in all_ids {
         let lex_item = lex_results.iter().find(|i| normalize_id(&i.id) == id || i.id == id);
-        let (base_score, title_bonus) = lex_item
-            .and_then(|i| lex_scores.get(&i.id))
-            .copied()
-            .unwrap_or((0.0, 0.0));
+        let (base_score, title_bonus) = if let Some(li) = lex_item {
+            lex_scores.get(&li.id).cloned().unwrap_or((0.0, 0.0))
+        } else {
+            (0.0, 0.0)
+        };
 
         let sem_info = semantic_scores.get(&id).or_else(|| {
             semantic_scores.iter().find(|(k, _)| normalize_id(k) == id).map(|(_, v)| v)

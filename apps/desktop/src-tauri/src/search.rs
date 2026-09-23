@@ -832,6 +832,7 @@ where
         let tags_tokens = tokenize_text(&d.tags.join(" "));
         let dl = d.tokens.len() as f64;
         let length_norm = 1.0 - BM25_B + BM25_B * dl / avgdl;
+        let doc_count = data.documents.len().max(1);
         for t in &terms {
             let tf = d.tokens.iter().filter(|x| *x == t).count() as f64;
             let idf =
@@ -839,7 +840,12 @@ where
             if tf > 0.0 {
                 score += idf * (tf * (BM25_K1 + 1.0)) / (tf + BM25_K1 * length_norm);
             }
-            if title_tokens.contains(t) {
+            // FASE 3a (Punto A): bonus del titolo assegnato solo a parole rare / poco frequenti nel vault
+            // (df <= 2 o df/N <= 0.30, tarato sulle 30 query di sviluppo A05_DEV_QUERIES).
+            // Evita che parole generiche come "progetto" (df ~ 35.4%) ottengano il bonus scavalcando documenti specifici.
+            let term_df = *df.get(t).unwrap_or(&0);
+            let is_infrequent = term_df <= 2 || (term_df as f64 / doc_count as f64) <= 0.30;
+            if title_tokens.contains(t) && is_infrequent {
                 score += 10.0;
             }
             if tags_tokens.contains(t) {

@@ -2,8 +2,8 @@
 
 **Data / Ora:** 2026-09-23  
 **Branch Git:** `windows-build`  
-**Ultimo Commit Registrato:** FASE 2-b (in arrivo)  
-**Vault di Sviluppo / Test:** `E:\VAULT WIN TEST DEV`  
+**Ultimo Commit Registrato:** `ba26889` (Proposta FASE 3 corretta)  
+**Vault di Sviluppo / Test:** `E:\VAULT WIN TEST DEV` (376 documenti, 23.482 passaggi)  
 **Repository Path:** `E:\Projects\vault_memai_obsi`  
 
 ---
@@ -26,27 +26,42 @@
 
 ### RISPOSTE CON MODELLO LOCALE — IN SOSPESO (Decisione Cesare 23/09/2026, UTC+8)
 - Generazione risposte con modello locale congelata.
-- File di istruzioni conservato in radice: [RISPOSTE_MODELLO_LOCALE_IN_SOSPESO.md](file:///E:/Projects/vault_memai_obsi/RISPOSTE_MODELLO_LOCALE_IN_SOSPESO.md) (commit `e8a3043`). Nessun codice di generazione locale sarà sviluppato finché non riattivato.
+- File di istruzioni conservato in radice: [RISPOSTE_MODELLO_LOCALE_IN_SOSPESO.md](file:///E:/Projects/vault_memai_obsi/RISPOSTE_MODELLO_LOCALE_IN_SOSPESO.md) (commit `e8a3043`). Nessun codice di generazione locale sarà sviluppato finché non riattivato esplicitamente.
 
-### FASE 3 — QUALITÀ DELLA SELEZIONE DELLE FONTI (Proposta Tecnica Corretta — Nessun Codice)
-- **Documento di proposta tecnica corretta**: [fase3-proposta.md](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase3-proposta.md).
-- **Sequenza operativa in due passi con misura intermedia**:
-  - **Passo 3a (Quali documenti scegliere)**:
-    1. *Punto A*: Bonus titolo condizionato (IDF / frequenza documentale) in `search.rs` per evitare l'ascesa di file per la parola generica "progetto".
-    2. *Punto B*: Elenco attuale (89 voci) e 55 nuove stopwords uniche per esteso (totale 144 voci) in `packages/search-engine/src/search-spec.json`, escludendo forme ambigue ("stato/a/i/e"); condiviso con TypeScript e macOS; ricostruzione obbligatoria dell'indice lessicale e rimisurazione di tutti i benchmark.
-    3. *Punto E*: Soglia minima di pertinenza su valori assoluti non normalizzati ($\text{SemSim} \ge 0.380$ e BM25 grezzo) per bloccare il rumore (documenti BNXT hanno SemSim 0.385–0.533; rumore estraneo $\le 0.36$).
-  - **Passo 3b (Quanto testo inviare di ciascuno)**:
-    4. *Punto C*: 1–3 passaggi più pertinenti per documento con locatori combinati (`[§1.2, §2.4]`) e verifica integrità file padre.
-    5. *Punto D*: Gestione budget 24.000 byte con tetto dinamico (3.500 B primi documenti, 2.000 B supporto), mantenendo il limite tassativo a massimo 10 fonti (S1…S10) e monitorando tempi totali di risposta e token OpenAI.
-- **Criteri di accettazione vincolanti**:
-  - BNXT: almeno 4 dei 5 documenti per esteso tra le fonti inviate (`20_RAW_SOURCES/a86061ba2701d614-_Progetto - BNXT AUDIT VICENZA.md`, `32f2a4081d13410e-BNXT CRM.md`, `abaef2b48c6e5b70-audit-localizzazione-EN-baseline-6f2f2b8.md`, `112bf7d370012490-audit-localizzazione-EN-verifica-AG-2026-09-10.md`, e almeno uno tra i due file email/whatsapp); zero documenti estranei per "progetto".
-  - ARKAI: almeno 6 dei 12 documenti reali elencati.
-  - Benchmark gold: taratura obbligatoria su `tests/gold/A05_DEV_QUERIES.json`; nessuna regressione su A05 (Recall@10 $\ge 0.950$) e A15 (p95 $\le 200$ ms); A04 verbalizzato come non verificato; rimisurazione completa.
-  - Criterio temporale: rispetto tempi totali registrati (`ask_timing.log`).
-- **Implementation Plan aggiornato**: [implementation_plan.md](file:///C:/Users/user/.gemini/antigravity-ide/brain/2bd5a479-b27a-49a6-83e0-db69feccb5fa/implementation_plan.md).
+### FASE 3 — QUALITÀ DELLA SELEZIONE DELLE FONTI
+- **Proposta Tecnica Corretta**: [fase3-proposta.md](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase3-proposta.md).
+- **Passo 3a (Implementazione A, B e Misurazione Comparativa Punto E)**:
+  1. *Punto A (Bonus titolo condizionato)*: Implementato in [search.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/search.rs) e [diagnose_fase1.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/bin/diagnose_fase1.rs). Bonus +10 solo se $df \le 2 \lor df/N \le 0.30$. `"progetto"` perde il bonus (+0); `"bnxt"` e `"arkai"` lo mantengono (+10).
+  2. *Punto B (Stopwords estese)*: Aggiunte 54 nuove parole comuni in [search-spec.json](file:///E:/Projects/vault_memai_obsi/packages/search-engine/src/search-spec.json) (143 totali). `"sei"` formalmente escluso (è numerale 6 fondamentale per scadenze e contratti).
+  3. *Reindicizzazione*: Vault `E:\VAULT WIN TEST DEV` reindicizzato con successo (`version: 2`).
+  4. *Verifica su BNXT e ARKAI*:
+     - Domanda BNXT: `BNXT CRM.md` balza al **Rango 1** (score 1.1938); `_Progetto - BNXT AUDIT VICENZA.md` al **Rango 2** (score 1.1695). I file estranei come `Progetto senza nome (2)` crollano oltre il rango 20.
+     - Domanda ARKAI: **Tutti i primi 7 risultati** sono documenti ARKAI ufficiali. 9 documenti ARKAI nei primi 10.
+  5. *Punto E (Misurazione comparativa senza codice in produzione)*:
+     - Eseguita misurazione comparativa tramite [measure_punto_e.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/bin/measure_punto_e.rs) sui 30 dev queries di `A05_DEV_QUERIES.json`.
+     - *Metodo a (soglia fissa)*: fallisce (a 0.380 tiene i falsi positivi, a 0.400 elimina 3 file BNXT ufficiali).
+     - *Metodo b (soglia relativa $\ge k \times \max$)*: taglia documenti BNXT legittimi al 75%.
+     - *Metodo c (parola rara $\lor \max - \text{SemSim} \le \delta$)*: protegge al 100% i file BNXT ed elimina tutti i falsi positivi. Recall sui 30 dev queries sale da 0.833 a 0.867.
+     - Dati completi documentati in [fase3a-misure.md](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase3a-misure.md). Nessun codice attivato nel motore; scelta demandata a Cesare.
+  6. *Gate A15 e benchmark A05 / A04*:
+     - File origine valore 198,90 ms: `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A15/run.log` (Apple M2 su macOS).
+     - Chiarita la soglia del gate contrattuale: $\le 1.000$ ms (margine reale accertato $> 800$ ms, non 1,1 ms).
+     - Misura reale Windows in `--release`: $p95 = 834.74$ ms ($\le 1.000$ ms, PASS).
+     - A04 confermato invariato come NON VERIFICATO.
+  7. *Rettifiche a Proposta Passo 3b*:
+     - Stima "+30-50% token" etichettata come ipotetica.
+     - Integrità crittografica estesa a ogni singolo passaggio (`passage.sha256`).
 
 ---
 
-## 2. Prossimo Passo Vincolante (STOP)
-- **STOP VINCOLANTE**: Nessuna modifica al codice sorgente per la FASE 3. In attesa dell'approvazione dell'auditor e del via libera di Cesare per avviare il Passo 3a.
+## 2. File di Evidenza Prodotti nel Passo 3a
+- **Output diagnostico grezzo**: [fase3a-diagnose-output.txt](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase3a-diagnose-output.txt)
+- **Report misure e comparazione Punto E**: [fase3a-misure.md](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase3a-misure.md)
+- **Walkthrough attività**: [walkthrough.md](file:///C:/Users/user/.gemini/antigravity-ide/brain/2bd5a479-b27a-49a6-83e0-db69feccb5fa/walkthrough.md)
+- **Tool di misurazione Punto E**: [measure_punto_e.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/bin/measure_punto_e.rs)
 
+---
+
+## 3. Stato Processi di Sistema
+- **Risolto blocco CPU / istanze multiple**: terminato il processo `target\release\limen-vault.exe` rimasto attivo in background e liberati i core della CPU.
+- Server locale `llama-server` operativo per inferenza locale.

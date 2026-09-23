@@ -219,8 +219,9 @@ In `ai.rs` (righe 450–461), per documenti lunghi ($> 3.000$ caratteri), il cod
    - OpenAI continua a citare la fonte a livello di documento con `S1…S10`.
    - L'utente nell'interfaccia vede la fonte con i localizzatori multipli chiaramente indicati nel riquadro espandibile.
 3. **Controllo di integrità (`verify_pre` e `verify_post`)**:
-   - L'integrità primaria della fonte in `verify_source_integrity_with_fs_override` verifica la corrispondenza del file padre su disco (`mtime`, dimensione e SHA-256 del documento).
-   - Se il file non è mutato, tutti i passaggi derivati conservano la loro validità garantita dal catalogo in memoria. Se il file è mutato, la fonte viene rigettata con `"Source changed"`.
+   - Con l'invio di più passaggi per fonte, **ogni singolo passaggio inviato deve restare verificato singolarmente (impronta del passaggio `passage.sha256`)**, non solo il file padre.
+   - Viene verificata la corrispondenza esatta dello SHA-256 del testo estratto rispetto al campo `sha256` del singolo passaggio registrato nel catalogo, oltre alla validazione del file padre (`content_hash`, `mtime`, `size`).
+   - Se un passaggio o il file risultano alterati, la fonte viene rigettata tempestivamente con errore esplicito.
 
 ---
 
@@ -238,8 +239,8 @@ In `ai.rs` (righe 450–461), per documenti lunghi ($> 3.000$ caratteri), il cod
 - Il ciclo di selezione in `ai.rs` accumula passaggi pertinenti fino al raggiungimento del budget di 24.000 byte, fermandosi comunque a massimo 10 fonti.
 
 #### Svantaggi o rischi (Contro): Token, Costi e Latenza di OpenAI
-- **Aumento dei token di input**: passare da ~15.000 byte a ~22.000–24.000 byte comporta un incremento del 30–50% dei token di prompt inviati ad OpenAI.
-- **Latenza di risposta**: nella prova di Cesare del 2026-09-23T05:17:57Z, la chiamata OpenAI ha impiegato **3.769 ms**. Con un contesto più corposo, il tempo di risposta di OpenAI potrebbe salire a circa 4.500–5.500 ms.
+- **Aumento dei token di input**: passare da ~15.000 byte a ~22.000–24.000 byte comporta un incremento potenziale del 30–50% dei token di prompt inviati ad OpenAI (*stima ipotetica, da verificare sui dati reali restituiti dall'API OpenAI*).
+- **Latenza di risposta**: nella prova di Cesare del 2026-09-23T05:17:57Z, la chiamata OpenAI ha impiegato **3.769 ms**. Con un contesto più corposo, il tempo di risposta di OpenAI potrebbe variare in proporzione al volume effettivo dei token.
 - **Monitoraggio obbligatorio**: il criterio di accettazione della FASE 3b include la misurazione del tempo totale end-to-end (`t_backend_total_ms` e `t_ui_total_ms`).
 
 ---
