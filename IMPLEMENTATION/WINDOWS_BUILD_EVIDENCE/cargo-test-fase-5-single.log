@@ -96,25 +96,6 @@ warning: field `vault_path` is never read
    = note: `EmbeddingsCacheEntry` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
 
 warning: `limen-vault` (lib) generated 12 warnings (run `cargo fix --lib -p limen-vault` to apply 5 suggestions)
-warning: unused variable: `t0`
-  --> src\bin\diagnose_fase1.rs:46:9
-   |
-46 |     let t0 = std::time::Instant::now();
-   |         ^^ help: if this is intentional, prefix it with an underscore: `_t0`
-   |
-   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
-
-warning: field `exact_bonus` is never read
-   --> src\bin\diagnose_fase1.rs:236:9
-    |
-223 |     struct FusedRecord {
-    |            ----------- field in this struct
-...
-236 |         exact_bonus: f64,
-    |         ^^^^^^^^^^^
-    |
-    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
-
 warning: fields `title` and `base_score` are never read
   --> src\bin\measure_punto_e.rs:20:5
    |
@@ -138,9 +119,9 @@ warning: field `query_id` is never read
    |     ^^^^^^^^
 
 warning: variable does not need to be mutable
-    --> src\ai.rs:3740:12
+    --> src\ai.rs:3973:12
      |
-3740 |       let (mut pending, cancel) = state.begin(&p_preview.ticket).unwrap();
+3973 |       let (mut pending, cancel) = state.begin(&p_preview.ticket).unwrap();
      |            ----^^^^^^^
      |            |
      |            help: remove this `mut`
@@ -148,9 +129,9 @@ warning: variable does not need to be mutable
      = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
 
 warning: unused variable: `cancel`
-    --> src\ai.rs:3740:25
+    --> src\ai.rs:3973:25
      |
-3740 |       let (mut pending, cancel) = state.begin(&p_preview.ticket).unwrap();
+3973 |       let (mut pending, cancel) = state.begin(&p_preview.ticket).unwrap();
      |                         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_cancel`
      |
      = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
@@ -183,9 +164,27 @@ warning: unused variable: `doc_id`
 2056 |         let doc_id = make_document_id("20_RAW_SOURCES/doc.md");
      |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_doc_id`
 
-warning: `limen-vault` (bin "diagnose_fase1" test) generated 2 warnings (run `cargo fix --bin "diagnose_fase1" -p limen-vault --tests` to apply 1 suggestion)
 warning: `limen-vault` (bin "measure_punto_e" test) generated 2 warnings
 warning: `limen-vault` (lib test) generated 15 warnings (9 duplicates) (run `cargo fix --lib -p limen-vault --tests` to apply 6 suggestions)
+warning: unused variable: `t0`
+  --> src\bin\diagnose_fase1.rs:46:9
+   |
+46 |     let t0 = std::time::Instant::now();
+   |         ^^ help: if this is intentional, prefix it with an underscore: `_t0`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `exact_bonus` is never read
+   --> src\bin\diagnose_fase1.rs:236:9
+    |
+223 |     struct FusedRecord {
+    |            ----------- field in this struct
+...
+236 |         exact_bonus: f64,
+    |         ^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
 warning: unused import: `ffi::CString`
   --> src\snapshots.rs:12:5
    |
@@ -194,11 +193,12 @@ warning: unused import: `ffi::CString`
    |
    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
 
+warning: `limen-vault` (bin "diagnose_fase1" test) generated 2 warnings (run `cargo fix --bin "diagnose_fase1" -p limen-vault --tests` to apply 1 suggestion)
 warning: `limen-vault` (bin "limen-vault" test) generated 1 warning (run `cargo fix --bin "limen-vault" -p limen-vault --tests` to apply 1 suggestion)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.14s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.31s
      Running unittests src\lib.rs (target\debug\deps\limen_vault-b7ab620e0196d8b2.exe)
 
-running 150 tests
+running 154 tests
 test ai::index_policy_test::forged_approval_is_rejected ... ok
 test ai::model_tests::models_are_validated_and_deduplicated ... ok
 test ai::tests::approved_policy_and_context_hash ... ok
@@ -217,6 +217,7 @@ test ai::tests::test_interrupted_stream_preserves_partial_text_with_zero_citatio
 test ai::tests::test_json_stream_answer_parser_decodes_escapes_and_unicode ... ok
 test ai::tests::test_locators_overlap_detection ... ok
 test ai::tests::test_log_ask_timing_detailed_includes_source_audit_and_no_text_leakage ... ok
+test ai::tests::test_missing_response_completed_treated_as_interrupted_with_zero_citations ... ok
 test ai::tests::test_multi_vault_cache_isolation ... ok
 test ai::tests::test_offline_llama_server_hybrid_fallback_no_error ... ok
 test ai::tests::test_openai_consent_persisted_and_enforced ... ok
@@ -235,8 +236,11 @@ test ai::tests::test_selected_model_persistence_in_app_data_dir ... ok
 test ai::tests::test_source_integrity_ntfs_vs_non_ntfs ... ok
 test ai::tests::test_stream_prose_sanitizer_split_bold_asterisks ... ok
 test ai::tests::test_stream_prose_sanitizer_split_citations ... ok
+test ai::tests::test_streaming_network_error_treated_as_interrupted_with_reason ... ok
 test ai::tests::test_system_instruction_contains_required_rules_and_restrictive_citation ... ok
+test ai::tests::test_utf8_chunk_decoder_split_multibyte_character ... ok
 test ai::tests::test_verify_post_failure_replaces_text_with_cancellation_message ... ok
+test ai::tests::test_verify_post_rejects_document_access_denied_and_obsolete_source ... ok
 test ai::tests::test_verify_post_source_changed_during_request_rejected ... ok
 test ai::tests::test_verify_pre_source_changed_since_preview_rejected ... ok
 test ai::tests::test_verify_source_generated_obsolete_rejected ... ok
@@ -350,7 +354,7 @@ test vault::tests::manifest_is_consumed_without_reopening ... ok
 test vault::tests::raw_sources_foreign_yaml_frontmatter_allows_vault_opening ... ok
 test vault::tests::shared_frontmatter_fixtures ... ok
 
-test result: ok. 150 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.88s
+test result: ok. 154 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.25s
 
      Running unittests src\bin\a04_real_local.rs (target\debug\deps\a04_real_local-20417175db04e0a5.exe)
 
@@ -434,7 +438,7 @@ test vault::tests::manifest_is_consumed_without_reopening ... ok
 test vault::tests::raw_sources_foreign_yaml_frontmatter_allows_vault_opening ... ok
 test vault::tests::shared_frontmatter_fixtures ... ok
 
-test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.61s
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.37s
 
      Running unittests src\bin\measure_punto_e.rs (target\debug\deps\measure_punto_e-2ca8dfc639e1f24b.exe)
 

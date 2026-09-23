@@ -249,15 +249,48 @@ Conformemente all'autorizzazione di Cesare e alle sei correzioni integrate:
 
 ---
 
-## 2. Stato Attuale e Consegna FASE 5
+### FASE 5b — Correzione Quattro Difetti in ask_stream prima della prova live
 
-- **STATO ATTUALE**: **FASE 5 IMPLEMENTATA E VERIFICATA CON SUCCESSO — PRONTA PER LA CONVALIDA DAL VIVO DI CESARE E DELL'AUDITOR**.
+Conformemente all'analisi e alle correzioni vincolanti richieste per `ask_stream` ([ai.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/ai.rs)):
+
+1. **Caratteri UTF-8 Spezzati (Multi-byte Chunking)**:
+   - Sostituita la conversione immediata con `String::from_utf8_lossy(&chunk)` che generava caratteri di rimpiazzo `` quando un carattere multibyte (è, à, ù, emoji) cadeva sul confine tra due chunk di rete.
+   - Implementato `Utf8ChunkDecoder`: bufferizza i byte in transito e converte solo sequenze UTF-8 complete, trattenendo i byte finali incompleti nel buffer per il chunk successivo.
+   - Unit test dedicato: `test_utf8_chunk_decoder_split_multibyte_character` (verifica "è" [0xC3, 0xA8] diviso in due pezzi da 1 byte, oltre a caratteri a 3 byte `€` e 4 byte emoji `🔥`).
+
+2. **`verify_post` Rifiuta Qualunque Errore**:
+   - Rimosso il filtro restrittivo che controllava solo `starts_with("Source changed")`: ora **qualunque** errore ritornato da `verify_source_integrity_with_fs_override` annulla immediatamente la risposta.
+   - Rifiutati esplicitamente "Document access denied" e "Generated source obsolete or modified" oltre a modifiche al contenuto o all'hash del passaggio.
+   - Il testo visualizzato viene interamente sostituito da un messaggio chiaro di annullamento e vengono restituite **zero citazioni**.
+   - Unit test dedicato: `test_verify_post_rejects_document_access_denied_and_obsolete_source`.
+
+3. **Nessuno Stato Inventato (Assenza di `response.completed`)**:
+   - Eliminata la costruzione artificiale di una risposta con `"status": "completed"` quando l'evento finale `response.completed` non perviene.
+   - Se lo stream si chiude senza evento finale di OpenAI, la risposta viene trattata come interrotta (`status: "incomplete"`), preservando il testo parziale con avviso esplicito di incompletezza e **zero citazioni**.
+   - Unit test dedicato: `test_missing_response_completed_treated_as_interrupted_with_zero_citations`.
+
+4. **Errore di Rete Durante lo Streaming**:
+   - `match response.chunk().await` intercetta esplicitamente gli errori di rete (`Err(e)`) impostando `was_interrupted = true` e registrando la causa (`network_error`).
+   - L'errore di rete viene trattato come interruzione controllata: testo parziale preservato, avviso con la causa esatta in UI, **zero citazioni** e motivo registrato dettagliatamente in `C:\Users\user\.limen-vault\ask_timing.log`.
+   - Unit test dedicato: `test_streaming_network_error_treated_as_interrupted_with_reason`.
+
+5. **Pulizia Formato Obsoleto**:
+   - Rimosso il ramo che leggeva `choices[0].delta.content` (eredità di Chat Completions non pertinente alla Responses API, dove i frammenti arrivano in `v["delta"]`).
+
+---
+
+## 2. Stato Attuale e Consegna FASE 5b
+
+- **STATO ATTUALE**: **FASE 5b COMPLETATA E VERIFICATA CON SUCCESSO — PRONTA PER LA CONVALIDA DAL VIVO DI CESARE E DELL'AUDITOR**.
 - **Modello configurato come default**: **`gpt-4o`**.
-- **Test suite**: **168 passati; 0 falliti** (sia in parallelo sia con `--test-threads=1`).
+- **Test suite**: **172 passati (154 lib + 18 bin); 0 falliti** (sia in parallelo sia con `--test-threads=1`).
 - **Verifica TypeScript frontend**: **0 errori** (`npx tsc --noEmit`).
 - **ZERO chiamate OpenAI** effettuate dall'assistente.
 - **ZERO processi terminati** senza autorizzazione (`llama-server.exe` PID 39740 e `limen-vault.exe` PID 25352 attivi e intatti).
-- **Patch di consegna**: [fase-5.patch](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5.patch).
+- **Log di test**:
+  - Parallelo: [cargo-test-fase-5-parallel.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-5-parallel.log) (172/172 ok).
+  - Sequenziale: [cargo-test-fase-5-single.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-5-single.log) (172/172 ok).
+- **Patch di consegna**: [fase-5b.patch](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5b.patch).
 
 
 

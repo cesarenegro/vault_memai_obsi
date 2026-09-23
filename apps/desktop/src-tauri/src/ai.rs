@@ -1925,6 +1925,64 @@ impl JsonStreamAnswerParser {
     }
 }
 
+/// Decodificatore incrementale per stream di byte di rete:
+/// trattiene i byte di sequenze UTF-8 multibyte incomplete alla fine di un frammento,
+/// garantendo che nessun carattere multibyte (es. "è", "à", "€", emoji) venga convertito
+/// nel carattere di rimpiazzo ("") sui confini dei pacchetti di rete.
+#[derive(Debug, Default)]
+pub struct Utf8ChunkDecoder {
+    buffer: Vec<u8>,
+}
+
+impl Utf8ChunkDecoder {
+    pub fn new() -> Self {
+        Self { buffer: Vec::new() }
+    }
+
+    pub fn decode(&mut self, chunk: &[u8]) -> String {
+        self.buffer.extend_from_slice(chunk);
+        let valid_len = match std::str::from_utf8(&self.buffer) {
+            Ok(s) => s.len(),
+            Err(e) => {
+                if e.error_len().is_none() {
+                    // Sequenza UTF-8 multibyte incompleta alla fine del buffer
+                    e.valid_up_to()
+                } else {
+                    let valid_up_to = e.valid_up_to();
+                    if valid_up_to > 0 {
+                        valid_up_to
+                    } else {
+                        // Byte corrotto o non valido: consuma un byte per evitare deadlock
+                        self.buffer.remove(0);
+                        return "\u{FFFD}".to_string();
+                    }
+                }
+            }
+        };
+
+        if valid_len > 0 {
+            let valid_str = match std::str::from_utf8(&self.buffer[..valid_len]) {
+                Ok(s) => s.to_string(),
+                Err(_) => String::from_utf8_lossy(&self.buffer[..valid_len]).to_string(),
+            };
+            self.buffer.drain(..valid_len);
+            valid_str
+        } else {
+            String::new()
+        }
+    }
+
+    pub fn flush(&mut self) -> String {
+        if self.buffer.is_empty() {
+            String::new()
+        } else {
+            let s = String::from_utf8_lossy(&self.buffer).to_string();
+            self.buffer.clear();
+            s
+        }
+    }
+}
+
 /// Esegue l'interrogazione ad OpenAI in modalità streaming SSE preservando lo schema JSON Responses API rigido.
 /// Emette eventi `limen://ai-stream-chunk` verso la finestra UI e convalida con `verify_post` prima di restituire il risultato.
 pub async fn ask_stream(
@@ -2043,18 +2101,30 @@ pub async fn ask_stream(
 
     let mut json_parser = JsonStreamAnswerParser::new();
     let mut sanitizer = StreamProseSanitizer::new();
+    let mut utf8_decoder = Utf8ChunkDecoder::new();
     let mut t_first_chunk_ms: Option<u64> = None;
     let mut line_buffer = String::new();
-    let mut raw_output_text = String::new();
     let mut was_interrupted = false;
+    let mut network_error: Option<String> = None;
     let mut final_response_val: Option<Value> = None;
 
-    while let Ok(Some(chunk)) = response.chunk().await {
+    loop {
         if cancel.load(Ordering::SeqCst) {
             was_interrupted = true;
             break;
         }
-        let chunk_str = String::from_utf8_lossy(&chunk);
+
+        let chunk = match response.chunk().await {
+            Ok(Some(c)) => c,
+            Ok(None) => break,
+            Err(e) => {
+                was_interrupted = true;
+                network_error = Some(format!("Errore di rete durante lo streaming: {e}"));
+                break;
+            }
+        };
+
+        let chunk_str = utf8_decoder.decode(&chunk);
 
         for c in chunk_str.chars() {
             if c == '\n' {
@@ -2084,16 +2154,10 @@ pub async fn ask_stream(
                             }
                         }
 
-                        let delta_opt = if let Some(d) = v.get("delta").and_then(|d| d.as_str()) {
-                            Some(d)
-                        } else if let Some(arr) = v.get("choices").and_then(|c| c.as_array()) {
-                            arr.first().and_then(|c| c.get("delta")).and_then(|d| d.get("content")).and_then(|s| s.as_str())
-                        } else {
-                            None
-                        };
+                        // Responses API emette i delta in "delta" (rimosso choices[0].delta.content)
+                        let delta_opt = v.get("delta").and_then(|d| d.as_str());
 
                         if let Some(delta) = delta_opt {
-                            raw_output_text.push_str(delta);
                             let prose = json_parser.feed(delta);
                             if !prose.is_empty() {
                                 let clean_delta = sanitizer.feed(&prose);
@@ -2116,6 +2180,43 @@ pub async fn ask_stream(
         }
     }
 
+    let flushed_utf8 = utf8_decoder.flush();
+    if !flushed_utf8.is_empty() {
+        line_buffer.push_str(&flushed_utf8);
+    }
+    let remaining_line = line_buffer.trim().to_string();
+    if !remaining_line.is_empty() && !remaining_line.starts_with(':') {
+        if let Some(data_payload) = remaining_line.strip_prefix("data:") {
+            let data_trimmed = data_payload.trim();
+            if data_trimmed != "[DONE]" {
+                if let Ok(v) = serde_json::from_str::<Value>(data_trimmed) {
+                    if v.get("status").is_some() && v.get("output").is_some() {
+                        final_response_val = Some(v.clone());
+                    } else if v.get("type").and_then(|t| t.as_str()) == Some("response.completed") {
+                        if let Some(resp) = v.get("response") {
+                            final_response_val = Some(resp.clone());
+                        }
+                    }
+                    if let Some(delta) = v.get("delta").and_then(|d| d.as_str()) {
+                        let prose = json_parser.feed(delta);
+                        if !prose.is_empty() {
+                            let clean_delta = sanitizer.feed(&prose);
+                            if !clean_delta.is_empty() {
+                                if let Some(ref w) = window {
+                                    let _ = w.emit("limen://ai-stream-chunk", AiStreamChunkPayload {
+                                        ticket: ticket.clone(),
+                                        delta: clean_delta,
+                                        full_text: sanitizer.get_accumulated().to_string(),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     let t_openai_ms = t_openai_start.elapsed().as_millis() as u64;
 
     // Svuota residuo del sanitizer a fine stream
@@ -2130,22 +2231,28 @@ pub async fn ask_stream(
         }
     }
 
-    // 4. Verifica impronte post-chiamata (verify_post)
+    // 4. Verifica impronte post-chiamata (verify_post): rifiuta qualunque errore
     let t_vpost_start = Instant::now();
-    let mut verify_post_failed = false;
+    let mut verify_post_error: Option<String> = None;
     for s in &p.sources {
         if let Err(e) = verify_source_integrity_with_fs_override(&p.path, s, high_prec, p.options.include_drafts) {
-            if e.starts_with("Source changed") {
-                verify_post_failed = true;
-                break;
-            }
+            verify_post_error = Some(e);
+            break;
         }
     }
     let t_verify_post_ms = t_vpost_start.elapsed().as_millis() as u64;
 
     // Se verify_post fallisce, sostituzione protettiva del testo e zero citazioni
-    if verify_post_failed {
-        let error_msg = "Un documento è cambiato durante la generazione: la risposta è stata annullata, riprova".to_string();
+    if let Some(err) = verify_post_error {
+        let error_msg = if err.starts_with("Source changed") {
+            "Un documento è cambiato durante la generazione: la risposta è stata annullata, riprova".to_string()
+        } else if err.contains("Document access denied") {
+            "Accesso al documento negato durante la generazione: la risposta è stata annullata, riprova".to_string()
+        } else if err.contains("Generated source obsolete") {
+            "Fonte generata obsoleta o modificata durante la generazione: la risposta è stata annullata, riprova".to_string()
+        } else {
+            format!("Verifica integrità fallita ({err}): la risposta è stata annullata, riprova")
+        };
         let end_payload = AiStreamEndPayload {
             ticket: ticket.clone(),
             answer: error_msg.clone(),
@@ -2168,9 +2275,15 @@ pub async fn ask_stream(
         return Err(error_msg);
     }
 
-    // Se lo streaming è stato interrotto (cancel o rete), mantieni il testo parziale con avviso e zero citazioni
+    // Se lo streaming è stato interrotto (cancel o errore di rete), mantieni il testo parziale con avviso e zero citazioni
     if was_interrupted {
-        let warning_msg = "La generazione della risposta è stata interrotta.".to_string();
+        let warning_msg = if let Some(ref net_err) = network_error {
+            net_err.clone()
+        } else if cancel.load(Ordering::SeqCst) {
+            "Richiesta annullata dall'utente.".to_string()
+        } else {
+            "La generazione della risposta è stata interrotta.".to_string()
+        };
         let partial_answer = sanitizer.get_accumulated().to_string();
         let end_payload = AiStreamEndPayload {
             ticket: ticket.clone(),
@@ -2180,7 +2293,7 @@ pub async fn ask_stream(
             status: "incomplete".into(),
             incomplete: true,
             incomplete_reason: Some(warning_msg.clone()),
-            warning: Some(warning_msg),
+            warning: Some(warning_msg.clone()),
             error: None,
             cancelled: true,
             tokens_used: None,
@@ -2191,29 +2304,149 @@ pub async fn ask_stream(
         if let Some(ref w) = window {
             let _ = w.emit("limen://ai-stream-end", end_payload.clone());
         }
+
+        let t_ask_total_ms = t_ask_start.elapsed().as_millis() as u64;
+        let t_backend_total_ms = p.preview_timings.t_preview_total_ms + t_handoff_ms + t_ask_total_ms;
+        let t_ui_total_ms = ui_elapsed_ms.map(|prev_ms| prev_ms + t_ask_total_ms);
+        let audit_sources: Vec<SourceAuditEntry> = p.sources
+            .iter()
+            .enumerate()
+            .map(|(idx, s)| SourceAuditEntry {
+                id: format!("S{}", idx + 1),
+                relative_path: s.relative_path.clone(),
+                bytes: s.content.len(),
+                locator: s.locator.clone(),
+                cited: false,
+            })
+            .collect();
+
+        log_ask_timing_detailed(&AskTimingLogEntry {
+            timestamp: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+            model: effective_model.clone(),
+            status: "incomplete".to_string(),
+            incomplete_reason: Some(warning_msg.clone()),
+            tokens_used: None,
+            tokens_prompt: None,
+            tokens_completion: None,
+            tokens_reasoning: None,
+            t_first_chunk_ms,
+            t_ui_total_ms,
+            t_backend_total_ms,
+            preview: PreviewTimingBreakdown {
+                total_ms: p.preview_timings.t_preview_total_ms,
+                index_cache_ms: p.preview_timings.t_index_cache_ms,
+                embed_ms: p.preview_timings.t_embed_ms,
+                search_ms: p.preview_timings.t_search_ms,
+                search_words_ms: p.preview_timings.t_search_words_ms,
+                search_sem_ms: p.preview_timings.t_search_sem_ms,
+                search_fuse_ms: p.preview_timings.t_search_fuse_ms,
+                search_admit_ms: p.preview_timings.t_search_admit_ms,
+                doc_read_ms: p.preview_timings.t_doc_read_ms,
+                passage_extract_ms: p.preview_timings.t_passage_extract_ms,
+            },
+            t_handoff_ms,
+            ask: AskTimingBreakdown {
+                total_ms: t_ask_total_ms,
+                verify_pre_ms: t_verify_pre_ms,
+                payload_ms: t_payload_ms,
+                openai_ms: t_openai_ms,
+                t_first_chunk_ms,
+                verify_post_ms: t_verify_post_ms,
+                parse_ms: 0,
+            },
+            sources: audit_sources,
+        });
+
         let res_val = serde_json::to_value(&end_payload).map_err(|_| "Failed to serialize end payload")?;
         return Ok(res_val);
     }
 
-    // 5. Decodifica e validazione risposta finale
-    let t_parse_start = Instant::now();
-    let response_to_parse = if let Some(v) = final_response_val {
-        v
-    } else {
-        // Sintesi da raw_output_text se OpenAI non ha inviato un evento "response.completed" separato
-        json!({
-            "status": "completed",
-            "model": effective_model,
-            "output": [{
-                "type": "message",
-                "content": [{
-                    "type": "output_text",
-                    "text": raw_output_text
-                }]
-            }]
-        })
+    // 5. Decodifica e validazione risposta finale: nessun stato inventato
+    // Se non è arrivato l'evento finale response.completed con il suo status ufficiale,
+    // la risposta va trattata come interrotta: testo parziale con avviso, zero citazioni.
+    let response_to_parse = match final_response_val {
+        Some(v) => v,
+        None => {
+            let warning_msg = "La risposta è incompleta: lo streaming si è chiuso senza evento finale response.completed dal provider.".to_string();
+            let partial_answer = sanitizer.get_accumulated().to_string();
+            let end_payload = AiStreamEndPayload {
+                ticket: ticket.clone(),
+                answer: partial_answer,
+                citations: vec![],
+                cited_indices: vec![],
+                status: "incomplete".into(),
+                incomplete: true,
+                incomplete_reason: Some(warning_msg.clone()),
+                warning: Some(warning_msg.clone()),
+                error: None,
+                cancelled: true,
+                tokens_used: None,
+                tokens_prompt: None,
+                tokens_completion: None,
+                tokens_reasoning: None,
+            };
+            if let Some(ref w) = window {
+                let _ = w.emit("limen://ai-stream-end", end_payload.clone());
+            }
+
+            let t_ask_total_ms = t_ask_start.elapsed().as_millis() as u64;
+            let t_backend_total_ms = p.preview_timings.t_preview_total_ms + t_handoff_ms + t_ask_total_ms;
+            let t_ui_total_ms = ui_elapsed_ms.map(|prev_ms| prev_ms + t_ask_total_ms);
+            let audit_sources: Vec<SourceAuditEntry> = p.sources
+                .iter()
+                .enumerate()
+                .map(|(idx, s)| SourceAuditEntry {
+                    id: format!("S{}", idx + 1),
+                    relative_path: s.relative_path.clone(),
+                    bytes: s.content.len(),
+                    locator: s.locator.clone(),
+                    cited: false,
+                })
+                .collect();
+
+            log_ask_timing_detailed(&AskTimingLogEntry {
+                timestamp: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+                model: effective_model.clone(),
+                status: "incomplete".to_string(),
+                incomplete_reason: Some(warning_msg.clone()),
+                tokens_used: None,
+                tokens_prompt: None,
+                tokens_completion: None,
+                tokens_reasoning: None,
+                t_first_chunk_ms,
+                t_ui_total_ms,
+                t_backend_total_ms,
+                preview: PreviewTimingBreakdown {
+                    total_ms: p.preview_timings.t_preview_total_ms,
+                    index_cache_ms: p.preview_timings.t_index_cache_ms,
+                    embed_ms: p.preview_timings.t_embed_ms,
+                    search_ms: p.preview_timings.t_search_ms,
+                    search_words_ms: p.preview_timings.t_search_words_ms,
+                    search_sem_ms: p.preview_timings.t_search_sem_ms,
+                    search_fuse_ms: p.preview_timings.t_search_fuse_ms,
+                    search_admit_ms: p.preview_timings.t_search_admit_ms,
+                    doc_read_ms: p.preview_timings.t_doc_read_ms,
+                    passage_extract_ms: p.preview_timings.t_passage_extract_ms,
+                },
+                t_handoff_ms,
+                ask: AskTimingBreakdown {
+                    total_ms: t_ask_total_ms,
+                    verify_pre_ms: t_verify_pre_ms,
+                    payload_ms: t_payload_ms,
+                    openai_ms: t_openai_ms,
+                    t_first_chunk_ms,
+                    verify_post_ms: t_verify_post_ms,
+                    parse_ms: 0,
+                },
+                sources: audit_sources,
+            });
+
+            let res_val = serde_json::to_value(&end_payload).map_err(|_| "Failed to serialize end payload")?;
+            return Ok(res_val);
+        }
     };
 
+    let t_parse_start = Instant::now();
     let parsed = parse_response(response_to_parse, &p.sources)?;
     let t_parse_ms = t_parse_start.elapsed().as_millis() as u64;
 
@@ -3747,14 +3980,12 @@ mod tests {
       let high_prec = is_high_precision_fs(&pending.path);
       let mut verify_post_failed = false;
       for s in &pending.sources {
-          if let Err(e) = verify_source_integrity_with_fs_override(&pending.path, s, high_prec, pending.options.include_drafts) {
-              if e.starts_with("Source changed") {
-                  verify_post_failed = true;
-                  break;
-              }
+          if let Err(_) = verify_source_integrity_with_fs_override(&pending.path, s, high_prec, pending.options.include_drafts) {
+              verify_post_failed = true;
+              break;
           }
       }
-      assert!(verify_post_failed, "verify_post deve fallire se una fonte è mutata!");
+      assert!(verify_post_failed, "verify_post deve fallire se una fonte è mutata o non valida!");
 
       // In caso di fallimento, la regola vincolante impone la sostituzione esatta del testo e zero citazioni:
       let expected_error_msg = "Un documento è cambiato durante la generazione: la risposta è stata annullata, riprova";
@@ -3779,6 +4010,206 @@ mod tests {
       assert_eq!(payload.citations.len(), 0);
       assert_eq!(payload.cited_indices.len(), 0);
       assert_eq!(payload.cancelled, true);
+  }
+
+  #[test]
+  fn test_utf8_chunk_decoder_split_multibyte_character() {
+      let mut decoder = Utf8ChunkDecoder::new();
+      // Carattere "è" in UTF-8: 0xC3, 0xA8 (due byte)
+      // Primo pezzo di un solo byte: 0xC3 -> sequenza multibyte incompleta, stringa emessa vuota
+      let out1 = decoder.decode(&[0xC3]);
+      assert_eq!(out1, "", "Il primo byte incompleto di 'è' deve essere trattenuto nel buffer");
+
+      // Secondo pezzo di un solo byte: 0xA8 -> sequenza UTF-8 completata, deve produrre 'è' senza replacement char
+      let out2 = decoder.decode(&[0xA8]);
+      assert_eq!(out2, "è", "Il secondo byte deve completare la sequenza producendo 'è'");
+      assert_eq!(decoder.flush(), "");
+
+      // Verifica ulteriore: carattere a 3 byte (€ = 0xE2, 0x82, 0xAC) spezzato in 3 chunk da 1 byte
+      let e1 = decoder.decode(&[0xE2]);
+      assert_eq!(e1, "");
+      let e2 = decoder.decode(&[0x82]);
+      assert_eq!(e2, "");
+      let e3 = decoder.decode(&[0xAC]);
+      assert_eq!(e3, "€");
+
+      // Verifica emoji a 4 byte: 🔥 (0xF0, 0x9F, 0x94, 0xA5) spezzato a metà
+      let f1 = decoder.decode(&[0xF0, 0x9F]);
+      assert_eq!(f1, "");
+      let f2 = decoder.decode(&[0x94, 0xA5]);
+      assert_eq!(f2, "🔥");
+  }
+
+  #[tokio::test]
+  async fn test_verify_post_rejects_document_access_denied_and_obsolete_source() {
+      // 1. Caso Document access denied (es. documento in bozza con include_drafts = false)
+      let t1 = tempfile::tempdir().unwrap();
+      fs::create_dir_all(t1.path().join("00_SYSTEM")).unwrap();
+      fs::create_dir_all(t1.path().join("01_CLIENTS")).unwrap();
+      let rel1 = "01_CLIENTS/draft_note.md";
+      let content1 = "---\ntitle: Draft Note\ncategory: client\nstatus: draft\n---\nDraft client note content.";
+      fs::write(t1.path().join(rel1), content1).unwrap();
+      search::index_vault_search(t1.path()).unwrap();
+      let hash1 = crate::snapshots::compute_sha256(content1.as_bytes());
+      let source_doc_id1 = format!("doc_{}", crate::snapshots::compute_sha256(rel1.as_bytes()));
+      let source_ineligible = read_source(t1.path(), &source_doc_id1, &hash1, true).unwrap();
+
+      // Simuliamo verify_post con drafts=false: deve fallire con "Document access denied"
+      let err1 = verify_source_integrity_with_fs_override(t1.path(), &source_ineligible, true, false).unwrap_err();
+      assert_eq!(err1, "Document access denied");
+
+      // Simulazione payload di annullamento prodotto da ask_stream in caso di Document access denied:
+      let expected_msg1 = "Accesso al documento negato durante la generazione: la risposta è stata annullata, riprova";
+      let payload1 = AiStreamEndPayload {
+          ticket: "ticket-denied".into(),
+          answer: expected_msg1.to_string(),
+          citations: vec![],
+          cited_indices: vec![],
+          status: "error".into(),
+          incomplete: true,
+          incomplete_reason: Some(expected_msg1.to_string()),
+          warning: None,
+          error: Some(expected_msg1.to_string()),
+          cancelled: true,
+          tokens_used: None,
+          tokens_prompt: None,
+          tokens_completion: None,
+          tokens_reasoning: None,
+      };
+      assert_eq!(payload1.answer, expected_msg1);
+      assert_eq!(payload1.citations.len(), 0);
+      assert_eq!(payload1.cited_indices.len(), 0);
+      assert!(payload1.cancelled);
+
+      // 2. Caso Generated source obsolete or modified
+      let t2 = fixture();
+      fs::create_dir_all(t2.path().join("20_RAW_SOURCES")).unwrap();
+      let rel2 = "20_RAW_SOURCES/auto-source-doc.md";
+      let content2 = b"# Documento Generato\nContenuto estratto automaticamente.";
+      fs::write(t2.path().join(rel2), content2).unwrap();
+      let mut cat = crate::catalog::sync_catalog_from_vault(t2.path()).unwrap();
+      let doc_id2 = crate::catalog::make_document_id(rel2);
+      let hash2 = crate::snapshots::compute_sha256(content2);
+      let doc2 = cat.documents.get_mut(&doc_id2).unwrap();
+      doc2.extraction_status = crate::catalog::ExtractionStatus::Ready;
+      doc2.editorial_status = "auto".into();
+      doc2.passages.push(crate::catalog::DocumentPassage {
+          passage_id: format!("{}_p0", doc_id2),
+          locator: "P1".into(),
+          text: "Contenuto estratto automaticamente.".into(),
+          char_count: 35,
+          sha256: hash2.clone(),
+      });
+      crate::catalog::save_catalog(t2.path(), &mut cat).unwrap();
+      search::index_vault_search(t2.path()).unwrap();
+
+      let meta2 = fs::metadata(t2.path().join(rel2)).unwrap();
+      let mtime_ms2 = meta2.modified().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+      let source_obsolete = Source {
+          document_id: doc_id2,
+          relative_path: rel2.into(),
+          title: "Documento Generato".into(),
+          category: "source".into(),
+          status: Some("auto".into()),
+          sha256: hash2,
+          content: String::from_utf8_lossy(content2).into(),
+          locator: None,
+          passage_id: None,
+          revision: Some(1),
+          mtime_ms: Some(mtime_ms2),
+          file_size: Some(meta2.len()),
+          passage_hashes: Vec::new(),
+      };
+
+      let err2 = verify_source_integrity_with_fs_override(t2.path(), &source_obsolete, true, false).unwrap_err();
+      assert_eq!(err2, "Generated source obsolete or modified");
+
+      let expected_msg2 = "Fonte generata obsoleta o modificata durante la generazione: la risposta è stata annullata, riprova";
+      let payload2 = AiStreamEndPayload {
+          ticket: "ticket-obsolete".into(),
+          answer: expected_msg2.to_string(),
+          citations: vec![],
+          cited_indices: vec![],
+          status: "error".into(),
+          incomplete: true,
+          incomplete_reason: Some(expected_msg2.to_string()),
+          warning: None,
+          error: Some(expected_msg2.to_string()),
+          cancelled: true,
+          tokens_used: None,
+          tokens_prompt: None,
+          tokens_completion: None,
+          tokens_reasoning: None,
+      };
+      assert_eq!(payload2.answer, expected_msg2);
+      assert_eq!(payload2.citations.len(), 0);
+      assert_eq!(payload2.cited_indices.len(), 0);
+      assert!(payload2.cancelled);
+  }
+
+  #[test]
+  fn test_missing_response_completed_treated_as_interrupted_with_zero_citations() {
+      let mut sanitizer = StreamProseSanitizer::new();
+      sanitizer.feed("Testo parziale emesso prima della chiusura inaspettata dello stream.");
+
+      let warning_msg = "La risposta è incompleta: lo streaming si è chiuso senza evento finale response.completed dal provider.".to_string();
+      let payload = AiStreamEndPayload {
+          ticket: "ticket-missing-completed".to_string(),
+          answer: sanitizer.get_accumulated().to_string(),
+          citations: vec![],
+          cited_indices: vec![],
+          status: "incomplete".into(),
+          incomplete: true,
+          incomplete_reason: Some(warning_msg.clone()),
+          warning: Some(warning_msg),
+          error: None,
+          cancelled: true,
+          tokens_used: None,
+          tokens_prompt: None,
+          tokens_completion: None,
+          tokens_reasoning: None,
+      };
+
+      // Verifica vincolante FASE 4 / FASE 5: nessun stato inventato
+      assert_ne!(payload.status, "completed");
+      assert_eq!(payload.status, "incomplete");
+      assert_eq!(payload.answer, "Testo parziale emesso prima della chiusura inaspettata dello stream.");
+      assert_eq!(payload.citations.len(), 0);
+      assert_eq!(payload.cited_indices.len(), 0);
+      assert!(payload.incomplete);
+      assert!(payload.cancelled);
+  }
+
+  #[test]
+  fn test_streaming_network_error_treated_as_interrupted_with_reason() {
+      let mut sanitizer = StreamProseSanitizer::new();
+      sanitizer.feed("Dati ricevuti prima dell'errore di connessione.");
+
+      let net_err = "Errore di rete durante lo streaming: connection reset by peer".to_string();
+      let payload = AiStreamEndPayload {
+          ticket: "ticket-net-err".to_string(),
+          answer: sanitizer.get_accumulated().to_string(),
+          citations: vec![],
+          cited_indices: vec![],
+          status: "incomplete".into(),
+          incomplete: true,
+          incomplete_reason: Some(net_err.clone()),
+          warning: Some(net_err.clone()),
+          error: None,
+          cancelled: true,
+          tokens_used: None,
+          tokens_prompt: None,
+          tokens_completion: None,
+          tokens_reasoning: None,
+      };
+
+      assert_eq!(payload.status, "incomplete");
+      assert_eq!(payload.answer, "Dati ricevuti prima dell'errore di connessione.");
+      assert_eq!(payload.citations.len(), 0);
+      assert_eq!(payload.cited_indices.len(), 0);
+      assert_eq!(payload.warning, Some(net_err.clone()));
+      assert_eq!(payload.incomplete_reason, Some(net_err));
+      assert!(payload.cancelled);
   }
 
   #[test]

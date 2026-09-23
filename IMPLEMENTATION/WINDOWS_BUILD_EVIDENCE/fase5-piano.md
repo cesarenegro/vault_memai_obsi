@@ -136,17 +136,26 @@ Nella FASE 5 verrà integrata nel backend la misurazione esatta del tempo trasco
 - [x] **4.4** In `apps/desktop/src/AiPanel.tsx`: Gestire in UI la sostituzione del testo in caso di errore `verify_post` e l'avviso in caso di stream interrotto. *(Completato: messaggio di annullamento esatto su disallineamento sorgenti e banner per stream interrotto)*
 - [x] **4.5** Modello predefinito `gpt-4o` (selezione modelli FASE 4 da account e salvataggio in `ai_settings.json` invariati; se vuoto, valore iniziale proposto `gpt-4o`). *(Completato: fallback gpt-4o iniziale mantenendo la selezione e persistenza)*
 
-### Componente 5: Verifica, Test e Consegna
+### Componente 5: Verifica, Test e Consegna (FASE 5)
 - [x] **5.1** Esecuzione test suite completa in parallelo salvata in `cargo-test-fase-5-parallel.log`. *(Completato: 150/150 test lib e 18/18 test bin superati)*
 - [x] **5.2** Esecuzione test suite sequenziale salvata in `cargo-test-fase-5-single.log`. *(Completato: superata con `--test-threads=1`)*
 - [x] **5.3** Verifica statica frontend con `npx tsc --noEmit`. *(Completato: 0 errori TypeScript)*
 - [x] **5.4** Commit git e generazione `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5.patch`.
 - [x] **5.5** Aggiornamento di `SESSION_HANDOVER_WINDOWS_BUILD.md`.
-- [x] **5.6** STOP operativo per la verifica dell'auditor e la prova live di Cesare.
+
+### Componente 6: FASE 5b — Correzione Quattro Difetti in ask_stream
+- [x] **6.1** Caratteri UTF-8 spezzati: buffer di decodifica `Utf8ChunkDecoder` che trattiene sequenze multibyte incomplete sui confini dei chunk di rete senza emettere replacement char ``. *(Completato con `test_utf8_chunk_decoder_split_multibyte_character`: "è" spezzato in 2 chunk da 1 byte produce "è")*
+- [x] **6.2** `verify_post` rifiuta OGNI errore (inclusi "Document access denied" e "Generated source obsolete or modified"): annullamento risposta, testo sostituito da avviso chiaro, zero citazioni. *(Completato con `test_verify_post_rejects_document_access_denied_and_obsolete_source`)*
+- [x] **6.3** Nessuno stato inventato: senza evento finale `response.completed` dal provider, trattata come risposta incompleta (`status: "incomplete"`), testo parziale con avviso esplicito, zero citazioni. *(Completato con `test_missing_response_completed_treated_as_interrupted_with_zero_citations`)*
+- [x] **6.4** Errore di rete durante lo streaming: trattato come interruzione con preservazione testo parziale, zero citazioni e motivo registrato nel log di timing `ask_timing.log`. *(Completato con `test_streaming_network_error_treated_as_interrupted_with_reason`)*
+- [x] **6.5** Rimozione ramo non usato `choices[0].delta.content` (formato Chat Completions, non usato con Responses API).
+- [x] **6.6** Suite completa 154 test lib + 18 test integrazione = 172 test verdi sia in parallelo che sequenziali (`--test-threads=1`).
+- [x] **6.7** Commit git, generazione `fase-5b.patch`, aggiornamento `SESSION_HANDOVER_WINDOWS_BUILD.md`.
+- [x] **6.8** STOP operativo per la prova di Cesare.
 
 ---
 
 ## 4. Regole Operative Tassative
-- **Nessuna implementazione della FASE 5 prima dell'approvazione esplicita di Cesare**.
 - **ZERO chiamate a OpenAI eseguite dall'assistente**.
 - **ZERO processi arrestati o riavviati**.
+
