@@ -292,5 +292,18 @@ Conformemente all'analisi e alle correzioni vincolanti richieste per `ask_stream
   - Sequenziale: [cargo-test-fase-5-single.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-5-single.log) (172/172 ok).
 - **Patch di consegna**: [fase-5b.patch](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5b.patch).
 
+---
+
+## 3. Regola Fissa Compilazione e Avvio Versione Ottimizzata da Provare
+
+- **Comando vincolante**:
+  `cd "E:\Projects\vault_memai_obsi"; npx pnpm --filter @limen-vault/desktop tauri dev --release`
+  *(preserva la cache di compilazione evitando ri-compilazioni complete al riavvio di Cesare; NON usare `cargo build --release`)*.
+- **Istanza in esecuzione per la prova**:
+  - **Commit di riferimento**: `efa0cefab5da83e8de3b3418a92285438c63fb36` (2026-09-24 07:37:39 UTC+8).
+  - **Eseguibile avviato**: `E:\Projects\vault_memai_obsi\apps\desktop\src-tauri\target\release\limen-vault.exe` (PID 2476).
+  - **Ora di avvio**: `2026-09-24 07:52:20 UTC+8`.
+
+
 
 
