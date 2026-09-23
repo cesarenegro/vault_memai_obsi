@@ -80,6 +80,8 @@ pub struct SearchResultItem {
     pub matching_passage_id: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub passages: Vec<SearchMatchingPassage>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub semantic_similarity: Option<f64>,
 }
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IndexStatusReport {
@@ -952,6 +954,7 @@ where
             matching_locator: best_passage_locator,
             matching_passage_id: best_passage_id,
             passages: matching_passages,
+            semantic_similarity: None,
         });
     }
     results.sort_by(|a, b| {

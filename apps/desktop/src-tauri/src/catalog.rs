@@ -342,7 +342,8 @@ pub fn chunk_text_to_passages(document_id: &str, text: &str) -> Vec<DocumentPass
     let target_chunk: usize = 1200;
     let overlap_chars_count: usize = 150;
 
-    let raw_paragraphs: Vec<&str> = text.split("\n\n").filter(|p| !p.trim().is_empty()).collect();
+    let normalized_text = text.replace("\r\n", "\n");
+    let raw_paragraphs: Vec<&str> = normalized_text.split("\n\n").filter(|p| !p.trim().is_empty()).collect();
 
     struct Segment {
         text: String,

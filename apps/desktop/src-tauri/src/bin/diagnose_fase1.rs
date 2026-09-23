@@ -395,6 +395,20 @@ async fn run_diagnosis_for_query(
     let include_drafts = false;
     let path_buf = vault_path.to_path_buf();
 
+    let doc_count = search_idx_opt.as_ref().map(|i| i.documents.len()).unwrap_or(0).max(1);
+    let rare_query_tokens: Vec<String> = if let Some(ref idx) = search_idx_opt {
+        tokens
+            .iter()
+            .filter(|t| {
+                let term_df = idx.documents.values().filter(|d| d.tokens.contains(*t)).count();
+                term_df <= 2 || (term_df as f64 / doc_count as f64) <= 0.30
+            })
+            .cloned()
+            .collect()
+    } else {
+        tokens.clone()
+    };
+
     for (idx, r) in fused.iter().enumerate() {
         let is_eligible = ai::eligible(&r.relative_path, &r.category, Some(&r.editorial_status), include_drafts)
             || limen_vault::automation::is_current(&path_buf, &r.relative_path, "");
@@ -403,6 +417,34 @@ async fn run_diagnosis_for_query(
             println!(
                 "Rango {:<3} | {:<55} | ESCLUSO: Filtro eligibilità (cat: {}, status: {})",
                 idx + 1, r.relative_path, r.category, r.editorial_status
+            );
+            continue;
+        }
+
+        // FASE 3a (Punto E - Metodo c): Verifica ammissibilità candidato
+        let item = search::SearchResultItem {
+            id: r.id.clone(),
+            title: r.title.clone(),
+            relative_path: r.relative_path.clone(),
+            category: r.category.clone(),
+            client: None,
+            project: None,
+            tags: vec![],
+            status: Some(r.editorial_status.clone()),
+            snippet: String::new(),
+            score: r.fused_score,
+            updated_at: None,
+            sha256: String::new(),
+            matching_locator: r.matching_locator.clone(),
+            matching_passage_id: r.matching_passage_id.clone(),
+            passages: vec![],
+            semantic_similarity: Some(r.sem_sim),
+        };
+        let is_admitted = ai::is_candidate_admitted(&item, &rare_query_tokens, search_idx_opt.as_deref(), max_sem);
+        if !is_admitted {
+            println!(
+                "Rango {:<3} | {:<55} | ESCLUSO DA METODO C: SemSim={:.4} (delta={:.4} > 0.05, no parole rare)",
+                idx + 1, r.relative_path, r.sem_sim, max_sem - r.sem_sim
             );
             continue;
         }

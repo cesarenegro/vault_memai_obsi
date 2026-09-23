@@ -388,6 +388,87 @@ pub fn set_openai_consent(vault_path: &Path, granted: bool) -> Result<(), String
     std::fs::write(&file, serde_json::to_string_pretty(&data).unwrap_or_default()).map_err(|e| e.to_string())
 }
 
+/// FASE 3a (Punto E - Metodo c): Soglia delta di similarità semantica rispetto al massimo.
+/// Un candidato privo di parole rare è ammesso solo se (max_sem_sim - sem_sim) <= 0.05.
+/// Tarato sulle 30 query di sviluppo in tests/gold/A05_DEV_QUERIES.json (Recall@10 = 0.867).
+/// Per la misurazione comparativa completa vedi E:\Projects\vault_memai_obsi\IMPLEMENTATION\WINDOWS_BUILD_EVIDENCE\fase3a-misure.md.
+pub const PUNTO_E_SEM_DELTA_THRESHOLD: f64 = 0.05;
+
+/// Verifica l'ammissibilità di un candidato secondo il Metodo c (Punto E della FASE 3a):
+/// - Contiene almeno una parola rara della query (stessa regola di rarità del Punto A: df <= 2 || df/N <= 0.30)
+///   utilizzando tokenizzazione esatta sui token indicizzati o confronto per parole intere (contains_whole_words);
+/// - OPPURE la sua similarità semantica dista dal massimo della domanda non più di PUNTO_E_SEM_DELTA_THRESHOLD (0.05).
+pub fn is_candidate_admitted(
+    item: &search::SearchResultItem,
+    rare_query_tokens: &[String],
+    search_idx: Option<&search::SearchIndexData>,
+    max_sem_sim: f64,
+) -> bool {
+    // 1. Regola parola rara (con token esatti / parole intere, senza corrispondenza di sole sottostringhe)
+    let has_rare_word = if let Some(idx) = search_idx {
+        if let Some(doc) = idx.documents.get(&item.relative_path).or_else(|| idx.documents.values().find(|d| d.id == item.id)) {
+            rare_query_tokens.iter().any(|rt| doc.tokens.iter().any(|dt| dt == rt))
+        } else {
+            let norm_title = crate::search::normalize_text(&item.title);
+            let norm_snippet = crate::search::normalize_text(&item.snippet);
+            rare_query_tokens.iter().any(|rt| {
+                let norm_rt = crate::search::normalize_text(rt);
+                crate::search::contains_whole_words(&norm_title, &norm_rt)
+                    || crate::search::contains_whole_words(&norm_snippet, &norm_rt)
+            })
+        }
+    } else {
+        let norm_title = crate::search::normalize_text(&item.title);
+        let norm_snippet = crate::search::normalize_text(&item.snippet);
+        rare_query_tokens.iter().any(|rt| {
+            let norm_rt = crate::search::normalize_text(rt);
+            crate::search::contains_whole_words(&norm_title, &norm_rt)
+                || crate::search::contains_whole_words(&norm_snippet, &norm_rt)
+        })
+    };
+
+    // 2. Similarità semantica dista dal massimo della query non più di 0.05
+    let is_close_to_max = if let Some(sim) = item.semantic_similarity {
+        max_sem_sim > 0.0 && (max_sem_sim - sim) <= PUNTO_E_SEM_DELTA_THRESHOLD
+    } else {
+        false
+    };
+
+    has_rare_word || is_close_to_max
+}
+
+/// Applica la selezione del Metodo c (Punto E) a un insieme di candidati:
+/// - Se il servizio semantico è spento o non disponibile (`has_semantic == false`), non filtra e restituisce tutti i candidati;
+/// - Se il servizio semantico è attivo, ammette i candidati con parola rara o delta semantico <= 0.05 dal massimo;
+/// - Se nessun candidato è ammesso, restituisce comunque il primo della classifica come fallback.
+pub fn filter_candidates_punto_e<'a>(
+    rows: &'a [search::SearchResultItem],
+    rare_query_tokens: &[String],
+    search_idx: Option<&search::SearchIndexData>,
+    has_semantic: bool,
+) -> Vec<&'a search::SearchResultItem> {
+    if !has_semantic {
+        return rows.iter().collect();
+    }
+    let max_sem_sim = rows
+        .iter()
+        .filter_map(|r| r.semantic_similarity)
+        .fold(0.0f64, f64::max);
+
+    let mut filtered: Vec<&search::SearchResultItem> = rows
+        .iter()
+        .filter(|r| is_candidate_admitted(r, rare_query_tokens, search_idx, max_sem_sim))
+        .collect();
+
+    // Se nessun candidato è ammesso dal filtro ma la semantica era attiva, si invia comunque il primo della classifica
+    if filtered.is_empty() {
+        if let Some(first) = rows.first() {
+            filtered.push(first);
+        }
+    }
+    filtered
+}
+
 pub async fn select(path: &Path, o: &Options) -> Result<Vec<Source>, String> {
     let (sources, _) = select_with_port_timed(path, o, None).await?;
     Ok(sources)
@@ -414,7 +495,7 @@ pub async fn select_with_port_timed(
         is_eligible && id_ok
     };
 
-    let (rows, _degraded, search_timings) = crate::embeddings::hybrid_search_vault_with_port_filtered_timed(
+    let (rows, degraded, search_timings) = crate::embeddings::hybrid_search_vault_with_port_filtered_timed(
         path,
         SearchQuery {
             term: Some(o.prompt.clone()),
@@ -433,11 +514,34 @@ pub async fn select_with_port_timed(
     )
     .await?;
 
+    // FASE 3a (Punto E - Metodo c): Selezione candidati ammissibili.
+    // Se la similarità semantica non è disponibile (servizio locale spento, degraded = true,
+    // o nessun candidato con similarità semantica), il metodo c non si applica: nessun filtro,
+    // selezione identica a prima su tutti i candidati.
+    let has_semantic = !degraded && rows.iter().any(|r| r.semantic_similarity.is_some());
+    let search_idx_opt = crate::search::load_index_for_vault(path).ok().flatten();
+    let doc_count = search_idx_opt.as_ref().map(|i| i.documents.len()).unwrap_or(0).max(1);
+    let query_tokens = crate::search::tokenize_text(&o.prompt);
+
+    let rare_query_tokens: Vec<String> = if let Some(ref idx) = search_idx_opt {
+        query_tokens
+            .into_iter()
+            .filter(|t| {
+                let term_df = idx.documents.values().filter(|d| d.tokens.contains(t)).count();
+                term_df <= 2 || (term_df as f64 / doc_count as f64) <= 0.30
+            })
+            .collect()
+    } else {
+        query_tokens
+    };
+
+    let admitted_rows = filter_candidates_punto_e(&rows, &rare_query_tokens, search_idx_opt.as_deref(), has_semantic);
+
     let mut t_doc_read_ms = 0u64;
     let mut t_passage_extract_ms = 0u64;
     let mut sources = Vec::new();
     let mut size = 0;
-    for r in rows {
+    for r in admitted_rows {
         let t_dr = Instant::now();
         let mut s = read_source(path, &r.id, &r.sha256, o.include_drafts)?;
         t_doc_read_ms += t_dr.elapsed().as_millis() as u64;
@@ -1385,6 +1489,206 @@ mod tests {
           "Document access denied",
           "Un documento non idoneo (drafts=false) deve essere rifiutato anche se il file su disco non è cambiato"
       );
+  }
+
+  #[test]
+  fn test_punto_e_metodo_c_excluded_when_no_rare_word_and_far_from_max() {
+      let item = search::SearchResultItem {
+          id: "doc_test1".into(),
+          title: "Progetto generico".into(),
+          relative_path: "20_RAW_SOURCES/test1.md".into(),
+          category: "source".into(),
+          client: None,
+          project: None,
+          tags: vec![],
+          status: Some("approved".into()),
+          snippet: "nessuna parola speciale qui".into(),
+          score: 0.70,
+          updated_at: None,
+          sha256: "hash1".into(),
+          matching_locator: None,
+          matching_passage_id: None,
+          passages: vec![],
+          semantic_similarity: Some(0.40),
+      };
+      let rare_query_tokens = vec!["bnxt".to_string()];
+      let max_sem_sim = 0.55; // delta = 0.55 - 0.40 = 0.15 > 0.05
+      assert!(!is_candidate_admitted(&item, &rare_query_tokens, None, max_sem_sim));
+  }
+
+  #[test]
+  fn test_punto_e_metodo_c_admitted_when_has_rare_word_even_low_similarity() {
+      let item = search::SearchResultItem {
+          id: "doc_test2".into(),
+          title: "Documento BNXT specifico".into(),
+          relative_path: "20_RAW_SOURCES/test2.md".into(),
+          category: "source".into(),
+          client: None,
+          project: None,
+          tags: vec![],
+          status: Some("approved".into()),
+          snippet: "questo e' il progetto bnxt".into(),
+          score: 0.50,
+          updated_at: None,
+          sha256: "hash2".into(),
+          matching_locator: None,
+          matching_passage_id: None,
+          passages: vec![],
+          semantic_similarity: Some(0.20), // molto basso, delta = 0.55 - 0.20 = 0.35 > 0.05
+      };
+      let rare_query_tokens = vec!["bnxt".to_string()];
+      let max_sem_sim = 0.55;
+      assert!(is_candidate_admitted(&item, &rare_query_tokens, None, max_sem_sim));
+  }
+
+  #[test]
+  fn test_punto_e_metodo_c_admitted_when_close_to_max_without_rare_word() {
+      let item = search::SearchResultItem {
+          id: "doc_test3".into(),
+          title: "Documento affine".into(),
+          relative_path: "20_RAW_SOURCES/test3.md".into(),
+          category: "source".into(),
+          client: None,
+          project: None,
+          tags: vec![],
+          status: Some("approved".into()),
+          snippet: "nessuna parola rara".into(),
+          score: 0.90,
+          updated_at: None,
+          sha256: "hash3".into(),
+          matching_locator: None,
+          matching_passage_id: None,
+          passages: vec![],
+          semantic_similarity: Some(0.52), // delta = 0.55 - 0.52 = 0.03 <= 0.05
+      };
+      let rare_query_tokens = vec!["bnxt".to_string()];
+      let max_sem_sim = 0.55;
+      assert!(is_candidate_admitted(&item, &rare_query_tokens, None, max_sem_sim));
+  }
+
+  #[test]
+  fn test_punto_e_fallback_first_candidate_when_none_admitted() {
+      // Quando nessun candidato e' ammesso (nessuna parola rara e similarità non idonea),
+      // filter_candidates_punto_e deve inviare comunque il primo candidato della classifica
+      let item1 = search::SearchResultItem {
+          id: "doc1".into(),
+          title: "Doc 1".into(),
+          relative_path: "20_RAW_SOURCES/doc1.md".into(),
+          category: "source".into(),
+          client: None,
+          project: None,
+          tags: vec![],
+          status: Some("approved".into()),
+          snippet: "testo uno".into(),
+          score: 0.95,
+          updated_at: None,
+          sha256: "hash1".into(),
+          matching_locator: None,
+          matching_passage_id: None,
+          passages: vec![],
+          semantic_similarity: None,
+      };
+      let item2 = search::SearchResultItem {
+          id: "doc2".into(),
+          title: "Doc 2".into(),
+          relative_path: "20_RAW_SOURCES/doc2.md".into(),
+          category: "source".into(),
+          client: None,
+          project: None,
+          tags: vec![],
+          status: Some("approved".into()),
+          snippet: "testo due".into(),
+          score: 0.85,
+          updated_at: None,
+          sha256: "hash2".into(),
+          matching_locator: None,
+          matching_passage_id: None,
+          passages: vec![],
+          semantic_similarity: None,
+      };
+      let rows = vec![item1, item2];
+      let rare_query_tokens = vec!["rarissima".to_string()];
+      // has_semantic = true, ma nessun candidato ha semantic_similarity > 0 ne' parole rare
+      let admitted = filter_candidates_punto_e(&rows, &rare_query_tokens, None, true);
+      assert_eq!(admitted.len(), 1, "Quando nessun candidato e' ammesso, viene inviato comunque il primo della classifica");
+      assert_eq!(admitted[0].id, "doc1");
+  }
+
+  #[tokio::test]
+  async fn test_punto_e_service_offline_retains_all_sources_without_filtering() {
+      // Quando il servizio semantico e' spento / non disponibile (degraded), il Metodo c non filtra
+      // e la selezione restituisce le stesse fonti lessicali
+      let t = tempfile::tempdir().unwrap();
+      fs::create_dir_all(t.path().join("00_SYSTEM")).unwrap();
+      fs::create_dir_all(t.path().join("01_CLIENTS")).unwrap();
+      for i in 1..=3 {
+          let content = format!("---\ntitle: Documento {}\nstatus: approved\ncategory: client\n---\nTesto del documento {}\n", i, i);
+          fs::write(t.path().join(format!("01_CLIENTS/doc_{}.md", i)), content).unwrap();
+      }
+      search::index_vault_search(t.path()).unwrap();
+
+      let o = Options {
+          prompt: "documento".into(),
+          model: "gpt-4o-mini".into(),
+          include_drafts: false,
+          source_ids: vec![],
+          category: None,
+          client: None,
+          project: None,
+          tags: None,
+      };
+      // active_port None -> servizio locale offline / degraded -> nessuna esclusione da Metodo c
+      let (sources, _) = select_with_port_timed(t.path(), &o, None).await.unwrap();
+      assert_eq!(sources.len(), 3, "Con servizio offline tutte le 3 fonti lessicali devono essere selezionate");
+  }
+
+  #[test]
+  fn test_punto_e_service_offline_preserves_exact_unfiltered_candidates() {
+      // Quando il servizio semantico e' spento (has_semantic = false),
+      // filter_candidates_punto_e non applica alcun filtro e preserva esattamente
+      // tutti i candidati nello stesso ordine e con gli stessi ID della selezione lessicale
+      let item1 = search::SearchResultItem {
+          id: "doc_a".into(),
+          title: "Doc Generico A".into(),
+          relative_path: "20_RAW_SOURCES/doc_a.md".into(),
+          category: "source".into(),
+          client: None,
+          project: None,
+          tags: vec![],
+          status: Some("approved".into()),
+          snippet: "nessuna parola rara".into(),
+          score: 0.90,
+          updated_at: None,
+          sha256: "hash_a".into(),
+          matching_locator: None,
+          matching_passage_id: None,
+          passages: vec![],
+          semantic_similarity: None,
+      };
+      let item2 = search::SearchResultItem {
+          id: "doc_b".into(),
+          title: "Doc Generico B".into(),
+          relative_path: "20_RAW_SOURCES/doc_b.md".into(),
+          category: "source".into(),
+          client: None,
+          project: None,
+          tags: vec![],
+          status: Some("approved".into()),
+          snippet: "nessuna parola rara anche qui".into(),
+          score: 0.80,
+          updated_at: None,
+          sha256: "hash_b".into(),
+          matching_locator: None,
+          matching_passage_id: None,
+          passages: vec![],
+          semantic_similarity: None,
+      };
+      let rows = vec![item1, item2];
+      let rare_tokens = vec!["rarissima".to_string()];
+      let admitted = filter_candidates_punto_e(&rows, &rare_tokens, None, false);
+      assert_eq!(admitted.len(), 2, "Con servizio offline tutti i candidati devono essere preservati");
+      assert_eq!(admitted[0].id, "doc_a");
+      assert_eq!(admitted[1].id, "doc_b");
   }
 }
 #[cfg(test)]

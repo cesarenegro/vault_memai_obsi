@@ -334,6 +334,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         matching_locator: loc,
                         matching_passage_id: pid,
                         passages: Vec::new(),
+                        semantic_similarity: None,
                     },
                     0.0,
                 )

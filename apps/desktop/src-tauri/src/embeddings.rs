@@ -1338,6 +1338,7 @@ where
                 matching_locator: None,
                 matching_passage_id: None,
                 passages: Vec::new(),
+                semantic_similarity: None,
             }
         } else {
             continue;
@@ -1404,6 +1405,7 @@ where
         // to reward multi-modal concurrence. Selected via dev tuning on 30 queries (Recall@10 = 0.933).
         let fused_score = lex_norm.max(sem_norm) + 0.20 * lex_norm.min(sem_norm) + exact_bonus;
         c.item.score = fused_score;
+        c.item.semantic_similarity = if c.sem_sim > 0.0 { Some(c.sem_sim) } else { None };
         fused_candidates.push(FusedCandidate { item: c.item, fused_score });
     }
 
