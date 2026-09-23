@@ -16,7 +16,7 @@ use std::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
     },
-    time::{Duration, SystemTime},
+    time::{Duration, Instant, SystemTime},
 };
 
 static SYNC_CANCELLED: AtomicBool = AtomicBool::new(false);
@@ -950,6 +950,13 @@ pub async fn hybrid_search_vault_with_port(
     hybrid_search_vault_with_port_filtered::<fn(&search::SearchDocumentRecord) -> bool>(vault_path, q, api_key, use_semantic, active_port, None).await
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct SearchPhaseTimings {
+    pub t_index_cache_ms: u64,
+    pub t_search_ms: u64,
+    pub t_embed_ms: u64,
+}
+
 pub async fn hybrid_search_vault_with_port_filtered<F>(
     vault_path: &Path,
     q: SearchQuery,
@@ -961,27 +968,57 @@ pub async fn hybrid_search_vault_with_port_filtered<F>(
 where
     F: Fn(&search::SearchDocumentRecord) -> bool,
 {
+    let (items, degraded, _) = hybrid_search_vault_with_port_filtered_timed(
+        vault_path,
+        q,
+        api_key,
+        use_semantic,
+        active_port,
+        filter_fn,
+    )
+    .await?;
+    Ok((items, degraded))
+}
+
+pub async fn hybrid_search_vault_with_port_filtered_timed<F>(
+    vault_path: &Path,
+    q: SearchQuery,
+    api_key: Option<String>,
+    use_semantic: bool,
+    active_port: Option<u16>,
+    filter_fn: Option<F>,
+) -> Result<(Vec<SearchResultItem>, bool, SearchPhaseTimings), String>
+where
+    F: Fn(&search::SearchDocumentRecord) -> bool,
+{
+    let mut timings = SearchPhaseTimings::default();
     let prov_rep = get_embeddings_provider(vault_path, active_port.unwrap_or(0));
     let is_local = prov_rep.provider == "local";
     let endpoint = prov_rep.endpoint.clone();
 
     if !use_semantic {
-        let items = hybrid_search_vault_with_vector_filtered(vault_path, q, None, false, filter_fn.as_ref()).await?;
-        return Ok((items, false));
+        let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
+        timings.t_index_cache_ms = t_idx;
+        timings.t_search_ms = t_search;
+        return Ok((items, false, timings));
     }
 
     let term = match &q.term {
         Some(t) if !t.trim().is_empty() => t.trim(),
         _ => {
-            let items = hybrid_search_vault_with_vector_filtered(vault_path, q, None, false, filter_fn.as_ref()).await?;
-            return Ok((items, false));
+            let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
+            timings.t_index_cache_ms = t_idx;
+            timings.t_search_ms = t_search;
+            return Ok((items, false, timings));
         }
     };
 
     // If local provider and service is offline (port 0 or empty endpoint), immediately degrade to lexical
     if is_local && (endpoint.is_empty() || active_port.unwrap_or(0) == 0) {
-        let items = hybrid_search_vault_with_vector_filtered(vault_path, q, None, false, filter_fn.as_ref()).await?;
-        return Ok((items, true));
+        let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
+        timings.t_index_cache_ms = t_idx;
+        timings.t_search_ms = t_search;
+        return Ok((items, true, timings));
     }
 
     // Mandatory security validation: local provider strictly forbids non-loopback endpoints
@@ -990,8 +1027,10 @@ where
     let cache = match load_embeddings_cache(vault_path) {
         Ok(c) if !c.entries.is_empty() => c,
         _ => {
-            let items = hybrid_search_vault_with_vector_filtered(vault_path, q, None, false, filter_fn.as_ref()).await?;
-            return Ok((items, is_local));
+            let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
+            timings.t_index_cache_ms = t_idx;
+            timings.t_search_ms = t_search;
+            return Ok((items, is_local, timings));
         }
     };
 
@@ -1010,6 +1049,7 @@ where
     };
 
     let mut degraded = false;
+    let t_embed_start = Instant::now();
     let query_vector = if is_loopback {
         let key_str = effective_key.as_deref().unwrap_or("");
         if let Ok(u) = reqwest::Url::parse(&endpoint) {
@@ -1047,13 +1087,16 @@ where
             }
         }
     };
+    timings.t_embed_ms = t_embed_start.elapsed().as_millis() as u64;
 
     if query_vector.is_none() && is_local {
         degraded = true;
     }
 
-    let items = hybrid_search_vault_with_vector_filtered(vault_path, q, query_vector, true, filter_fn.as_ref()).await?;
-    Ok((items, degraded))
+    let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, query_vector, true, filter_fn.as_ref()).await?;
+    timings.t_index_cache_ms = t_idx;
+    timings.t_search_ms = t_search;
+    Ok((items, degraded, timings))
 }
 
 pub async fn hybrid_search_vault_with_vector(
@@ -1075,8 +1118,30 @@ pub async fn hybrid_search_vault_with_vector_filtered<F>(
 where
     F: Fn(&search::SearchDocumentRecord) -> bool,
 {
+    let (items, _, _) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, query_vector, use_semantic, filter_fn).await?;
+    Ok(items)
+}
+
+pub async fn hybrid_search_vault_with_vector_filtered_timed<F>(
+    vault_path: &Path,
+    q: SearchQuery,
+    query_vector: Option<Vec<f32>>,
+    use_semantic: bool,
+    filter_fn: Option<&F>,
+) -> Result<(Vec<SearchResultItem>, u64, u64), String>
+where
+    F: Fn(&search::SearchDocumentRecord) -> bool,
+{
+    let t_index_cache_start = Instant::now();
+    let _ = search::load_index_for_vault(vault_path);
+    let _ = load_embeddings_cache(vault_path);
+    let _ = load_catalog(vault_path);
+    let t_index_cache_ms = t_index_cache_start.elapsed().as_millis() as u64;
+
+    let t_search_start = Instant::now();
     let limit = q.limit.unwrap_or(50);
     let offset = q.offset.unwrap_or(0);
+
 
     // 1. Run local lexical search with large candidate limit (not premature pagination)
     let mut lex_query = q.clone();
@@ -1087,27 +1152,27 @@ where
     // 2. If semantic search is not requested or no query term, return lexical results with original pagination
     let term = match &q.term {
         Some(t) if !t.trim().is_empty() => t.trim(),
-        _ => return Ok(lexical_results.into_iter().skip(offset).take(limit).collect()),
+        _ => return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), t_index_cache_ms, t_search_start.elapsed().as_millis() as u64)),
     };
 
     if !use_semantic {
-        return Ok(lexical_results.into_iter().skip(offset).take(limit).collect());
+        return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), t_index_cache_ms, t_search_start.elapsed().as_millis() as u64));
     }
 
     let cache = match load_embeddings_cache(vault_path) {
         Ok(c) if !c.entries.is_empty() => c,
-        _ => return Ok(lexical_results.into_iter().skip(offset).take(limit).collect()), // Graceful offline fallback
+        _ => return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), t_index_cache_ms, t_search_start.elapsed().as_millis() as u64)), // Graceful offline fallback
     };
 
     let q_vec = match query_vector {
         Some(v) => v,
-        None => return Ok(lexical_results.into_iter().skip(offset).take(limit).collect()),
+        None => return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), t_index_cache_ms, t_search_start.elapsed().as_millis() as u64)),
     };
 
     // 5. Score all candidates semantically with full filtering (R3)
     let catalog = match load_catalog(vault_path) {
         Ok(cat) => cat,
-        Err(_) => return Ok(lexical_results.into_iter().skip(offset).take(limit).collect()),
+        Err(_) => return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), t_index_cache_ms, t_search_start.elapsed().as_millis() as u64)),
     };
 
     // Map of document_id -> (semantic_score, passage_id, locator, snippet)
@@ -1324,7 +1389,7 @@ where
         .map(|c| c.item)
         .collect();
 
-    Ok(results)
+    Ok((results, t_index_cache_ms, t_search_start.elapsed().as_millis() as u64))
 }
 
 #[cfg(test)]

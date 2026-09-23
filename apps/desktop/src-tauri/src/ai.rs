@@ -25,7 +25,55 @@ pub struct Source {
 #[derive(Clone,Serialize)]
 #[serde(rename_all="camelCase")]
 pub struct Preview {pub ticket:String,pub sources:Vec<Source>,pub context_bytes:usize}
-pub struct Pending {path:PathBuf,options:Options,sources:Vec<Source>,time:Instant}
+pub struct Pending {
+    pub path: PathBuf,
+    pub options: Options,
+    pub sources: Vec<Source>,
+    pub time: Instant,
+    pub t_index_cache_ms: u64,
+    pub t_search_ms: u64,
+    pub t_embed_ms: u64,
+}
+
+pub fn get_ask_timing_log_path() -> PathBuf {
+    let base = std::env::var("USERPROFILE")
+        .or_else(|_| std::env::var("HOME"))
+        .unwrap_or_else(|_| ".".into());
+    PathBuf::from(base).join(".limen-vault").join("ask_timing.log")
+}
+
+pub fn log_ask_timing(
+    t_index_cache_ms: u64,
+    t_search_ms: u64,
+    t_embed_ms: u64,
+    t_openai_ms: u64,
+    t_total_ms: u64,
+    model: &str,
+    tokens_used: Option<u64>,
+) {
+    let log_path = get_ask_timing_log_path();
+    if let Some(parent) = log_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let now = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let tokens_str = tokens_used.map(|t| t.to_string()).unwrap_or_else(|| "null".into());
+    let line = format!(
+        "{{\"timestamp\":\"{}\",\"t_index_cache_ms\":{},\"t_search_ms\":{},\"t_embed_ms\":{},\"t_openai_ms\":{},\"t_total_ms\":{},\"model\":\"{}\",\"tokens_used\":{}}}\n",
+        now,
+        t_index_cache_ms,
+        t_search_ms,
+        t_embed_ms,
+        t_openai_ms,
+        t_total_ms,
+        model,
+        tokens_str
+    );
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
+        use std::io::Write;
+        let _ = f.write_all(line.as_bytes());
+    }
+}
+
 #[derive(Default)]
 pub struct AiState {pub pending:Mutex<BTreeMap<String,Pending>>,pub active:Mutex<BTreeMap<String,Arc<AtomicBool>>>}
 pub fn random_token()->Result<String,String>{let mut b=[0u8;32];getrandom::fill(&mut b).map_err(|_|"Random generator unavailable")?;Ok(b.iter().map(|b|format!("{b:02x}")).collect())}
@@ -70,6 +118,15 @@ pub fn set_openai_consent(vault_path: &Path, granted: bool) -> Result<(), String
 }
 
 pub async fn select(path: &Path, o: &Options) -> Result<Vec<Source>, String> {
+    let (sources, _) = select_with_port_timed(path, o, None).await?;
+    Ok(sources)
+}
+
+pub async fn select_with_port_timed(
+    path: &Path,
+    o: &Options,
+    active_port: Option<u16>,
+) -> Result<(Vec<Source>, crate::embeddings::SearchPhaseTimings), String> {
     if o.prompt.trim().is_empty() || o.prompt.chars().count() > 2000 || o.model.len() > 100 || o.source_ids.len() > 50 {
         return Err("Invalid AI options".into());
     }
@@ -85,7 +142,7 @@ pub async fn select(path: &Path, o: &Options) -> Result<Vec<Source>, String> {
         is_eligible && id_ok
     };
 
-    let (rows, _degraded) = crate::embeddings::hybrid_search_vault_with_port_filtered(
+    let (rows, _degraded, timings) = crate::embeddings::hybrid_search_vault_with_port_filtered_timed(
         path,
         SearchQuery {
             term: Some(o.prompt.clone()),
@@ -99,7 +156,7 @@ pub async fn select(path: &Path, o: &Options) -> Result<Vec<Source>, String> {
         },
         None,
         true,
-        None,
+        active_port,
         Some(filter),
     )
     .await?;
@@ -135,12 +192,16 @@ pub async fn select(path: &Path, o: &Options) -> Result<Vec<Source>, String> {
             break;
         }
     }
-    Ok(sources)
+    Ok((sources, timings))
 }
 
 impl AiState {
     pub async fn preview(&self, path: PathBuf, o: Options) -> Result<Preview, String> {
-        let sources = select(&path, &o).await?;
+        self.preview_with_port(path, o, None).await
+    }
+
+    pub async fn preview_with_port(&self, path: PathBuf, o: Options, active_port: Option<u16>) -> Result<Preview, String> {
+        let (sources, timings) = select_with_port_timed(&path, &o, active_port).await?;
         let bytes = serde_json::to_vec(&sources).map_err(|_| "Invalid sources")?.len();
         let ticket = random_token()?;
         let mut pending = self.pending.lock().map_err(|_| "AI state unavailable")?;
@@ -155,6 +216,9 @@ impl AiState {
                 options: o,
                 sources: sources.clone(),
                 time: Instant::now(),
+                t_index_cache_ms: timings.t_index_cache_ms,
+                t_search_ms: timings.t_search_ms,
+                t_embed_ms: timings.t_embed_ms,
             },
         );
         Ok(Preview {
@@ -163,6 +227,7 @@ impl AiState {
             context_bytes: bytes,
         })
     }
+
     pub fn cancel(&self, ticket: &str) {
         if let Ok(mut p) = self.pending.lock() {
             p.remove(ticket);
@@ -380,6 +445,7 @@ pub async fn ask(p:Pending,key:String,cancel:Arc<AtomicBool>)->Result<Value,Stri
  }
  if cancel.load(Ordering::SeqCst){return Err("Request cancelled".into())}
  let client=reqwest::Client::builder().https_only(true).redirect(reqwest::redirect::Policy::none()).connect_timeout(Duration::from_secs(10)).timeout(Duration::from_secs(30)).build().map_err(|_|"HTTP client unavailable")?;
+ let t_openai_start = Instant::now();
  let work=async {
   let mut response=client.post("https://api.openai.com/v1/responses").bearer_auth(key).json(&request_body(&p.options,&p.sources)).send().await.map_err(|_|"OpenAI unavailable or request timed out".to_string())?;
   if !response.status().is_success(){return Err(format!("OpenAI HTTP {}",response.status().as_u16()))}
@@ -389,12 +455,29 @@ pub async fn ask(p:Pending,key:String,cancel:Arc<AtomicBool>)->Result<Value,Stri
  };
  let cancelled=async {loop{if cancel.load(Ordering::SeqCst){break}tokio::time::sleep(Duration::from_millis(50)).await;}};
  let data=tokio::select!{r=work=>r?,_=cancelled=>return Err("Request cancelled".into())};
+ let t_openai_ms = t_openai_start.elapsed().as_millis() as u64;
+ let t_total_ms = p.time.elapsed().as_millis() as u64;
 
  for s in &p.sources {
   let current=read_source(&p.path,&s.document_id,&s.sha256,p.options.include_drafts)?;
   if current.sha256 != s.sha256 { return Err("Source changed during request".into()); }
  }
- parse_response(serde_json::from_slice(&data).map_err(|_|"Invalid provider JSON")?,&p.sources)
+ let parsed = parse_response(serde_json::from_slice(&data).map_err(|_|"Invalid provider JSON")?,&p.sources)?;
+
+ let model_str = parsed["model"].as_str().unwrap_or(p.options.model.as_str());
+ let tokens_used = parsed["tokensUsed"].as_u64();
+
+ log_ask_timing(
+     p.t_index_cache_ms,
+     p.t_search_ms,
+     p.t_embed_ms,
+     t_openai_ms,
+     t_total_ms,
+     model_str,
+     tokens_used,
+ );
+
+ Ok(parsed)
 }
 
 pub async fn list_models(key: String) -> Result<Vec<String>, String> {
@@ -681,6 +764,9 @@ mod tests {
    },
    sources: vec![],
    time: Instant::now(),
+   t_index_cache_ms: 0,
+   t_search_ms: 0,
+   t_embed_ms: 0,
   };
   let flag = Arc::new(AtomicBool::new(false));
   let rt = tokio::runtime::Runtime::new().unwrap();

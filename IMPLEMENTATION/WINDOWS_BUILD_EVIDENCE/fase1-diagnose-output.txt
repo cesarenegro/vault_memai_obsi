@@ -1,0 +1,161 @@
+﻿Checking llama-server on port 62021...
+llama-server healthy: true
+
+================================================================================
+DIAGNOSI SELEZIONE PER: "cosa e' il progetto bnxt ?"
+================================================================================
+
+Token estratti: ["cosa", "progetto", "bnxt"]
+
+Tempo caricamento cache/catalogo: 19423 ms (cache model: bge-m3)
+Documenti nel catalogo: 376
+Passaggi totali nel catalogo: 23482
+Passaggi nella cache semantica (cache.entries): 23482
+Tempo calcolo vettore query (bge-m3 su :62021): 80 ms
+Tempo calcolo ricerca ibrida: 14242 ms (totale candidati: 324)
+
+--- TABELLA 1: PRIMI 30 RISULTATI (FUSIONE IBRIDA) ---
+Pos  | Documento                                               | ScoreFin  | LexScore  | TitleBns  | LexNorm   | SemSim    | SemNorm  
+---------------------------------------------------------------------------------------------------------------------------------------
+1    | 20_RAW_SOURCES/a86061ba2701d614-_Progetto - BNXT AUDIT VICENZA.md | 1.1772    | 33.39     | 20.0      | 1.0000    | 0.4876    | 0.8859   
+2    | 20_RAW_SOURCES/32f2a4081d13410e-BNXT CRM.md             | 1.1275    | 26.47     | 10.0      | 0.7928    | 0.5333    | 0.9690   
+3    | 20_RAW_SOURCES/d70f1c7b1d36f912-STEFANO APP.md          | 1.0417    | 6.96      | 0.0       | 0.2084    | 0.5504    | 1.0000   
+4    | 20_RAW_SOURCES/4245a51312c5c1f2-2026-04-07 - Workflow app iPhone nativa con Xcode.md | 0.9599    | 3.99      | 0.0       | 0.1195    | 0.5152    | 0.9360   
+5    | 20_RAW_SOURCES/5a54c2ce2f581cf2-verifica-walkthrough-ux-email-whatsapp-2026-09-10.md | 0.8484    | 13.22     | 0.0       | 0.3959    | 0.4234    | 0.7692   
+6    | 20_RAW_SOURCES/d7f229ffc176756a-2026-02-17 - Riferimenti e codici BuildSense.md | 0.8467    | 7.24      | 0.0       | 0.2168    | 0.4422    | 0.8033   
+7    | 20_RAW_SOURCES/2365af8d9b1771bc-2026-02-16 - BUILD SENSE Localisation.md | 0.8382    | 6.27      | 0.0       | 0.1878    | 0.4407    | 0.8007   
+8    | 20_RAW_SOURCES/b4b388b4b0fe5e1d-2026-02-14 - Debug loop infinito in FlashCleanView durante build.md | 0.8372    | 3.19      | 0.0       | 0.0955    | 0.4503    | 0.8181   
+9    | 20_RAW_SOURCES/247b4cf913575d12-2026-02-17 - Redesign UI secondo screenshot.md | 0.7930    | 7.07      | 0.0       | 0.2117    | 0.4132    | 0.7507   
+10   | 20_RAW_SOURCES/18ce369ee3bd81fe-2026-06-02 - Migrazione chat a project.md | 0.7909    | 7.91      | 0.0       | 0.2369    | 0.4093    | 0.7436   
+11   | 20_RAW_SOURCES/d3f4756210d60463-2026-02-14 - SWIFT CLEANER counted.md | 0.7852    | 7.97      | 0.0       | 0.2387    | 0.4059    | 0.7374   
+12   | 20_RAW_SOURCES/b21c86f3e37a8792-Progetto senza nome (2).md | 0.7783    | 13.88     | 10.0      | 0.4157    | 0.3826    | 0.6952   
+13   | 20_RAW_SOURCES/1e755ab82023a095-verifica-impl-plan-ux-email-whatsapp-2026-09-10.md | 0.7767    | 12.82     | 0.0       | 0.3839    | 0.3852    | 0.6999   
+14   | 20_RAW_SOURCES/14fd281ff56ab94a-2026-06-04 - Valutazione e feedback su progetto.md | 0.7657    | 17.66     | 10.0      | 0.5289    | 0.3632    | 0.6599   
+15   | 20_RAW_SOURCES/ab7270ec227dfa55-2026-02-05 - PhotoClean AI – Rimozione intelligente duplicati.md | 0.7604    | 5.55      | 0.0       | 0.1662    | 0.4002    | 0.7272   
+16   | 20_RAW_SOURCES/abaef2b48c6e5b70-audit-localizzazione-EN-baseline-6f2f2b8.md | 0.7555    | 8.10      | 0.0       | 0.2426    | 0.3891    | 0.7069   
+17   | 20_RAW_SOURCES/309bcc15297b9408-2026-05-20 - Esecuzione di codice senza autorizzazione.md | 0.7496    | 7.06      | 0.0       | 0.2114    | 0.3893    | 0.7073   
+18   | 20_RAW_SOURCES/112bf7d370012490-audit-localizzazione-EN-verifica-AG-2026-09-10.md | 0.7481    | 4.01      | 0.0       | 0.1201    | 0.3986    | 0.7241   
+19   | 20_RAW_SOURCES/5084c49d6803da59-2026-05-04 - Ricerca brand UI per Shift.md | 0.7463    | 5.81      | 0.0       | 0.1740    | 0.3916    | 0.7115   
+20   | 20_RAW_SOURCES/957b10627e45aa38-_INDICE.md              | 0.7440    | 13.80     | 0.0       | 0.4133    | 0.3640    | 0.6613   
+21   | 20_RAW_SOURCES/e3e1115d1b99c740-2026-02-23 - Adding .xcodeproj file to Build Sense project.md | 0.7400    | 0.00      | 0.0       | 0.0000    | 0.4073    | 0.7400   
+22   | 20_RAW_SOURCES/d7a52d05837b5450-2026-04-11 - Accordo di riservatezza bilinguе per progetto strategico.md | 0.7400    | 13.59     | 10.0      | 0.4070    | 0.3625    | 0.6586   
+23   | 20_RAW_SOURCES/65694e024a83e6cd-2026-03-22 - AI rendering models for architectural visualization.md | 0.7354    | 0.00      | 0.0       | 0.0000    | 0.4048    | 0.7354   
+24   | 20_RAW_SOURCES/c4f02a78e4b17fdc-2026-06-01 - Audit sincronizzazione dati tra gestionale e app iOS.md | 0.7337    | 7.68      | 0.0       | 0.2300    | 0.3785    | 0.6877   
+25   | 20_RAW_SOURCES/de3f221ad4e56160-2026-04-01 - BlackHole AIDA coding agent for Xcode.md | 0.7330    | 0.00      | 0.0       | 0.0000    | 0.4035    | 0.7330   
+26   | 20_RAW_SOURCES/98de5fb0d0fac3db-2026-04-12 - AI model development with LORA for floorplan recognition.md | 0.7309    | 1.19      | 0.0       | 0.0356    | 0.3984    | 0.7238   
+27   | 20_RAW_SOURCES/525504a732971dd4-2026-04-07 - MyArchitectAI API and AI models investigation.md | 0.7267    | 0.00      | 0.0       | 0.0000    | 0.4000    | 0.7267   
+28   | 20_RAW_SOURCES/d3b0adb5f5d4d5c5-2026-04-30 - Pagina prezzi con tre piani tariffari.md | 0.7240    | 8.44      | 0.0       | 0.2528    | 0.3707    | 0.6734   
+29   | 20_RAW_SOURCES/410dbac00663f59c-2026-06-03 - Analisi Excel investitori e outreach personalizzate.md | 0.7220    | 5.95      | 0.0       | 0.1782    | 0.3778    | 0.6864   
+30   | 20_RAW_SOURCES/b2a8b8d50ac331b6-Progetto senza nome (10).md | 0.7212    | 14.05     | 10.0      | 0.4208    | 0.3507    | 0.6371   
+
+--- POSIZIONE DEI 9 DOCUMENTI BNXT IN CLASSIFICA IBRIDA ---
+Rango | Documento                                                    | ScoreFin  | LexScore  | TitleBns  | SemSim   
+--------------------------------------------------------------------------------------------------------------
+18   | 112bf7d370012490-audit-localizzazione-EN-verifica-AG-2026-09-10.md | 0.7481    | 4.01      | 0.0       | 0.3986   
+13   | 1e755ab82023a095-verifica-impl-plan-ux-email-whatsapp-2026-09-10.md | 0.7767    | 12.82     | 0.0       | 0.3852   
+2    | 32f2a4081d13410e-BNXT CRM.md                                 | 1.1275    | 26.47     | 10.0      | 0.5333   
+4    | 4245a51312c5c1f2-2026-04-07 - Workflow app iPhone nativa con Xcode.md | 0.9599    | 3.99      | 0.0       | 0.5152   
+5    | 5a54c2ce2f581cf2-verifica-walkthrough-ux-email-whatsapp-2026-09-10.md | 0.8484    | 13.22     | 0.0       | 0.4234   
+20   | 957b10627e45aa38-_INDICE.md                                  | 0.7440    | 13.80     | 0.0       | 0.3640   
+1    | a86061ba2701d614-_Progetto - BNXT AUDIT VICENZA.md           | 1.1772    | 33.39     | 20.0      | 0.4876   
+16   | abaef2b48c6e5b70-audit-localizzazione-EN-baseline-6f2f2b8.md | 0.7555    | 8.10      | 0.0       | 0.3891   
+3    | d70f1c7b1d36f912-STEFANO APP.md                              | 1.0417    | 6.96      | 0.0       | 0.5504   
+
+--- SIMULAZIONE DETTAGLIATA DI select() IN ai.rs ---
+Budget massimo contesto: 24.000 byte | Limite fonti: 10
+
+Rango 1   | 20_RAW_SOURCES/a86061ba2701d614-_Progetto - BNXT AUDIT VICENZA.md | SELEZIONATO [# 1]: item=  960 B (raw:   539 B, estratto: false), cumulativo=  960 B
+Rango 2   | 20_RAW_SOURCES/32f2a4081d13410e-BNXT CRM.md             | SELEZIONATO [# 2]: item= 1616 B (raw: 30556 B, estratto: true), cumulativo= 2576 B
+Rango 3   | 20_RAW_SOURCES/d70f1c7b1d36f912-STEFANO APP.md          | SELEZIONATO [# 3]: item= 1622 B (raw: 78278 B, estratto: true), cumulativo= 4198 B
+Rango 4   | 20_RAW_SOURCES/4245a51312c5c1f2-2026-04-07 - Workflow app iPhone nativa con Xcode.md | SELEZIONATO [# 4]: item= 1640 B (raw: 26184 B, estratto: true), cumulativo= 5838 B
+Rango 5   | 20_RAW_SOURCES/5a54c2ce2f581cf2-verifica-walkthrough-ux-email-whatsapp-2026-09-10.md | SELEZIONATO [# 5]: item= 1126 B (raw:  4901 B, estratto: true), cumulativo= 6964 B
+Rango 6   | 20_RAW_SOURCES/d7f229ffc176756a-2026-02-17 - Riferimenti e codici BuildSense.md | SELEZIONATO [# 6]: item= 1586 B (raw: 10852 B, estratto: true), cumulativo= 8550 B
+Rango 7   | 20_RAW_SOURCES/2365af8d9b1771bc-2026-02-16 - BUILD SENSE Localisation.md | SELEZIONATO [# 7]: item= 1676 B (raw: 129090 B, estratto: true), cumulativo=10226 B
+Rango 8   | 20_RAW_SOURCES/b4b388b4b0fe5e1d-2026-02-14 - Debug loop infinito in FlashCleanView durante build.md | SELEZIONATO [# 8]: item= 1689 B (raw: 78387 B, estratto: true), cumulativo=11915 B
+Rango 9   | 20_RAW_SOURCES/247b4cf913575d12-2026-02-17 - Redesign UI secondo screenshot.md | SELEZIONATO [# 9]: item= 1510 B (raw: 234902 B, estratto: true), cumulativo=13425 B
+Rango 10  | 20_RAW_SOURCES/18ce369ee3bd81fe-2026-06-02 - Migrazione chat a project.md | SELEZIONATO [#10]: item= 1652 B (raw: 737594 B, estratto: true), cumulativo=15077 B
+
+--> Limite di 10 fonti raggiunto. Selezione terminata.
+
+Totale fonti selezionate: 10 | Byte totali: 15077 / 24000
+
+================================================================================
+DIAGNOSI SELEZIONE PER: "ARKAI E' UNA AZIENDA, UN MARCHIO ? DI COSA TRATTA"
+================================================================================
+
+Token estratti: ["arkai", "azienda", "marchio", "cosa", "tratta"]
+
+Tempo caricamento cache/catalogo: 479 ms (cache model: bge-m3)
+Documenti nel catalogo: 376
+Passaggi totali nel catalogo: 23482
+Passaggi nella cache semantica (cache.entries): 23482
+Tempo calcolo vettore query (bge-m3 su :62021): 70 ms
+Tempo calcolo ricerca ibrida: 8799 ms (totale candidati: 375)
+
+--- TABELLA 1: PRIMI 30 RISULTATI (FUSIONE IBRIDA) ---
+Pos  | Documento                                               | ScoreFin  | LexScore  | TitleBns  | LexNorm   | SemSim    | SemNorm  
+---------------------------------------------------------------------------------------------------------------------------------------
+1    | 20_RAW_SOURCES/7254c793dd89f65d-2026-03-19 - Analisi icona app ARKAI STAGER.md | 1.1588    | 18.81     | 10.0      | 1.0000    | 0.5400    | 0.7942   
+2    | 20_RAW_SOURCES/98de5fb0d0fac3db-2026-04-12 - AI model development with LORA for floorplan recognition.md | 1.1191    | 11.20     | 0.0       | 0.5954    | 0.6150    | 1.0000   
+3    | 20_RAW_SOURCES/16484c8d758ffaea-2026-06-03 - Generare lettere di presentazione personalizzate per investitori.md | 1.1023    | 12.56     | 0.0       | 0.6677    | 0.6036    | 0.9687   
+4    | 20_RAW_SOURCES/301e15e67ca7b690-2026-04-16 - Identifying potential clients for floorplan AI integration.md | 1.1011    | 13.27     | 0.0       | 0.7055    | 0.6004    | 0.9600   
+5    | 20_RAW_SOURCES/86e2218e7ed905f1-ARKAI FLOORPLAN NICE.md | 1.0995    | 14.98     | 10.0      | 0.7964    | 0.5932    | 0.9402   
+6    | 20_RAW_SOURCES/540e37c638dd2045-2026-03-31 - Presentazione investitori Arkai.archi.md | 1.0970    | 14.85     | 10.0      | 0.7895    | 0.5928    | 0.9391   
+7    | 20_RAW_SOURCES/410dbac00663f59c-2026-06-03 - Analisi Excel investitori e outreach personalizzate.md | 1.0779    | 15.84     | 0.0       | 0.8421    | 0.5820    | 0.9095   
+8    | 20_RAW_SOURCES/aa217245dfd86aeb-nuovo LLM AI Arkai.md   | 1.0674    | 17.66     | 10.0      | 0.9389    | 0.4848    | 0.6428   
+9    | 20_RAW_SOURCES/6a2687b0ff08b63d-2026-06-04 - Analisi script video di presentazione.md | 1.0443    | 9.21      | 0.0       | 0.4896    | 0.5954    | 0.9464   
+10   | 20_RAW_SOURCES/b3f8add2793aa3b3-CONTRATTI ARKAI ITALIA.md | 1.0423    | 14.89     | 10.0      | 0.7916    | 0.5727    | 0.8840   
+11   | 20_RAW_SOURCES/0bc92121a0ad46f7-2026-03-26 - Arkai.Dev expansion into Italian market.md | 1.0125    | 14.97     | 10.0      | 0.7959    | 0.5615    | 0.8534   
+12   | 20_RAW_SOURCES/16fee114a1264853-Investors Outreach.md   | 1.0022    | 15.96     | 0.0       | 0.8485    | 0.5306    | 0.7685   
+13   | 20_RAW_SOURCES/f4fd17ebca858f34-ARKAI.DEV Software Developer.md | 0.9824    | 14.00     | 10.0      | 0.7443    | 0.5543    | 0.8335   
+14   | 20_RAW_SOURCES/9d5299ea3d455186-2026-05-05 - Comunicazione vocale con l'assistente.md | 0.9788    | 15.66     | 0.0       | 0.8325    | 0.5171    | 0.7313   
+15   | 20_RAW_SOURCES/2e9471848e17f686-2026-04-06 - ARKAI AI Free Render Engine Xcode project.md | 0.9673    | 14.63     | 10.0      | 0.7778    | 0.5464    | 0.8117   
+16   | 20_RAW_SOURCES/ee742dcdeecc1dc3-Scelta del modello Claude per audit coworking.md | 0.9668    | 16.21     | 0.0       | 0.8618    | 0.4420    | 0.5251   
+17   | 20_RAW_SOURCES/4b1cbbbba69ddc60-2026-03-19 - Investor presentation for architectural AI platform.md | 0.9605    | 4.84      | 0.0       | 0.2573    | 0.5818    | 0.9090   
+18   | 20_RAW_SOURCES/abf7a87405697eab-2026-04-25 - Pipeline generazione floorplan 2D con Flux.md | 0.9562    | 8.70      | 0.0       | 0.4625    | 0.5653    | 0.8637   
+19   | 20_RAW_SOURCES/89ed4d8455f40767-ARKAI FREE IMAGE AI.md  | 0.9487    | 14.49     | 10.0      | 0.7703    | 0.5401    | 0.7946   
+20   | 20_RAW_SOURCES/a66fbdd45a6686e2-2026-04-29 - Contratto di procacciamento con tabelle provvigionali.md | 0.9485    | 12.41     | 0.0       | 0.6598    | 0.5481    | 0.8165   
+21   | 20_RAW_SOURCES/2ff8773ddf4229e7-2026-04-06 - Building ARKAI free image generation web app.md | 0.9468    | 14.93     | 10.0      | 0.7937    | 0.5296    | 0.7656   
+22   | 20_RAW_SOURCES/6c698c8ec74c9161-Progetto MARKAI - areas - markai.md | 0.9438    | 4.41      | 0.0       | 0.2344    | 0.5774    | 0.8969   
+23   | 20_RAW_SOURCES/a07b6143eb3fdaf2-2026-04-04 - Document analysis and problem identification.md | 0.9289    | 10.24     | 0.0       | 0.5444    | 0.5494    | 0.8201   
+24   | 20_RAW_SOURCES/01b212e91f8a0c7e-2026-04-06 - API recommendations for floorplan rendering.md | 0.9203    | 5.03      | 0.0       | 0.2674    | 0.5665    | 0.8669   
+25   | 20_RAW_SOURCES/ca804c2d899aa19b-ARKAI AI RENDER APP.md  | 0.9114    | 14.48     | 10.0      | 0.7698    | 0.5086    | 0.7081   
+26   | 20_RAW_SOURCES/14fd281ff56ab94a-2026-06-04 - Valutazione e feedback su progetto.md | 0.9076    | 14.41     | 0.0       | 0.7661    | 0.5085    | 0.7077   
+27   | 20_RAW_SOURCES/3edcc9a51f87f24b-Brief del mattino.md    | 0.9034    | 14.93     | 0.0       | 0.7937    | 0.4504    | 0.5482   
+28   | 20_RAW_SOURCES/65694e024a83e6cd-2026-03-22 - AI rendering models for architectural visualization.md | 0.8922    | 4.83      | 0.0       | 0.2568    | 0.5570    | 0.8408   
+29   | 20_RAW_SOURCES/957b10627e45aa38-_INDICE.md              | 0.8884    | 4.87      | 0.0       | 0.2589    | 0.5555    | 0.8367   
+30   | 20_RAW_SOURCES/6d96c0f9eb95cf54-2026-03-13 - Floorplan analysis app development with AI integration.md | 0.8862    | 4.48      | 0.0       | 0.2382    | 0.5561    | 0.8386   
+
+--- POSIZIONE DEI 12 DOCUMENTI ARKAI IN CLASSIFICA IBRIDA ---
+Rango | Documento                                                         | ScoreFin  | LexScore  | TitleBns  | SemSim   
+-------------------------------------------------------------------------------------------------------------------
+25   | ca804c2d899aa19b-ARKAI AI RENDER APP.md                           | 0.9114    | 14.48     | 10.0      | 0.5086   
+5    | 86e2218e7ed905f1-ARKAI FLOORPLAN NICE.md                          | 1.0995    | 14.98     | 10.0      | 0.5932   
+19   | 89ed4d8455f40767-ARKAI FREE IMAGE AI.md                           | 0.9487    | 14.49     | 10.0      | 0.5401   
+13   | f4fd17ebca858f34-ARKAI.DEV Software Developer.md                  | 0.9824    | 14.00     | 10.0      | 0.5543   
+33   | 76c1cadeb9e7f5e0-BOQ ARKAI COMPUTO METRICO.md                     | 0.8619    | 12.06     | 10.0      | 0.5179   
+10   | b3f8add2793aa3b3-CONTRATTI ARKAI ITALIA.md                        | 1.0423    | 14.89     | 10.0      | 0.5727   
+1    | 7254c793dd89f65d-2026-03-19 - Analisi icona app ARKAI STAGER.md   | 1.1588    | 18.81     | 10.0      | 0.5400   
+11   | 0bc92121a0ad46f7-2026-03-26 - Arkai.Dev expansion into Italian market.md | 1.0125    | 14.97     | 10.0      | 0.5615   
+6    | 540e37c638dd2045-2026-03-31 - Presentazione investitori Arkai.archi.md | 1.0970    | 14.85     | 10.0      | 0.5928   
+15   | 2e9471848e17f686-2026-04-06 - ARKAI AI Free Render Engine Xcode project.md | 0.9673    | 14.63     | 10.0      | 0.5464   
+21   | 2ff8773ddf4229e7-2026-04-06 - Building ARKAI free image generation web app.md | 0.9468    | 14.93     | 10.0      | 0.5296   
+8    | aa217245dfd86aeb-nuovo LLM AI Arkai.md                            | 1.0674    | 17.66     | 10.0      | 0.4848   
+
+--- SIMULAZIONE DETTAGLIATA DI select() IN ai.rs ---
+Budget massimo contesto: 24.000 byte | Limite fonti: 10
+
+Rango 1   | 20_RAW_SOURCES/7254c793dd89f65d-2026-03-19 - Analisi icona app ARKAI STAGER.md | SELEZIONATO [# 1]: item= 1609 B (raw: 37758 B, estratto: true), cumulativo= 1609 B
+Rango 2   | 20_RAW_SOURCES/98de5fb0d0fac3db-2026-04-12 - AI model development with LORA for floorplan recognition.md | SELEZIONATO [# 2]: item= 1722 B (raw: 183341 B, estratto: true), cumulativo= 3331 B
+Rango 3   | 20_RAW_SOURCES/16484c8d758ffaea-2026-06-03 - Generare lettere di presentazione personalizzate per investitori.md | SELEZIONATO [# 3]: item= 1687 B (raw: 106777 B, estratto: true), cumulativo= 5018 B
+Rango 4   | 20_RAW_SOURCES/301e15e67ca7b690-2026-04-16 - Identifying potential clients for floorplan AI integration.md | SELEZIONATO [# 4]: item= 1585 B (raw: 115753 B, estratto: true), cumulativo= 6603 B
+Rango 5   | 20_RAW_SOURCES/86e2218e7ed905f1-ARKAI FLOORPLAN NICE.md | SELEZIONATO [# 5]: item= 1408 B (raw: 115048 B, estratto: true), cumulativo= 8011 B
+Rango 6   | 20_RAW_SOURCES/540e37c638dd2045-2026-03-31 - Presentazione investitori Arkai.archi.md | SELEZIONATO [# 6]: item= 1592 B (raw:  9265 B, estratto: true), cumulativo= 9603 B
+Rango 7   | 20_RAW_SOURCES/410dbac00663f59c-2026-06-03 - Analisi Excel investitori e outreach personalizzate.md | SELEZIONATO [# 7]: item= 1699 B (raw: 382175 B, estratto: true), cumulativo=11302 B
+Rango 8   | 20_RAW_SOURCES/aa217245dfd86aeb-nuovo LLM AI Arkai.md   | SELEZIONATO [# 8]: item= 1407 B (raw: 60972 B, estratto: true), cumulativo=12709 B
+Rango 9   | 20_RAW_SOURCES/6a2687b0ff08b63d-2026-06-04 - Analisi script video di presentazione.md | SELEZIONATO [# 9]: item= 1386 B (raw: 32267 B, estratto: true), cumulativo=14095 B
+Rango 10  | 20_RAW_SOURCES/b3f8add2793aa3b3-CONTRATTI ARKAI ITALIA.md | SELEZIONATO [#10]: item= 1578 B (raw:  6521 B, estratto: true), cumulativo=15673 B
+
+--> Limite di 10 fonti raggiunto. Selezione terminata.
+
+Totale fonti selezionate: 10 | Byte totali: 15673 / 24000

@@ -483,9 +483,22 @@ async fn ai_set_consent(vault_path: String, granted: bool) -> Result<(), String>
 }
 
 #[tauri::command]
-async fn ai_preview(vault_path:String,options:limen_vault::ai::Options,state:tauri::State<'_,std::sync::Arc<limen_vault::ai::AiState>>)->Result<limen_vault::ai::Preview,String>{
-    let state=state.inner().clone();
-    state.preview(PathBuf::from(vault_path),options).await
+async fn ai_preview(
+    vault_path: String,
+    options: limen_vault::ai::Options,
+    state: tauri::State<'_, std::sync::Arc<limen_vault::ai::AiState>>,
+    llama_state: tauri::State<'_, limen_vault::llama::LlamaServerState>,
+) -> Result<limen_vault::ai::Preview, String> {
+    let state = state.inner().clone();
+    let port = {
+        let s = llama_state.status();
+        if s.healthy && s.port > 0 {
+            Some(s.port)
+        } else {
+            None
+        }
+    };
+    state.preview_with_port(PathBuf::from(vault_path), options, port).await
 }
 #[tauri::command]
 async fn ai_ask(ticket:String,state:tauri::State<'_,std::sync::Arc<limen_vault::ai::AiState>>)->Result<serde_json::Value,String>{
