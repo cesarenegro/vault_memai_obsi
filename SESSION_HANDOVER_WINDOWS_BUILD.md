@@ -2,7 +2,7 @@
 
 **Data / Ora:** 2026-09-23 (UTC+8)  
 **Branch Git:** `windows-build`  
-**Ultimo Commit Registrato (Congelamento Codice e Costanti):** `226d4fd`  
+**Ultimo Commit Registrato:** `c745536` (`feat(fase-3b1): implement model system instructions, restrictive citation, sources audit log in ask_timing and last vault path UI persistence`)  
 **Vault di Sviluppo / Test:** `E:\VAULT WIN TEST DEV` (376 documenti, 23.482 passaggi)  
 **Repository Path:** `E:\Projects\vault_memai_obsi`  
 
@@ -28,38 +28,51 @@
 - Generazione risposte con modello locale congelata.
 - File di istruzioni conservato in radice: [RISPOSTE_MODELLO_LOCALE_IN_SOSPESO.md](file:///E:/Projects/vault_memai_obsi/RISPOSTE_MODELLO_LOCALE_IN_SOSPESO.md) (commit `e8a3043`). Nessun codice di generazione locale sarà sviluppato finché non riattivato esplicitamente.
 
-### FASE 3 — PASSO 3a COMPLETATO E CONGELATO (Commit `226d4fd`)
+### FASE 3 — PASSO 3a COMPLETATO E CONGELATO (Commit `226d4fd` e `5b75fbb`)
 - **Punto A (Bonus titolo condizionato)**: Implementato in [search.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/search.rs) e [diagnose_fase1.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/bin/diagnose_fase1.rs). Bonus +10 solo se $df \le 2 \lor df/N \le 0.30$. `"progetto"` perde il bonus (+0); `"bnxt"` e `"arkai"` lo mantengono (+10).
-- **Punto B (Stopwords estese)**: Aggiunte 54 nuove parole comuni in [search-spec.json](file:///E:/Projects/vault_memai_obsi/packages/search-engine/src/search-spec.json) (143 totali). `"sei"` formalmente escluso (è numerale 6 fondamentale per scadenze e contratti).
+- **Punto B (Stopwords estese)**: Aggiunte 54 nuove parole comuni in [search-spec.json](file:///E:/Projects/vault_memai_obsi/packages/search-engine/src/search-spec.json) (143 totali). `"sei"` formalmente escluso.
 - **Punto E (Metodo c in produzione su decisione di Cesare)**:
   - Implementato in [ai.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/ai.rs): costante `PUNTO_E_SEM_DELTA_THRESHOLD = 0.05`.
   - Regola di ammissibilità: candidato ammesso se contiene almeno una parola rara della query ($df \le 2 \lor df/N \le 0.30$) con tokenizzazione esatta / parole intere (`contains_whole_words`), OPPURE se la similarità semantica dista $\le 0.05$ dal massimo della query.
   - Servizio offline: se `degraded == true` o il servizio semantico è spento, il Metodo c non filtra (selezione lessicale identica a prima).
   - Fallback: se nessun candidato è ammesso (con semantica attiva), viene inviato comunque il primo della classifica.
 - **Verifica Criteri Reali su `E:\VAULT WIN TEST DEV`**:
-  - *BNXT*: 10 fonti inviate, **4 su 5 requisiti soddisfatti (PASS)** (`_Progetto - BNXT AUDIT VICENZA` S2, `BNXT CRM` S1, `verifica-walkthrough/impl` S4/S5, `audit-localizzazione-EN-baseline` S6). (Senza Punto E ne conteneva solo 3).
+  - *BNXT*: 10 fonti inviate, **4 su 5 requisiti soddisfatti (PASS)** (`_Progetto - BNXT AUDIT VICENZA` S2, `BNXT CRM` S1, `verifica-walkthrough/impl` S4/S5, `audit-localizzazione-EN-baseline` S6).
   - *ARKAI*: 10 fonti inviate, **10 su 12 documenti ufficiali ARKAI presenti (PASS)**.
 - **Misure Gold post-congelamento**:
-  - *A05 Gold* (40 query, OpenAI `text-embedding-3-small`, corpus 120 doc verificato): Recall@10 = **0.975** (39/40), baseline lessicale = 0.675, zero-recall = 1 (`Q21`) $\rightarrow$ **PASS**.
-  - *A15 Gold* (1000 doc, 11000 passaggi, 100 query su `a15_vault`): p50 = **351.88 ms**, p95 = **532.59 ms** ($\le 1000$ ms), p99 = **573.36 ms**, cold = 253.93 ms $\rightarrow$ **PASS**.
-- **Test Suite Completa**: 151 test passati, 0 falliti (parallel e single-threaded).
+  - *A05 Gold*: Recall@10 = **0.975** (39/40) $\rightarrow$ **PASS**.
+  - *A15 Gold*: p50 = **351.88 ms**, p95 = **532.59 ms** ($\le 1000$ ms) $\rightarrow$ **PASS**.
+- **Rilievi Formali Registrati**: registrati in Sezione 7 di `fase3a-misure.md` i tre rilievi (184 chiamate OpenAI in A05; 30 dev queries non discriminanti; normalizzazione CRLF in `catalog.rs` con 22 file coinvolti e test unitario di parità crittografica).
 
 ---
 
-## 2. File di Evidenza Prodotti nel Passo 3a
+### FASE 3 — PASSO 3b-1 COMPLETATO (Commit `c745536`)
+Conformemente alle quattro precisazioni di Cesare del 23/09/2026:
+1. **Regola di Citazione Restrittiva**: il prompt prescrive di citare SOLO ed ESCLUSIVAMENTE le fonti da cui la risposta trae effettivamente un'informazione rilevante, e VIETA esplicitamente di citare fonti non usate.
+2. **Modello Invariato**: mantenuto invariato `gpt-4o` (`gpt-4o-2024-08-06`).
+3. **Registro Fonti Inviate e Citate in `ask_timing.log`**:
+   - Per ciascuna domanda inviata ad OpenAI, il log registra l'albero completo delle fonti (`S1…S10`, percorso relativo, byte, localizzatore/passaggi) e lo stato di citazione (`-> CITATA` / `-> NON CITATA`).
+   - Nel JSON di riga è presente il campo strutturato `"sources": [...]`.
+   - **Privacy assoluta garantita**: NESSUN TESTO di domande, risposte o passaggi viene scritto nel file di log.
+4. **Rilievi Passo 3a Registrati**: Sezione 7 di `fase3a-misure.md` aggiornata; test di parità crittografica CRLF/LF integrato in `catalog.rs`.
+5. **Persistenza UI Vault Aperto (Richiesta aggiuntiva UI)**:
+   - All'avvio di Limen Vault, il campo "Percorso del Vault (cartella locale)" viene automaticamente precaricato con il percorso del vault aperto nella sessione precedente (`localStorage.getItem('limen_last_vault_path')`).
+   - Il percorso viene sincronizzato al cambio cartella, sfoglia, apertura o creazione vault.
+   - Bundle frontend verificato con `npm run build` (`tsc && vite build`: successo, 0 errori).
 
-- **Report Misure Completo**: [fase3a-misure.md](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase3a-misure.md)
-- **Output diagnostico grezzo**: [fase3a-diagnose-output.txt](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase3a-diagnose-output.txt)
-- **Patch Cumulativa**: [fase-3a.patch](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-3a.patch) (diff da `ba26889` a `226d4fd`)
-- **Evidenze A05 Gold**: [IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/A05/](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/A05/) (`summary.json`, `per-query.jsonl`, `run.log`, `manifest-verify.log`)
-- **Evidenze A15 Gold**: [IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/A15/](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/A15/) (`summary.json`, `latencies-warm.csv`, `latencies-cold.csv`, `latencies-during-import.csv`, `run.log`, `manifest-verify.log`)
-- **Log Test Suite**:
-  - [cargo-test-fase-3a-parallel.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-3a-parallel.log)
-  - [cargo-test-fase-3a-single.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-3a-single.log)
+- **Test Suite Completa Passo 3b-1**:
+  - Parallel: **154 passed; 0 failed** (136 lib + 18 main). Log: [cargo-test-fase-3b1-parallel.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-3b1-parallel.log).
+  - Single-threaded: **154 passed; 0 failed** (136 lib + 18 main). Log: [cargo-test-fase-3b1-single.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-3b1-single.log).
+- **Patch Consegnata**: [fase-3b1.patch](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-3b1.patch) (diff da `5b75fbb` a `c745536`).
 
 ---
 
-## 3. Stato Processi di Sistema e Avvio Prossima Sessione
-- Processi `limen-vault.exe` e `llama-server` operativi e stabili.
-- Codice congelato al commit `226d4fd` in perfetto allineamento con i test e le evidenze.
-- **Prossimo Passo**: Avvio della FASE 3 Passo 3b (invio di passaggi multipli per fonte approvati con verifica crittografica `passage.sha256`).
+## 2. Stato Attuale e Prossimo Passo (STOP per Prova di Cesare)
+
+- **STATO ATTUALE**: **STOP OPERATIVO BLOCCANTE**.
+- Nessuna chiamata OpenAI effettuata dall'assistente.
+- **PROSSIMO PASSO**: Prova live nell'app desktop condotta da **Cesare** sulle tre domande di validazione:
+  1. *"Cosa è il progetto BNXT?"*
+  2. *"ARKAI è un'azienda o un marchio? Di cosa si occupa?"*
+  3. *"Cos'è il progetto SCENA e quali app comprende?"*
+- **Verifica nel Registro**: `C:\Users\user\.limen-vault\ask_timing.log` mostrerà per ciascuna interrogazione le fonti `S1…S10` inviate e quali sono state effettivamente citate dal modello.
