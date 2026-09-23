@@ -4,6 +4,7 @@ import {KnowledgePanel} from './KnowledgePanel';
 import {ProposalPanel} from './ProposalPanel';
 import {SyncPanel} from './SyncPanel';
 import {HelpPanel} from './HelpPanel';
+import {normalizeVaultPath} from './platform';
 import {aiIpc} from './ai-ipc';
 import {AiPanel,AiSettings} from './AiPanel';
 import { DocumentReaderModal } from './DocumentReaderModal';
@@ -349,7 +350,7 @@ export default function App() {
     try {
       const selected = await ipc.selectVaultFolder();
       if (selected) {
-        const normalized = selected.replace(/\//g, '\\');
+        const normalized = normalizeVaultPath(selected);
         setCustomPathInput(normalized);
         if (typeof localStorage !== 'undefined') {
           try {
@@ -396,7 +397,7 @@ export default function App() {
       setVaultLoaded(res.state === 'READY');
 
       if (res.path) {
-        const normalized = res.path.replace(/\//g, '\\');
+        const normalized = normalizeVaultPath(res.path);
         setCustomPathInput(normalized);
         if (typeof localStorage !== 'undefined') {
           try {
@@ -448,7 +449,7 @@ export default function App() {
       setVaultLoaded(res.validation.is_valid);
 
       if (res.status.path && res.validation.is_valid) {
-        const normalized = res.status.path.replace(/\//g, '\\');
+        const normalized = normalizeVaultPath(res.status.path);
         setCustomPathInput(normalized);
         if (typeof localStorage !== 'undefined') {
           try {
@@ -950,7 +951,7 @@ export default function App() {
                   type="text"
                   value={customPathInput}
                   onChange={(e) => {
-                    const val = e.target.value.replace(/\//g, '\\');
+                    const val = normalizeVaultPath(e.target.value);
                     setCustomPathInput(val);
                     if (typeof localStorage !== 'undefined') {
                       try {

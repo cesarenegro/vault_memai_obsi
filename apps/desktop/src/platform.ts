@@ -5,6 +5,14 @@ export function isWindowsOS(): boolean {
   return platform.includes('win') || ua.includes('windows');
 }
 
+export function normalizeVaultPath(path: string): string {
+  if (!path) return path;
+  if (isWindowsOS()) {
+    return path.replace(/\//g, '\\');
+  }
+  return path.replace(/\\/g, '/');
+}
+
 export function getPlatformTerms() {
   const isWin = isWindowsOS();
   return {

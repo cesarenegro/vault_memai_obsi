@@ -1,0 +1,69 @@
+================================================================================
+DIAGNOSTICA COMPARATIVA PASSO 3b-2 — PUNTI C & D
+Vault: "E:\\VAULT WIN TEST DEV"
+================================================================================
+Avvio servizio bge-m3 per la diagnosi con porta attiva...
+Servizio bge-m3 avviato con successo sulla porta 59722
+
+--------------------------------------------------------------------------------
+DOMANDA #1: "Cosa è il progetto BNXT?"
+--------------------------------------------------------------------------------
+Fonti selezionate da select_with_port_timed: 8 fonti
+Volume testo contenuti (s.content): 15361 byte (su 24.000 byte budget)
+Volume payload serializzato JSON: 20908 byte
+Tempo anteprima (preview): 53864 ms (search: 20258 ms, passage_extract: 397 ms)
+
+Dettaglio Fonti Inviate:
+ID    | Percorso Relativo                                                      | Byte     | Passaggi  | Localizzatore                 
+------+------------------------------------------------------------------------+----------+-----------+-------------------------------
+[S1 ] | 20_RAW_SOURCES/32f2a4081d13410e-BNXT CRM.md                            |   2439 B |       2 p | Paragrafi 1-13, Paragrafi 52-68
+[S2 ] | 20_RAW_SOURCES/a86061ba2701d614-_Progetto - BNXT AUDIT VICENZA.md      |    555 B |       1 p | Paragrafi 1-8
+[S3 ] | 20_RAW_SOURCES/d70f1c7b1d36f912-STEFANO APP.md                         |   2355 B |       2 p | Paragrafo 224, Paragrafi 224-234
+[S4 ] | 20_RAW_SOURCES/4245a51312c5c1f2-2026-04-07 - Workflow app iPhone nativa con Xcode.md |   2412 B |       2 p | Paragrafi 6-11, Paragrafi 12-25
+[S5 ] | 20_RAW_SOURCES/5a54c2ce2f581cf2-verifica-walkthrough-ux-email-whatsapp-2026-09-10.md |   1742 B |       2 p | Paragrafi 1-3, Paragrafo 4
+[S6 ] | 20_RAW_SOURCES/957b10627e45aa38-_INDICE.md                             |   2342 B |       2 p | Paragrafi 1-2, Paragrafo 2
+[S7 ] | 20_RAW_SOURCES/abaef2b48c6e5b70-audit-localizzazione-EN-baseline-6f2f2b8.md |   2053 B |       2 p | Paragrafi 1-4, Paragrafo 5
+[S8 ] | 20_RAW_SOURCES/1e755ab82023a095-verifica-impl-plan-ux-email-whatsapp-2026-09-10.md |   1463 B |       2 p | Paragrafi 1-3, Paragrafo 4
+
+--------------------------------------------------------------------------------
+DOMANDA #2: "ARKAI è un'azienda o un marchio? Di cosa si occupa?"
+--------------------------------------------------------------------------------
+Fonti selezionate da select_with_port_timed: 7 fonti
+Volume testo contenuti (s.content): 17422 byte (su 24.000 byte budget)
+Volume payload serializzato JSON: 22965 byte
+Tempo anteprima (preview): 40303 ms (search: 28053 ms, passage_extract: 9269 ms)
+
+Dettaglio Fonti Inviate:
+ID    | Percorso Relativo                                                      | Byte     | Passaggi  | Localizzatore                 
+------+------------------------------------------------------------------------+----------+-----------+-------------------------------
+[S1 ] | 20_RAW_SOURCES/540e37c638dd2045-2026-03-31 - Presentazione investitori Arkai.archi.md |   3151 B |       3 p | Paragrafi 1-4, Paragrafo 4, Paragrafo 8
+[S2 ] | 20_RAW_SOURCES/0bc92121a0ad46f7-2026-03-26 - Arkai.Dev expansion into Italian market.md |   2805 B |       3 p | Paragrafi 1-4, Paragrafo 33, Paragrafo 34
+[S3 ] | 20_RAW_SOURCES/aa217245dfd86aeb-nuovo LLM AI Arkai.md                  |   2871 B |       3 p | Paragrafi 1-10, Paragrafo 74, Paragrafo 75
+[S4 ] | 20_RAW_SOURCES/98de5fb0d0fac3db-2026-04-12 - AI model development with LORA for floorplan recognition.md |   2250 B |       2 p | Paragrafo 339, Paragrafo 340
+[S5 ] | 20_RAW_SOURCES/f4fd17ebca858f34-ARKAI.DEV Software Developer.md        |   2058 B |       2 p | Paragrafi 1-8, Paragrafi 9-19
+[S6 ] | 20_RAW_SOURCES/410dbac00663f59c-2026-06-03 - Analisi Excel investitori e outreach personalizzate.md |   2232 B |       2 p | Paragrafi 188-193, Paragrafi 387-388
+[S7 ] | 20_RAW_SOURCES/86e2218e7ed905f1-ARKAI FLOORPLAN NICE.md                |   2055 B |       2 p | Paragrafi 505-507, Paragrafi 508-513
+
+--------------------------------------------------------------------------------
+DOMANDA #3: "Cos'è il progetto SCENA e quali app comprende?"
+--------------------------------------------------------------------------------
+Fonti selezionate da select_with_port_timed: 8 fonti
+Volume testo contenuti (s.content): 16857 byte (su 24.000 byte budget)
+Volume payload serializzato JSON: 22695 byte
+Tempo anteprima (preview): 26693 ms (search: 19946 ms, passage_extract: 5305 ms)
+
+Dettaglio Fonti Inviate:
+ID    | Percorso Relativo                                                      | Byte     | Passaggi  | Localizzatore                 
+------+------------------------------------------------------------------------+----------+-----------+-------------------------------
+[S1 ] | 20_RAW_SOURCES/1779683df5b44f8e-2026-04-29 - Presentazione funzionalità sistema SCENA.md |   2386 B |       2 p | Paragrafi 19-24, Paragrafi 29-35
+[S2 ] | 20_RAW_SOURCES/823633921a2bb46a-areas - scena.md                       |   1117 B |       1 p | Paragrafi 1-3
+[S3 ] | 20_RAW_SOURCES/ada7498f19b363c3-STUDIO CINEMA APP & DASHBOARD.md       |   2392 B |       2 p | Paragrafi 1405-1436, Paragrafi 1437-1454
+[S4 ] | 20_RAW_SOURCES/c4f02a78e4b17fdc-2026-06-01 - Audit sincronizzazione dati tra gestionale e app iOS.md |   2317 B |       2 p | Paragrafi 114-118, Paragrafo 179
+[S5 ] | 20_RAW_SOURCES/2a3b60ff71c42897-Coordinating updates across three integrated projects.md |   2143 B |       2 p | Paragrafi 98-103, Paragrafi 111-116
+[S6 ] | 20_RAW_SOURCES/c7fdf167bf695434-2026-05-16 - Manuale operativo minimalista e leggibile.md |   1785 B |       2 p | Paragrafi 1-4, Paragrafo 24
+[S7 ] | 20_RAW_SOURCES/18ce369ee3bd81fe-2026-06-02 - Migrazione chat a project.md |   2452 B |       2 p | Paragrafo 1851, Paragrafi 1851-1855
+[S8 ] | 20_RAW_SOURCES/7e90bad5776b00a0-Autorizzazioni CRM Packaging in Italy.md |   2265 B |       2 p | Paragrafi 1-12, Paragrafi 13-18
+
+================================================================================
+DIAGNOSTICA COMPLETATA CON SUCCESSO
+================================================================================

@@ -25,7 +25,16 @@ pub struct Source {
     pub mtime_ms: Option<u64>,
     #[serde(default, skip_serializing_if="Option::is_none")]
     pub file_size: Option<u64>,
+    #[serde(default, skip_serializing_if="Vec::is_empty")]
+    pub passage_hashes: Vec<(String, String)>,
 }
+
+/// Costanti di budget e distribuzione testo (Punto D di fase3b-piano.md)
+pub const MAX_BYTES_PER_DOCUMENT_TOP: usize = 3500;
+pub const MAX_BYTES_PER_DOCUMENT_REST: usize = 2500;
+pub const MAX_CONTEXT_BYTES_BUDGET: usize = 24000;
+pub const MAX_SOURCES_COUNT: usize = 10;
+
 #[derive(Clone,Serialize)]
 #[serde(rename_all="camelCase")]
 pub struct Preview {pub ticket:String,pub sources:Vec<Source>,pub context_bytes:usize}
@@ -303,7 +312,7 @@ pub fn read_source(path:&Path,id:&str,hash:&str,drafts:bool)->Result<Source,Stri
  } else {
      (Some(d.mtime_ms), None)
  };
- Ok(Source{document_id:d.id,relative_path:d.relative_path,title:d.title,category:d.category,status:d.status,sha256:d.sha256,content,locator:None,passage_id:None,revision:rev,mtime_ms,file_size})
+ Ok(Source{document_id:d.id,relative_path:d.relative_path,title:d.title,category:d.category,status:d.status,sha256:d.sha256,content,locator:None,passage_id:None,revision:rev,mtime_ms,file_size,passage_hashes:Vec::new()})
 }
 
 #[cfg(target_os = "windows")]
@@ -394,6 +403,18 @@ pub fn verify_source_integrity_with_fs_override(
         && !crate::automation::is_current(path, &d.relative_path, &d.sha256)
     {
         return Err("Document access denied".into());
+    }
+
+    // 3. Verifica crittografica puntuale di ciascun singolo passaggio associato alla fonte (Punto C)
+    for (pid, expected_sha) in &s.passage_hashes {
+        let passage = crate::catalog::read_passage(path, &s.document_id, pid)
+            .map_err(|e| format!("Integrità passaggio {} compromessa: {}", pid, e))?;
+        if &passage.sha256 != expected_sha {
+            return Err(format!(
+                "Integrità passaggio {} compromessa (hash atteso {}, trovato {})",
+                pid, expected_sha, passage.sha256
+            ));
+        }
     }
 
     if is_high_precision {
@@ -529,6 +550,138 @@ pub fn filter_candidates_punto_e<'a>(
     filtered
 }
 
+/// Seleziona 1–3 passaggi più pertinenti per il documento, verificando l'integrità
+/// crittografica di ciascun passaggio con il rispettivo SHA-256 (Punti C & D di fase3b-piano.md).
+/// Restituisce (content, locator_concatenato, passage_hashes).
+pub fn extract_multi_passages_for_document(
+    doc: &crate::catalog::DocumentRecord,
+    primary_passage_id: Option<&str>,
+    matching_passages: &[search::SearchMatchingPassage],
+    query_tokens: &[String],
+    rare_query_tokens: &[String],
+    max_passages: usize,
+    max_bytes: usize,
+) -> (String, Option<String>, Vec<(String, String)>) {
+    if doc.passages.is_empty() {
+        return (String::new(), None, Vec::new());
+    }
+
+    if doc.passages.len() == 1 {
+        let p = &doc.passages[0];
+        let actual_hash = crate::snapshots::compute_sha256(p.text.as_bytes());
+        if actual_hash != p.sha256 {
+            return (String::new(), None, Vec::new());
+        }
+        let block = format!("[{}]\n{}", p.locator, p.text);
+        let content = if block.len() > max_bytes {
+            block.chars().take(max_bytes).collect()
+        } else {
+            block
+        };
+        return (content, Some(p.locator.clone()), vec![(p.passage_id.clone(), p.sha256.clone())]);
+    }
+
+    // Identifica l'indice del passaggio primario (top ranking da matching semantico/lessicale)
+    let primary_idx = primary_passage_id
+        .and_then(|pid| doc.passages.iter().position(|p| p.passage_id == pid))
+        .unwrap_or(0);
+
+    let mut selected_indices = vec![primary_idx];
+
+    // Se possiamo selezionare ulteriori passaggi (fino a max_passages, tipicamente 3)
+    if max_passages > 1 && doc.passages.len() > 1 {
+        let mut scored_candidates: Vec<(usize, f64)> = Vec::new();
+        for (i, p) in doc.passages.iter().enumerate() {
+            if i == primary_idx {
+                continue;
+            }
+            let mut score = 0.0f64;
+
+            // 1. Punteggio da matching_passages (ricerca lessicale)
+            if let Some(mp) = matching_passages.iter().find(|mp| mp.passage_id == p.passage_id) {
+                score += 50.0 + mp.score * 10.0;
+            }
+
+            // 2. Corrispondenza con token rari della query
+            let norm_p_text = crate::search::normalize_text(&p.text);
+            for rt in rare_query_tokens {
+                let norm_rt = crate::search::normalize_text(rt);
+                if crate::search::contains_whole_words(&norm_p_text, &norm_rt) {
+                    score += 25.0;
+                }
+            }
+
+            // 3. Corrispondenza con token comuni della query
+            for qt in query_tokens {
+                let norm_qt = crate::search::normalize_text(qt);
+                if crate::search::contains_whole_words(&norm_p_text, &norm_qt) {
+                    score += 5.0;
+                }
+            }
+
+            // 4. Vicinanza contestuale e continuità narrativa rispetto al passaggio primario
+            let dist = (i as isize - primary_idx as isize).abs();
+            if dist > 0 {
+                score += 15.0 / (dist as f64);
+            }
+
+            // 5. Inquadramento iniziale del documento (sezione iniziale / introduzione)
+            if i == 0 {
+                score += 10.0;
+            }
+
+            scored_candidates.push((i, score));
+        }
+
+        scored_candidates.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        for (cand_idx, _) in scored_candidates.into_iter().take(max_passages - 1) {
+            selected_indices.push(cand_idx);
+        }
+    }
+
+    // Ordina i passaggi selezionati secondo l'ordine sequenziale nel documento originale
+    selected_indices.sort_unstable();
+
+    let mut blocks = Vec::new();
+    let mut locators = Vec::new();
+    let mut hashes = Vec::new();
+    let mut current_bytes = 0;
+
+    for &idx in &selected_indices {
+        let p = &doc.passages[idx];
+        let actual_hash = crate::snapshots::compute_sha256(p.text.as_bytes());
+        if actual_hash != p.sha256 {
+            continue;
+        }
+
+        let block_text = format!("[{}]\n{}", p.locator, p.text);
+        let additional_bytes = block_text.len() + (if blocks.is_empty() { 0 } else { 2 });
+
+        if current_bytes + additional_bytes <= max_bytes || blocks.is_empty() {
+            let final_block = if current_bytes + additional_bytes > max_bytes {
+                let allowed = max_bytes.saturating_sub(current_bytes);
+                block_text.chars().take(allowed).collect::<String>()
+            } else {
+                block_text
+            };
+            current_bytes += final_block.len() + 2;
+            blocks.push(final_block);
+            locators.push(p.locator.clone());
+            hashes.push((p.passage_id.clone(), p.sha256.clone()));
+        }
+    }
+
+    let content = blocks.join("\n\n");
+    let locator = if locators.is_empty() {
+        None
+    } else {
+        Some(locators.join(", "))
+    };
+
+    (content, locator, hashes)
+}
+
 pub async fn select(path: &Path, o: &Options) -> Result<Vec<Source>, String> {
     let (sources, _) = select_with_port_timed(path, o, None).await?;
     Ok(sources)
@@ -585,14 +738,15 @@ pub async fn select_with_port_timed(
 
     let rare_query_tokens: Vec<String> = if let Some(ref idx) = search_idx_opt {
         query_tokens
-            .into_iter()
+            .iter()
             .filter(|t| {
-                let term_df = idx.documents.values().filter(|d| d.tokens.contains(t)).count();
+                let term_df = idx.documents.values().filter(|d| d.tokens.contains(*t)).count();
                 term_df <= 2 || (term_df as f64 / doc_count as f64) <= 0.30
             })
+            .cloned()
             .collect()
     } else {
-        query_tokens
+        query_tokens.clone()
     };
 
     let admitted_rows = filter_candidates_punto_e(&rows, &rare_query_tokens, search_idx_opt.as_deref(), has_semantic);
@@ -610,28 +764,45 @@ pub async fn select_with_port_timed(
         s.locator = r.matching_locator.clone();
         s.passage_id = r.matching_passage_id.clone();
 
-        // Passage budget: if content is long, extract the relevant passage so whole long documents are never dropped
-        if s.content.len() > 3000 {
-            if let Some(ref pid) = r.matching_passage_id {
-                if let Ok(p) = crate::catalog::read_passage(path, &r.id, pid) {
-                    s.content = format!("[{}] {}", p.locator, p.text);
-                    s.locator = Some(p.locator);
-                } else {
-                    s.content.truncate(3000);
+        // Tetto per singolo documento (Punto D): fino a 3.500 byte per i primi 3 documenti, 2.500 byte per i successivi
+        let doc_byte_cap = if sources.len() < 3 {
+            MAX_BYTES_PER_DOCUMENT_TOP
+        } else {
+            MAX_BYTES_PER_DOCUMENT_REST
+        };
+
+        // Estrazione multi-passaggio (1–3 passaggi) verificata crittograficamente (Punto C & D)
+        if let Ok(doc_record) = crate::catalog::get_document(path, &r.id) {
+            if !doc_record.passages.is_empty() {
+                let (passages_content, composed_locator, passage_hashes) = extract_multi_passages_for_document(
+                    &doc_record,
+                    r.matching_passage_id.as_deref(),
+                    &r.passages,
+                    &query_tokens,
+                    &rare_query_tokens,
+                    3,
+                    doc_byte_cap,
+                );
+                if !passages_content.is_empty() {
+                    s.content = passages_content;
+                    s.locator = composed_locator;
+                    s.passage_hashes = passage_hashes;
                 }
-            } else {
-                s.content.truncate(3000);
+            } else if s.content.len() > doc_byte_cap {
+                s.content.truncate(doc_byte_cap);
             }
+        } else if s.content.len() > doc_byte_cap {
+            s.content.truncate(doc_byte_cap);
         }
         t_passage_extract_ms += t_pe.elapsed().as_millis() as u64;
 
         let bytes = serde_json::to_vec(&s).map_err(|_| "Invalid source")?.len();
-        if size + bytes > 24000 {
+        if size + bytes > MAX_CONTEXT_BYTES_BUDGET {
             continue;
         }
         size += bytes;
         sources.push(s);
-        if sources.len() == 10 {
+        if sources.len() == MAX_SOURCES_COUNT {
             break;
         }
     }
@@ -789,6 +960,54 @@ Regole fondamentali da seguire con la massima precisione:\n\
     })
 }
 
+/// Pulisce la prosa della risposta generata dal modello prima di restituirla alla UI.
+/// Rimuove qualsiasi riferimento a identificativi di fonte come `[S1]`, `[S2]`,
+/// `[S1, S2]`, `[S1, S2, S5]`, `[S1; S2]`, `[S1][S2]`, `(S1)`, ecc.,
+/// normalizzando spazi multipli e punteggiatura orfana residua.
+pub fn sanitize_answer_prose(text: &str) -> String {
+    use std::sync::OnceLock;
+    static RE_CITATIONS: OnceLock<regex::Regex> = OnceLock::new();
+    static RE_SPACE_PUNCT: OnceLock<regex::Regex> = OnceLock::new();
+    static RE_MULTI_SPACE: OnceLock<regex::Regex> = OnceLock::new();
+    static RE_EMPTY_PARENS: OnceLock<regex::Regex> = OnceLock::new();
+
+    let re_citations = RE_CITATIONS.get_or_init(|| {
+        regex::Regex::new(r"(?i)\[\s*S\d+\s*(?:[,;]\s*S\d+\s*)*\]|\(\s*S\d+\s*(?:[,;]\s*S\d+\s*)*\)").unwrap()
+    });
+    let re_space_punct = RE_SPACE_PUNCT.get_or_init(|| {
+        regex::Regex::new(r"[ \t]+([.,;:!?])").unwrap()
+    });
+    let re_multi_space = RE_MULTI_SPACE.get_or_init(|| {
+        regex::Regex::new(r"[ \t]{2,}").unwrap()
+    });
+    let re_empty_parens = RE_EMPTY_PARENS.get_or_init(|| {
+        regex::Regex::new(r"\(\s*\)|\[\s*\]").unwrap()
+    });
+
+    let removed = re_citations.replace_all(text, "");
+    let no_empty_parens = re_empty_parens.replace_all(&removed, "");
+
+    let lines: Vec<String> = no_empty_parens
+        .lines()
+        .map(|line| {
+            let p = re_space_punct.replace_all(line, "$1");
+            let s = re_multi_space.replace_all(&p, " ");
+            let trimmed_start = if s.starts_with(' ') && !s.starts_with("  ") {
+                s.trim_start()
+            } else {
+                &s
+            };
+            trimmed_start.trim_end().to_string()
+        })
+        .collect();
+
+    let mut res = lines.join("\n");
+    if text.ends_with('\n') && !res.ends_with('\n') {
+        res.push('\n');
+    }
+    res
+}
+
 pub fn parse_response(r: Value, sources: &[Source]) -> Result<Value, String> {
     if r["status"] != "completed" || !r["model"].is_string() {
         return Err("Incomplete or invalid provider response".into());
@@ -806,9 +1025,11 @@ pub fn parse_response(r: Value, sources: &[Source]) -> Result<Value, String> {
     }
     let a: Value = serde_json::from_str(texts[0]["text"].as_str().ok_or("Missing answer")?)
         .map_err(|_| "Invalid answer JSON")?;
-    if a["answer"].as_str().is_none_or(|s| s.trim().is_empty()) {
+    let raw_answer = a["answer"].as_str().ok_or("Missing answer")?;
+    if raw_answer.trim().is_empty() {
         return Err("Empty answer".into());
     }
+    let sanitized_answer = sanitize_answer_prose(raw_answer);
 
     let mut matched_indices = BTreeSet::new();
     let mut has_unknown_citation = false;
@@ -883,7 +1104,7 @@ pub fn parse_response(r: Value, sources: &[Source]) -> Result<Value, String> {
     };
 
     let mut res = json!({
-        "answer": a["answer"],
+        "answer": sanitized_answer,
         "provider": "openai",
         "model": r["model"],
         "citations": cites,
@@ -1543,6 +1764,7 @@ mod tests {
           revision: Some(1),
           mtime_ms: Some(mtime_ms),
           file_size: Some(meta.len()),
+          passage_hashes: Vec::new(),
       };
 
       // Il file su disco NON è stato toccato (mtime e size coincidono), ma essendo managed ed obsoleta/non-current
@@ -1807,6 +2029,7 @@ mod tests {
               revision: None,
               mtime_ms: None,
               file_size: None,
+              passage_hashes: Vec::new(),
           },
       ];
       let body = request_body(&opt, &sources);
@@ -1911,6 +2134,208 @@ mod tests {
       assert_eq!(parsed_json["sources"][1]["cited"], false);
 
       std::env::remove_var("LIMEN_ASK_TIMING_LOG");
+  }
+
+  #[test]
+  fn test_sanitize_answer_prose_removes_citation_brackets() {
+      // 1. Sigla singola
+      let input1 = "Il progetto BNXT [S1] è un'architettura modulare.";
+      assert_eq!(sanitize_answer_prose(input1), "Il progetto BNXT è un'architettura modulare.");
+
+      // 2. Sigla minuscola e con spazi interni
+      let input2 = "Il sistema CRM [ s2 ] gestisce i contatti.";
+      assert_eq!(sanitize_answer_prose(input2), "Il sistema CRM gestisce i contatti.");
+
+      // 3. Sigle multiple con virgola e spazi
+      let input3 = "I dati operativi [S1, S2] e di audit [S1, S2, S5] confermano l'integrazione.";
+      assert_eq!(sanitize_answer_prose(input3), "I dati operativi e di audit confermano l'integrazione.");
+
+      // 4. Sigle con punto e virgola
+      let input4 = "Componenti analizzati [S1; S3].";
+      assert_eq!(sanitize_answer_prose(input4), "Componenti analizzati.");
+
+      // 5. Sigle consecutive senza separatore
+      let input5 = "Documentazione di riferimento [S1][S2].";
+      assert_eq!(sanitize_answer_prose(input5), "Documentazione di riferimento.");
+
+      // 6. Sigle tra parentesi tonde
+      let input6 = "Obiettivi del progetto (S1) e metriche di verifica (S2, S4).";
+      assert_eq!(sanitize_answer_prose(input6), "Obiettivi del progetto e metriche di verifica.");
+
+      // 7. Sigla all'inizio di frase
+      let input7 = "[S1] Inizio della trattazione sull'infrastruttura.";
+      assert_eq!(sanitize_answer_prose(input7), "Inizio della trattazione sull'infrastruttura.");
+
+      // 8. Sigla prima di due punti e liste
+      let input8 = "Le app previste sono [S1]:\n- App 1 [S2]\n- App 2 [S3, S4]\n\nConclusioni [S1].";
+      let expected8 = "Le app previste sono:\n- App 1\n- App 2\n\nConclusioni.";
+      assert_eq!(sanitize_answer_prose(input8), expected8);
+  }
+
+  #[test]
+  fn test_extract_multi_passages_and_budget_cap() {
+      use crate::catalog::{DocumentPassage, DocumentRecord, ExtractionStatus, PhaseInfo};
+      use crate::snapshots::compute_sha256;
+
+      let p1_text = "Primo passaggio: introduzione agli obiettivi e allo scopo del progetto BNXT.";
+      let p2_text = "Secondo passaggio: dettagli tecnici sul CRM WhatsApp e integrazione webhook.";
+      let p3_text = "Terzo passaggio: piano di localizzazione EN e verifica conformità baseline.";
+
+      let p1 = DocumentPassage {
+          passage_id: "doc1_p0".into(),
+          locator: "Paragrafi 1-5".into(),
+          text: p1_text.into(),
+          char_count: p1_text.len(),
+          sha256: compute_sha256(p1_text.as_bytes()),
+      };
+      let p2 = DocumentPassage {
+          passage_id: "doc1_p1".into(),
+          locator: "Paragrafi 6-12".into(),
+          text: p2_text.into(),
+          char_count: p2_text.len(),
+          sha256: compute_sha256(p2_text.as_bytes()),
+      };
+      let p3 = DocumentPassage {
+          passage_id: "doc1_p2".into(),
+          locator: "Paragrafi 13-20".into(),
+          text: p3_text.into(),
+          char_count: p3_text.len(),
+          sha256: compute_sha256(p3_text.as_bytes()),
+      };
+
+      let doc = DocumentRecord {
+          document_id: "doc_bnxt_test".into(),
+          revision: 1,
+          content_hash: "hash_test".into(),
+          original_path: "20_RAW_SOURCES/bnxt.md".into(),
+          aliases: vec![],
+          file_name: "bnxt.md".into(),
+          extension: "md".into(),
+          file_size: 1000,
+          mime_type: "text/markdown".into(),
+          imported_at: "".into(),
+          updated_at: "".into(),
+          extraction_status: ExtractionStatus::Ready,
+          extraction_error: None,
+          extracted_text_path: None,
+          extracted_text_hash: None,
+          passages: vec![p1.clone(), p2.clone(), p3.clone()],
+          lexical_status: PhaseInfo::default(),
+          semantic_status: PhaseInfo::default(),
+          classification_status: PhaseInfo::default(),
+          wiki_status: PhaseInfo::default(),
+          category: Some("source".into()),
+          client: None,
+          project: Some("BNXT".into()),
+          tags: vec![],
+          evidence_type: "source".into(),
+          editorial_status: "approved".into(),
+      };
+
+      let query_tokens = vec!["progetto".to_string(), "bnxt".to_string(), "crm".to_string()];
+      let rare_query_tokens = vec!["bnxt".to_string(), "crm".to_string()];
+
+      // Chiediamo fino a 3 passaggi con primary = p2 (doc1_p1)
+      let (content, locator, hashes) = extract_multi_passages_for_document(
+          &doc,
+          Some("doc1_p1"),
+          &[],
+          &query_tokens,
+          &rare_query_tokens,
+          3,
+          3500,
+      );
+
+      // 1. Verifica che siano stati inclusi passaggi multipli
+      assert_eq!(hashes.len(), 3, "Devono essere selezionati 3 passaggi");
+      assert_eq!(hashes[0].0, "doc1_p0");
+      assert_eq!(hashes[1].0, "doc1_p1");
+      assert_eq!(hashes[2].0, "doc1_p2");
+
+      // 2. Verifica ordinamento sequenziale naturale nel testo
+      assert!(content.contains("[Paragrafi 1-5]"));
+      assert!(content.contains("[Paragrafi 6-12]"));
+      assert!(content.contains("[Paragrafi 13-20]"));
+      let pos1 = content.find("[Paragrafi 1-5]").unwrap();
+      let pos2 = content.find("[Paragrafi 6-12]").unwrap();
+      let pos3 = content.find("[Paragrafi 13-20]").unwrap();
+      assert!(pos1 < pos2 && pos2 < pos3, "I passaggi devono rispettare l'ordine naturale");
+
+      // 3. Verifica concatenazione localizzatori
+      assert_eq!(locator, Some("Paragrafi 1-5, Paragrafi 6-12, Paragrafi 13-20".into()));
+
+      // 4. Verifica tetto massimo di byte (se tetto ridotto a 120 byte, include solo ciò che sta nel limite)
+      let (content_capped, _, hashes_capped) = extract_multi_passages_for_document(
+          &doc,
+          Some("doc1_p1"),
+          &[],
+          &query_tokens,
+          &rare_query_tokens,
+          3,
+          120,
+      );
+      assert!(content_capped.len() <= 120);
+      assert!(hashes_capped.len() <= 2);
+  }
+
+  #[tokio::test]
+  async fn test_passage_crypto_sha256_verification_rejects_corrupted_passage() {
+      use crate::catalog::{DocumentPassage, DocumentRecord, ExtractionStatus, PhaseInfo};
+      use crate::snapshots::compute_sha256;
+
+      let t = fixture();
+      let mut s = select(t.path(), &options()).await.unwrap();
+      let mut valid_source = s.remove(0);
+
+      let p_text = "Passaggio ufficiale";
+      let valid_sha = compute_sha256(p_text.as_bytes());
+
+      let mut cat = crate::catalog::load_catalog(t.path()).unwrap();
+      let doc = DocumentRecord {
+          document_id: valid_source.document_id.clone(),
+          revision: 1,
+          content_hash: valid_source.sha256.clone(),
+          original_path: valid_source.relative_path.clone(),
+          aliases: vec![],
+          file_name: "approved.md".into(),
+          extension: "md".into(),
+          file_size: 42,
+          mime_type: "text/markdown".into(),
+          imported_at: "".into(),
+          updated_at: "".into(),
+          extraction_status: ExtractionStatus::Ready,
+          extraction_error: None,
+          extracted_text_path: None,
+          extracted_text_hash: None,
+          passages: vec![DocumentPassage {
+              passage_id: "pass_1".into(),
+              locator: "Paragrafi 1-2".into(),
+              text: p_text.into(),
+              char_count: p_text.len(),
+              sha256: valid_sha.clone(),
+          }],
+          lexical_status: PhaseInfo::default(),
+          semantic_status: PhaseInfo::default(),
+          classification_status: PhaseInfo::default(),
+          wiki_status: PhaseInfo::default(),
+          category: Some("client".into()),
+          client: None,
+          project: None,
+          tags: vec![],
+          evidence_type: "source".into(),
+          editorial_status: "approved".into(),
+      };
+      cat.documents.insert(valid_source.document_id.clone(), doc);
+      crate::catalog::save_catalog(t.path(), &mut cat).unwrap();
+
+      // Fonte con passaggio integro: la verifica passa
+      valid_source.passage_hashes = vec![("pass_1".into(), valid_sha)];
+      assert!(verify_source_integrity(t.path(), &valid_source, false).is_ok());
+
+      // Fonte con passaggio la cui impronta attesa non coincide: la verifica deve fallire
+      let mut corrupted_source = valid_source.clone();
+      corrupted_source.passage_hashes = vec![("pass_1".into(), "bad_corrupted_hash_value".into())];
+      assert!(verify_source_integrity(t.path(), &corrupted_source, false).is_err());
   }
 }
 #[cfg(test)]
