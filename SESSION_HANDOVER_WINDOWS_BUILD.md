@@ -1,8 +1,8 @@
 # Documento di Session Handover — LIMEN Vault v3 (Windows Build)
 
-**Data / Ora:** 2026-09-23  
+**Data / Ora:** 2026-09-23 (UTC+8)  
 **Branch Git:** `windows-build`  
-**Ultimo Commit Registrato:** `ba26889` (Proposta FASE 3 corretta)  
+**Ultimo Commit Registrato (Congelamento Codice e Costanti):** `226d4fd`  
 **Vault di Sviluppo / Test:** `E:\VAULT WIN TEST DEV` (376 documenti, 23.482 passaggi)  
 **Repository Path:** `E:\Projects\vault_memai_obsi`  
 
@@ -28,40 +28,38 @@
 - Generazione risposte con modello locale congelata.
 - File di istruzioni conservato in radice: [RISPOSTE_MODELLO_LOCALE_IN_SOSPESO.md](file:///E:/Projects/vault_memai_obsi/RISPOSTE_MODELLO_LOCALE_IN_SOSPESO.md) (commit `e8a3043`). Nessun codice di generazione locale sarà sviluppato finché non riattivato esplicitamente.
 
-### FASE 3 — QUALITÀ DELLA SELEZIONE DELLE FONTI
-- **Proposta Tecnica Corretta**: [fase3-proposta.md](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase3-proposta.md).
-- **Passo 3a (Implementazione A, B e Misurazione Comparativa Punto E)**:
-  1. *Punto A (Bonus titolo condizionato)*: Implementato in [search.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/search.rs) e [diagnose_fase1.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/bin/diagnose_fase1.rs). Bonus +10 solo se $df \le 2 \lor df/N \le 0.30$. `"progetto"` perde il bonus (+0); `"bnxt"` e `"arkai"` lo mantengono (+10).
-  2. *Punto B (Stopwords estese)*: Aggiunte 54 nuove parole comuni in [search-spec.json](file:///E:/Projects/vault_memai_obsi/packages/search-engine/src/search-spec.json) (143 totali). `"sei"` formalmente escluso (è numerale 6 fondamentale per scadenze e contratti).
-  3. *Reindicizzazione*: Vault `E:\VAULT WIN TEST DEV` reindicizzato con successo (`version: 2`).
-  4. *Verifica su BNXT e ARKAI*:
-     - Domanda BNXT: `BNXT CRM.md` balza al **Rango 1** (score 1.1938); `_Progetto - BNXT AUDIT VICENZA.md` al **Rango 2** (score 1.1695). I file estranei come `Progetto senza nome (2)` crollano oltre il rango 20.
-     - Domanda ARKAI: **Tutti i primi 7 risultati** sono documenti ARKAI ufficiali. 9 documenti ARKAI nei primi 10.
-  5. *Punto E (Misurazione comparativa senza codice in produzione)*:
-     - Eseguita misurazione comparativa tramite [measure_punto_e.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/bin/measure_punto_e.rs) sui 30 dev queries di `A05_DEV_QUERIES.json`.
-     - *Metodo a (soglia fissa)*: fallisce (a 0.380 tiene i falsi positivi, a 0.400 elimina 3 file BNXT ufficiali).
-     - *Metodo b (soglia relativa $\ge k \times \max$)*: taglia documenti BNXT legittimi al 75%.
-     - *Metodo c (parola rara $\lor \max - \text{SemSim} \le \delta$)*: protegge al 100% i file BNXT ed elimina tutti i falsi positivi. Recall sui 30 dev queries sale da 0.833 a 0.867.
-     - Dati completi documentati in [fase3a-misure.md](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase3a-misure.md). Nessun codice attivato nel motore; scelta demandata a Cesare.
-  6. *Gate A15 e benchmark A05 / A04*:
-     - File origine valore 198,90 ms: `IMPLEMENTATION/V3_AUDIT_CLOSURE_EVIDENCE/A15/run.log` (Apple M2 su macOS).
-     - Chiarita la soglia del gate contrattuale: $\le 1.000$ ms (margine reale accertato $> 800$ ms, non 1,1 ms).
-     - Misura reale Windows in `--release`: $p95 = 834.74$ ms ($\le 1.000$ ms, PASS).
-     - A04 confermato invariato come NON VERIFICATO.
-  7. *Rettifiche a Proposta Passo 3b*:
-     - Stima "+30-50% token" etichettata come ipotetica.
-     - Integrità crittografica estesa a ogni singolo passaggio (`passage.sha256`).
+### FASE 3 — PASSO 3a COMPLETATO E CONGELATO (Commit `226d4fd`)
+- **Punto A (Bonus titolo condizionato)**: Implementato in [search.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/search.rs) e [diagnose_fase1.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/bin/diagnose_fase1.rs). Bonus +10 solo se $df \le 2 \lor df/N \le 0.30$. `"progetto"` perde il bonus (+0); `"bnxt"` e `"arkai"` lo mantengono (+10).
+- **Punto B (Stopwords estese)**: Aggiunte 54 nuove parole comuni in [search-spec.json](file:///E:/Projects/vault_memai_obsi/packages/search-engine/src/search-spec.json) (143 totali). `"sei"` formalmente escluso (è numerale 6 fondamentale per scadenze e contratti).
+- **Punto E (Metodo c in produzione su decisione di Cesare)**:
+  - Implementato in [ai.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/ai.rs): costante `PUNTO_E_SEM_DELTA_THRESHOLD = 0.05`.
+  - Regola di ammissibilità: candidato ammesso se contiene almeno una parola rara della query ($df \le 2 \lor df/N \le 0.30$) con tokenizzazione esatta / parole intere (`contains_whole_words`), OPPURE se la similarità semantica dista $\le 0.05$ dal massimo della query.
+  - Servizio offline: se `degraded == true` o il servizio semantico è spento, il Metodo c non filtra (selezione lessicale identica a prima).
+  - Fallback: se nessun candidato è ammesso (con semantica attiva), viene inviato comunque il primo della classifica.
+- **Verifica Criteri Reali su `E:\VAULT WIN TEST DEV`**:
+  - *BNXT*: 10 fonti inviate, **4 su 5 requisiti soddisfatti (PASS)** (`_Progetto - BNXT AUDIT VICENZA` S2, `BNXT CRM` S1, `verifica-walkthrough/impl` S4/S5, `audit-localizzazione-EN-baseline` S6). (Senza Punto E ne conteneva solo 3).
+  - *ARKAI*: 10 fonti inviate, **10 su 12 documenti ufficiali ARKAI presenti (PASS)**.
+- **Misure Gold post-congelamento**:
+  - *A05 Gold* (40 query, OpenAI `text-embedding-3-small`, corpus 120 doc verificato): Recall@10 = **0.975** (39/40), baseline lessicale = 0.675, zero-recall = 1 (`Q21`) $\rightarrow$ **PASS**.
+  - *A15 Gold* (1000 doc, 11000 passaggi, 100 query su `a15_vault`): p50 = **351.88 ms**, p95 = **532.59 ms** ($\le 1000$ ms), p99 = **573.36 ms**, cold = 253.93 ms $\rightarrow$ **PASS**.
+- **Test Suite Completa**: 151 test passati, 0 falliti (parallel e single-threaded).
 
 ---
 
 ## 2. File di Evidenza Prodotti nel Passo 3a
+
+- **Report Misure Completo**: [fase3a-misure.md](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase3a-misure.md)
 - **Output diagnostico grezzo**: [fase3a-diagnose-output.txt](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase3a-diagnose-output.txt)
-- **Report misure e comparazione Punto E**: [fase3a-misure.md](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase3a-misure.md)
-- **Walkthrough attività**: [walkthrough.md](file:///C:/Users/user/.gemini/antigravity-ide/brain/2bd5a479-b27a-49a6-83e0-db69feccb5fa/walkthrough.md)
-- **Tool di misurazione Punto E**: [measure_punto_e.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/bin/measure_punto_e.rs)
+- **Patch Cumulativa**: [fase-3a.patch](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-3a.patch) (diff da `ba26889` a `226d4fd`)
+- **Evidenze A05 Gold**: [IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/A05/](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/A05/) (`summary.json`, `per-query.jsonl`, `run.log`, `manifest-verify.log`)
+- **Evidenze A15 Gold**: [IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/A15/](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/A15/) (`summary.json`, `latencies-warm.csv`, `latencies-cold.csv`, `latencies-during-import.csv`, `run.log`, `manifest-verify.log`)
+- **Log Test Suite**:
+  - [cargo-test-fase-3a-parallel.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-3a-parallel.log)
+  - [cargo-test-fase-3a-single.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-3a-single.log)
 
 ---
 
-## 3. Stato Processi di Sistema
-- **Risolto blocco CPU / istanze multiple**: terminato il processo `target\release\limen-vault.exe` rimasto attivo in background e liberati i core della CPU.
-- Server locale `llama-server` operativo per inferenza locale.
+## 3. Stato Processi di Sistema e Avvio Prossima Sessione
+- Processi `limen-vault.exe` e `llama-server` operativi e stabili.
+- Codice congelato al commit `226d4fd` in perfetto allineamento con i test e le evidenze.
+- **Prossimo Passo**: Avvio della FASE 3 Passo 3b (invio di passaggi multipli per fonte approvati con verifica crittografica `passage.sha256`).
