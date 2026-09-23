@@ -25,14 +25,56 @@ pub struct Source {
 #[derive(Clone,Serialize)]
 #[serde(rename_all="camelCase")]
 pub struct Preview {pub ticket:String,pub sources:Vec<Source>,pub context_bytes:usize}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewTimings {
+    pub t_preview_total_ms: u64,
+    pub t_index_cache_ms: u64,
+    pub t_embed_ms: u64,
+    pub t_search_ms: u64,
+    pub t_doc_read_ms: u64,
+    pub t_passage_extract_ms: u64,
+}
+
 pub struct Pending {
     pub path: PathBuf,
     pub options: Options,
     pub sources: Vec<Source>,
-    pub time: Instant,
-    pub t_index_cache_ms: u64,
-    pub t_search_ms: u64,
-    pub t_embed_ms: u64,
+    pub created_at: Instant,
+    pub preview_timings: PreviewTimings,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AskTimingLogEntry {
+    pub timestamp: String,
+    pub model: String,
+    pub tokens_used: Option<u64>,
+    pub t_ui_total_ms: Option<u64>,
+    pub t_backend_total_ms: u64,
+    pub preview: PreviewTimingBreakdown,
+    pub t_handoff_ms: u64,
+    pub ask: AskTimingBreakdown,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PreviewTimingBreakdown {
+    pub total_ms: u64,
+    pub index_cache_ms: u64,
+    pub embed_ms: u64,
+    pub search_ms: u64,
+    pub doc_read_ms: u64,
+    pub passage_extract_ms: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AskTimingBreakdown {
+    pub total_ms: u64,
+    pub verify_pre_ms: u64,
+    pub payload_ms: u64,
+    pub openai_ms: u64,
+    pub verify_post_ms: u64,
+    pub parse_ms: u64,
 }
 
 pub fn get_ask_timing_log_path() -> PathBuf {
@@ -40,6 +82,82 @@ pub fn get_ask_timing_log_path() -> PathBuf {
         .or_else(|_| std::env::var("HOME"))
         .unwrap_or_else(|_| ".".into());
     PathBuf::from(base).join(".limen-vault").join("ask_timing.log")
+}
+
+pub fn log_ask_timing_detailed(entry: &AskTimingLogEntry) {
+    let log_path = get_ask_timing_log_path();
+    if let Some(parent) = log_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let json_line = serde_json::to_string(entry).unwrap_or_default();
+    let ui_str = entry
+        .t_ui_total_ms
+        .map(|ms| format!("{} ms", ms))
+        .unwrap_or_else(|| "non misurato".into());
+    let tokens_str = entry
+        .tokens_used
+        .map(|t| t.to_string())
+        .unwrap_or_else(|| "null".into());
+
+    let formatted_block = format!(
+        "================================================================================\n\
+         REGISTRO TEMPI RISPOSTA [{}]\n\
+         Modello: {} | Token usati: {}\n\
+         Tempo visto da UI (click -> risposta): {}\n\
+         Tempo totale Backend: {} ms\n\
+           ├─ 1. ANTEPRIMA (Preview): {} ms\n\
+           │    ├─ Indice & cache: {} ms\n\
+           │    ├─ Vettore semantico (embed): {} ms\n\
+           │    ├─ Ricerca ibrida & fusione (search): {} ms\n\
+           │    ├─ Lettura documenti (doc_read): {} ms\n\
+           │    └─ Estrazione passaggi (passage_extract): {} ms\n\
+           ├─ 2. PASSAGGIO ANTEPRIMA-INVIO (Handoff IPC/UI): {} ms\n\
+           └─ 3. INTERROGAZIONE (Ask): {} ms\n\
+                ├─ Verifica impronte pre-chiamata (verify_pre): {} ms\n\
+                ├─ Costruzione richiesta (payload): {} ms\n\
+                ├─ Chiamata OpenAI (openai): {} ms\n\
+                ├─ Verifica impronte post-chiamata (verify_post): {} ms\n\
+                └─ Lettura risposta (parse): {} ms\n\
+         Verifica quadratura somme:\n\
+           Backend = Preview ({} ms) + Handoff ({} ms) + Ask ({} ms) = {} ms\n\
+           Ask = Verify_pre ({} ms) + Payload ({} ms) + OpenAI ({} ms) + Verify_post ({} ms) + Parse ({} ms) = {} ms\n\
+         JSON: {}\n\
+         ================================================================================\n\n",
+        entry.timestamp,
+        entry.model,
+        tokens_str,
+        ui_str,
+        entry.t_backend_total_ms,
+        entry.preview.total_ms,
+        entry.preview.index_cache_ms,
+        entry.preview.embed_ms,
+        entry.preview.search_ms,
+        entry.preview.doc_read_ms,
+        entry.preview.passage_extract_ms,
+        entry.t_handoff_ms,
+        entry.ask.total_ms,
+        entry.ask.verify_pre_ms,
+        entry.ask.payload_ms,
+        entry.ask.openai_ms,
+        entry.ask.verify_post_ms,
+        entry.ask.parse_ms,
+        entry.preview.total_ms,
+        entry.t_handoff_ms,
+        entry.ask.total_ms,
+        entry.preview.total_ms + entry.t_handoff_ms + entry.ask.total_ms,
+        entry.ask.verify_pre_ms,
+        entry.ask.payload_ms,
+        entry.ask.openai_ms,
+        entry.ask.verify_post_ms,
+        entry.ask.parse_ms,
+        entry.ask.verify_pre_ms + entry.ask.payload_ms + entry.ask.openai_ms + entry.ask.verify_post_ms + entry.ask.parse_ms,
+        json_line
+    );
+
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
+        use std::io::Write;
+        let _ = f.write_all(formatted_block.as_bytes());
+    }
 }
 
 pub fn log_ask_timing(
@@ -51,27 +169,31 @@ pub fn log_ask_timing(
     model: &str,
     tokens_used: Option<u64>,
 ) {
-    let log_path = get_ask_timing_log_path();
-    if let Some(parent) = log_path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
     let now = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
-    let tokens_str = tokens_used.map(|t| t.to_string()).unwrap_or_else(|| "null".into());
-    let line = format!(
-        "{{\"timestamp\":\"{}\",\"t_index_cache_ms\":{},\"t_search_ms\":{},\"t_embed_ms\":{},\"t_openai_ms\":{},\"t_total_ms\":{},\"model\":\"{}\",\"tokens_used\":{}}}\n",
-        now,
-        t_index_cache_ms,
-        t_search_ms,
-        t_embed_ms,
-        t_openai_ms,
-        t_total_ms,
-        model,
-        tokens_str
-    );
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
-        use std::io::Write;
-        let _ = f.write_all(line.as_bytes());
-    }
+    log_ask_timing_detailed(&AskTimingLogEntry {
+        timestamp: now,
+        model: model.to_string(),
+        tokens_used,
+        t_ui_total_ms: None,
+        t_backend_total_ms: t_total_ms,
+        preview: PreviewTimingBreakdown {
+            total_ms: t_index_cache_ms + t_search_ms + t_embed_ms,
+            index_cache_ms: t_index_cache_ms,
+            embed_ms: t_embed_ms,
+            search_ms: t_search_ms,
+            doc_read_ms: 0,
+            passage_extract_ms: 0,
+        },
+        t_handoff_ms: 0,
+        ask: AskTimingBreakdown {
+            total_ms: t_openai_ms,
+            verify_pre_ms: 0,
+            payload_ms: 0,
+            openai_ms: t_openai_ms,
+            verify_post_ms: 0,
+            parse_ms: 0,
+        },
+    });
 }
 
 #[derive(Default)]
@@ -126,7 +248,8 @@ pub async fn select_with_port_timed(
     path: &Path,
     o: &Options,
     active_port: Option<u16>,
-) -> Result<(Vec<Source>, crate::embeddings::SearchPhaseTimings), String> {
+) -> Result<(Vec<Source>, PreviewTimings), String> {
+    let t_prev_start = Instant::now();
     if o.prompt.trim().is_empty() || o.prompt.chars().count() > 2000 || o.model.len() > 100 || o.source_ids.len() > 50 {
         return Err("Invalid AI options".into());
     }
@@ -142,7 +265,7 @@ pub async fn select_with_port_timed(
         is_eligible && id_ok
     };
 
-    let (rows, _degraded, timings) = crate::embeddings::hybrid_search_vault_with_port_filtered_timed(
+    let (rows, _degraded, search_timings) = crate::embeddings::hybrid_search_vault_with_port_filtered_timed(
         path,
         SearchQuery {
             term: Some(o.prompt.clone()),
@@ -161,10 +284,16 @@ pub async fn select_with_port_timed(
     )
     .await?;
 
+    let mut t_doc_read_ms = 0u64;
+    let mut t_passage_extract_ms = 0u64;
     let mut sources = Vec::new();
     let mut size = 0;
     for r in rows {
+        let t_dr = Instant::now();
         let mut s = read_source(path, &r.id, &r.sha256, o.include_drafts)?;
+        t_doc_read_ms += t_dr.elapsed().as_millis() as u64;
+
+        let t_pe = Instant::now();
         s.locator = r.matching_locator.clone();
         s.passage_id = r.matching_passage_id.clone();
 
@@ -181,6 +310,7 @@ pub async fn select_with_port_timed(
                 s.content.truncate(3000);
             }
         }
+        t_passage_extract_ms += t_pe.elapsed().as_millis() as u64;
 
         let bytes = serde_json::to_vec(&s).map_err(|_| "Invalid source")?.len();
         if size + bytes > 24000 {
@@ -192,7 +322,17 @@ pub async fn select_with_port_timed(
             break;
         }
     }
-    Ok((sources, timings))
+
+    let preview_timings = PreviewTimings {
+        t_preview_total_ms: t_prev_start.elapsed().as_millis() as u64,
+        t_index_cache_ms: search_timings.t_index_cache_ms,
+        t_embed_ms: search_timings.t_embed_ms,
+        t_search_ms: search_timings.t_search_ms,
+        t_doc_read_ms,
+        t_passage_extract_ms,
+    };
+
+    Ok((sources, preview_timings))
 }
 
 impl AiState {
@@ -205,7 +345,7 @@ impl AiState {
         let bytes = serde_json::to_vec(&sources).map_err(|_| "Invalid sources")?.len();
         let ticket = random_token()?;
         let mut pending = self.pending.lock().map_err(|_| "AI state unavailable")?;
-        pending.retain(|_, p| p.time.elapsed() < Duration::from_secs(300));
+        pending.retain(|_, p| p.created_at.elapsed() < Duration::from_secs(300));
         if pending.len() >= 8 {
             pending.clear();
         }
@@ -215,10 +355,8 @@ impl AiState {
                 path,
                 options: o,
                 sources: sources.clone(),
-                time: Instant::now(),
-                t_index_cache_ms: timings.t_index_cache_ms,
-                t_search_ms: timings.t_search_ms,
-                t_embed_ms: timings.t_embed_ms,
+                created_at: Instant::now(),
+                preview_timings: timings,
             },
         );
         Ok(Preview {
@@ -249,7 +387,7 @@ impl AiState {
             .map_err(|_| "AI unavailable")?
             .remove(ticket)
             .ok_or("Preview expired; select sources again")?;
-        if p.time.elapsed() > Duration::from_secs(300) || p.sources.is_empty() {
+        if p.created_at.elapsed() > Duration::from_secs(300) || p.sources.is_empty() {
             return Err("Preview expired or no eligible sources".into());
         }
         let flag = Arc::new(AtomicBool::new(false));
@@ -434,50 +572,133 @@ pub fn parse_response(r: Value, sources: &[Source]) -> Result<Value, String> {
 
     Ok(res)
 }
-pub async fn ask(p:Pending,key:String,cancel:Arc<AtomicBool>)->Result<Value,String>{
- if !get_openai_consent(&p.path) {
-  return Err("Consenso all'invio dei dati a OpenAI non concesso. Abilitalo nelle Impostazioni.".into());
- }
- if p.options.model.trim().is_empty(){return Err("Select an API model".into())}
- for s in &p.sources {
-  let current=read_source(&p.path,&s.document_id,&s.sha256,p.options.include_drafts)?;
-  if current.sha256 != s.sha256 { return Err("Source changed since preview".into()); }
- }
- if cancel.load(Ordering::SeqCst){return Err("Request cancelled".into())}
- let client=reqwest::Client::builder().https_only(true).redirect(reqwest::redirect::Policy::none()).connect_timeout(Duration::from_secs(10)).timeout(Duration::from_secs(30)).build().map_err(|_|"HTTP client unavailable")?;
- let t_openai_start = Instant::now();
- let work=async {
-  let mut response=client.post("https://api.openai.com/v1/responses").bearer_auth(key).json(&request_body(&p.options,&p.sources)).send().await.map_err(|_|"OpenAI unavailable or request timed out".to_string())?;
-  if !response.status().is_success(){return Err(format!("OpenAI HTTP {}",response.status().as_u16()))}
-  let mut data=Vec::new();
-  while let Some(chunk)=response.chunk().await.map_err(|_|"Unable to read provider response")? {if data.len()+chunk.len()>1024*1024{return Err("Provider response too large".into())}data.extend_from_slice(&chunk);}
-  Ok::<Vec<u8>,String>(data)
- };
- let cancelled=async {loop{if cancel.load(Ordering::SeqCst){break}tokio::time::sleep(Duration::from_millis(50)).await;}};
- let data=tokio::select!{r=work=>r?,_=cancelled=>return Err("Request cancelled".into())};
- let t_openai_ms = t_openai_start.elapsed().as_millis() as u64;
- let t_total_ms = p.time.elapsed().as_millis() as u64;
+pub async fn ask(
+    p: Pending,
+    key: String,
+    cancel: Arc<AtomicBool>,
+    ui_elapsed_ms: Option<u64>,
+) -> Result<Value, String> {
+    let t_handoff_ms = p.created_at.elapsed().as_millis() as u64;
+    let t_ask_start = Instant::now();
 
- for s in &p.sources {
-  let current=read_source(&p.path,&s.document_id,&s.sha256,p.options.include_drafts)?;
-  if current.sha256 != s.sha256 { return Err("Source changed during request".into()); }
- }
- let parsed = parse_response(serde_json::from_slice(&data).map_err(|_|"Invalid provider JSON")?,&p.sources)?;
+    if !get_openai_consent(&p.path) {
+        return Err("Consenso all'invio dei dati a OpenAI non concesso. Abilitalo nelle Impostazioni.".into());
+    }
+    if p.options.model.trim().is_empty() {
+        return Err("Select an API model".into());
+    }
 
- let model_str = parsed["model"].as_str().unwrap_or(p.options.model.as_str());
- let tokens_used = parsed["tokensUsed"].as_u64();
+    // 1. Verifica impronte pre-chiamata (lettura e verifica hash delle fonti)
+    let t_vpre_start = Instant::now();
+    for s in &p.sources {
+        let current = read_source(&p.path, &s.document_id, &s.sha256, p.options.include_drafts)?;
+        if current.sha256 != s.sha256 {
+            return Err("Source changed since preview".into());
+        }
+    }
+    let t_verify_pre_ms = t_vpre_start.elapsed().as_millis() as u64;
 
- log_ask_timing(
-     p.t_index_cache_ms,
-     p.t_search_ms,
-     p.t_embed_ms,
-     t_openai_ms,
-     t_total_ms,
-     model_str,
-     tokens_used,
- );
+    if cancel.load(Ordering::SeqCst) {
+        return Err("Request cancelled".into());
+    }
 
- Ok(parsed)
+    // 2. Costruzione della richiesta HTTP e serializzazione payload
+    let t_payload_start = Instant::now();
+    let client = reqwest::Client::builder()
+        .https_only(true)
+        .redirect(reqwest::redirect::Policy::none())
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(30))
+        .build()
+        .map_err(|_| "HTTP client unavailable")?;
+    let body = request_body(&p.options, &p.sources);
+    let t_payload_ms = t_payload_start.elapsed().as_millis() as u64;
+
+    // 3. Chiamata HTTP OpenAI (invio richiesta fino a completamento stream)
+    let t_openai_start = Instant::now();
+    let work = async {
+        let mut response = client
+            .post("https://api.openai.com/v1/responses")
+            .bearer_auth(key)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|_| "OpenAI unavailable or request timed out".to_string())?;
+        if !response.status().is_success() {
+            return Err(format!("OpenAI HTTP {}", response.status().as_u16()));
+        }
+        let mut data = Vec::new();
+        while let Some(chunk) = response.chunk().await.map_err(|_| "Unable to read provider response")? {
+            if data.len() + chunk.len() > 1024 * 1024 {
+                return Err("Provider response too large".into());
+            }
+            data.extend_from_slice(&chunk);
+        }
+        Ok::<Vec<u8>, String>(data)
+    };
+    let cancelled = async {
+        loop {
+            if cancel.load(Ordering::SeqCst) {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    };
+    let data = tokio::select! {
+        r = work => r?,
+        _ = cancelled => return Err("Request cancelled".into())
+    };
+    let t_openai_ms = t_openai_start.elapsed().as_millis() as u64;
+
+    // 4. Verifica impronte post-chiamata (integrità dopo la risposta)
+    let t_vpost_start = Instant::now();
+    for s in &p.sources {
+        let current = read_source(&p.path, &s.document_id, &s.sha256, p.options.include_drafts)?;
+        if current.sha256 != s.sha256 {
+            return Err("Source changed during request".into());
+        }
+    }
+    let t_verify_post_ms = t_vpost_start.elapsed().as_millis() as u64;
+
+    // 5. Decodifica JSON e analisi della risposta
+    let t_parse_start = Instant::now();
+    let parsed_json = serde_json::from_slice(&data).map_err(|_| "Invalid provider JSON")?;
+    let parsed = parse_response(parsed_json, &p.sources)?;
+    let t_parse_ms = t_parse_start.elapsed().as_millis() as u64;
+
+    let t_ask_total_ms = t_ask_start.elapsed().as_millis() as u64;
+    let t_backend_total_ms = p.preview_timings.t_preview_total_ms + t_handoff_ms + t_ask_total_ms;
+    let t_ui_total_ms = ui_elapsed_ms.map(|prev_ms| prev_ms + t_ask_total_ms);
+
+    let model_str = parsed["model"].as_str().unwrap_or(p.options.model.as_str());
+    let tokens_used = parsed["tokensUsed"].as_u64();
+
+    log_ask_timing_detailed(&AskTimingLogEntry {
+        timestamp: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        model: model_str.to_string(),
+        tokens_used,
+        t_ui_total_ms,
+        t_backend_total_ms,
+        preview: PreviewTimingBreakdown {
+            total_ms: p.preview_timings.t_preview_total_ms,
+            index_cache_ms: p.preview_timings.t_index_cache_ms,
+            embed_ms: p.preview_timings.t_embed_ms,
+            search_ms: p.preview_timings.t_search_ms,
+            doc_read_ms: p.preview_timings.t_doc_read_ms,
+            passage_extract_ms: p.preview_timings.t_passage_extract_ms,
+        },
+        t_handoff_ms,
+        ask: AskTimingBreakdown {
+            total_ms: t_ask_total_ms,
+            verify_pre_ms: t_verify_pre_ms,
+            payload_ms: t_payload_ms,
+            openai_ms: t_openai_ms,
+            verify_post_ms: t_verify_post_ms,
+            parse_ms: t_parse_ms,
+        },
+    });
+
+    Ok(parsed)
 }
 
 pub async fn list_models(key: String) -> Result<Vec<String>, String> {
@@ -763,14 +984,12 @@ mod tests {
     tags: None,
    },
    sources: vec![],
-   time: Instant::now(),
-   t_index_cache_ms: 0,
-   t_search_ms: 0,
-   t_embed_ms: 0,
+   created_at: Instant::now(),
+   preview_timings: PreviewTimings::default(),
   };
   let flag = Arc::new(AtomicBool::new(false));
   let rt = tokio::runtime::Runtime::new().unwrap();
-  let err = rt.block_on(ask(pending, "fake_key".into(), flag)).unwrap_err();
+  let err = rt.block_on(ask(pending, "fake_key".into(), flag, None)).unwrap_err();
   assert!(err.contains("Consenso"));
  }
 

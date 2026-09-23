@@ -2,7 +2,7 @@ import {invoke} from '@tauri-apps/api/core';
 export interface AiOptions {prompt:string;model:string;includeDrafts:boolean;sourceIds:string[];category?:string;client?:string;project?:string;tags?:string[]}
 export interface AiSource {documentId:string;relativePath:string;title:string;category:string;status?:string;sha256:string;content:string;locator?:string;passageId?:string;revision?:number}
 export interface AiPreview {ticket:string;sources:AiSource[];contextBytes:number}
-export interface AiAnswer {answer:string;provider:string;model:string;citations:Omit<AiSource,'content'>[];tokensUsed?:number}
+export interface AiAnswer {answer:string;provider:string;model:string;citations:Omit<AiSource,'content'>[];tokensUsed?:number;uiTotalMs?:number}
 
 export interface EmbeddingsProviderReport {
   provider: 'local' | 'openai';
@@ -165,7 +165,7 @@ export const aiIpc = {
   saveKey: (key: string) => call<void>('ai_save_key', { key }),
   deleteKey: () => call<void>('ai_delete_key'),
   preview: (vaultPath: string, options: AiOptions) => call<AiPreview>('ai_preview', { vaultPath, options }),
-  ask: (ticket: string) => call<AiAnswer>('ai_ask', { ticket }),
+  ask: (ticket: string, uiElapsedMs?: number) => call<AiAnswer>('ai_ask', { ticket, uiElapsedMs }),
   cancel: (ticket: string) => call<void>('ai_cancel', { ticket }),
   read: (vaultPath: string, s: Omit<AiSource, 'content'>, includeDrafts: boolean) =>
     call<AiSource>('ai_read_source', { vaultPath, documentId: s.documentId, sha256: s.sha256, includeDrafts }),

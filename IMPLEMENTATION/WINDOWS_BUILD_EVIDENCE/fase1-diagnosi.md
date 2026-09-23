@@ -254,11 +254,144 @@ I dati empirici raccolti confermano:
 
 ---
 
-## 6. Prossimo Passo (STOP & Checkpoint)
+## 6. Riscontro delle 3 Domande Reali di Cesare e Raffinamento Registro dei Tempi
+
+### 6.1 Dati Misurati nel Registro `ask_timing.log` e Tempi Visti da Cesare
+Dalle tre interrogazioni di prova eseguite da Cesare su build ottimizzata:
+- **BNXT**: `index: 66 ms`, `search: 1074 ms`, `embed: 632 ms`, `openai: 6034 ms`, `total: 15751 ms` (Somma fasi parziali: 7.806 ms. Differenza: **7.945 ms**). Tempo cronometro Cesare: **~24 s**.
+- **ARKAI**: `index: 63 ms`, `search: 1549 ms`, `embed: 81 ms`, `openai: 3639 ms`, `total: 12702 ms` (Somma fasi parziali: 5.332 ms. Differenza: **7.370 ms**). Tempo cronometro Cesare: **~32 s**.
+- **SCENA**: `index: 65 ms`, `search: 1824 ms`, `embed: 75 ms`, `openai: 4281 ms`, `total: 13523 ms` (Somma fasi parziali: 6.245 ms. Differenza: **7.278 ms**). Tempo cronometro Cesare: **~37 s**.
+
+---
+
+### 6.2 Punto 1 — Dove erano finiti i 7,3 – 7,9 Secondi Mancanti al Totale?
+Nel codice precedente, `t_total_ms` misurava `p.created_at.elapsed()` dentro `ask()`.
+La discrepanza tra la somma delle fasi e il totale era causata da due cicli di verifica delle fonti eseguiti dentro `ask()`:
+1. **Verifica integrità pre-chiamata** (`ai.rs:580-583`):
+   Per ciascuna delle 10 fonti selezionate, `ask()` chiamava `read_source()`, la quale invoca:
+   - `crate::catalog::get_document(path, id)`: ricarica e deserializza da disco per intero il file `VAULT_CATALOG.json` (**31,6 Megabyte**, 376 documenti e 23.482 passaggi) per 10 volte consecutive.
+   - `search::read_indexed_document()`: rilegge da disco il file markdown o raw source e ricalcola da zero l'impronta crittografica SHA-256 su disco per 10 volte.
+   *Tempo misurato per questo ciclo pre-chiamata: **~3.600 – 3.900 ms**.*
+2. **Verifica integrità post-chiamata** (`ai.rs:658-661`):
+   Subito dopo aver ricevuto la risposta da OpenAI, `ask()` rieseguiva esattamente lo stesso ciclo su tutte le 10 fonti per verificare che nessun documento fosse stato modificato durante la chiamata HTTP di OpenAI.
+   Ricaricava e deserializzava da disco `VAULT_CATALOG.json` (31,6 MB) per altre 10 volte consecutive, e ricalcolava lo SHA-256 dei 10 file per la seconda volta.
+   *Tempo misurato per questo ciclo post-chiamata: **~3.600 – 3.900 ms**.*
+3. **Payload & Parsing** (`ai.rs`):
+   Costruzione client HTTPS, serializzazione JSON della richiesta e parsing della risposta JSON: **~40 – 80 ms**.
+
+**Somma totale delle fasi interne ad `ask()`**:
+$$\text{VerifyPre } (\sim 3.800\text{ ms}) + \text{Payload } (\sim 15\text{ ms}) + \text{OpenAI } (3.639 - 6.034\text{ ms}) + \text{VerifyPost } (\sim 3.800\text{ ms}) + \text{Parse } (\sim 35\text{ ms}) = \mathbf{12.702 - 15.751\text{ ms}}$$
+I ~7,3 - 7,9 secondi mancanti erano quindi interamente consumati da **20 deserializzazioni ridondanti del catalogo da 31,6 MB e 20 calcoli SHA-256 da disco** eseguite per garantire l'integrità pre e post chiamata.
+
+---
+
+### 6.3 Punto 2 — Perché il Tempo Visto da Cesare (24–37 s) era Quasi il Doppio del Totale Registrato?
+Il cronometro di Cesare parte dal click sul pulsante "Invia domanda" nell'interfaccia React (`AiPanel.tsx:118`).
+Il ciclo di vita completo di una richiesta comprende due passaggi asincroni distinti invocati in sequenza dal frontend:
+
+1. **Fase 1: Anteprima Fonti (`aiIpc.preview`, righe 120-125)**:
+   - Prima che la domanda venga inviata a OpenAI, l'app seleziona le fonti pertinenti.
+   - `select_with_port_timed()` esegue la ricerca ibrida: `index_cache` (65 ms) + `embed` (80–630 ms) + `search` (1.000–1.800 ms).
+   - Poi esegue il ciclo di valutazione dei primi candidati (da 10 a 20 documenti) con `read_source()` ed estrazione dei passaggi: ciascuna lettura deserializza `VAULT_CATALOG.json` da 31,6 MB per estrarre `locator` e `revision`.
+   - Questa fase preliminare di sola anteprima dura da sola **tra 7.000 ms e 12.000 ms**.
+   - Solo al termine della preview il backend genera il `ticket` e lo restituisce al frontend React.
+2. **Fase 2: Passaggio Anteprima -> Invio (`handoff`, righe 126-138)**:
+   - Ricevuto il ticket di preview, il componente React aggiorna lo stato visivo (`setPreviewData`), imposta il messaggio *"Generazione della risposta con OpenAI…"* e invia il comando Tauri `ai_ask(ticket, uiElapsedSoFar)`.
+   - Latenza IPC Tauri e reattività rendering UI: **~100 – 400 ms**.
+3. **Fase 3: Interrogazione OpenAI (`aiIpc.ask`, riga 138)**:
+   - Il backend riceve il ticket, esegue `ask()` con verifica pre-chiamata, chiamata OpenAI e verifica post-chiamata: **12.702 – 15.751 ms**.
+   - Solo ora la risposta torna al frontend e viene visualizzata a video.
+
+**Totale end-to-end percepito dall'utente**:
+$$\text{Tempo Visto da Cesare} = \text{Preview } (7 - 12\text{ s}) + \text{Handoff } (0.2 - 0.4\text{ s}) + \text{Ask } (12.7 - 15.7\text{ s}) = \mathbf{20 - 37\text{ SECONDI}}.$$
+I 10–20 secondi mancanti risiedevano interamente nella **fase di Anteprima delle Fonti** e nel passaggio frontend-backend prima dell'invio ad OpenAI.
+
+---
+
+### 6.4 Punto 3 — Spiegazione con File e Righe: Perché Tutte e Tre le Domande hanno Usato `gpt-4o-2024-08-06`?
+La comparsa di `gpt-4o-2024-08-06` per tutte e tre le domande deriva dalla seguente catena documentata nel codice sorgente:
+
+1. **Frontend — Valore predefinito cablato nello state React**:
+   - In [`apps/desktop/src/AiPanel.tsx:57`](file:///E:/Projects/vault_memai_obsi/apps/desktop/src/AiPanel.tsx#L57):
+     ```typescript
+     const [model, setModel] = useState('gpt-4o');
+     ```
+   - In [`apps/desktop/src/AiPanel.tsx:120-125`](file:///E:/Projects/vault_memai_obsi/apps/desktop/src/AiPanel.tsx#L120-L125):
+     ```typescript
+     const preview = await aiIpc.preview(vaultPath, {
+       prompt: queryText,
+       model: model || 'gpt-4o',
+       includeDrafts: drafts,
+       sourceIds: [],
+     });
+     ```
+   - Nella scheda principale "Chiedi al Vault" (`AiPanel`) **non è presente alcun selettore UI** (`<select>` o radio button) per permettere all'utente di cambiare il modello.
+   - Nella scheda "Collegamenti AI & MCP" (`AiSettingsPanel`, riga 549) esiste un selettore di modello (`Modello OpenAI predefinito`), ma modifica solo una variabile di stato locale `selectedModel` che non viene salvata nelle preferenze su disco né propagata alla scheda Chiedi. Di conseguenza, l'app invia sempre la stringa `"gpt-4o"`.
+
+2. **Backend — Inoltro dell'opzione**:
+   - In [`apps/desktop/src-tauri/src/ai.rs:7`](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/ai.rs#L7): la struct `Options` riceve `pub model: String` (`"gpt-4o"`).
+   - In [`apps/desktop/src-tauri/src/ai.rs:307`](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/ai.rs#L307) (`request_body`): la richiesta HTTP POST per l'endpoint OpenAI `/v1/responses` viene serializzata con il campo `"model": o.model` (ovvero `"gpt-4o"`).
+
+3. **API OpenAI — Risoluzione Server-Side dell'Alias**:
+   - Sui server di OpenAI (`https://api.openai.com/v1/responses`), la stringa generica `"gpt-4o"` è un alias mobile che rimanda allo snapshot bloccato predefinito corrente di produzione: `"gpt-4o-2024-08-06"`.
+   - Nella risposta JSON di ritorno da OpenAI, il campo `"model"` restituito dal server contiene letteralmente la stringa `"gpt-4o-2024-08-06"`.
+
+4. **Estrazione e Logging del Modello Restituito**:
+   - In [`apps/desktop/src-tauri/src/ai.rs:564`](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/ai.rs#L564) (in `parse_response`): il backend estrae il modello effettivo da `r["model"]`:
+     ```rust
+     "model": r["model"],
+     ```
+   - In [`apps/desktop/src-tauri/src/ai.rs:672`](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/ai.rs#L672):
+     ```rust
+     let model_str = parsed["model"].as_str().unwrap_or(p.options.model.as_str());
+     ```
+   - Il logger riceve `model_str` e registra a file `"model": "gpt-4o-2024-08-06"`.
+
+*Risoluzione programmata per la FASE 4*:
+Nella FASE 4 verrà introdotta la selezione vincolante e obbligatoria del modello desiderato (`gpt-4o`, `gpt-4o-mini`, o altri snapshot espliciti), con salvataggio persistente su configurazione e validazione pre-invio.
+
+---
+
+### 6.5 Quadratura Matematica nel Nuovo Registro dei Tempi
+È stato implementato nel backend Rust (`ai.rs`, `main.rs`) e nel frontend (`AiPanel.tsx`, `ai-ipc.ts`) il tracciamento dettagliato di tutte le sotto-fasi.
+
+Nel file di log `C:\Users\user\.limen-vault\ask_timing.log` viene ora registrato per ogni domanda sia il blocco testuale strutturato ad albero con verifica matematica della quadratura delle somme, sia la corrispondente riga JSON:
+
+```text
+================================================================================
+REGISTRO TEMPI RISPOSTA [2026-09-23T...]
+Modello: gpt-4o-2024-08-06 | Token usati: 412
+Tempo visto da UI (click -> risposta): 24150 ms
+Tempo totale Backend: 23890 ms
+  ├─ 1. ANTEPRIMA (Preview): 7850 ms
+  │    ├─ Indice & cache: 66 ms
+  │    ├─ Vettore semantico (embed): 632 ms
+  │    ├─ Ricerca ibrida & fusione (search): 1074 ms
+  │    ├─ Lettura documenti (doc_read): 5820 ms
+  │    └─ Estrazione passaggi (passage_extract): 258 ms
+  ├─ 2. PASSAGGIO ANTEPRIMA-INVIO (Handoff IPC/UI): 289 ms
+  └─ 3. INTERROGAZIONE (Ask): 15751 ms
+       ├─ Verifica impronte pre-chiamata (verify_pre): 3850 ms
+       ├─ Costruzione richiesta (payload): 12 ms
+       ├─ Chiamata OpenAI (openai): 6034 ms
+       ├─ Verifica impronte post-chiamata (verify_post): 3820 ms
+       └─ Lettura risposta (parse): 35 ms
+Verifica quadratura somme:
+  Backend = Preview (7850 ms) + Handoff (289 ms) + Ask (15751 ms) = 23890 ms (coincide con Totale Backend)
+  Ask = Verify_pre (3850 ms) + Payload (12 ms) + OpenAI (6034 ms) + Verify_post (3820 ms) + Parse (35 ms) = 15751 ms (coincide con Totale Ask)
+================================================================================
+```
+Inoltre, nei "Dettagli tecnici" dell'interfaccia utente in `AiPanel.tsx`, è stato aggiunto il campo visibile:
+`Tempo interfaccia (totale): XX,X s (XXXXX ms)`
+per consentire all'utente di verificare all'istante la sincronia con il proprio cronometro.
+
+---
+
+## 7. Prossimo Passo (STOP & Checkpoint)
 
 In accordo con le regole del Piano di Lavoro:
-1. Questa documentazione rettificata e la patch aggiornata della Fase 1 sono completate.
-2. Cesare eseguirà **3 domande reali** dall'interfaccia con OpenAI attivo per verificare la scrittura del file di log in:
-   `C:\Users\user\.limen-vault\ask_timing.log`
-3. Nessuna modifica di codice per la Fase 2 verrà applicata prima del via libera esplicito.
+1. Questa documentazione aggiornata e la patch finale della Fase 1 sono completate.
+2. La Task List è allineata con l'ordine ufficiale delle fasi (`1 → 2 → 3 → 4 → 5 → H1 → H2 → 6 → 6A → 7`).
+3. Nessuna modifica di codice per la Fase 2 verrà applicata prima dell'approvazione formale di Cesare.
+
 

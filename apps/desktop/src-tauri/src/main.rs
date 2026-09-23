@@ -501,11 +501,24 @@ async fn ai_preview(
     state.preview_with_port(PathBuf::from(vault_path), options, port).await
 }
 #[tauri::command]
-async fn ai_ask(ticket:String,state:tauri::State<'_,std::sync::Arc<limen_vault::ai::AiState>>)->Result<serde_json::Value,String>{
- let state=state.inner().clone();let (pending,cancel)=state.begin(&ticket)?;
- let key=tauri::async_runtime::spawn_blocking(limen_vault::keychain::load).await.map_err(|_|"Keychain worker failed".to_string()).and_then(|r|r).and_then(|k|k.ok_or("Configure API key in Settings".into()));
- let result=match key {Ok(key)=>limen_vault::ai::ask(pending,key,cancel).await,Err(e)=>Err(e)};
- state.finish(&ticket);result
+async fn ai_ask(
+    ticket: String,
+    ui_elapsed_ms: Option<u64>,
+    state: tauri::State<'_, std::sync::Arc<limen_vault::ai::AiState>>,
+) -> Result<serde_json::Value, String> {
+    let state = state.inner().clone();
+    let (pending, cancel) = state.begin(&ticket)?;
+    let key = tauri::async_runtime::spawn_blocking(limen_vault::keychain::load)
+        .await
+        .map_err(|_| "Keychain worker failed".to_string())
+        .and_then(|r| r)
+        .and_then(|k| k.ok_or("Configure API key in Settings".into()));
+    let result = match key {
+        Ok(key) => limen_vault::ai::ask(pending, key, cancel, ui_elapsed_ms).await,
+        Err(e) => Err(e),
+    };
+    state.finish(&ticket);
+    result
 }
 #[tauri::command]
 fn ai_cancel(ticket:String,state:tauri::State<'_,std::sync::Arc<limen_vault::ai::AiState>>){state.cancel(&ticket);}

@@ -115,6 +115,8 @@ export function AiPanel({
 
     setLoadingStep('Selezione passaggi pertinenti dal Vault…');
 
+    const t0 = Date.now();
+
     try {
       // Step 1: Preview / Select sources automatically
       const preview = await aiIpc.preview(vaultPath, {
@@ -135,9 +137,11 @@ export function AiPanel({
 
       // Step 2: Query Model directly
       setLoadingStep('Generazione della risposta con OpenAI…');
-      const res = await aiIpc.ask(preview.ticket);
+      const uiPreviewElapsed = Math.round(Date.now() - t0);
+      const res = await aiIpc.ask(preview.ticket, uiPreviewElapsed);
 
       if (currentSeq !== seq.current) return;
+      res.uiTotalMs = Math.round(Date.now() - t0);
       setAnswer(res);
       saveOperation.current = operationId();
     } catch (e: any) {
@@ -454,6 +458,7 @@ export function AiPanel({
                 <div><strong>Fornitore:</strong> {answer.provider}</div>
                 <div><strong>Modello:</strong> {answer.model}</div>
                 <div><strong>Token usati:</strong> {answer.tokensUsed ?? 'N/A'}</div>
+                {answer.uiTotalMs && <div><strong>Tempo interfaccia (totale):</strong> {(answer.uiTotalMs / 1000).toFixed(1)} s ({answer.uiTotalMs} ms)</div>}
                 {previewData && <div><strong>Dimensione contesto:</strong> {previewData.contextBytes} byte</div>}
                 <div><strong>Citazioni grezze:</strong></div>
                 {answer.citations.map((c, i) => (
