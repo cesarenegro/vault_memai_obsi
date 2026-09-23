@@ -34,7 +34,7 @@ Tutti i file toccati in questa fase e la relativa natura:
 ## 2. Dichiarazioni Obbligatorie (Timeout OpenAI, Log e Numeri del Vault)
 
 ### Numeri del Vault E:\VAULT WIN TEST DEV (Spiegazione Dettagliata)
-- Nel precedente testo del rapporto markdown era comparsa l'indicazione errata di "2548 passaggi, 126 documenti", frutto di un refuso di trascrizione manuale (perdita della cifra iniziale "3" da 23.482 e copia di una nota da 126 documenti proveniente da un vecchio dataset di test packaging).
+- Nel precedente testo del rapporto markdown era comparsa l'indicazione errata di "2548 passaggi, 126 documenti": quei numeri erano stati riportati a mano in modo errato. Da ora in avanti tutti i numeri e le tabelle vengono estratti esclusivamente dall'output grezzo verificato di [`fase1-diagnose-output.txt`](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase1-diagnose-output.txt).
 - **Misurazione reale e verificata a codice**:
   - `E:\VAULT WIN TEST DEV\00_SYSTEM\VAULT_CATALOG.json` (`catalog.rs:180`): caricato da `catalog::load_catalog()`, contiene esattamente **376 documenti** e **23.482 passaggi** totali (`cat.documents.values().map(|d| d.passages.len()).sum()`).
   - `E:\VAULT WIN TEST DEV\00_SYSTEM\EMBEDDINGS_CACHE.json` (`embeddings.rs:331`): caricato da `embeddings::load_embeddings_cache()`, contiene esattamente **23.482 vettori** (`cache.entries.len()`).
@@ -271,11 +271,11 @@ La discrepanza tra la somma delle fasi e il totale era causata da due cicli di v
    Per ciascuna delle 10 fonti selezionate, `ask()` chiamava `read_source()`, la quale invoca:
    - `crate::catalog::get_document(path, id)`: ricarica e deserializza da disco per intero il file `VAULT_CATALOG.json` (**31,6 Megabyte**, 376 documenti e 23.482 passaggi) per 10 volte consecutive.
    - `search::read_indexed_document()`: rilegge da disco il file markdown o raw source e ricalcola da zero l'impronta crittografica SHA-256 su disco per 10 volte.
-   *Tempo misurato per questo ciclo pre-chiamata: **~3.600 – 3.900 ms**.*
+   *Ipotesi ricavata dai totali, da confermare con la prova di Cesare: **~3.600 – 3.900 ms**.*
 2. **Verifica integrità post-chiamata** (`ai.rs:658-661`):
    Subito dopo aver ricevuto la risposta da OpenAI, `ask()` rieseguiva esattamente lo stesso ciclo su tutte le 10 fonti per verificare che nessun documento fosse stato modificato durante la chiamata HTTP di OpenAI.
    Ricaricava e deserializzava da disco `VAULT_CATALOG.json` (31,6 MB) per altre 10 volte consecutive, e ricalcolava lo SHA-256 dei 10 file per la seconda volta.
-   *Tempo misurato per questo ciclo post-chiamata: **~3.600 – 3.900 ms**.*
+   *Ipotesi ricavata dai totali, da confermare con la prova di Cesare: **~3.600 – 3.900 ms**.*
 3. **Payload & Parsing** (`ai.rs`):
    Costruzione client HTTPS, serializzazione JSON della richiesta e parsing della risposta JSON: **~40 – 80 ms**.
 
@@ -293,7 +293,7 @@ Il ciclo di vita completo di una richiesta comprende due passaggi asincroni dist
    - Prima che la domanda venga inviata a OpenAI, l'app seleziona le fonti pertinenti.
    - `select_with_port_timed()` esegue la ricerca ibrida: `index_cache` (65 ms) + `embed` (80–630 ms) + `search` (1.000–1.800 ms).
    - Poi esegue il ciclo di valutazione dei primi candidati (da 10 a 20 documenti) con `read_source()` ed estrazione dei passaggi: ciascuna lettura deserializza `VAULT_CATALOG.json` da 31,6 MB per estrarre `locator` e `revision`.
-   - Questa fase preliminare di sola anteprima dura da sola **tra 7.000 ms e 12.000 ms**.
+   - Questa fase preliminare di sola anteprima dura (ipotesi ricavata dai totali, da confermare con la prova di Cesare) **tra 7.000 ms e 12.000 ms**.
    - Solo al termine della preview il backend genera il `ticket` e lo restituisce al frontend React.
 2. **Fase 2: Passaggio Anteprima -> Invio (`handoff`, righe 126-138)**:
    - Ricevuto il ticket di preview, il componente React aggiorna lo stato visivo (`setPreviewData`), imposta il messaggio *"Generazione della risposta con OpenAI…"* e invia il comando Tauri `ai_ask(ticket, uiElapsedSoFar)`.
@@ -355,8 +355,9 @@ Nella FASE 4 verrà introdotta la selezione vincolante e obbligatoria del modell
 ### 6.5 Quadratura Matematica nel Nuovo Registro dei Tempi
 È stato implementato nel backend Rust (`ai.rs`, `main.rs`) e nel frontend (`AiPanel.tsx`, `ai-ipc.ts`) il tracciamento dettagliato di tutte le sotto-fasi.
 
-Nel file di log `C:\Users\user\.limen-vault\ask_timing.log` viene ora registrato per ogni domanda sia il blocco testuale strutturato ad albero con verifica matematica della quadratura delle somme, sia la corrispondente riga JSON:
+Nel file di log `C:\Users\user\.limen-vault\ask_timing.log` viene ora registrato per ogni domanda sia il blocco testuale strutturato ad albero con verifica matematica della quadratura delle somme, sia la corrispondente riga JSON.
 
+#### Esempio di formato con valori illustrativi, non misurati
 ```text
 ================================================================================
 REGISTRO TEMPI RISPOSTA [2026-09-23T...]
