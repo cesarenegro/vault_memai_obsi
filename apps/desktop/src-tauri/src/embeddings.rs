@@ -349,7 +349,7 @@ pub fn load_embeddings_cache(vault_path: &Path) -> Result<Arc<EmbeddingsCache>, 
                 let is_mtime_match = entry.mtime == mtime
                     || entry.mtime.duration_since(mtime).map(|d| d.as_millis() < 100).unwrap_or(false)
                     || mtime.duration_since(entry.mtime).map(|d| d.as_millis() < 100).unwrap_or(false);
-                if entry.size == size && is_mtime_match && entry.revision == rev {
+                if entry.size == size && is_mtime_match {
                     return Ok(entry.cache.clone());
                 }
             }

@@ -11,10 +11,36 @@ use std::{
     collections::BTreeMap,
     path::Path,
     process::Command,
+    sync::atomic::{AtomicU64, Ordering},
+    sync::{Arc, Mutex},
+    time::SystemTime,
 };
 
 pub const CATALOG_FILE: &str = "VAULT_CATALOG.json";
 pub const CATALOG_SCHEMA_VERSION: u32 = 1;
+
+pub static CATALOG_REVISION: AtomicU64 = AtomicU64::new(1);
+pub static CATALOG_DISK_READ_COUNT: AtomicU64 = AtomicU64::new(0);
+
+#[derive(Clone)]
+struct CatalogCacheEntry {
+    vault_path: std::path::PathBuf,
+    size: u64,
+    mtime: SystemTime,
+    revision: u64,
+    data: Arc<CatalogState>,
+}
+
+static CATALOG_CACHE: Mutex<BTreeMap<std::path::PathBuf, CatalogCacheEntry>> =
+    Mutex::new(BTreeMap::new());
+
+pub fn bump_catalog_revision() {
+    CATALOG_REVISION.fetch_add(1, Ordering::SeqCst);
+}
+
+pub fn get_catalog_disk_read_count() -> u64 {
+    CATALOG_DISK_READ_COUNT.load(Ordering::SeqCst)
+}
 
 fn err(e: impl std::fmt::Display) -> String {
     e.to_string()
@@ -176,21 +202,66 @@ pub struct CatalogSummary {
     pub catalog_revision: u64,
 }
 
-/// Load the catalog from 00_SYSTEM/VAULT_CATALOG.json or return Default if missing.
-pub fn load_catalog(vault_path: &Path) -> Result<CatalogState, String> {
+/// Load the catalog as an Arc<CatalogState>, using thread-safe in-memory caching.
+pub fn load_catalog_arc(vault_path: &Path) -> Result<Arc<CatalogState>, String> {
     let r = root(vault_path)?;
     let sys = match child(&r, "00_SYSTEM") {
         Ok(d) => d,
-        Err(_) => return Ok(CatalogState::default()),
+        Err(_) => return Ok(Arc::new(CatalogState::default())),
     };
     if !names(&sys)?.iter().any(|s| s == CATALOG_FILE) {
-        return Ok(CatalogState::default());
+        return Ok(Arc::new(CatalogState::default()));
     }
+
+    let cat_file = vault_path.join("00_SYSTEM").join(CATALOG_FILE);
+    let rev = CATALOG_REVISION.load(Ordering::SeqCst);
+
+    if let Ok(meta) = std::fs::metadata(&cat_file) {
+        let size = meta.len();
+        let mtime = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+        if let Ok(guard) = CATALOG_CACHE.lock() {
+            if let Some(entry) = guard.get(vault_path) {
+                let is_mtime_match = entry.mtime == mtime
+                    || entry.mtime.duration_since(mtime).map(|d| d.as_millis() < 100).unwrap_or(false)
+                    || mtime.duration_since(entry.mtime).map(|d| d.as_millis() < 100).unwrap_or(false);
+                if entry.size == size && is_mtime_match {
+                    return Ok(entry.data.clone());
+                }
+            }
+        }
+    }
+
+    CATALOG_DISK_READ_COUNT.fetch_add(1, Ordering::SeqCst);
     let bytes = read(&sys, CATALOG_FILE)?;
     if bytes.len() > 32 * 1024 * 1024 {
         return Err("Catalog file exceeds 32 MB".into());
     }
-    serde_json::from_slice(&bytes).map_err(err)
+    let catalog: CatalogState = serde_json::from_slice(&bytes).map_err(err)?;
+    let data_arc = Arc::new(catalog);
+
+    if let Ok(meta) = std::fs::metadata(&cat_file) {
+        let size = meta.len();
+        let mtime = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+        if let Ok(mut guard) = CATALOG_CACHE.lock() {
+            guard.insert(
+                vault_path.to_path_buf(),
+                CatalogCacheEntry {
+                    vault_path: vault_path.to_path_buf(),
+                    size,
+                    mtime,
+                    revision: rev,
+                    data: data_arc.clone(),
+                },
+            );
+        }
+    }
+
+    Ok(data_arc)
+}
+
+/// Load the catalog from 00_SYSTEM/VAULT_CATALOG.json or return Default if missing (cloned from cache).
+pub fn load_catalog(vault_path: &Path) -> Result<CatalogState, String> {
+    load_catalog_arc(vault_path).map(|arc| (*arc).clone())
 }
 
 /// Atomically save the catalog to 00_SYSTEM/VAULT_CATALOG.json
@@ -205,8 +276,29 @@ pub fn save_catalog(vault_path: &Path, catalog: &mut CatalogState) -> Result<(),
     let res = sys.rename(&tmp, &sys, CATALOG_FILE).map_err(err);
     if res.is_err() {
         let _ = sys.remove_file(&tmp);
+        return res;
     }
-    res
+    bump_catalog_revision();
+    let rev = CATALOG_REVISION.load(Ordering::SeqCst);
+    let arc_cat = Arc::new(catalog.clone());
+    let cat_file = vault_path.join("00_SYSTEM").join(CATALOG_FILE);
+    if let Ok(meta) = std::fs::metadata(&cat_file) {
+        let size = meta.len();
+        let mtime = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+        if let Ok(mut guard) = CATALOG_CACHE.lock() {
+            guard.insert(
+                vault_path.to_path_buf(),
+                CatalogCacheEntry {
+                    vault_path: vault_path.to_path_buf(),
+                    size,
+                    mtime,
+                    revision: rev,
+                    data: arc_cat,
+                },
+            );
+        }
+    }
+    Ok(())
 }
 
 /// Helper to generate stable document ID from relative path
@@ -924,7 +1016,7 @@ pub fn process_pending_extractions(vault_path: &Path) -> Result<usize, String> {
 
 /// List documents matching options with pagination
 pub fn list_documents(vault_path: &Path, options: CatalogListOptions) -> Result<CatalogListResponse, String> {
-    let catalog = load_catalog(vault_path)?;
+    let catalog = load_catalog_arc(vault_path)?;
     let total = catalog.documents.len();
 
     let filter_term = options.filter.as_deref().map(|s| s.to_lowercase());
@@ -936,7 +1028,8 @@ pub fn list_documents(vault_path: &Path, options: CatalogListOptions) -> Result<
 
     let mut filtered: Vec<DocumentRecord> = catalog
         .documents
-        .into_values()
+        .values()
+        .cloned()
         .filter(|doc| {
             if let Some(ref term) = filter_term {
                 let match_name = doc.file_name.to_lowercase().contains(term);
@@ -1002,7 +1095,7 @@ pub fn list_documents(vault_path: &Path, options: CatalogListOptions) -> Result<
 
 /// Get a single document record by ID
 pub fn get_document(vault_path: &Path, document_id: &str) -> Result<DocumentRecord, String> {
-    let catalog = load_catalog(vault_path)?;
+    let catalog = load_catalog_arc(vault_path)?;
     catalog
         .documents
         .get(document_id)
@@ -1012,7 +1105,7 @@ pub fn get_document(vault_path: &Path, document_id: &str) -> Result<DocumentReco
 
 /// Direct unpaged lookup of a document by relative path or alias
 pub fn get_document_by_path(vault_path: &Path, rel_path: &str) -> Result<DocumentRecord, String> {
-    let catalog = load_catalog(vault_path)?;
+    let catalog = load_catalog_arc(vault_path)?;
     let clean = rel_path.trim_start_matches("./").trim_start_matches('/');
     // 1. Exact match on original_path
     for doc in catalog.documents.values() {
@@ -1069,7 +1162,7 @@ pub fn verify_document_passage_integrity(
     expected_hash: Option<&str>,
     expected_revision: Option<u64>,
 ) -> Result<DocumentVerificationReport, String> {
-    let catalog = load_catalog(vault_path)?;
+    let catalog = load_catalog_arc(vault_path)?;
     let doc = match catalog.documents.get(document_id) {
         Some(d) => d,
         None => {
@@ -1395,7 +1488,7 @@ pub fn reveal_in_finder(vault_path: &Path, document_id: &str) -> Result<(), Stri
 
 /// Get summary metrics for the catalog
 pub fn catalog_summary(vault_path: &Path) -> Result<CatalogSummary, String> {
-    let catalog = load_catalog(vault_path)?;
+    let catalog = load_catalog_arc(vault_path)?;
     let total = catalog.documents.len();
     let mut ready = 0;
     let mut processing = 0;
@@ -1835,4 +1928,64 @@ mod tests {
         assert!(!rep_tampered_doc.is_valid);
         assert_eq!(rep_tampered_doc.status, "tampered_original", "Altered file on disk must be reported as tampered_original");
     }
+
+    #[test]
+    fn test_catalog_in_memory_caching_and_zero_disk_reads_on_consecutive_calls() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path();
+        fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        fs::create_dir_all(path.join("20_RAW_SOURCES")).unwrap();
+        fs::write(path.join("20_RAW_SOURCES/doc1.md"), "# Documento 1\nContenuto di prova per la cache del catalogo.").unwrap();
+
+        let mut cat = sync_catalog_from_vault(path).unwrap();
+        let doc_id = make_document_id("20_RAW_SOURCES/doc1.md");
+        save_catalog(path, &mut cat).unwrap();
+
+        // Prima lettura o warm-up
+        let _ = load_catalog_arc(path).unwrap();
+        let initial_reads = get_catalog_disk_read_count();
+
+        // Chiamate consecutive a get_document e load_catalog_arc
+        let doc_first = get_document(path, &doc_id).unwrap();
+        assert_eq!(doc_first.document_id, doc_id);
+
+        let doc_second = get_document(path, &doc_id).unwrap();
+        assert_eq!(doc_second.document_id, doc_id);
+
+        let reads_after = get_catalog_disk_read_count();
+        assert_eq!(
+            reads_after, initial_reads,
+            "Chiamate consecutive a get_document e load_catalog_arc sullo stesso vault non devono rileggere VAULT_CATALOG.json dal disco"
+        );
+    }
+
+    #[test]
+    fn test_catalog_reloaded_after_vault_modification() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path();
+        fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        fs::create_dir_all(path.join("20_RAW_SOURCES")).unwrap();
+        fs::write(path.join("20_RAW_SOURCES/doc_a.md"), "# Documento A\nVersione iniziale").unwrap();
+
+        let mut cat = sync_catalog_from_vault(path).unwrap();
+        let doc_id = make_document_id("20_RAW_SOURCES/doc_a.md");
+        save_catalog(path, &mut cat).unwrap();
+
+        let _doc1 = get_document(path, &doc_id).unwrap();
+        let cat1 = load_catalog(path).unwrap();
+        let rev1 = cat1.catalog_revision;
+
+        // Modifica catalogo tramite save_catalog (incrementa revisione e aggiorna cache)
+        let mut cat_modified = load_catalog(path).unwrap();
+        if let Some(doc) = cat_modified.documents.get_mut(&doc_id) {
+            doc.client = Some("Cliente Aggiornato".into());
+        }
+        save_catalog(path, &mut cat_modified).unwrap();
+
+        let doc2 = get_document(path, &doc_id).unwrap();
+        let cat2 = load_catalog(path).unwrap();
+        assert_eq!(cat2.catalog_revision, rev1 + 1);
+        assert_eq!(doc2.client.as_deref(), Some("Cliente Aggiornato"));
+    }
 }
+

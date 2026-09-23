@@ -21,6 +21,10 @@ pub struct Source {
     pub passage_id: Option<String>,
     #[serde(default, skip_serializing_if="Option::is_none")]
     pub revision: Option<u64>,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub mtime_ms: Option<u64>,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub file_size: Option<u64>,
 }
 #[derive(Clone,Serialize)]
 #[serde(rename_all="camelCase")]
@@ -37,6 +41,7 @@ pub struct PreviewTimings {
     pub t_passage_extract_ms: u64,
 }
 
+#[derive(Clone)]
 pub struct Pending {
     pub path: PathBuf,
     pub options: Options,
@@ -214,7 +219,116 @@ pub fn read_source(path:&Path,id:&str,hash:&str,drafts:bool)->Result<Source,Stri
  if crate::automation::managed(&d.relative_path)&&!crate::automation::is_current(path,&d.relative_path,hash){return Err("Generated source obsolete or modified".into())}
  if !eligible(&d.relative_path,&d.category,d.status.as_deref(),drafts)&&!crate::automation::is_current(path,&d.relative_path,&d.sha256){return Err("Document access denied".into())}
  let rev = crate::catalog::get_document(path, id).ok().map(|doc| doc.revision);
- Ok(Source{document_id:d.id,relative_path:d.relative_path,title:d.title,category:d.category,status:d.status,sha256:d.sha256,content,locator:None,passage_id:None,revision:rev})
+ let full_path = path.join(&d.relative_path);
+ let (mtime_ms, file_size) = if let Ok(meta) = std::fs::metadata(&full_path) {
+     let m = meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|dur| dur.as_millis() as u64);
+     (m, Some(meta.len()))
+ } else {
+     (Some(d.mtime_ms), None)
+ };
+ Ok(Source{document_id:d.id,relative_path:d.relative_path,title:d.title,category:d.category,status:d.status,sha256:d.sha256,content,locator:None,passage_id:None,revision:rev,mtime_ms,file_size})
+}
+
+#[cfg(target_os = "windows")]
+pub fn is_high_precision_fs(path: &Path) -> bool {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Storage::FileSystem::GetVolumeInformationW;
+
+    let full = match path.canonicalize() {
+        Ok(p) => p,
+        Err(_) => path.to_path_buf(),
+    };
+
+    let mut root_path_str = String::new();
+    let s = full.to_string_lossy();
+    if s.starts_with(r"\\?\") {
+        if s.len() >= 6 && s.as_bytes()[5] == b':' {
+            root_path_str = format!("{}\\", &s[4..6]);
+        }
+    } else if s.len() >= 2 && s.as_bytes()[1] == b':' {
+        root_path_str = format!("{}\\", &s[0..2]);
+    }
+    if root_path_str.is_empty() {
+        if let Some(prefix) = full.components().next() {
+            root_path_str = format!("{}\\", prefix.as_os_str().to_string_lossy().trim_end_matches('\\'));
+        }
+    }
+    if root_path_str.is_empty() {
+        return false;
+    }
+
+    let wide_root: Vec<u16> = std::ffi::OsStr::new(&root_path_str)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+
+    let mut fs_name = [0u16; 260];
+    let res = unsafe {
+        GetVolumeInformationW(
+            wide_root.as_ptr(),
+            std::ptr::null_mut(),
+            0,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            fs_name.as_mut_ptr(),
+            fs_name.len() as u32,
+        )
+    };
+
+    if res != 0 {
+        let len = fs_name.iter().position(|&c| c == 0).unwrap_or(fs_name.len());
+        let fs_str = String::from_utf16_lossy(&fs_name[..len]);
+        matches!(fs_str.to_uppercase().as_str(), "NTFS" | "REFS")
+    } else {
+        false
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn is_high_precision_fs(_path: &Path) -> bool {
+    true
+}
+
+/// Verify source integrity using filesystem metadata on NTFS / high-precision filesystems,
+/// or full SHA-256 recalculation on FAT32/exFAT filesystems.
+pub fn verify_source_integrity_with_fs_override(
+    path: &Path,
+    s: &Source,
+    is_high_precision: bool,
+    drafts: bool,
+) -> Result<(), String> {
+    let full_path = path.join(&s.relative_path);
+    let meta = std::fs::metadata(&full_path).map_err(|_| "Source file missing or inaccessible".to_string())?;
+
+    if is_high_precision {
+        let current_size = meta.len();
+        let current_mtime_ms = meta
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|dur| dur.as_millis() as u64);
+
+        if let (Some(expected_size), Some(expected_mtime)) = (s.file_size, s.mtime_ms) {
+            if current_size == expected_size && current_mtime_ms == Some(expected_mtime) {
+                // In NTFS with nanosecond resolution, unmodified mtime + size guarantees content integrity
+                return Ok(());
+            }
+        }
+    }
+
+    // On non-NTFS (FAT32/exFAT with 2-second timestamp resolution) or if metadata changed,
+    // recalculate SHA-256 using in-memory catalog and search index cache.
+    let current = read_source(path, &s.document_id, &s.sha256, drafts)?;
+    if current.sha256 != s.sha256 {
+        return Err("Source changed".into());
+    }
+    Ok(())
+}
+
+pub fn verify_source_integrity(path: &Path, s: &Source, drafts: bool) -> Result<(), String> {
+    let high_prec = is_high_precision_fs(path);
+    verify_source_integrity_with_fs_override(path, s, high_prec, drafts)
 }
 pub fn get_openai_consent(vault_path: &Path) -> bool {
     let file = vault_path.join("00_SYSTEM").join("OPENAI_CONSENT.json");
@@ -588,11 +702,11 @@ pub async fn ask(
         return Err("Select an API model".into());
     }
 
-    // 1. Verifica impronte pre-chiamata (lettura e verifica hash delle fonti)
+    // 1. Verifica impronte pre-chiamata (integrità fonti con catalogo e indice in memoria)
     let t_vpre_start = Instant::now();
+    let high_prec = is_high_precision_fs(&p.path);
     for s in &p.sources {
-        let current = read_source(&p.path, &s.document_id, &s.sha256, p.options.include_drafts)?;
-        if current.sha256 != s.sha256 {
+        if let Err(_) = verify_source_integrity_with_fs_override(&p.path, s, high_prec, p.options.include_drafts) {
             return Err("Source changed since preview".into());
         }
     }
@@ -653,8 +767,7 @@ pub async fn ask(
     // 4. Verifica impronte post-chiamata (integrità dopo la risposta)
     let t_vpost_start = Instant::now();
     for s in &p.sources {
-        let current = read_source(&p.path, &s.document_id, &s.sha256, p.options.include_drafts)?;
-        if current.sha256 != s.sha256 {
+        if let Err(_) = verify_source_integrity_with_fs_override(&p.path, s, high_prec, p.options.include_drafts) {
             return Err("Source changed during request".into());
         }
     }
@@ -1043,6 +1156,116 @@ mod tests {
   assert_eq!(items.len(), 1);
   assert_eq!(items[0].relative_path, "01_CLIENTS/doc.md");
  }
+
+  #[tokio::test]
+  async fn test_consecutive_read_indexed_document_and_read_source_zero_disk_reads() {
+      let t = fixture();
+      let s = select(t.path(), &options()).await.unwrap();
+      assert!(!s.is_empty());
+      let doc_id = &s[0].document_id;
+      let sha = &s[0].sha256;
+
+      // Warm-up cache (prima lettura)
+      let _ = search::read_indexed_document(t.path(), doc_id, sha).unwrap();
+      let _ = read_source(t.path(), doc_id, sha, false).unwrap();
+
+      let idx_reads_1 = search::SEARCH_INDEX_DISK_READ_COUNT.load(Ordering::SeqCst);
+      let cat_reads_1 = crate::catalog::get_catalog_disk_read_count();
+
+      // Seconda lettura consecutiva di read_indexed_document
+      let (doc_rec, content) = search::read_indexed_document(t.path(), doc_id, sha).unwrap();
+      assert_eq!(doc_rec.id, *doc_id);
+      assert!(!content.is_empty());
+
+      // Seconda lettura consecutiva di read_source
+      let src = read_source(t.path(), doc_id, sha, false).unwrap();
+      assert_eq!(src.document_id, *doc_id);
+
+      let idx_reads_2 = search::SEARCH_INDEX_DISK_READ_COUNT.load(Ordering::SeqCst);
+      let cat_reads_2 = crate::catalog::get_catalog_disk_read_count();
+
+      assert_eq!(
+          idx_reads_2, idx_reads_1,
+          "Due chiamate consecutive a read_indexed_document sullo stesso vault non devono rileggere SEARCH_INDEX.json dal disco"
+      );
+      assert_eq!(
+          cat_reads_2, cat_reads_1,
+          "Due chiamate consecutive a read_source sullo stesso vault non devono rileggere VAULT_CATALOG.json dal disco"
+      );
+  }
+
+  #[tokio::test]
+  async fn test_source_integrity_ntfs_vs_non_ntfs() {
+      let t = fixture();
+      let s_vec = select(t.path(), &options()).await.unwrap();
+      assert!(!s_vec.is_empty());
+      let s = s_vec[0].clone();
+
+      // CASO A: Filesystem ad alta precisione (NTFS / high precision = true)
+      // 1. File non modificato -> validazione istantanea senza rilettura
+      assert!(verify_source_integrity_with_fs_override(t.path(), &s, true, false).is_ok());
+
+      // 2. File modificato -> rilevamento immediato per mutazione mtime / dimensione
+      let file_path = t.path().join(&s.relative_path);
+      let orig_bytes = fs::read(&file_path).unwrap();
+      fs::write(&file_path, "Modifica del file con diversa lunghezza").unwrap();
+      assert!(verify_source_integrity_with_fs_override(t.path(), &s, true, false).is_err());
+
+      // Ripristina contenuto originale
+      fs::write(&file_path, &orig_bytes).unwrap();
+      let s_clean = read_source(t.path(), &s.document_id, &s.sha256, false).unwrap();
+
+      // CASO B: Filesystem non-NTFS (FAT32/exFAT con granularità 2 secondi / high precision = false)
+      // 1. File non modificato -> ricalcola SHA-256 e valida con successo
+      assert!(verify_source_integrity_with_fs_override(t.path(), &s_clean, false, false).is_ok());
+
+      // 2. File modificato con STESSA lunghezza esatta per simulare scrittura dentro la finestra di 2 secondi di FAT32
+      let mut modified_same_len = orig_bytes.clone();
+      modified_same_len[0] = if modified_same_len[0] == b'#' { b'X' } else { b'#' };
+      fs::write(&file_path, &modified_same_len).unwrap();
+
+      // Su non-NTFS il controllo ricalcola sempre lo SHA-256 da disco -> intercetta la manomissione
+      let res_non_ntfs = verify_source_integrity_with_fs_override(t.path(), &s_clean, false, false);
+      assert!(res_non_ntfs.is_err(), "Su filesystem non-NTFS la modifica con stessa lunghezza deve essere rilevata tramite ricalcolo SHA-256");
+  }
+
+  #[tokio::test]
+  async fn test_verify_pre_source_changed_since_preview_rejected() {
+      let t = fixture();
+      set_openai_consent(t.path(), true).unwrap();
+      let state = AiState::default();
+      let p = state.preview(t.path().into(), options()).await.unwrap();
+      assert!(!p.sources.is_empty());
+
+      // Manomissione file tra anteprima e invio
+      let target_file = t.path().join(&p.sources[0].relative_path);
+      fs::write(&target_file, "Contenuto mutato dopo l'anteprima").unwrap();
+
+      let flag = Arc::new(AtomicBool::new(false));
+      let pending = state.pending.lock().unwrap().get(&p.ticket).unwrap().clone();
+      let err = ask(pending, "test_key".into(), flag, None).await.unwrap_err();
+      assert!(
+          err.contains("Source changed since preview"),
+          "Atteso errore 'Source changed since preview', ottenuto: '{}'",
+          err
+      );
+  }
+
+  #[tokio::test]
+  async fn test_verify_post_source_changed_during_request_rejected() {
+      let t = fixture();
+      let s = select(t.path(), &options()).await.unwrap();
+      assert!(!s.is_empty());
+
+      // Simula alterazione durante la richiesta
+      let target_file = t.path().join(&s[0].relative_path);
+      fs::write(&target_file, "Contenuto mutato durante la richiesta OpenAI").unwrap();
+
+      // Esegue la verifica post con la fonte originale
+      let high_prec = is_high_precision_fs(t.path());
+      let res = verify_source_integrity_with_fs_override(t.path(), &s[0], high_prec, false);
+      assert!(res.is_err(), "La fonte alterata durante la richiesta deve fallire la verifica");
+  }
 }
 #[cfg(test)]
 mod index_policy_test {

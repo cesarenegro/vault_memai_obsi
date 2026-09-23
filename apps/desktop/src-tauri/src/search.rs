@@ -209,7 +209,7 @@ pub fn load_with_vault_path(system: &Dir, vault_path: Option<&Path>) -> Result<O
                     let is_mtime_match = entry.mtime == mtime
                         || entry.mtime.duration_since(mtime).map(|d| d.as_millis() < 100).unwrap_or(false)
                         || mtime.duration_since(entry.mtime).map(|d| d.as_millis() < 100).unwrap_or(false);
-                    if entry.size == size && is_mtime_match && entry.revision == rev {
+                    if entry.size == size && is_mtime_match {
                         return Ok(Some(entry.data.clone()));
                     }
                 }
@@ -273,7 +273,7 @@ fn status(data: Option<&SearchIndexData>) -> IndexStatusReport {
 }
 pub fn get_search_index_status(path: &Path) -> Result<IndexStatusReport, String> {
     let r = root(path)?;
-    Ok(status(load(&child(&r, "00_SYSTEM")?)?.as_ref().map(|v| &**v)))
+    Ok(status(load_with_vault_path(&child(&r, "00_SYSTEM")?, Some(path))?.as_ref().map(|v| &**v)))
 }
 struct Lock<'a> {
     system: &'a Dir,
@@ -624,7 +624,7 @@ pub fn index_vault_search(path: &Path) -> Result<IndexStatusReport, String> {
     let lock_dir = child(&s, ".search-lock")?;
     write_new(&lock_dir, "owner.json", json!({"pid": std::process::id()}).to_string().as_bytes())?;
     let _lock = Lock { system: &s, opened: Some(lock_dir) };
-    let old = load(&s)?;
+    let old = load_with_vault_path(&s, Some(path))?;
     let mut docs = BTreeMap::new();
     let entries = names(&r)?;
     for (cat, kind) in &spec().categories {
@@ -637,7 +637,7 @@ pub fn index_vault_search(path: &Path) -> Result<IndexStatusReport, String> {
     let _ = crate::catalog::sync_catalog(path);
 
     // Index catalog raw sources (20_RAW_SOURCES) if VAULT_CATALOG.json exists
-    if let Ok(catalog) = crate::catalog::load_catalog(path) {
+    if let Ok(catalog) = crate::catalog::load_catalog_arc(path) {
         for doc in catalog.documents.values() {
             if doc.original_path.starts_with("20_RAW_SOURCES/") && doc.extraction_status == crate::catalog::ExtractionStatus::Ready && !doc.passages.is_empty() {
                 let p = doc.original_path.clone();
@@ -1211,7 +1211,7 @@ mod tests {
 /// Read the exact indexed bytes or extracted text through a pinned directory, for AI/MCP citations.
 pub fn read_indexed_document(path: &Path, document_id: &str, expected: &str) -> Result<(SearchDocumentRecord, String), String> {
     let r=root(path)?;
-    let data=load(&child(&r,"00_SYSTEM")?)?.filter(|d|d.version==VERSION).ok_or("Search index missing or outdated")?;
+    let data=load_with_vault_path(&child(&r,"00_SYSTEM")?, Some(path))?.filter(|d|d.version==VERSION).ok_or("Search index missing or outdated")?;
     let d=data.documents.values().find(|d|d.id==document_id).ok_or("Unknown document")?;
     if d.sha256!=expected {return Err("Source changed; select again".into())}
     relative(&d.relative_path)?;
