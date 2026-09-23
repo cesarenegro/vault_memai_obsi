@@ -196,25 +196,35 @@ Conformemente alle direttive e alle due correzioni deliberate da Cesare:
    - Inserita in testata all'elenco fonti in `AiPanel.tsx`:
      > **"Basata su N documenti citati tra M consultati"**
 
-6. **Esito del Benchmark di Cesare e Chiusura FASE 4**:
+6. **Esito del Benchmark di Cesare e Rettifica Campo Reasoning**:
    - Rapporto redatto in [fase4-benchmark.md](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase4-benchmark.md) con dati reali da `ask_timing.log`.
    - **Decisione di Cesare**: `gpt-4o` confermato come modello predefinito (voti 9-10 contro 7–8/9 di `gpt-6-luna`, risposte più concise e token di output inferiori).
-   - Accertamento token di ragionamento: assenti nel log perché il valore restituito da OpenAI è nullo per i modelli generativi standard testati (`gpt-4o` e `gpt-6-luna`), non consumando token interni di reasoning.
+   - **Rettifica tecnica**: il campo ufficiale della Responses API è `output_tokens_details.reasoning_tokens` (plurale). Corretto il codice in `ai.rs` e verificato con test unitario dedicato (`test_parse_response_reads_reasoning_tokens_from_output_tokens_details`, 128 token).
+   - Rettificato il benchmark: i token in uscita di `gpt-6-luna` (437–566) potevano includere token di ragionamento interni non visibili conteggiati da OpenAI.
 
 7. **Correzione Regole Risposte Incomplete in `parse_response` (162 test passati)**:
    - Rifiutata qualsiasi risposta senza campo `status` esplicito (`ok_or_else("missing status")`).
    - Ripristinato il controllo `texts.len() == 1` ("esattamente un output_text").
-   - Test unitario completo `test_parse_response_validation_and_incomplete_rules` aggiunto e verificato (144 lib + 18 bin = **162 passed, 0 failed**).
+   - Test unitari completi verificati (144 lib + 18 bin = **162 passed, 0 failed**).
    - Dichiarato il cambio di regola: degradazione controllata (accettata con avviso e citazioni se JSON integro; messaggio di interruzione senza citazioni se JSON troncato per limite token).
 
-8. **Piano FASE 5 Predisposto (senza codice)**:
-   - Documento in [fase5-piano.md](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase5-piano.md) con analisi comparativa delle opzioni di streaming (Opzione A raccomandata: streaming del testo con unescaping incrementale e validazione citazioni a chiusura flusso) e Task List dettagliata conforme alla regola `.agents/AGENTS.md`.
+8. **Piano FASE 5 Approvato con Sei Correzioni (senza codice)**:
+   - Documento in [fase5-piano.md](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase5-piano.md).
+   - **Modello tassativo da usare in todo list: `gpt-4o`**.
+   - Sei correzioni integrate:
+     1. Riferimenti corretti (`embeddings.rs`), prima misurare la ricerca nel log divisa in 4 parti (parole, semantica, fusione, ammissibilità) e ottimizzare solo dopo;
+     2. Fonti consultate mostrate subito in UI appena la Preview è pronta;
+     3. Controllo `verify_post` obbligatorio post-streaming con sostituzione testo e zero citazioni in caso di fallimento, e test dedicato;
+     4. Pulizia durante lo streaming (`sanitize_answer_prose`) con sliding tail buffer per evitare frammenti spezzati (`[S` + `1]`, `**` + `BNXT**`) e relativi test;
+     5. Risposte interrotte con preservazione testo parziale, avviso esplicito e zero citazioni;
+     6. Schema Responses API corretto (`text.format` JSON schema con enum `S1...S10` in `citation_ids`).
 
 ---
 
 ## 2. Stato Attuale e Consegna
 
-- **STATO ATTUALE**: **FASE 4 CHIUSA — PIANO FASE 5 PREDISPOSTO**.
+- **STATO ATTUALE**: **FASE 4 CHIUSA — PIANO FASE 5 APPROVATO E PRONTO PER IMPLEMENTAZIONE**.
+- **Modello configurato per FASE 5**: **`gpt-4o`**.
 - **Test suite**: **162 passati; 0 falliti**.
 - **ZERO chiamate OpenAI** effettuate dall'assistente.
 - **ZERO processi terminati** senza autorizzazione.
