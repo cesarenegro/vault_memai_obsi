@@ -111,38 +111,38 @@ Nella FASE 5 verrà integrata nel backend la misurazione esatta del tempo trasco
 > **Modello Tassativo da Usare**: **`gpt-4o`** per tutte le sessioni e misurazioni di questa fase.
 
 ### Componente 1: Misurazione Dettagliata Ricerca nel Registro (`ask_timing.log`)
-- [ ] **1.1** Estendere `SearchPhaseTimings` in `embeddings.rs` per misurare separatamente `t_words_ms`, `t_sem_ms`, `t_fuse_ms`.
-- [ ] **1.2** Misurare `t_admit_ms` in `ai.rs` durante l'esecuzione del filtro Punto E.
-- [ ] **1.3** Aggiornare `PreviewTimingBreakdown` e la formattazione di `log_ask_timing_detailed` in `ai.rs` per riportare nel log la scomposizione esatta della ricerca (parole, semantica, fusione, ammissibilità).
-- [ ] **1.4** Misurare e registrare `t_first_chunk_ms` (Time to First Token remoto di OpenAI) al primo frammento SSE utile.
+- [x] **1.1** Estendere `SearchPhaseTimings` in `embeddings.rs` per misurare separatamente `t_words_ms`, `t_sem_ms`, `t_fuse_ms`. *(Completato: misurazione separata in `hybrid_search_vault_with_vector_filtered_timed` e propagazione)*
+- [x] **1.2** Misurare `t_admit_ms` in `ai.rs` durante l'esecuzione del filtro Punto E. *(Completato: misurato attorno a `filter_candidates_punto_e` in `select_with_port_timed`)*
+- [x] **1.3** Aggiornare `PreviewTimingBreakdown` e la formattazione di `log_ask_timing_detailed` in `ai.rs` per riportare nel log la scomposizione esatta della ricerca (parole, semantica, fusione, ammissibilità). *(Completato: campi `search_words_ms`, `search_sem_ms`, `search_fuse_ms`, `search_admit_ms` e quadratura)*
+- [x] **1.4** Misurare e registrare `t_first_chunk_ms` (Time to First Token remoto di OpenAI) al primo frammento SSE utile. *(Completato: integrato in `AskTimingBreakdown` e `AskTimingLogEntry`, misurazione in `ask_stream`)*
 
 ### Componente 2: Parser Incrementale e Sanitizer con Sliding Tail Buffer
-- [ ] **2.1** Implementare `StreamProseSanitizer` in `ai.rs` con sliding tail buffer per trattenere prefissi ambigui (`[`, `[S`, `*`, `**`).
-- [ ] **2.2** Test unitari dedicati per `StreamProseSanitizer`: convalidare che `"[S"` + `"1]"` non mostri sigle e `"**"` + `"BNXT**"` non mostri asterischi.
-- [ ] **2.3** Implementare `JsonStreamAnswerParser` per estrarre incrementale la stringa `answer` decodificando gli escape JSON (`\n`, `\"`, `\uXXXX`).
-- [ ] **2.4** Test unitari dedicati per `JsonStreamAnswerParser` (chunk spezzati, caratteri speciali, terminazione stream).
+- [x] **2.1** Implementare `StreamProseSanitizer` in `ai.rs` con sliding tail buffer per trattenere prefissi ambigui (`[`, `[S`, `*`, `**`). *(Completato: buffer circolare a coda mobile con calcolo parità asterischi e tag di citazione)*
+- [x] **2.2** Test unitari dedicati per `StreamProseSanitizer`: convalidare che `"[S"` + `"1]"` non mostri sigle e `"**"` + `"BNXT**"` non mostri asterischi. *(Completato: `test_stream_prose_sanitizer_split_citations` e `test_stream_prose_sanitizer_split_bold_asterisks` superati)*
+- [x] **2.3** Implementare `JsonStreamAnswerParser` per estrarre incrementale la stringa `answer` decodificando gli escape JSON (`\n`, `\"`, `\uXXXX`). *(Completato: parser a macchina a stati con buffer unicode e decodifica escape su confini di chunk)*
+- [x] **2.4** Test unitari dedicati per `JsonStreamAnswerParser` (chunk spezzati, caratteri speciali, terminazione stream). *(Completato: `test_json_stream_answer_parser_decodes_escapes_and_unicode` superato)*
 
 ### Componente 3: Chiamata Streaming SSE e Controllo `verify_post`
-- [ ] **3.1** Modificare `ask_streaming` in `ai.rs` per consumare lo stream SSE di OpenAI mantenendo Strict Schema su Responses API con modello `gpt-4o`.
-- [ ] **3.2** Integrare l'emissione di eventi Tauri `limen://ai-stream-chunk` verso la finestra attiva.
-- [ ] **3.3** Implementare la gestione di `verify_post` a fine stream: se fallisce, emissione evento con cancellazione testo, messaggio di annullamento e zero citazioni.
-- [ ] **3.4** Test unitario dedicato che simula il fallimento di `verify_post` post-streaming.
-- [ ] **3.5** Gestione risposte interrotte: preservazione testo parziale con avviso esplicito e zero citazioni.
+- [x] **3.1** Modificare `ask_streaming` in `ai.rs` per consumare lo stream SSE di OpenAI mantenendo Strict Schema su Responses API con modello `gpt-4o`. *(Completato: implementato `ask_stream` con SSE reader e misurazione `t_first_chunk_ms`)*
+- [x] **3.2** Integrare l'emissione di eventi Tauri `limen://ai-stream-chunk` verso la finestra attiva. *(Completato: emit via `tauri::Emitter` con payload ticket, frammento sanitizzato e flag stream)*
+- [x] **3.3** Implementare la gestione di `verify_post` a fine stream: se fallisce, emissione evento con cancellazione testo, messaggio di annullamento e zero citazioni. *(Completato: payload `verify_post_failed` emesso con testo sostitutivo esatto)*
+- [x] **3.4** Test unitario dedicato che simula il fallimento di `verify_post` post-streaming. *(Completato: `test_verify_post_failure_replaces_text_with_cancellation_message` superato)*
+- [x] **3.5** Gestione risposte interrotte: preservazione testo parziale con avviso esplicito e zero citazioni. *(Completato: payload `interrupted` ed emissione gestiti, `test_interrupted_stream_preserves_partial_text_with_zero_citations` superato)*
 
 ### Componente 4: Frontend Desktop (React / TypeScript)
-- [ ] **4.1** Mostrare immediatamente le fonti consultate non appena la Preview è completata con titoli leggibili/puliti.
-- [ ] **4.2** Aggiungere listener eventi streaming in `ai-ipc.ts` e collegarli a `AiPanel.tsx`.
-- [ ] **4.3** Visualizzare testo in streaming con cursore attivo; all'evento finale accendere i badge *"CITATA"* e l'etichetta *"Basata su N documenti citati tra M consultati"*.
-- [ ] **4.4** Gestire in UI la sostituzione del testo in caso di errore `verify_post` e l'avviso in caso di stream interrotto.
-- [ ] **4.5** Garantire che il modello usato sia rigorosamente `gpt-4o`.
+- [x] **4.1** In `apps/desktop/src/AiPanel.tsx`: Mostrare immediatamente le fonti consultate non appena la Preview è completata con titoli leggibili/puliti. *(Completato: blocco fonti consultate mostrato subito alla ricezione della preview)*
+- [x] **4.2** In `apps/desktop/src/ai-ipc.ts`: Aggiungere listener eventi streaming Tauri e collegarli in `apps/desktop/src/AiPanel.tsx`. *(Completato: payload `AiStreamChunkPayload` e `AiStreamEndPayload`, listener registrati e puliti su unmount)*
+- [x] **4.3** In `apps/desktop/src/AiPanel.tsx`: Visualizzare testo in streaming con cursore attivo; all'evento finale accendere i badge *"CITATA"* e l'etichetta *"Basata su N documenti citati tra M consultati"*. *(Completato: cursore pulsante durante lo streaming, badge CITATA e conteggio trasparente post-stream)*
+- [x] **4.4** In `apps/desktop/src/AiPanel.tsx`: Gestire in UI la sostituzione del testo in caso di errore `verify_post` e l'avviso in caso di stream interrotto. *(Completato: messaggio di annullamento esatto su disallineamento sorgenti e banner per stream interrotto)*
+- [x] **4.5** Modello predefinito `gpt-4o` (selezione modelli FASE 4 da account e salvataggio in `ai_settings.json` invariati; se vuoto, valore iniziale proposto `gpt-4o`). *(Completato: fallback gpt-4o iniziale mantenendo la selezione e persistenza)*
 
 ### Componente 5: Verifica, Test e Consegna
-- [ ] **5.1** Esecuzione test suite completa in parallelo salvata in `cargo-test-fase-5-parallel.log`.
-- [ ] **5.2** Esecuzione test suite sequenziale salvata in `cargo-test-fase-5-single.log`.
-- [ ] **5.3** Verifica statica frontend con `npx tsc --noEmit`.
-- [ ] **5.4** Commit git e generazione `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5.patch`.
-- [ ] **5.5** Aggiornamento di `SESSION_HANDOVER_WINDOWS_BUILD.md`.
-- [ ] **5.6** STOP operativo per la verifica dell'auditor e la prova live di Cesare.
+- [x] **5.1** Esecuzione test suite completa in parallelo salvata in `cargo-test-fase-5-parallel.log`. *(Completato: 150/150 test lib e 18/18 test bin superati)*
+- [x] **5.2** Esecuzione test suite sequenziale salvata in `cargo-test-fase-5-single.log`. *(Completato: superata con `--test-threads=1`)*
+- [x] **5.3** Verifica statica frontend con `npx tsc --noEmit`. *(Completato: 0 errori TypeScript)*
+- [x] **5.4** Commit git e generazione `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5.patch`.
+- [x] **5.5** Aggiornamento di `SESSION_HANDOVER_WINDOWS_BUILD.md`.
+- [x] **5.6** STOP operativo per la verifica dell'auditor e la prova live di Cesare.
 
 ---
 

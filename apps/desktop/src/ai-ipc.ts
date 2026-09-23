@@ -19,6 +19,29 @@ export interface AiAnswer {
   uiTotalMs?: number;
 }
 
+export interface AiStreamChunkPayload {
+  ticket: string;
+  delta: string;
+  fullText: string;
+}
+
+export interface AiStreamEndPayload {
+  ticket: string;
+  answer: string;
+  citations: Omit<AiSource, 'content'>[];
+  citedIndices?: number[];
+  status: string;
+  incomplete?: boolean;
+  incompleteReason?: string;
+  warning?: string;
+  error?: string;
+  cancelled?: boolean;
+  tokensUsed?: number;
+  tokensPrompt?: number;
+  tokensCompletion?: number;
+  tokensReasoning?: number;
+}
+
 export interface EmbeddingsProviderReport {
   provider: 'local' | 'openai';
   model: string;
@@ -155,11 +178,11 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
         ]
       } as unknown as T;
     }
-    if (command === 'ai_ask') {
+    if (command === 'ai_ask' || command === 'ai_ask_stream') {
       return {
         answer: 'Il progetto BNXT è una piattaforma di conoscenza aziendale modulare con crittografia end-to-end e gestione granulare del consenso degli utenti. Integra la ricerca ibrida locale per garantire che nessun dato venga trasmesso all\'esterno senza autorizzazione.',
         provider: 'OpenAI',
-        model: 'gpt-6-sol',
+        model: 'gpt-4o',
         tokensUsed: 412,
         citations: [
           {
@@ -191,6 +214,7 @@ export const aiIpc = {
   deleteKey: () => call<void>('ai_delete_key'),
   preview: (vaultPath: string, options: AiOptions) => call<AiPreview>('ai_preview', { vaultPath, options }),
   ask: (ticket: string, uiElapsedMs?: number) => call<AiAnswer>('ai_ask', { ticket, uiElapsedMs }),
+  askStream: (ticket: string, uiElapsedMs?: number) => call<AiAnswer>('ai_ask_stream', { ticket, uiElapsedMs }),
   cancel: (ticket: string) => call<void>('ai_cancel', { ticket }),
   read: (vaultPath: string, s: Omit<AiSource, 'content'>, includeDrafts: boolean) =>
     call<AiSource>('ai_read_source', { vaultPath, documentId: s.documentId, sha256: s.sha256, includeDrafts }),

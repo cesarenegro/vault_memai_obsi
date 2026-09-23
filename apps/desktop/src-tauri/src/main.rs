@@ -366,7 +366,7 @@ fn main() {
             index_vault_search,
             search_vault,
             get_search_index_status,
-            ai_list_models,ai_get_selected_model,ai_save_selected_model,search_read_document,ai_key_status,ai_save_key,ai_delete_key,ai_get_consent,ai_set_consent,ai_preview,ai_ask,ai_cancel,ai_read_source,mcp_start,mcp_stop,mcp_status,
+            ai_list_models,ai_get_selected_model,ai_save_selected_model,search_read_document,ai_key_status,ai_save_key,ai_delete_key,ai_get_consent,ai_set_consent,ai_preview,ai_ask,ai_ask_stream,ai_cancel,ai_read_source,mcp_start,mcp_stop,mcp_status,
             catalog_sync,catalog_list_documents,catalog_process_extractions,catalog_get_document,catalog_get_by_path,catalog_verify_document_passage,catalog_read_verified_text,catalog_read_text,catalog_read_passage,catalog_open_original,catalog_reveal_in_finder,catalog_get_summary,
             embeddings_get_status,embeddings_sync_vault,search_vault_hybrid,
             embeddings_get_provider,embeddings_set_provider,
@@ -527,6 +527,27 @@ async fn ai_ask(
         .and_then(|k| k.ok_or("Configure API key in Settings".into()));
     let result = match key {
         Ok(key) => limen_vault::ai::ask(pending, key, cancel, ui_elapsed_ms).await,
+        Err(e) => Err(e),
+    };
+    state.finish(&ticket);
+    result
+}
+#[tauri::command]
+async fn ai_ask_stream(
+    window: tauri::Window,
+    ticket: String,
+    ui_elapsed_ms: Option<u64>,
+    state: tauri::State<'_, std::sync::Arc<limen_vault::ai::AiState>>,
+) -> Result<serde_json::Value, String> {
+    let state = state.inner().clone();
+    let (pending, cancel) = state.begin(&ticket)?;
+    let key = tauri::async_runtime::spawn_blocking(limen_vault::keychain::load)
+        .await
+        .map_err(|_| "Keychain worker failed".to_string())
+        .and_then(|r| r)
+        .and_then(|k| k.ok_or("Configure API key in Settings".into()));
+    let result = match key {
+        Ok(key) => limen_vault::ai::ask_stream(Some(window), ticket.clone(), pending, key, cancel, ui_elapsed_ms).await,
         Err(e) => Err(e),
     };
     state.finish(&ticket);

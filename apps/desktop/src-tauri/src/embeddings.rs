@@ -985,6 +985,9 @@ pub struct SearchPhaseTimings {
     pub t_index_cache_ms: u64,
     pub t_search_ms: u64,
     pub t_embed_ms: u64,
+    pub t_words_ms: u64,
+    pub t_sem_ms: u64,
+    pub t_fuse_ms: u64,
 }
 
 pub async fn hybrid_search_vault_with_port_filtered<F>(
@@ -1027,27 +1030,36 @@ where
     let endpoint = prov_rep.endpoint.clone();
 
     if !use_semantic {
-        let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
-        timings.t_index_cache_ms = t_idx;
-        timings.t_search_ms = t_search;
+        let (items, sub_timings) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
+        timings.t_index_cache_ms = sub_timings.t_index_cache_ms;
+        timings.t_search_ms = sub_timings.t_search_ms;
+        timings.t_words_ms = sub_timings.t_words_ms;
+        timings.t_sem_ms = sub_timings.t_sem_ms;
+        timings.t_fuse_ms = sub_timings.t_fuse_ms;
         return Ok((items, false, timings, None));
     }
 
     let term = match &q.term {
         Some(t) if !t.trim().is_empty() => t.trim(),
         _ => {
-            let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
-            timings.t_index_cache_ms = t_idx;
-            timings.t_search_ms = t_search;
+            let (items, sub_timings) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
+            timings.t_index_cache_ms = sub_timings.t_index_cache_ms;
+            timings.t_search_ms = sub_timings.t_search_ms;
+            timings.t_words_ms = sub_timings.t_words_ms;
+            timings.t_sem_ms = sub_timings.t_sem_ms;
+            timings.t_fuse_ms = sub_timings.t_fuse_ms;
             return Ok((items, false, timings, None));
         }
     };
 
     // If local provider and service is offline (port 0 or empty endpoint), immediately degrade to lexical
     if is_local && (endpoint.is_empty() || active_port.unwrap_or(0) == 0) {
-        let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
-        timings.t_index_cache_ms = t_idx;
-        timings.t_search_ms = t_search;
+        let (items, sub_timings) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
+        timings.t_index_cache_ms = sub_timings.t_index_cache_ms;
+        timings.t_search_ms = sub_timings.t_search_ms;
+        timings.t_words_ms = sub_timings.t_words_ms;
+        timings.t_sem_ms = sub_timings.t_sem_ms;
+        timings.t_fuse_ms = sub_timings.t_fuse_ms;
         return Ok((items, true, timings, None));
     }
 
@@ -1057,9 +1069,12 @@ where
     let cache = match load_embeddings_cache(vault_path) {
         Ok(c) if !c.entries.is_empty() => c,
         _ => {
-            let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
-            timings.t_index_cache_ms = t_idx;
-            timings.t_search_ms = t_search;
+            let (items, sub_timings) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
+            timings.t_index_cache_ms = sub_timings.t_index_cache_ms;
+            timings.t_search_ms = sub_timings.t_search_ms;
+            timings.t_words_ms = sub_timings.t_words_ms;
+            timings.t_sem_ms = sub_timings.t_sem_ms;
+            timings.t_fuse_ms = sub_timings.t_fuse_ms;
             return Ok((items, is_local, timings, None));
         }
     };
@@ -1123,9 +1138,12 @@ where
         degraded = true;
     }
 
-    let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, query_vector.clone(), true, filter_fn.as_ref()).await?;
-    timings.t_index_cache_ms = t_idx;
-    timings.t_search_ms = t_search;
+    let (items, sub_timings) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, query_vector.clone(), true, filter_fn.as_ref()).await?;
+    timings.t_index_cache_ms = sub_timings.t_index_cache_ms;
+    timings.t_search_ms = sub_timings.t_search_ms;
+    timings.t_words_ms = sub_timings.t_words_ms;
+    timings.t_sem_ms = sub_timings.t_sem_ms;
+    timings.t_fuse_ms = sub_timings.t_fuse_ms;
     Ok((items, degraded, timings, query_vector))
 }
 
@@ -1187,7 +1205,7 @@ pub async fn hybrid_search_vault_with_vector_filtered<F>(
 where
     F: Fn(&search::SearchDocumentRecord) -> bool,
 {
-    let (items, _, _) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, query_vector, use_semantic, filter_fn).await?;
+    let (items, _) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, query_vector, use_semantic, filter_fn).await?;
     Ok(items)
 }
 
@@ -1197,7 +1215,7 @@ pub async fn hybrid_search_vault_with_vector_filtered_timed<F>(
     query_vector: Option<Vec<f32>>,
     use_semantic: bool,
     filter_fn: Option<&F>,
-) -> Result<(Vec<SearchResultItem>, u64, u64), String>
+) -> Result<(Vec<SearchResultItem>, SearchPhaseTimings), String>
 where
     F: Fn(&search::SearchDocumentRecord) -> bool,
 {
@@ -1211,40 +1229,90 @@ where
     let limit = q.limit.unwrap_or(50);
     let offset = q.offset.unwrap_or(0);
 
-
     // 1. Run local lexical search with large candidate limit (not premature pagination)
+    let t_words_start = Instant::now();
     let mut lex_query = q.clone();
     lex_query.limit = Some(200);
     lex_query.offset = Some(0);
     let lexical_results = search::search_vault_filtered(vault_path, lex_query, filter_fn)?;
+    let t_words_ms = t_words_start.elapsed().as_millis() as u64;
 
     // 2. If semantic search is not requested or no query term, return lexical results with original pagination
     let term = match &q.term {
         Some(t) if !t.trim().is_empty() => t.trim(),
-        _ => return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), t_index_cache_ms, t_search_start.elapsed().as_millis() as u64)),
+        _ => {
+            let timings = SearchPhaseTimings {
+                t_index_cache_ms,
+                t_search_ms: t_search_start.elapsed().as_millis() as u64,
+                t_embed_ms: 0,
+                t_words_ms,
+                t_sem_ms: 0,
+                t_fuse_ms: 0,
+            };
+            return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), timings));
+        }
     };
 
     if !use_semantic {
-        return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), t_index_cache_ms, t_search_start.elapsed().as_millis() as u64));
+        let timings = SearchPhaseTimings {
+            t_index_cache_ms,
+            t_search_ms: t_search_start.elapsed().as_millis() as u64,
+            t_embed_ms: 0,
+            t_words_ms,
+            t_sem_ms: 0,
+            t_fuse_ms: 0,
+        };
+        return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), timings));
     }
 
     let cache = match load_embeddings_cache(vault_path) {
         Ok(c) if !c.entries.is_empty() => c,
-        _ => return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), t_index_cache_ms, t_search_start.elapsed().as_millis() as u64)), // Graceful offline fallback
+        _ => {
+            let timings = SearchPhaseTimings {
+                t_index_cache_ms,
+                t_search_ms: t_search_start.elapsed().as_millis() as u64,
+                t_embed_ms: 0,
+                t_words_ms,
+                t_sem_ms: 0,
+                t_fuse_ms: 0,
+            };
+            return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), timings));
+        }
     };
 
     let q_vec = match query_vector {
         Some(v) => v,
-        None => return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), t_index_cache_ms, t_search_start.elapsed().as_millis() as u64)),
+        None => {
+            let timings = SearchPhaseTimings {
+                t_index_cache_ms,
+                t_search_ms: t_search_start.elapsed().as_millis() as u64,
+                t_embed_ms: 0,
+                t_words_ms,
+                t_sem_ms: 0,
+                t_fuse_ms: 0,
+            };
+            return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), timings));
+        }
     };
 
     // 5. Score all candidates semantically with full filtering (R3)
     let catalog = match load_catalog(vault_path) {
         Ok(cat) => cat,
-        Err(_) => return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), t_index_cache_ms, t_search_start.elapsed().as_millis() as u64)),
+        Err(_) => {
+            let timings = SearchPhaseTimings {
+                t_index_cache_ms,
+                t_search_ms: t_search_start.elapsed().as_millis() as u64,
+                t_embed_ms: 0,
+                t_words_ms,
+                t_sem_ms: 0,
+                t_fuse_ms: 0,
+            };
+            return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), timings));
+        }
     };
 
     // Map of document_id -> (semantic_score, passage_id, locator, snippet)
+    let t_sem_start = Instant::now();
     let mut semantic_scores: BTreeMap<String, (f32, Option<String>, Option<String>, Option<String>)> = BTreeMap::new();
 
     for doc in catalog.documents.values() {
@@ -1306,7 +1374,9 @@ where
             semantic_scores.insert(doc.document_id.clone(), (sim, pid, loc, snip));
         }
     }
+    let t_sem_ms = t_sem_start.elapsed().as_millis() as u64;
 
+    let t_fuse_start = Instant::now();
     // 5. Hybrid fusion using min-max normalized combination (Variant B, w_lex=0.5, w_sem=0.5)
     let term_lower = term.to_lowercase();
     let is_exact_code = (term.contains('-') || term.contains('_') || term.chars().any(|c| c.is_ascii_digit()))
@@ -1459,8 +1529,19 @@ where
         .take(limit)
         .map(|c| c.item)
         .collect();
+    let t_fuse_ms = t_fuse_start.elapsed().as_millis() as u64;
+    let t_search_ms = t_search_start.elapsed().as_millis() as u64;
 
-    Ok((results, t_index_cache_ms, t_search_start.elapsed().as_millis() as u64))
+    let timings = SearchPhaseTimings {
+        t_index_cache_ms,
+        t_search_ms,
+        t_embed_ms: 0,
+        t_words_ms,
+        t_sem_ms,
+        t_fuse_ms,
+    };
+
+    Ok((results, timings))
 }
 
 #[cfg(test)]

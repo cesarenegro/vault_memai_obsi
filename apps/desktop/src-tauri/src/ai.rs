@@ -46,6 +46,10 @@ pub struct PreviewTimings {
     pub t_index_cache_ms: u64,
     pub t_embed_ms: u64,
     pub t_search_ms: u64,
+    pub t_search_words_ms: u64,
+    pub t_search_sem_ms: u64,
+    pub t_search_fuse_ms: u64,
+    pub t_search_admit_ms: u64,
     pub t_doc_read_ms: u64,
     pub t_passage_extract_ms: u64,
 }
@@ -88,6 +92,8 @@ pub struct AskTimingLogEntry {
     pub tokens_completion: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tokens_reasoning: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub t_first_chunk_ms: Option<u64>,
     pub t_ui_total_ms: Option<u64>,
     pub t_backend_total_ms: u64,
     pub preview: PreviewTimingBreakdown,
@@ -95,6 +101,33 @@ pub struct AskTimingLogEntry {
     pub ask: AskTimingBreakdown,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sources: Vec<SourceAuditEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiStreamChunkPayload {
+    pub ticket: String,
+    pub delta: String,
+    pub full_text: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiStreamEndPayload {
+    pub ticket: String,
+    pub answer: String,
+    pub citations: Vec<Value>,
+    pub cited_indices: Vec<usize>,
+    pub status: String,
+    pub incomplete: bool,
+    pub incomplete_reason: Option<String>,
+    pub warning: Option<String>,
+    pub error: Option<String>,
+    pub cancelled: bool,
+    pub tokens_used: Option<u64>,
+    pub tokens_prompt: Option<u64>,
+    pub tokens_completion: Option<u64>,
+    pub tokens_reasoning: Option<u64>,
 }
 
 /// Percorso del file di impostazioni utente per il modello AI predefinito.
@@ -147,6 +180,10 @@ pub struct PreviewTimingBreakdown {
     pub index_cache_ms: u64,
     pub embed_ms: u64,
     pub search_ms: u64,
+    pub search_words_ms: u64,
+    pub search_sem_ms: u64,
+    pub search_fuse_ms: u64,
+    pub search_admit_ms: u64,
     pub doc_read_ms: u64,
     pub passage_extract_ms: u64,
 }
@@ -157,6 +194,8 @@ pub struct AskTimingBreakdown {
     pub verify_pre_ms: u64,
     pub payload_ms: u64,
     pub openai_ms: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub t_first_chunk_ms: Option<u64>,
     pub verify_post_ms: u64,
     pub parse_ms: u64,
 }
@@ -263,6 +302,17 @@ pub fn log_ask_timing_detailed(entry: &AskTimingLogEntry) {
         ));
     }
 
+    let first_chunk_str = entry
+        .t_first_chunk_ms
+        .or(entry.ask.t_first_chunk_ms)
+        .map(|ms| format!(" (primo frammento / t_first_chunk_ms: {} ms)", ms))
+        .unwrap_or_default();
+
+    let search_sum = entry.preview.search_words_ms
+        + entry.preview.search_sem_ms
+        + entry.preview.search_fuse_ms
+        + entry.preview.search_admit_ms;
+
     let formatted_block = format!(
         "================================================================================\n\
          REGISTRO TEMPI RISPOSTA [{}]\n\
@@ -272,19 +322,24 @@ pub fn log_ask_timing_detailed(entry: &AskTimingLogEntry) {
            ├─ 1. ANTEPRIMA (Preview): {} ms\n\
            │    ├─ Indice & cache: {} ms\n\
            │    ├─ Vettore semantico (embed): {} ms\n\
-           │    ├─ Ricerca ibrida & fusione (search): {} ms\n\
+           │    ├─ Ricerca ibrida (search): {} ms\n\
+           │    │    ├─ Parole (search_words_ms): {} ms\n\
+           │    │    ├─ Semantica (search_sem_ms): {} ms\n\
+           │    │    ├─ Fusione (search_fuse_ms): {} ms\n\
+           │    │    └─ Ammissibilità (search_admit_ms): {} ms\n\
            │    ├─ Lettura documenti (doc_read): {} ms\n\
            │    └─ Estrazione passaggi (passage_extract): {} ms\n\
            ├─ 2. PASSAGGIO ANTEPRIMA-INVIO (Handoff IPC/UI): {} ms\n\
            └─ 3. INTERROGAZIONE (Ask): {} ms\n\
                 ├─ Verifica impronte pre-chiamata (verify_pre): {} ms\n\
                 ├─ Costruzione richiesta (payload): {} ms\n\
-                ├─ Chiamata OpenAI (openai): {} ms\n\
+                ├─ Chiamata OpenAI (openai): {} ms{}\n\
                 ├─ Verifica impronte post-chiamata (verify_post): {} ms\n\
                 └─ Lettura risposta (parse): {} ms\n\
          Verifica quadratura somme:\n\
            Backend = Preview ({} ms) + Handoff ({} ms) + Ask ({} ms) = {} ms\n\
-           Ask = Verify_pre ({} ms) + Payload ({} ms) + OpenAI ({} ms) + Verify_post ({} ms) + Parse ({} ms) = {} ms\n\
+           Search  = Words ({} ms) + Sem ({} ms) + Fuse ({} ms) + Admit ({} ms) = {} ms (vs search_ms: {} ms)\n\
+           Ask     = Verify_pre ({} ms) + Payload ({} ms) + OpenAI ({} ms) + Verify_post ({} ms) + Parse ({} ms) = {} ms\n\
          {}\
          JSON: {}\n\
          ================================================================================\n\n",
@@ -298,6 +353,10 @@ pub fn log_ask_timing_detailed(entry: &AskTimingLogEntry) {
         entry.preview.index_cache_ms,
         entry.preview.embed_ms,
         entry.preview.search_ms,
+        entry.preview.search_words_ms,
+        entry.preview.search_sem_ms,
+        entry.preview.search_fuse_ms,
+        entry.preview.search_admit_ms,
         entry.preview.doc_read_ms,
         entry.preview.passage_extract_ms,
         entry.t_handoff_ms,
@@ -305,12 +364,19 @@ pub fn log_ask_timing_detailed(entry: &AskTimingLogEntry) {
         entry.ask.verify_pre_ms,
         entry.ask.payload_ms,
         entry.ask.openai_ms,
+        first_chunk_str,
         entry.ask.verify_post_ms,
         entry.ask.parse_ms,
         entry.preview.total_ms,
         entry.t_handoff_ms,
         entry.ask.total_ms,
         entry.preview.total_ms + entry.t_handoff_ms + entry.ask.total_ms,
+        entry.preview.search_words_ms,
+        entry.preview.search_sem_ms,
+        entry.preview.search_fuse_ms,
+        entry.preview.search_admit_ms,
+        search_sum,
+        entry.preview.search_ms,
         entry.ask.verify_pre_ms,
         entry.ask.payload_ms,
         entry.ask.openai_ms,
@@ -346,6 +412,7 @@ pub fn log_ask_timing(
         tokens_prompt: None,
         tokens_completion: None,
         tokens_reasoning: None,
+        t_first_chunk_ms: None,
         t_ui_total_ms: None,
         t_backend_total_ms: t_total_ms,
         preview: PreviewTimingBreakdown {
@@ -353,6 +420,10 @@ pub fn log_ask_timing(
             index_cache_ms: t_index_cache_ms,
             embed_ms: t_embed_ms,
             search_ms: t_search_ms,
+            search_words_ms: 0,
+            search_sem_ms: 0,
+            search_fuse_ms: 0,
+            search_admit_ms: 0,
             doc_read_ms: 0,
             passage_extract_ms: 0,
         },
@@ -362,6 +433,7 @@ pub fn log_ask_timing(
             verify_pre_ms: 0,
             payload_ms: 0,
             openai_ms: t_openai_ms,
+            t_first_chunk_ms: None,
             verify_post_ms: 0,
             parse_ms: 0,
         },
@@ -958,7 +1030,9 @@ pub async fn select_with_port_timed(
         query_tokens.clone()
     };
 
+    let t_admit_start = Instant::now();
     let admitted_rows = filter_candidates_punto_e(&rows, &rare_query_tokens, search_idx_opt.as_deref(), has_semantic);
+    let t_search_admit_ms = t_admit_start.elapsed().as_millis() as u64;
 
     // Caricamento una tantum di catalogo e cache vettoriale per abbattere i tempi sotto 110 ms
     let catalog_arc = crate::catalog::load_catalog_arc(path).ok();
@@ -1046,6 +1120,10 @@ pub async fn select_with_port_timed(
         t_index_cache_ms: search_timings.t_index_cache_ms,
         t_embed_ms: search_timings.t_embed_ms,
         t_search_ms: search_timings.t_search_ms,
+        t_search_words_ms: search_timings.t_words_ms,
+        t_search_sem_ms: search_timings.t_sem_ms,
+        t_search_fuse_ms: search_timings.t_fuse_ms,
+        t_search_admit_ms,
         t_doc_read_ms,
         t_passage_extract_ms,
     };
@@ -1579,6 +1657,7 @@ pub async fn ask(
         tokens_prompt,
         tokens_completion,
         tokens_reasoning,
+        t_first_chunk_ms: None,
         t_ui_total_ms,
         t_backend_total_ms,
         preview: PreviewTimingBreakdown {
@@ -1586,6 +1665,10 @@ pub async fn ask(
             index_cache_ms: p.preview_timings.t_index_cache_ms,
             embed_ms: p.preview_timings.t_embed_ms,
             search_ms: p.preview_timings.t_search_ms,
+            search_words_ms: p.preview_timings.t_search_words_ms,
+            search_sem_ms: p.preview_timings.t_search_sem_ms,
+            search_fuse_ms: p.preview_timings.t_search_fuse_ms,
+            search_admit_ms: p.preview_timings.t_search_admit_ms,
             doc_read_ms: p.preview_timings.t_doc_read_ms,
             passage_extract_ms: p.preview_timings.t_passage_extract_ms,
         },
@@ -1595,11 +1678,631 @@ pub async fn ask(
             verify_pre_ms: t_verify_pre_ms,
             payload_ms: t_payload_ms,
             openai_ms: t_openai_ms,
+            t_first_chunk_ms: None,
             verify_post_ms: t_verify_post_ms,
             parse_ms: t_parse_ms,
         },
         sources: audit_sources,
     });
+
+    Ok(parsed)
+}
+
+/// Sanitizzatore incrementale per lo streaming della prosa.
+/// Dotato di sliding tail buffer: trattiene la porzione terminale ambigua (fino a 25 caratteri)
+/// se coincide con un prefisso di citazione (`[`, `[S`, `(`, `(S`) o di marcatore markdown (`*`, `**`),
+/// garantendo che nessun frammento grezzo o asterisco appaia temporaneamente all'utente.
+#[derive(Debug, Default)]
+pub struct StreamProseSanitizer {
+    raw_buffer: String,
+    clean_accumulated: String,
+}
+
+impl StreamProseSanitizer {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Determina la lunghezza del suffisso ambiguo da trattenere nel buffer scorrevole.
+    pub fn ambiguous_suffix_len(s: &str) -> usize {
+        let bytes = s.as_bytes();
+        let len = bytes.len();
+        if len == 0 {
+            return 0;
+        }
+
+        // 1. Prefisso di citazione aperto: es. `[` senza `]` o `(` senza `)` (finestra fino a 30 caratteri)
+        let check_window = len.saturating_sub(30);
+        if let Some(pos) = s[check_window..].rfind(|c| c == '[' || c == '(') {
+            let abs_pos = check_window + pos;
+            let candidate_slice = &s[abs_pos..];
+            let has_closing = candidate_slice.contains(']') || candidate_slice.contains(')');
+            if !has_closing {
+                let inside = &candidate_slice[1..];
+                let is_citation_prefix = inside.chars().all(|c| {
+                    c.is_ascii_whitespace() || c == 'S' || c == 's' || c.is_ascii_digit() || c == ',' || c == ';'
+                });
+                if is_citation_prefix {
+                    return len - abs_pos;
+                }
+            }
+        }
+
+        // 2. Grassetto markdown `**` aperto (conteggio dispari nella finestra di 60 caratteri)
+        let star_window = len.saturating_sub(60);
+        let star_slice = &s[star_window..];
+        let dstar_count = star_slice.matches("**").count();
+        if dstar_count % 2 != 0 {
+            if let Some(pos) = star_slice.rfind("**") {
+                return len - (star_window + pos);
+            }
+        }
+
+        // 3. Corsivo markdown `*` aperto (conteggio dispari escludendo `**`)
+        let without_dstar = star_slice.replace("**", "");
+        let single_star_count = without_dstar.chars().filter(|&c| c == '*').count();
+        if single_star_count % 2 != 0 {
+            if let Some(pos) = star_slice.rfind('*') {
+                return len - (star_window + pos);
+            }
+        }
+
+        0
+    }
+
+    /// Ingestiona un nuovo frammento grezzo di prosa, sanifica la porzione sicura ed emette solo il delta pulito.
+    pub fn feed(&mut self, chunk: &str) -> String {
+        self.raw_buffer.push_str(chunk);
+        let suffix_len = Self::ambiguous_suffix_len(&self.raw_buffer);
+        let safe_boundary = self.raw_buffer.len().saturating_sub(suffix_len);
+
+        let mut char_safe_boundary = safe_boundary;
+        while char_safe_boundary > 0 && !self.raw_buffer.is_char_boundary(char_safe_boundary) {
+            char_safe_boundary -= 1;
+        }
+
+        let safe_raw = &self.raw_buffer[..char_safe_boundary];
+        let sanitized = sanitize_answer_prose(safe_raw);
+
+        if sanitized.len() > self.clean_accumulated.len() && sanitized.starts_with(&self.clean_accumulated) {
+            let delta = sanitized[self.clean_accumulated.len()..].to_string();
+            self.clean_accumulated = sanitized;
+            delta
+        } else if sanitized != self.clean_accumulated {
+            let common_prefix_len = sanitized
+                .chars()
+                .zip(self.clean_accumulated.chars())
+                .take_while(|(a, b)| a == b)
+                .map(|(a, _)| a.len_utf8())
+                .sum::<usize>();
+            if sanitized.len() > common_prefix_len && common_prefix_len == self.clean_accumulated.len() {
+                let delta = sanitized[self.clean_accumulated.len()..].to_string();
+                self.clean_accumulated = sanitized;
+                delta
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        }
+    }
+
+    /// Svuota l'eventuale residuo trattenuto nel buffer a fine stream.
+    pub fn flush(&mut self) -> String {
+        let sanitized = sanitize_answer_prose(&self.raw_buffer);
+        if sanitized.len() > self.clean_accumulated.len() && sanitized.starts_with(&self.clean_accumulated) {
+            let delta = sanitized[self.clean_accumulated.len()..].to_string();
+            self.clean_accumulated = sanitized;
+            delta
+        } else if sanitized != self.clean_accumulated {
+            let common_prefix_len = sanitized
+                .chars()
+                .zip(self.clean_accumulated.chars())
+                .take_while(|(a, b)| a == b)
+                .map(|(a, _)| a.len_utf8())
+                .sum::<usize>();
+            let delta = if sanitized.len() > common_prefix_len {
+                sanitized[common_prefix_len..].to_string()
+            } else {
+                String::new()
+            };
+            self.clean_accumulated = sanitized;
+            delta
+        } else {
+            String::new()
+        }
+    }
+
+    pub fn get_accumulated(&self) -> &str {
+        &self.clean_accumulated
+    }
+}
+
+/// Parser incrementale per estrarre la stringa "answer" dal JSON di risposta OpenAI durante lo streaming,
+/// decodificando in tempo reale le sequenze di escape JSON (\n, \", \uXXXX, ecc.).
+#[derive(Debug, PartialEq, Eq)]
+enum JsonParserState {
+    SeekingKey,
+    InAnswerString,
+    FinishedAnswer,
+}
+
+#[derive(Debug)]
+pub struct JsonStreamAnswerParser {
+    state: JsonParserState,
+    raw_buffer: String,
+    in_escape: bool,
+    in_unicode: bool,
+    unicode_buffer: String,
+}
+
+impl Default for JsonStreamAnswerParser {
+    fn default() -> Self {
+        Self {
+            state: JsonParserState::SeekingKey,
+            raw_buffer: String::new(),
+            in_escape: false,
+            in_unicode: false,
+            unicode_buffer: String::new(),
+        }
+    }
+}
+
+impl JsonStreamAnswerParser {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn feed(&mut self, chunk: &str) -> String {
+        let mut emitted = String::new();
+        let mut chars = chunk.chars().peekable();
+
+        while let Some(c) = chars.next() {
+            match self.state {
+                JsonParserState::SeekingKey => {
+                    self.raw_buffer.push(c);
+                    if let Some(pos) = self.raw_buffer.find("\"answer\"") {
+                        let after_key = &self.raw_buffer[pos + 8..];
+                        if let Some(quote_pos) = after_key.find('"') {
+                            let between = &after_key[..quote_pos];
+                            if between.contains(':') {
+                                self.state = JsonParserState::InAnswerString;
+                                self.raw_buffer.clear();
+                            }
+                        }
+                    }
+                }
+                JsonParserState::InAnswerString => {
+                    if self.in_escape {
+                        if self.in_unicode {
+                            self.unicode_buffer.push(c);
+                            if self.unicode_buffer.len() == 4 {
+                                if let Ok(val) = u16::from_str_radix(&self.unicode_buffer, 16) {
+                                    if let Some(ch) = char::from_u32(val as u32) {
+                                        emitted.push(ch);
+                                    }
+                                }
+                                self.in_escape = false;
+                                self.in_unicode = false;
+                                self.unicode_buffer.clear();
+                            }
+                        } else {
+                            match c {
+                                '"' => { emitted.push('"'); self.in_escape = false; }
+                                '\\' => { emitted.push('\\'); self.in_escape = false; }
+                                '/' => { emitted.push('/'); self.in_escape = false; }
+                                'b' => { self.in_escape = false; }
+                                'f' => { self.in_escape = false; }
+                                'n' => { emitted.push('\n'); self.in_escape = false; }
+                                'r' => { emitted.push('\r'); self.in_escape = false; }
+                                't' => { emitted.push('\t'); self.in_escape = false; }
+                                'u' => {
+                                    self.in_unicode = true;
+                                    self.unicode_buffer.clear();
+                                }
+                                other => {
+                                    emitted.push(other);
+                                    self.in_escape = false;
+                                }
+                            }
+                        }
+                    } else if c == '\\' {
+                        self.in_escape = true;
+                    } else if c == '"' {
+                        self.state = JsonParserState::FinishedAnswer;
+                    } else {
+                        emitted.push(c);
+                    }
+                }
+                JsonParserState::FinishedAnswer => {}
+            }
+        }
+        emitted
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.state == JsonParserState::FinishedAnswer
+    }
+}
+
+/// Esegue l'interrogazione ad OpenAI in modalità streaming SSE preservando lo schema JSON Responses API rigido.
+/// Emette eventi `limen://ai-stream-chunk` verso la finestra UI e convalida con `verify_post` prima di restituire il risultato.
+pub async fn ask_stream(
+    window: Option<tauri::Window>,
+    ticket: String,
+    p: Pending,
+    key: String,
+    cancel: Arc<AtomicBool>,
+    ui_elapsed_ms: Option<u64>,
+) -> Result<Value, String> {
+    use tauri::Emitter;
+
+    let t_handoff_ms = p.created_at.elapsed().as_millis() as u64;
+    let t_ask_start = Instant::now();
+
+    if !get_openai_consent(&p.path) {
+        return Err("Consenso all'invio dei dati a OpenAI non concesso. Abilitalo nelle Impostazioni.".into());
+    }
+    let effective_model = if p.options.model.trim().is_empty() {
+        "gpt-4o".to_string()
+    } else {
+        p.options.model.clone()
+    };
+
+    // 1. Verifica impronte pre-chiamata
+    let t_vpre_start = Instant::now();
+    let high_prec = is_high_precision_fs(&p.path);
+    for s in &p.sources {
+        if let Err(e) = verify_source_integrity_with_fs_override(&p.path, s, high_prec, p.options.include_drafts) {
+            if e.starts_with("Source changed") {
+                return Err("Source changed since preview".into());
+            }
+            return Err(e);
+        }
+    }
+    let t_verify_pre_ms = t_vpre_start.elapsed().as_millis() as u64;
+
+    if cancel.load(Ordering::SeqCst) {
+        return Err("Request cancelled".into());
+    }
+
+    // 2. Costruzione payload con streaming abilitato e modello tassativo
+    let t_payload_start = Instant::now();
+    let mut mut_options = p.options.clone();
+    mut_options.model = effective_model.clone();
+    let mut body = request_body(&mut_options, &p.sources);
+    body["stream"] = json!(true);
+    let t_payload_ms = t_payload_start.elapsed().as_millis() as u64;
+
+    // 3. Invio richiesta HTTP e ascolto stream SSE
+    let t_openai_start = Instant::now();
+    let client = reqwest::Client::builder()
+        .https_only(true)
+        .redirect(reqwest::redirect::Policy::none())
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(60))
+        .build()
+        .map_err(|_| "HTTP client unavailable")?;
+
+    let response_res = client
+        .post("https://api.openai.com/v1/responses")
+        .bearer_auth(key)
+        .json(&body)
+        .send()
+        .await;
+
+    let mut response = match response_res {
+        Ok(r) => {
+            if !r.status().is_success() {
+                let err_msg = format!("OpenAI HTTP {}", r.status().as_u16());
+                if let Some(ref w) = window {
+                    let _ = w.emit("limen://ai-stream-end", AiStreamEndPayload {
+                        ticket: ticket.clone(),
+                        answer: String::new(),
+                        citations: vec![],
+                        cited_indices: vec![],
+                        status: "error".into(),
+                        incomplete: true,
+                        incomplete_reason: Some(err_msg.clone()),
+                        warning: None,
+                        error: Some(err_msg.clone()),
+                        cancelled: false,
+                        tokens_used: None,
+                        tokens_prompt: None,
+                        tokens_completion: None,
+                        tokens_reasoning: None,
+                    });
+                }
+                return Err(err_msg);
+            }
+            r
+        }
+        Err(_) => {
+            let err_msg = "OpenAI unavailable or request timed out".to_string();
+            if let Some(ref w) = window {
+                let _ = w.emit("limen://ai-stream-end", AiStreamEndPayload {
+                    ticket: ticket.clone(),
+                    answer: String::new(),
+                    citations: vec![],
+                    cited_indices: vec![],
+                    status: "error".into(),
+                    incomplete: true,
+                    incomplete_reason: Some(err_msg.clone()),
+                    warning: None,
+                    error: Some(err_msg.clone()),
+                    cancelled: false,
+                    tokens_used: None,
+                    tokens_prompt: None,
+                    tokens_completion: None,
+                    tokens_reasoning: None,
+                });
+            }
+            return Err(err_msg);
+        }
+    };
+
+    let mut json_parser = JsonStreamAnswerParser::new();
+    let mut sanitizer = StreamProseSanitizer::new();
+    let mut t_first_chunk_ms: Option<u64> = None;
+    let mut line_buffer = String::new();
+    let mut raw_output_text = String::new();
+    let mut was_interrupted = false;
+    let mut final_response_val: Option<Value> = None;
+
+    while let Ok(Some(chunk)) = response.chunk().await {
+        if cancel.load(Ordering::SeqCst) {
+            was_interrupted = true;
+            break;
+        }
+        let chunk_str = String::from_utf8_lossy(&chunk);
+
+        for c in chunk_str.chars() {
+            if c == '\n' {
+                let line = line_buffer.trim().to_string();
+                line_buffer.clear();
+                if line.is_empty() || line.starts_with(':') {
+                    continue;
+                }
+                if line == "data: [DONE]" {
+                    break;
+                }
+                if let Some(data_payload) = line.strip_prefix("data:") {
+                    let data_trimmed = data_payload.trim();
+                    if data_trimmed == "[DONE]" {
+                        break;
+                    }
+                    if let Ok(v) = serde_json::from_str::<Value>(data_trimmed) {
+                        if t_first_chunk_ms.is_none() {
+                            t_first_chunk_ms = Some(t_openai_start.elapsed().as_millis() as u64);
+                        }
+
+                        if v.get("status").is_some() && v.get("output").is_some() {
+                            final_response_val = Some(v.clone());
+                        } else if v.get("type").and_then(|t| t.as_str()) == Some("response.completed") {
+                            if let Some(resp) = v.get("response") {
+                                final_response_val = Some(resp.clone());
+                            }
+                        }
+
+                        let delta_opt = if let Some(d) = v.get("delta").and_then(|d| d.as_str()) {
+                            Some(d)
+                        } else if let Some(arr) = v.get("choices").and_then(|c| c.as_array()) {
+                            arr.first().and_then(|c| c.get("delta")).and_then(|d| d.get("content")).and_then(|s| s.as_str())
+                        } else {
+                            None
+                        };
+
+                        if let Some(delta) = delta_opt {
+                            raw_output_text.push_str(delta);
+                            let prose = json_parser.feed(delta);
+                            if !prose.is_empty() {
+                                let clean_delta = sanitizer.feed(&prose);
+                                if !clean_delta.is_empty() {
+                                    if let Some(ref w) = window {
+                                        let _ = w.emit("limen://ai-stream-chunk", AiStreamChunkPayload {
+                                            ticket: ticket.clone(),
+                                            delta: clean_delta,
+                                            full_text: sanitizer.get_accumulated().to_string(),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                line_buffer.push(c);
+            }
+        }
+    }
+
+    let t_openai_ms = t_openai_start.elapsed().as_millis() as u64;
+
+    // Svuota residuo del sanitizer a fine stream
+    let flushed_delta = sanitizer.flush();
+    if !flushed_delta.is_empty() {
+        if let Some(ref w) = window {
+            let _ = w.emit("limen://ai-stream-chunk", AiStreamChunkPayload {
+                ticket: ticket.clone(),
+                delta: flushed_delta,
+                full_text: sanitizer.get_accumulated().to_string(),
+            });
+        }
+    }
+
+    // 4. Verifica impronte post-chiamata (verify_post)
+    let t_vpost_start = Instant::now();
+    let mut verify_post_failed = false;
+    for s in &p.sources {
+        if let Err(e) = verify_source_integrity_with_fs_override(&p.path, s, high_prec, p.options.include_drafts) {
+            if e.starts_with("Source changed") {
+                verify_post_failed = true;
+                break;
+            }
+        }
+    }
+    let t_verify_post_ms = t_vpost_start.elapsed().as_millis() as u64;
+
+    // Se verify_post fallisce, sostituzione protettiva del testo e zero citazioni
+    if verify_post_failed {
+        let error_msg = "Un documento è cambiato durante la generazione: la risposta è stata annullata, riprova".to_string();
+        let end_payload = AiStreamEndPayload {
+            ticket: ticket.clone(),
+            answer: error_msg.clone(),
+            citations: vec![],
+            cited_indices: vec![],
+            status: "error".into(),
+            incomplete: true,
+            incomplete_reason: Some(error_msg.clone()),
+            warning: None,
+            error: Some(error_msg.clone()),
+            cancelled: true,
+            tokens_used: None,
+            tokens_prompt: None,
+            tokens_completion: None,
+            tokens_reasoning: None,
+        };
+        if let Some(ref w) = window {
+            let _ = w.emit("limen://ai-stream-end", end_payload.clone());
+        }
+        return Err(error_msg);
+    }
+
+    // Se lo streaming è stato interrotto (cancel o rete), mantieni il testo parziale con avviso e zero citazioni
+    if was_interrupted {
+        let warning_msg = "La generazione della risposta è stata interrotta.".to_string();
+        let partial_answer = sanitizer.get_accumulated().to_string();
+        let end_payload = AiStreamEndPayload {
+            ticket: ticket.clone(),
+            answer: partial_answer,
+            citations: vec![],
+            cited_indices: vec![],
+            status: "incomplete".into(),
+            incomplete: true,
+            incomplete_reason: Some(warning_msg.clone()),
+            warning: Some(warning_msg),
+            error: None,
+            cancelled: true,
+            tokens_used: None,
+            tokens_prompt: None,
+            tokens_completion: None,
+            tokens_reasoning: None,
+        };
+        if let Some(ref w) = window {
+            let _ = w.emit("limen://ai-stream-end", end_payload.clone());
+        }
+        let res_val = serde_json::to_value(&end_payload).map_err(|_| "Failed to serialize end payload")?;
+        return Ok(res_val);
+    }
+
+    // 5. Decodifica e validazione risposta finale
+    let t_parse_start = Instant::now();
+    let response_to_parse = if let Some(v) = final_response_val {
+        v
+    } else {
+        // Sintesi da raw_output_text se OpenAI non ha inviato un evento "response.completed" separato
+        json!({
+            "status": "completed",
+            "model": effective_model,
+            "output": [{
+                "type": "message",
+                "content": [{
+                    "type": "output_text",
+                    "text": raw_output_text
+                }]
+            }]
+        })
+    };
+
+    let parsed = parse_response(response_to_parse, &p.sources)?;
+    let t_parse_ms = t_parse_start.elapsed().as_millis() as u64;
+
+    let cited_set: std::collections::HashSet<usize> = parsed["citedIndices"]
+        .as_array()
+        .map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|n| n as usize)).collect())
+        .unwrap_or_default();
+
+    let audit_sources: Vec<SourceAuditEntry> = p.sources
+        .iter()
+        .enumerate()
+        .map(|(idx, s)| SourceAuditEntry {
+            id: format!("S{}", idx + 1),
+            relative_path: s.relative_path.clone(),
+            bytes: s.content.len(),
+            locator: s.locator.clone(),
+            cited: cited_set.contains(&idx),
+        })
+        .collect();
+
+    let t_ask_total_ms = t_ask_start.elapsed().as_millis() as u64;
+    let t_backend_total_ms = p.preview_timings.t_preview_total_ms + t_handoff_ms + t_ask_total_ms;
+    let t_ui_total_ms = ui_elapsed_ms.map(|prev_ms| prev_ms + t_ask_total_ms);
+
+    let model_str = parsed["model"].as_str().unwrap_or(effective_model.as_str());
+    let status_str = parsed["status"].as_str().unwrap_or("completed");
+    let incomplete_reason = parsed["incompleteReason"].as_str().map(|s| s.to_string());
+    let tokens_used = parsed["tokensUsed"].as_u64();
+    let tokens_prompt = parsed["tokensPrompt"].as_u64();
+    let tokens_completion = parsed["tokensCompletion"].as_u64();
+    let tokens_reasoning = parsed["tokensReasoning"].as_u64();
+
+    log_ask_timing_detailed(&AskTimingLogEntry {
+        timestamp: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        model: model_str.to_string(),
+        status: status_str.to_string(),
+        incomplete_reason: incomplete_reason.clone(),
+        tokens_used,
+        tokens_prompt,
+        tokens_completion,
+        tokens_reasoning,
+        t_first_chunk_ms,
+        t_ui_total_ms,
+        t_backend_total_ms,
+        preview: PreviewTimingBreakdown {
+            total_ms: p.preview_timings.t_preview_total_ms,
+            index_cache_ms: p.preview_timings.t_index_cache_ms,
+            embed_ms: p.preview_timings.t_embed_ms,
+            search_ms: p.preview_timings.t_search_ms,
+            search_words_ms: p.preview_timings.t_search_words_ms,
+            search_sem_ms: p.preview_timings.t_search_sem_ms,
+            search_fuse_ms: p.preview_timings.t_search_fuse_ms,
+            search_admit_ms: p.preview_timings.t_search_admit_ms,
+            doc_read_ms: p.preview_timings.t_doc_read_ms,
+            passage_extract_ms: p.preview_timings.t_passage_extract_ms,
+        },
+        t_handoff_ms,
+        ask: AskTimingBreakdown {
+            total_ms: t_ask_total_ms,
+            verify_pre_ms: t_verify_pre_ms,
+            payload_ms: t_payload_ms,
+            openai_ms: t_openai_ms,
+            t_first_chunk_ms,
+            verify_post_ms: t_verify_post_ms,
+            parse_ms: t_parse_ms,
+        },
+        sources: audit_sources,
+    });
+
+    let end_payload = AiStreamEndPayload {
+        ticket: ticket.clone(),
+        answer: parsed["answer"].as_str().unwrap_or(sanitizer.get_accumulated()).to_string(),
+        citations: parsed["citations"].as_array().cloned().unwrap_or_default(),
+        cited_indices: parsed["citedIndices"].as_array().map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|n| n as usize)).collect()).unwrap_or_default(),
+        status: status_str.to_string(),
+        incomplete: status_str == "incomplete" || parsed["incomplete"].as_bool().unwrap_or(false),
+        incomplete_reason,
+        warning: parsed["warning"].as_str().map(|s| s.to_string()),
+        error: None,
+        cancelled: false,
+        tokens_used,
+        tokens_prompt,
+        tokens_completion,
+        tokens_reasoning,
+    };
+
+    if let Some(ref w) = window {
+        let _ = w.emit("limen://ai-stream-end", end_payload);
+    }
 
     Ok(parsed)
 }
@@ -2409,6 +3112,7 @@ mod tests {
           tokens_prompt: Some(1000),
           tokens_completion: Some(500),
           tokens_reasoning: None,
+          t_first_chunk_ms: Some(1250),
           t_ui_total_ms: Some(4890),
           t_backend_total_ms: 4890,
           preview: PreviewTimingBreakdown {
@@ -2416,6 +3120,10 @@ mod tests {
               index_cache_ms: 15,
               embed_ms: 45,
               search_ms: 30,
+              search_words_ms: 10,
+              search_sem_ms: 12,
+              search_fuse_ms: 5,
+              search_admit_ms: 3,
               doc_read_ms: 12,
               passage_extract_ms: 18,
           },
@@ -2425,6 +3133,7 @@ mod tests {
               verify_pre_ms: 2,
               payload_ms: 1,
               openai_ms: 4755,
+              t_first_chunk_ms: Some(1250),
               verify_post_ms: 3,
               parse_ms: 4,
           },
@@ -2941,6 +3650,167 @@ mod tests {
       assert_eq!(res["tokensPrompt"], 500);
       assert_eq!(res["tokensCompletion"], 320);
       assert_eq!(res["tokensReasoning"], 128);
+  }
+
+  #[test]
+  fn test_stream_prose_sanitizer_split_citations() {
+      let mut sanitizer = StreamProseSanitizer::new();
+      let mut emitted_chunks = Vec::new();
+
+      let c1 = sanitizer.feed("Il documento ");
+      if !c1.is_empty() { emitted_chunks.push(c1); }
+
+      let c2 = sanitizer.feed("[S");
+      // Il prefisso ambiguo [S DEVE essere trattenuto nel buffer scorrevole
+      assert_eq!(c2, "", "Il prefisso [S non deve essere emesso!");
+      if !c2.is_empty() { emitted_chunks.push(c2); }
+
+      let c3 = sanitizer.feed("1]");
+      // [S1] viene rimosso da sanitize_answer_prose
+      assert!(!c3.contains("[S1]"), "Non deve mai apparire [S1]!");
+      if !c3.is_empty() { emitted_chunks.push(c3); }
+
+      let c4 = sanitizer.feed(" conferma l'avanzamento.");
+      if !c4.is_empty() { emitted_chunks.push(c4); }
+
+      let c5 = sanitizer.flush();
+      if !c5.is_empty() { emitted_chunks.push(c5); }
+
+      let full_emitted = emitted_chunks.join("");
+      assert_eq!(full_emitted, "Il documento conferma l'avanzamento.");
+      assert_eq!(sanitizer.get_accumulated(), "Il documento conferma l'avanzamento.");
+      for chunk in &emitted_chunks {
+          assert!(!chunk.contains("[S1]"));
+          assert!(!chunk.contains("[S"));
+      }
+  }
+
+  #[test]
+  fn test_stream_prose_sanitizer_split_bold_asterisks() {
+      let mut sanitizer = StreamProseSanitizer::new();
+      let mut emitted_chunks = Vec::new();
+
+      let c1 = sanitizer.feed("Abbiamo verificato ");
+      if !c1.is_empty() { emitted_chunks.push(c1); }
+
+      let c2 = sanitizer.feed("**");
+      // Il marcatore ** DEVE essere trattenuto nel buffer scorrevole
+      assert_eq!(c2, "", "Gli asterischi non devono essere emessi!");
+      if !c2.is_empty() { emitted_chunks.push(c2); }
+
+      let c3 = sanitizer.feed("BNXT**");
+      // Con la chiusura **, gli asterischi vengono rimossi ed emessa solo la parola pulita
+      assert!(!c3.contains('*'), "Non devono apparire asterischi nel delta!");
+      if !c3.is_empty() { emitted_chunks.push(c3); }
+
+      let c4 = sanitizer.feed(" con successo.");
+      if !c4.is_empty() { emitted_chunks.push(c4); }
+
+      let c5 = sanitizer.flush();
+      if !c5.is_empty() { emitted_chunks.push(c5); }
+
+      let full_emitted = emitted_chunks.join("");
+      assert_eq!(full_emitted, "Abbiamo verificato BNXT con successo.");
+      assert_eq!(sanitizer.get_accumulated(), "Abbiamo verificato BNXT con successo.");
+      for chunk in &emitted_chunks {
+          assert!(!chunk.contains('*'), "Nessun chunk deve contenere asterischi!");
+      }
+  }
+
+  #[test]
+  fn test_json_stream_answer_parser_decodes_escapes_and_unicode() {
+      let mut parser = JsonStreamAnswerParser::new();
+      let mut extracted_prose = String::new();
+      let parts = vec![
+          "{\"answer\": \"Prima riga\\nSeconda riga con \\\"virgolette\\\" ",
+          "e Unicode \\u20ac\", \"citation_ids\": [\"S1\"]}",
+      ];
+      for p in parts {
+          extracted_prose.push_str(&parser.feed(p));
+      }
+      assert!(extracted_prose.contains("Prima riga\nSeconda riga con \"virgolette\" e Unicode €"));
+      assert!(parser.is_finished());
+  }
+
+  #[tokio::test]
+  async fn test_verify_post_failure_replaces_text_with_cancellation_message() {
+      let t = fixture();
+      let state = AiState::default();
+      let p_preview = state.preview(t.path().into(), options()).await.unwrap();
+      let (mut pending, cancel) = state.begin(&p_preview.ticket).unwrap();
+
+      // Simuliamo la mutazione del file su disco mentre la generazione era in corso
+      let first_source = &pending.sources[0];
+      fs::write(t.path().join(&first_source.relative_path), "Contenuto modificato durante la chiamata!").unwrap();
+
+      // Verifichiamo che il controllo di integrità post-chiamata rilevi la modifica
+      let high_prec = is_high_precision_fs(&pending.path);
+      let mut verify_post_failed = false;
+      for s in &pending.sources {
+          if let Err(e) = verify_source_integrity_with_fs_override(&pending.path, s, high_prec, pending.options.include_drafts) {
+              if e.starts_with("Source changed") {
+                  verify_post_failed = true;
+                  break;
+              }
+          }
+      }
+      assert!(verify_post_failed, "verify_post deve fallire se una fonte è mutata!");
+
+      // In caso di fallimento, la regola vincolante impone la sostituzione esatta del testo e zero citazioni:
+      let expected_error_msg = "Un documento è cambiato durante la generazione: la risposta è stata annullata, riprova";
+      let payload = AiStreamEndPayload {
+          ticket: p_preview.ticket.clone(),
+          answer: expected_error_msg.to_string(),
+          citations: vec![],
+          cited_indices: vec![],
+          status: "error".into(),
+          incomplete: true,
+          incomplete_reason: Some(expected_error_msg.to_string()),
+          warning: None,
+          error: Some(expected_error_msg.to_string()),
+          cancelled: true,
+          tokens_used: None,
+          tokens_prompt: None,
+          tokens_completion: None,
+          tokens_reasoning: None,
+      };
+
+      assert_eq!(payload.answer, expected_error_msg);
+      assert_eq!(payload.citations.len(), 0);
+      assert_eq!(payload.cited_indices.len(), 0);
+      assert_eq!(payload.cancelled, true);
+  }
+
+  #[test]
+  fn test_interrupted_stream_preserves_partial_text_with_zero_citations() {
+      let mut sanitizer = StreamProseSanitizer::new();
+      sanitizer.feed("La sintesi iniziale dei documenti analizzati fino a questo punto...");
+
+      let partial_text = sanitizer.get_accumulated().to_string();
+      let warning_msg = "La generazione della risposta è stata interrotta.".to_string();
+
+      let payload = AiStreamEndPayload {
+          ticket: "ticket-123".to_string(),
+          answer: partial_text.clone(),
+          citations: vec![],
+          cited_indices: vec![],
+          status: "incomplete".into(),
+          incomplete: true,
+          incomplete_reason: Some(warning_msg.clone()),
+          warning: Some(warning_msg),
+          error: None,
+          cancelled: true,
+          tokens_used: None,
+          tokens_prompt: None,
+          tokens_completion: None,
+          tokens_reasoning: None,
+      };
+
+      assert_eq!(payload.answer, "La sintesi iniziale dei documenti analizzati fino a questo punto...");
+      assert_eq!(payload.citations.len(), 0);
+      assert_eq!(payload.cited_indices.len(), 0);
+      assert_eq!(payload.status, "incomplete");
+      assert_eq!(payload.cancelled, true);
   }
 }
 #[cfg(test)]

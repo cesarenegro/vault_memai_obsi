@@ -211,23 +211,53 @@ Conformemente alle direttive e alle due correzioni deliberate da Cesare:
 8. **Piano FASE 5 Approvato con Sei Correzioni (senza codice)**:
    - Documento in [fase5-piano.md](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase5-piano.md).
    - **Modello tassativo da usare in todo list: `gpt-4o`**.
-   - Sei correzioni integrate:
-     1. Riferimenti corretti (`embeddings.rs`), prima misurare la ricerca nel log divisa in 4 parti (parole, semantica, fusione, ammissibilità) e ottimizzare solo dopo;
-     2. Fonti consultate mostrate subito in UI appena la Preview è pronta;
-     3. Controllo `verify_post` obbligatorio post-streaming con sostituzione testo e zero citazioni in caso di fallimento, e test dedicato;
-     4. Pulizia durante lo streaming (`sanitize_answer_prose`) con sliding tail buffer per evitare frammenti spezzati (`[S` + `1]`, `**` + `BNXT**`) e relativi test;
-     5. Risposte interrotte con preservazione testo parziale, avviso esplicito e zero citazioni;
-     6. Schema Responses API corretto (`text.format` JSON schema con enum `S1...S10` in `citation_ids`).
+   - Sei correzioni integrate e attuate nel codice.
 
 ---
 
-## 2. Stato Attuale e Consegna
+### FASE 5 — IMPLEMENTATA E CONVALIDATA (Streaming, Sanificazione Real-Time, TTFT & Registro Tempi)
 
-- **STATO ATTUALE**: **FASE 4 CHIUSA — PIANO FASE 5 APPROVATO E PRONTO PER IMPLEMENTAZIONE**.
-- **Modello configurato per FASE 5**: **`gpt-4o`**.
-- **Test suite**: **162 passati; 0 falliti**.
+Conformemente all'autorizzazione di Cesare e alle sei correzioni integrate:
+
+1. **Registro Tempi di Ricerca Dettagliato (`ask_timing.log`) & TTFT**:
+   - In `embeddings.rs`: decomposto il tempo di ricerca hybrid in tre fasi misurate ad alta precisione: `t_words_ms` (BM25 lessicale), `t_sem_ms` (vettoriale locale via bge-m3), `t_fuse_ms` (fusione RRF).
+   - In `ai.rs`: misurato `t_search_admit_ms` per l'ammissibilità Punto E (`filter_candidates_punto_e`).
+   - Integrato nel log ASCII e JSON il Time to First Token remoto di OpenAI `t_first_chunk_ms`, misurato all'arrivo del primo frammento SSE utile.
+   - Nessuna ottimizzazione prematura della ricerca introdotta in questa consegna: il codice è pronto per raccogliere le misure di Cesare sul campo.
+
+2. **Parser Incrementale e Sanificazione Progressiva (`StreamProseSanitizer`)**:
+   - Implementato `StreamProseSanitizer` in `ai.rs` con sliding tail buffer che trattiene marcatori markdown (`*`, `**`) e frammenti di citazione (`[`, `[S`) sui confini dei chunk per prevenire sfarfallii raw a video (`[S` + `1]`, `**` + `BNXT**`).
+   - Unit test dedicati passati: `test_stream_prose_sanitizer_split_citations` e `test_stream_prose_sanitizer_split_bold_asterisks`.
+   - Implementato `JsonStreamAnswerParser` a macchina a stati con buffer unicode e decodifica escape (`\n`, `\"`, `\uXXXX`) sui chunk spezzati. Unit test superato: `test_json_stream_answer_parser_decodes_escapes_and_unicode`.
+
+3. **Chiamata Streaming SSE, Controllo `verify_post` e Interruzioni**:
+   - `ask_stream` in `ai.rs` consuma lo stream SSE da OpenAI Responses API mantenendo Strict Schema invariato.
+   - Emissione eventi verso Tauri (`limen://ai-stream-chunk` e `limen://ai-stream-end`).
+   - In caso di fallimento `verify_post` post-streaming: sostituzione del testo integrale con `"Un documento è cambiato durante la generazione: la risposta è stata annullata, riprova"` e zero citazioni. Unit test superato: `test_verify_post_failure_replaces_text_with_cancellation_message`.
+   - In caso di interruzione stream: testo parziale preservato con avviso esplicito e zero citazioni. Unit test superato: `test_interrupted_stream_preserves_partial_text_with_zero_citations`.
+
+4. **Frontend Desktop (`AiPanel.tsx` & `ai-ipc.ts`)**:
+   - Mostrate **subito** le fonti consultate alla ricezione della Preview, con titoli puliti (`cleanTitle`), categoria, locator e stato di attesa.
+   - Testo generato progressivamente in tempo reale con cursore pulsante.
+   - Al termine dello streaming: fonti citate evidenziate con badge verde **`CITATA`** e bordo dedicato; etichetta trasparente `"Basata su N documenti citati tra M consultati"` con conteggio veritiero.
+   - Modello predefinito: `gpt-4o` come valore iniziale proposto se nessun modello è salvato in `ai_settings.json`, con lista dinamica e persistenza FASE 4 pienamente preservata.
+   - Verifica statica TypeScript con `npx tsc --noEmit`: 0 errori.
+
+5. **Test Suite Completa (168 test superati, 0 falliti)**:
+   - Parallelo: [cargo-test-fase-5-parallel.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-5-parallel.log) (150 lib + 18 main = **168 passed, 0 failed**).
+   - Sequenziale: [cargo-test-fase-5-single.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-5-single.log) (**168 passed, 0 failed** con `--test-threads=1`).
+
+---
+
+## 2. Stato Attuale e Consegna FASE 5
+
+- **STATO ATTUALE**: **FASE 5 IMPLEMENTATA E VERIFICATA CON SUCCESSO — PRONTA PER LA CONVALIDA DAL VIVO DI CESARE E DELL'AUDITOR**.
+- **Modello configurato come default**: **`gpt-4o`**.
+- **Test suite**: **168 passati; 0 falliti** (sia in parallelo sia con `--test-threads=1`).
+- **Verifica TypeScript frontend**: **0 errori** (`npx tsc --noEmit`).
 - **ZERO chiamate OpenAI** effettuate dall'assistente.
-- **ZERO processi terminati** senza autorizzazione.
+- **ZERO processi terminati** senza autorizzazione (`llama-server.exe` PID 39740 e `limen-vault.exe` PID 25352 attivi e intatti).
+- **Patch di consegna**: [fase-5.patch](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5.patch).
 
 
 

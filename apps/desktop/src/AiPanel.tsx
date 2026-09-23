@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { aiIpc, type AiAnswer, type AiPreview, type AiSource } from './ai-ipc';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { aiIpc, type AiAnswer, type AiPreview, type AiSource, type AiStreamChunkPayload, type AiStreamEndPayload } from './ai-ipc';
 import type { CitationOpenRequest } from './vault-ipc';
 import { labelIt, MessageIt } from './locale';
 import { SemanticEngineSettings } from './SemanticEngineSettings';
@@ -54,25 +55,29 @@ export function AiPanel({
 }) {
   const terms = getPlatformTerms();
   const [prompt, setPrompt] = useState('');
-  const [model, setModel] = useState<string>('');
+  const [model, setModel] = useState<string>('gpt-4o');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [drafts, setDrafts] = useState(false);
   const [consentGranted, setConsentGranted] = useState<boolean | null>(null);
 
   const [loadingStep, setLoadingStep] = useState<string | null>(null);
+  const [streamingText, setStreamingText] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
   const [answer, setAnswer] = useState<AiAnswer | null>(null);
   const [previewData, setPreviewData] = useState<AiPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [techError, setTechError] = useState<string | null>(null);
 
-  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [sourcesOpen, setSourcesOpen] = useState(true);
   const [techDetailsOpen, setTechDetailsOpen] = useState(false);
 
   const [saveMessage, setSaveMessage] = useState('');
   const saveOperation = useRef(operationId());
   const seq = useRef(0);
+  const unlistenChunkRef = useRef<UnlistenFn | null>(null);
+  const unlistenEndRef = useRef<UnlistenFn | null>(null);
 
-  // Carica i modelli disponibili e il modello selezionato memorizzato
+  // Carica i modelli disponibili e il modello selezionato memorizzato (default: gpt-4o)
   useEffect(() => {
     let live = true;
     void aiIpc.models().then(list => {
@@ -86,10 +91,18 @@ export function AiPanel({
       if (!live) return;
       if (saved) {
         setModel(saved);
+      } else {
+        setModel('gpt-4o');
       }
-    }).catch(() => {});
+    }).catch(() => {
+      if (live) setModel('gpt-4o');
+    });
 
-    return () => { live = false; };
+    return () => {
+      live = false;
+      if (unlistenChunkRef.current) unlistenChunkRef.current();
+      if (unlistenEndRef.current) unlistenEndRef.current();
+    };
   }, []);
 
   async function handleModelChange(newModel: string) {
@@ -126,18 +139,26 @@ export function AiPanel({
   }
 
   async function executeAsk(queryText: string) {
-    if (!queryText || loadingStep) return;
-    if (!model) {
-      setError('Seleziona un modello AI prima di inviare una domanda.');
-      return;
-    }
+    if (!queryText || loadingStep || isStreaming) return;
+    const currentModel = model || 'gpt-4o';
 
     const currentSeq = ++seq.current;
     setError(null);
     setTechError(null);
     setAnswer(null);
     setPreviewData(null);
+    setStreamingText('');
+    setIsStreaming(false);
     setSaveMessage('');
+
+    if (unlistenChunkRef.current) {
+      unlistenChunkRef.current();
+      unlistenChunkRef.current = null;
+    }
+    if (unlistenEndRef.current) {
+      unlistenEndRef.current();
+      unlistenEndRef.current = null;
+    }
 
     // Check consent before running
     const hasConsent = await aiIpc.getConsent(vaultPath).catch(() => false);
@@ -155,7 +176,7 @@ export function AiPanel({
       // Step 1: Preview / Select sources automatically
       const preview = await aiIpc.preview(vaultPath, {
         prompt: queryText,
-        model: model,
+        model: currentModel,
         includeDrafts: drafts,
         sourceIds: [],
       });
@@ -169,19 +190,81 @@ export function AiPanel({
         return;
       }
 
-      // Step 2: Query Model directly
-      setLoadingStep('Generazione della risposta con OpenAI…');
+      // Fonti consultate mostrate SUBITO non appena la preview è pronta!
+      setSourcesOpen(true);
+      setLoadingStep('Avvio generazione in streaming con OpenAI…');
+      setIsStreaming(true);
+
+      // Step 2: Registra i listener Tauri per gli eventi di streaming
+      try {
+        const uChunk = await listen<AiStreamChunkPayload>('limen://ai-stream-chunk', (event) => {
+          if (currentSeq !== seq.current) return;
+          if (event.payload.ticket === preview.ticket) {
+            setLoadingStep(null);
+            setStreamingText(event.payload.fullText || ((prev) => prev + event.payload.delta));
+          }
+        });
+        unlistenChunkRef.current = uChunk;
+
+        const uEnd = await listen<AiStreamEndPayload>('limen://ai-stream-end', (event) => {
+          if (currentSeq !== seq.current) return;
+          if (event.payload.ticket === preview.ticket) {
+            setIsStreaming(false);
+            setLoadingStep(null);
+            if (event.payload.cancelled && (event.payload.error?.includes('Un documento è cambiato') || event.payload.status === 'error')) {
+              setAnswer({
+                answer: event.payload.answer || 'Un documento è cambiato durante la generazione: la risposta è stata annullata, riprova',
+                provider: 'OpenAI',
+                model: currentModel,
+                citations: [],
+                status: 'error',
+                warning: event.payload.answer,
+              });
+              setStreamingText('');
+            } else if (event.payload.incomplete || event.payload.cancelled) {
+              setAnswer({
+                answer: event.payload.answer,
+                provider: 'OpenAI',
+                model: currentModel,
+                citations: [],
+                incomplete: true,
+                incompleteReason: event.payload.incompleteReason || 'La generazione della risposta è stata interrotta.',
+                warning: 'Risposta parziale: generazione interrotta prima del completamento.',
+              });
+            }
+          }
+        });
+        unlistenEndRef.current = uEnd;
+      } catch (errListener) {
+        console.warn('[LIMEN] listen streaming non registrato (fallback browser o headless):', errListener);
+      }
+
+      // Step 3: Invoca askStream
       const uiPreviewElapsed = Math.round(Date.now() - t0);
-      const res = await aiIpc.ask(preview.ticket, uiPreviewElapsed);
+      const res = await aiIpc.askStream(preview.ticket, uiPreviewElapsed);
 
       if (currentSeq !== seq.current) return;
       res.uiTotalMs = Math.round(Date.now() - t0);
+      setIsStreaming(false);
+      setStreamingText('');
       setAnswer(res);
       saveOperation.current = operationId();
     } catch (e: any) {
       if (currentSeq !== seq.current) return;
+      setIsStreaming(false);
       const errStr = String(e?.message || e);
-      if (errStr.includes('Consenso')) {
+      if (errStr.includes('Un documento è cambiato durante la generazione')) {
+        // Regola vincolante: testo sostituito per intero da messaggio errore e 0 citazioni
+        setStreamingText('');
+        setAnswer({
+          answer: 'Un documento è cambiato durante la generazione: la risposta è stata annullata, riprova',
+          provider: 'OpenAI',
+          model: currentModel,
+          citations: [],
+          status: 'error',
+          warning: 'Un documento è cambiato durante la generazione: la risposta è stata annullata, riprova',
+        });
+      } else if (errStr.includes('Consenso')) {
         setConsentGranted(false);
       } else {
         setError('Impossibile completare la risposta. Verifica la connessione o la chiave API.');
@@ -190,6 +273,15 @@ export function AiPanel({
     } finally {
       if (currentSeq === seq.current) {
         setLoadingStep(null);
+        setIsStreaming(false);
+        if (unlistenChunkRef.current) {
+          unlistenChunkRef.current();
+          unlistenChunkRef.current = null;
+        }
+        if (unlistenEndRef.current) {
+          unlistenEndRef.current();
+          unlistenEndRef.current = null;
+        }
       }
     }
   }
@@ -379,11 +471,184 @@ export function AiPanel({
         </div>
       )}
 
+      {/* Fonti consultate dal Vault per questa domanda — Mostrate SUBITO appena la preview è pronta */}
+      {previewData && previewData.sources && previewData.sources.length > 0 && (
+        <div className="limen-card" style={{ padding: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <button
+              onClick={() => setSourcesOpen(!sourcesOpen)}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                textAlign: 'left',
+              }}
+            >
+              {sourcesOpen ? <ChevronDown size={18} color="#0f172a" /> : <ChevronRight size={18} color="#0f172a" />}
+              <FileText size={18} color="#0f172a" />
+              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
+                Fonti consultate dal Vault per questa domanda ({previewData.sources.length})
+              </h3>
+            </button>
+            {isStreaming && (
+              <span style={{ fontSize: 12, color: '#2563eb', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={14} className="animate-spin" /> Ricezione streaming…
+              </span>
+            )}
+          </div>
+
+          {sourcesOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {previewData.sources.map((s, idx) => {
+                const clean = cleanTitle(s.title, s.relativePath);
+                const isCited = Boolean(answer?.citations && answer.citations.some(c => c.documentId === s.documentId || c.relativePath === s.relativePath));
+                return (
+                  <div
+                    key={`${s.documentId}-${idx}`}
+                    onClick={() => {
+                      if (onOpenDocument) {
+                        onOpenDocument({
+                          documentId: s.documentId,
+                          passageId: s.passageId,
+                          locator: s.locator,
+                          revision: s.revision,
+                          sha256: s.sha256,
+                        });
+                      }
+                    }}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      backgroundColor: isCited ? '#f0fdf4' : '#f8fafc',
+                      border: isCited ? '1px solid #86efac' : '1px solid #e2e8f0',
+                      cursor: onOpenDocument ? 'pointer' : 'default',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                      <FileText size={15} color={isCited ? '#16a34a' : '#64748b'} style={{ flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, fontWeight: isCited ? 700 : 500, color: isCited ? '#14532d' : '#1e293b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                        {clean}
+                      </span>
+                      {s.category && (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            backgroundColor: isCited ? '#dcfce7' : '#e2e8f0',
+                            color: isCited ? '#166534' : '#475569',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {s.category}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      {isCited && (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 4,
+                            backgroundColor: '#22c55e',
+                            color: '#ffffff',
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          CITATA
+                        </span>
+                      )}
+                      {s.locator && (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            backgroundColor: isCited ? '#ecfdf5' : '#eff6ff',
+                            color: isCited ? '#047857' : '#1d4ed8',
+                            border: isCited ? '1px solid #a7f3d0' : '1px solid #bfdbfe',
+                          }}
+                        >
+                          {s.locator}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Dicitura trasparente: "Basata su N documenti citati tra M consultati" quando la risposta è pronta */}
+          {answer && (
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid #e2e8f0', fontSize: 13, fontWeight: 600, color: '#2563eb' }}>
+              Basata su {answer.citations?.length || 0} document{answer.citations?.length === 1 ? 'o citato' : 'i citati'} tra {previewData.sources.length} consultat{previewData.sources.length === 1 ? 'o' : 'i'}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Box di generazione progressiva in streaming */}
+      {isStreaming && (
+        <div className="limen-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#2563eb', fontSize: 13, fontWeight: 600 }}>
+            <Sparkles size={16} className="animate-spin" />
+            <span>Generazione in streaming con OpenAI ({model || 'gpt-4o'})…</span>
+          </div>
+          <div style={{ fontSize: 15, lineHeight: 1.7, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
+            {streamingText || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Elaborazione in corso e attesa token…</span>}
+            <span
+              style={{
+                display: 'inline-block',
+                width: 8,
+                height: 16,
+                backgroundColor: '#2563eb',
+                marginLeft: 4,
+                verticalAlign: 'text-bottom',
+                animation: 'pulse 1s infinite',
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Prose Answer Result Block */}
-      {answer && !loadingStep && (
+      {answer && !loadingStep && !isStreaming && (
         <div className="limen-card" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Banner Risposta Incompleta per modelli con limite token o ragionamento esteso */}
-          {answer.incomplete && (
+          {/* Sostituzione protettiva testo per errore verify_post */}
+          {answer.status === 'error' && (
+            <div
+              style={{
+                padding: '14px 18px',
+                borderRadius: 8,
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#991b1b',
+                fontSize: 14,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              <AlertCircle size={20} style={{ flexShrink: 0, color: '#dc2626' }} />
+              <div>
+                <strong>Attenzione:</strong> {answer.answer}
+              </div>
+            </div>
+          )}
+
+          {/* Banner Risposta Incompleta per modelli con limite token o stream interrotto */}
+          {answer.incomplete && answer.status !== 'error' && (
             <div
               style={{
                 padding: '12px 16px',
@@ -401,113 +666,16 @@ export function AiPanel({
               <div>
                 <strong>Risposta incompleta:</strong>{' '}
                 {answer.incompleteReason === 'max_output_tokens'
-                  ? 'Il modello ha raggiunto il limite massimo di token generabili (anche a causa dei token di ragionamento interni). La risposta parziale è stata preservata.'
-                  : (answer.incompleteReason || 'La generazione della risposta è stata interrotta prima del completamento.')}
+                  ? 'Il modello ha raggiunto il limite massimo di token generabili. La risposta parziale è stata preservata con 0 citazioni.'
+                  : (answer.incompleteReason || 'La generazione della risposta è stata interrotta. La risposta parziale è stata preservata con 0 citazioni.')}
               </div>
             </div>
           )}
 
           {/* Answer Foreground Prose */}
-          <div style={{ fontSize: 15, lineHeight: 1.7, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
-            {answer.answer}
-          </div>
-
-          {/* Collapsible Sources Line: "Basata su N documenti citati tra M consultati" */}
-          {answer.citations && answer.citations.length > 0 && (
-            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 16 }}>
-              {(() => {
-                const citedCount = answer.citations.length;
-                const consultedCount = previewData?.sources?.length ?? citedCount;
-                return (
-                  <button
-                    onClick={() => setSourcesOpen(!sourcesOpen)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: '#2563eb',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}
-                  >
-                    {sourcesOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                    Basata su {citedCount} document{citedCount === 1 ? 'o citato' : 'i citati'} tra {consultedCount} consultat{consultedCount === 1 ? 'o' : 'i'}
-                  </button>
-                );
-              })()}
-
-              {sourcesOpen && (
-                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {answer.citations.map((c, i) => {
-                    const clean = cleanTitle(c.title, c.relativePath);
-                    return (
-                      <div
-                        key={`${c.documentId}-${i}`}
-                        onClick={() => {
-                          if (onOpenDocument) {
-                            onOpenDocument({
-                              documentId: c.documentId,
-                              passageId: c.passageId,
-                              locator: c.locator,
-                              revision: c.revision,
-                              sha256: c.sha256,
-                            });
-                          }
-                        }}
-                        style={{
-                          padding: 10,
-                          borderRadius: 6,
-                          backgroundColor: '#f8fafc',
-                          border: '1px solid #e2e8f0',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          transition: 'background 0.15s',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <FileText size={16} color="#64748b" />
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>
-                            {clean}
-                          </span>
-                          {c.category && (
-                            <span
-                              style={{
-                                fontSize: 11,
-                                padding: '2px 6px',
-                                borderRadius: 4,
-                                backgroundColor: '#e2e8f0',
-                                color: '#475569',
-                              }}
-                            >
-                              {c.category}
-                            </span>
-                          )}
-                        </div>
-                        {c.locator && (
-                          <span
-                            style={{
-                              fontSize: 11,
-                              padding: '2px 6px',
-                              borderRadius: 4,
-                              backgroundColor: '#eff6ff',
-                              color: '#1d4ed8',
-                              border: '1px solid #bfdbfe',
-                            }}
-                          >
-                            {c.locator}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+          {answer.status !== 'error' && (
+            <div style={{ fontSize: 15, lineHeight: 1.7, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
+              {answer.answer}
             </div>
           )}
 
@@ -522,7 +690,7 @@ export function AiPanel({
                 fontSize: 13,
                 padding: '6px 14px',
               }}
-              disabled={!!saveMessage}
+              disabled={!!saveMessage || answer.status === 'error'}
               onClick={async () => {
                 try {
                   await m7(vaultPath, {
@@ -600,7 +768,12 @@ export function AiSettings({ vaultPath }: { vaultPath: string }) {
     void aiIpc.mcpStatus().then(setConnection).catch(e => setMessage(String(e)));
     void aiIpc.getConsent(vaultPath).then(setConsent).catch(() => {});
     void aiIpc.models().then(m => { if (m && m.length > 0) setAvailableModels(m); }).catch(() => {});
-    void aiIpc.getSelectedModel().then(m => { if (m) setSelectedModel(m); }).catch(() => {});
+    void aiIpc.getSelectedModel().then(m => {
+      if (m) setSelectedModel(m);
+      else setSelectedModel('gpt-4o');
+    }).catch(() => {
+      setSelectedModel('gpt-4o');
+    });
   }, [vaultPath]);
 
   async function action(f: () => Promise<void>) {
@@ -664,7 +837,7 @@ export function AiSettings({ vaultPath }: { vaultPath: string }) {
             </label>
             <select
               aria-label="Modello OpenAI predefinito"
-              value={selectedModel}
+              value={selectedModel || 'gpt-4o'}
               onChange={e => {
                 const val = e.target.value;
                 setSelectedModel(val);
@@ -672,11 +845,15 @@ export function AiSettings({ vaultPath }: { vaultPath: string }) {
               }}
               style={fieldStyle}
             >
-              {!selectedModel && <option value="">-- Seleziona un modello --</option>}
-              {availableModels.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-              {selectedModel && !availableModels.includes(selectedModel) && (
+              {(() => {
+                const list = availableModels.includes('gpt-4o')
+                  ? availableModels
+                  : ['gpt-4o', ...availableModels.filter(m => m !== 'gpt-4o')];
+                return list.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ));
+              })()}
+              {selectedModel && !availableModels.includes(selectedModel) && selectedModel !== 'gpt-4o' && (
                 <option key={selectedModel} value={selectedModel}>{selectedModel}</option>
               )}
             </select>
