@@ -1,18 +1,18 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
-  "productName": "LIMEN Vault v3",
-  "version": "0.3.0",
+  "productName": "LIMEN Vault v4",
+  "version": "0.4.0",
   "identifier": "dev.arkai.limenvault",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
-    "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "pnpm build"
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
   },
   "app": {
     "windows": [
       {
-        "title": "LIMEN Vault v3",
+        "title": "LIMEN Vault v4",
         "width": 1280,
         "height": 840,
         "resizable": true,
