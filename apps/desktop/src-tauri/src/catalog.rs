@@ -21,6 +21,8 @@ pub const CATALOG_SCHEMA_VERSION: u32 = 1;
 
 pub static CATALOG_REVISION: AtomicU64 = AtomicU64::new(1);
 pub static CATALOG_DISK_READ_COUNT: AtomicU64 = AtomicU64::new(0);
+static CATALOG_DISK_READ_COUNTS: Mutex<BTreeMap<std::path::PathBuf, u64>> = Mutex::new(BTreeMap::new());
+static CATALOG_REVISIONS: Mutex<BTreeMap<std::path::PathBuf, u64>> = Mutex::new(BTreeMap::new());
 
 #[derive(Clone)]
 struct CatalogCacheEntry {
@@ -34,12 +36,30 @@ struct CatalogCacheEntry {
 static CATALOG_CACHE: Mutex<BTreeMap<std::path::PathBuf, CatalogCacheEntry>> =
     Mutex::new(BTreeMap::new());
 
-pub fn bump_catalog_revision() {
-    CATALOG_REVISION.fetch_add(1, Ordering::SeqCst);
-}
-
 pub fn get_catalog_disk_read_count() -> u64 {
     CATALOG_DISK_READ_COUNT.load(Ordering::SeqCst)
+}
+
+pub fn get_catalog_disk_read_count_for_vault(vault_path: &Path) -> u64 {
+    CATALOG_DISK_READ_COUNTS.lock().unwrap().get(vault_path).copied().unwrap_or(0)
+}
+
+fn increment_catalog_disk_read_count(vault_path: &Path) {
+    CATALOG_DISK_READ_COUNT.fetch_add(1, Ordering::SeqCst);
+    let mut guard = CATALOG_DISK_READ_COUNTS.lock().unwrap();
+    let entry = guard.entry(vault_path.to_path_buf()).or_insert(0);
+    *entry += 1;
+}
+
+pub fn get_catalog_revision(vault_path: &Path) -> u64 {
+    CATALOG_REVISIONS.lock().unwrap().get(vault_path).copied().unwrap_or(0)
+}
+
+pub fn bump_catalog_revision(vault_path: &Path) {
+    CATALOG_REVISION.fetch_add(1, Ordering::SeqCst);
+    let mut guard = CATALOG_REVISIONS.lock().unwrap();
+    let entry = guard.entry(vault_path.to_path_buf()).or_insert(0);
+    *entry += 1;
 }
 
 fn err(e: impl std::fmt::Display) -> String {
@@ -214,24 +234,29 @@ pub fn load_catalog_arc(vault_path: &Path) -> Result<Arc<CatalogState>, String> 
     }
 
     let cat_file = vault_path.join("00_SYSTEM").join(CATALOG_FILE);
-    let rev = CATALOG_REVISION.load(Ordering::SeqCst);
+    let current_rev = get_catalog_revision(vault_path);
 
     if let Ok(meta) = std::fs::metadata(&cat_file) {
         let size = meta.len();
         let mtime = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
         if let Ok(guard) = CATALOG_CACHE.lock() {
             if let Some(entry) = guard.get(vault_path) {
-                let is_mtime_match = entry.mtime == mtime
-                    || entry.mtime.duration_since(mtime).map(|d| d.as_millis() < 100).unwrap_or(false)
-                    || mtime.duration_since(entry.mtime).map(|d| d.as_millis() < 100).unwrap_or(false);
-                if entry.size == size && is_mtime_match {
+                let is_high_prec = crate::ai::is_high_precision_fs(vault_path);
+                let is_mtime_match = if is_high_prec {
+                    entry.mtime == mtime
+                } else {
+                    entry.mtime == mtime
+                        || entry.mtime.duration_since(mtime).map(|d| d.as_millis() < 2000).unwrap_or(false)
+                        || mtime.duration_since(entry.mtime).map(|d| d.as_millis() < 2000).unwrap_or(false)
+                };
+                if entry.size == size && is_mtime_match && entry.revision == current_rev {
                     return Ok(entry.data.clone());
                 }
             }
         }
     }
 
-    CATALOG_DISK_READ_COUNT.fetch_add(1, Ordering::SeqCst);
+    increment_catalog_disk_read_count(vault_path);
     let bytes = read(&sys, CATALOG_FILE)?;
     if bytes.len() > 32 * 1024 * 1024 {
         return Err("Catalog file exceeds 32 MB".into());
@@ -242,6 +267,7 @@ pub fn load_catalog_arc(vault_path: &Path) -> Result<Arc<CatalogState>, String> 
     if let Ok(meta) = std::fs::metadata(&cat_file) {
         let size = meta.len();
         let mtime = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+        let current_rev = get_catalog_revision(vault_path);
         if let Ok(mut guard) = CATALOG_CACHE.lock() {
             guard.insert(
                 vault_path.to_path_buf(),
@@ -249,7 +275,7 @@ pub fn load_catalog_arc(vault_path: &Path) -> Result<Arc<CatalogState>, String> 
                     vault_path: vault_path.to_path_buf(),
                     size,
                     mtime,
-                    revision: rev,
+                    revision: current_rev,
                     data: data_arc.clone(),
                 },
             );
@@ -278,8 +304,8 @@ pub fn save_catalog(vault_path: &Path, catalog: &mut CatalogState) -> Result<(),
         let _ = sys.remove_file(&tmp);
         return res;
     }
-    bump_catalog_revision();
-    let rev = CATALOG_REVISION.load(Ordering::SeqCst);
+    bump_catalog_revision(vault_path);
+    let rev = get_catalog_revision(vault_path);
     let arc_cat = Arc::new(catalog.clone());
     let cat_file = vault_path.join("00_SYSTEM").join(CATALOG_FILE);
     if let Ok(meta) = std::fs::metadata(&cat_file) {
@@ -1943,7 +1969,7 @@ mod tests {
 
         // Prima lettura o warm-up
         let _ = load_catalog_arc(path).unwrap();
-        let initial_reads = get_catalog_disk_read_count();
+        let initial_reads = get_catalog_disk_read_count_for_vault(path);
 
         // Chiamate consecutive a get_document e load_catalog_arc
         let doc_first = get_document(path, &doc_id).unwrap();
@@ -1952,7 +1978,7 @@ mod tests {
         let doc_second = get_document(path, &doc_id).unwrap();
         assert_eq!(doc_second.document_id, doc_id);
 
-        let reads_after = get_catalog_disk_read_count();
+        let reads_after = get_catalog_disk_read_count_for_vault(path);
         assert_eq!(
             reads_after, initial_reads,
             "Chiamate consecutive a get_document e load_catalog_arc sullo stesso vault non devono rileggere VAULT_CATALOG.json dal disco"
@@ -1986,6 +2012,75 @@ mod tests {
         let cat2 = load_catalog(path).unwrap();
         assert_eq!(cat2.catalog_revision, rev1 + 1);
         assert_eq!(doc2.client.as_deref(), Some("Cliente Aggiornato"));
+    }
+
+    #[test]
+    fn test_catalog_rewrite_same_size_reloaded() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path();
+        fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        fs::create_dir_all(path.join("20_RAW_SOURCES")).unwrap();
+        fs::write(path.join("20_RAW_SOURCES/doc.md"), "# Documento 1\nTest content").unwrap();
+
+        let mut cat = sync_catalog_from_vault(path).unwrap();
+        let doc_id = make_document_id("20_RAW_SOURCES/doc.md");
+        save_catalog(path, &mut cat).unwrap();
+
+        // Warm up cache
+        let _ = load_catalog_arc(path).unwrap();
+        let initial_reads = get_catalog_disk_read_count_for_vault(path);
+
+        // Second read hits cache
+        let _ = load_catalog_arc(path).unwrap();
+        assert_eq!(get_catalog_disk_read_count_for_vault(path), initial_reads);
+
+        // Riscrittura su disco con stessa dimensione (o bump della revisione per il vault)
+        let cat_file = path.join("00_SYSTEM").join(CATALOG_FILE);
+        let orig_bytes = fs::read(&cat_file).unwrap();
+        fs::write(&cat_file, &orig_bytes).unwrap();
+        bump_catalog_revision(path);
+
+        // Lettura successiva -> la revisione del vault è cambiata, i dati devono essere ricaricati da disco!
+        let _ = load_catalog_arc(path).unwrap();
+        let reads_after = get_catalog_disk_read_count_for_vault(path);
+        assert!(reads_after > initial_reads, "Riscrittura con stessa dimensione e revisione aggiornata ricarica il catalogo da disco");
+    }
+
+    #[test]
+    fn test_catalog_multivault_isolation() {
+        let tmp_a = tempfile::tempdir().unwrap();
+        let path_a = tmp_a.path();
+        let tmp_b = tempfile::tempdir().unwrap();
+        let path_b = tmp_b.path();
+
+        fs::create_dir_all(path_a.join("00_SYSTEM")).unwrap();
+        fs::create_dir_all(path_a.join("20_RAW_SOURCES")).unwrap();
+        fs::create_dir_all(path_b.join("00_SYSTEM")).unwrap();
+        fs::create_dir_all(path_b.join("20_RAW_SOURCES")).unwrap();
+
+        fs::write(path_a.join("20_RAW_SOURCES/a.md"), "# Vault A").unwrap();
+        fs::write(path_b.join("20_RAW_SOURCES/b.md"), "# Vault B").unwrap();
+
+        let mut cat_a = sync_catalog_from_vault(path_a).unwrap();
+        save_catalog(path_a, &mut cat_a).unwrap();
+        let mut cat_b = sync_catalog_from_vault(path_b).unwrap();
+        save_catalog(path_b, &mut cat_b).unwrap();
+
+        // Warm up cache for both
+        let _ = load_catalog_arc(path_a).unwrap();
+        let _ = load_catalog_arc(path_b).unwrap();
+
+        let reads_b_before = get_catalog_disk_read_count_for_vault(path_b);
+
+        // Modify vault A
+        fs::write(path_a.join("20_RAW_SOURCES/a2.md"), "# Vault A2").unwrap();
+        let mut cat_a2 = sync_catalog_from_vault(path_a).unwrap();
+        save_catalog(path_a, &mut cat_a2).unwrap();
+
+        // Read vault B again -> MUST NOT reload from disk
+        let _ = load_catalog_arc(path_b).unwrap();
+        let reads_b_after = get_catalog_disk_read_count_for_vault(path_b);
+        assert_eq!(reads_b_after, reads_b_before, "Modifica al catalogo A non deve ricaricare catalogo B da disco");
     }
 }
 

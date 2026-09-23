@@ -3,6 +3,7 @@
 **Data**: 2026-09-23  
 **Branch**: `windows-build`  
 **Commit di inizio Fase 1**: `865676dddc8daceabf6a87f91ff4109f8e0bfcee` (`865676d`)  
+**Stato**: Approvato (con rettifiche a ipotesi tecniche, esempio illustrativo e chiarimento conteggi 2.548/126)  
 **Vault analizzato**: `E:\VAULT WIN TEST DEV` (esattamente **376 documenti**, **23.482 passaggi** totali nel catalogo, **23.482 passaggi** nella cache semantica `EMBEDDINGS_CACHE.json`)  
 **Hardware & Runtime**: Windows 11, `llama-server.exe` PID 26580 su porta attiva `62021`, modello `bge-m3-Q8_0.gguf`  
 

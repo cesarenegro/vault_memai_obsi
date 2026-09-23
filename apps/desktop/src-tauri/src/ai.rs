@@ -301,6 +301,24 @@ pub fn verify_source_integrity_with_fs_override(
     let full_path = path.join(&s.relative_path);
     let meta = std::fs::metadata(&full_path).map_err(|_| "Source file missing or inaccessible".to_string())?;
 
+    // In-memory checks on search index, catalog, automation state, and eligibility
+    let d = search::get_search_document(path, &s.document_id)?;
+    if d.sha256 != s.sha256 {
+        return Err("Source changed".into());
+    }
+
+    // 1. Check if automation-managed source has become obsolete
+    if crate::automation::managed(&d.relative_path) && !crate::automation::is_current(path, &d.relative_path, &s.sha256) {
+        return Err("Generated source obsolete or modified".into());
+    }
+
+    // 2. Check document eligibility (category, status, drafts)
+    if !eligible(&d.relative_path, &d.category, d.status.as_deref(), drafts)
+        && !crate::automation::is_current(path, &d.relative_path, &d.sha256)
+    {
+        return Err("Document access denied".into());
+    }
+
     if is_high_precision {
         let current_size = meta.len();
         let current_mtime_ms = meta
@@ -706,8 +724,11 @@ pub async fn ask(
     let t_vpre_start = Instant::now();
     let high_prec = is_high_precision_fs(&p.path);
     for s in &p.sources {
-        if let Err(_) = verify_source_integrity_with_fs_override(&p.path, s, high_prec, p.options.include_drafts) {
-            return Err("Source changed since preview".into());
+        if let Err(e) = verify_source_integrity_with_fs_override(&p.path, s, high_prec, p.options.include_drafts) {
+            if e.starts_with("Source changed") {
+                return Err("Source changed since preview".into());
+            }
+            return Err(e);
         }
     }
     let t_verify_pre_ms = t_vpre_start.elapsed().as_millis() as u64;
@@ -767,8 +788,11 @@ pub async fn ask(
     // 4. Verifica impronte post-chiamata (integrità dopo la risposta)
     let t_vpost_start = Instant::now();
     for s in &p.sources {
-        if let Err(_) = verify_source_integrity_with_fs_override(&p.path, s, high_prec, p.options.include_drafts) {
-            return Err("Source changed during request".into());
+        if let Err(e) = verify_source_integrity_with_fs_override(&p.path, s, high_prec, p.options.include_drafts) {
+            if e.starts_with("Source changed") {
+                return Err("Source changed during request".into());
+            }
+            return Err(e);
         }
     }
     let t_verify_post_ms = t_vpost_start.elapsed().as_millis() as u64;
@@ -1169,8 +1193,8 @@ mod tests {
       let _ = search::read_indexed_document(t.path(), doc_id, sha).unwrap();
       let _ = read_source(t.path(), doc_id, sha, false).unwrap();
 
-      let idx_reads_1 = search::SEARCH_INDEX_DISK_READ_COUNT.load(Ordering::SeqCst);
-      let cat_reads_1 = crate::catalog::get_catalog_disk_read_count();
+      let idx_reads_1 = search::get_search_index_disk_read_count_for_vault(t.path());
+      let cat_reads_1 = crate::catalog::get_catalog_disk_read_count_for_vault(t.path());
 
       // Seconda lettura consecutiva di read_indexed_document
       let (doc_rec, content) = search::read_indexed_document(t.path(), doc_id, sha).unwrap();
@@ -1181,8 +1205,8 @@ mod tests {
       let src = read_source(t.path(), doc_id, sha, false).unwrap();
       assert_eq!(src.document_id, *doc_id);
 
-      let idx_reads_2 = search::SEARCH_INDEX_DISK_READ_COUNT.load(Ordering::SeqCst);
-      let cat_reads_2 = crate::catalog::get_catalog_disk_read_count();
+      let idx_reads_2 = search::get_search_index_disk_read_count_for_vault(t.path());
+      let cat_reads_2 = crate::catalog::get_catalog_disk_read_count_for_vault(t.path());
 
       assert_eq!(
           idx_reads_2, idx_reads_1,
@@ -1265,6 +1289,85 @@ mod tests {
       let high_prec = is_high_precision_fs(t.path());
       let res = verify_source_integrity_with_fs_override(t.path(), &s[0], high_prec, false);
       assert!(res.is_err(), "La fonte alterata durante la richiesta deve fallire la verifica");
+  }
+
+  #[tokio::test]
+  async fn test_verify_source_generated_obsolete_rejected() {
+      let t = fixture();
+      fs::create_dir_all(t.path().join("20_RAW_SOURCES")).unwrap();
+      // Creiamo una fonte generata gestita da automation (prefisso auto-source-)
+      let rel = "20_RAW_SOURCES/auto-source-doc.md";
+      let full = t.path().join(rel);
+      let content = b"# Documento Generato\nContenuto estratto automaticamente.";
+      fs::write(&full, content).unwrap();
+
+      let mut cat = crate::catalog::sync_catalog_from_vault(t.path()).unwrap();
+      let doc_id = crate::catalog::make_document_id(rel);
+      let hash = crate::snapshots::compute_sha256(content);
+      let doc = cat.documents.get_mut(&doc_id).unwrap();
+      doc.extraction_status = crate::catalog::ExtractionStatus::Ready;
+      doc.editorial_status = "auto".into();
+      doc.passages.push(crate::catalog::DocumentPassage {
+          passage_id: format!("{}_p0", doc_id),
+          locator: "P1".into(),
+          text: "Contenuto estratto automaticamente.".into(),
+          char_count: 35,
+          sha256: hash.clone(),
+      });
+      crate::catalog::save_catalog(t.path(), &mut cat).unwrap();
+      search::index_vault_search(t.path()).unwrap();
+
+      let meta = fs::metadata(&full).unwrap();
+      let mtime_ms = meta.modified().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+      let source = Source {
+          document_id: doc_id,
+          relative_path: rel.into(),
+          title: "Documento Generato".into(),
+          category: "source".into(),
+          status: Some("auto".into()),
+          sha256: hash,
+          content: String::from_utf8_lossy(content).into(),
+          locator: None,
+          passage_id: None,
+          revision: Some(1),
+          mtime_ms: Some(mtime_ms),
+          file_size: Some(meta.len()),
+      };
+
+      // Il file su disco NON è stato toccato (mtime e size coincidono), ma essendo managed ed obsoleta/non-current
+      // deve essere rifiutata con "Generated source obsolete or modified"
+      let res = verify_source_integrity_with_fs_override(t.path(), &source, true, false);
+      assert_eq!(
+          res.unwrap_err(),
+          "Generated source obsolete or modified",
+          "Una fonte generata senza dipendenze valide in automation deve essere rifiutata"
+      );
+  }
+
+  #[tokio::test]
+  async fn test_verify_source_ineligible_rejected() {
+      let t = tempfile::tempdir().unwrap();
+      fs::create_dir_all(t.path().join("00_SYSTEM")).unwrap();
+      fs::create_dir_all(t.path().join("01_CLIENTS")).unwrap();
+
+      let rel = "01_CLIENTS/draft_note.md";
+      let full = t.path().join(rel);
+      let content = "---\ntitle: Draft Note\ncategory: client\nstatus: draft\n---\nDraft client note content.";
+      fs::write(&full, content).unwrap();
+
+      search::index_vault_search(t.path()).unwrap();
+      let hash = crate::snapshots::compute_sha256(content.as_bytes());
+      let source_doc_id = format!("doc_{}", crate::snapshots::compute_sha256(rel.as_bytes()));
+      let source = read_source(t.path(), &source_doc_id, &hash, true).unwrap();
+
+      // Il file su disco non è modificato, ma il documento è in stato 'draft' e include_drafts è false:
+      // la via rapida deve rifiutarlo con "Document access denied"
+      let res = verify_source_integrity_with_fs_override(t.path(), &source, true, false);
+      assert_eq!(
+          res.unwrap_err(),
+          "Document access denied",
+          "Un documento non idoneo (drafts=false) deve essere rifiutato anche se il file su disco non è cambiato"
+      );
   }
 }
 #[cfg(test)]

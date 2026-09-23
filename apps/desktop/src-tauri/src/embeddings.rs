@@ -23,6 +23,8 @@ static SYNC_CANCELLED: AtomicBool = AtomicBool::new(false);
 
 pub static EMBEDDINGS_CACHE_REVISION: AtomicU64 = AtomicU64::new(1);
 pub static EMBEDDINGS_CACHE_DISK_READ_COUNT: AtomicU64 = AtomicU64::new(0);
+static EMBEDDINGS_DISK_READ_COUNTS: Mutex<BTreeMap<PathBuf, u64>> = Mutex::new(BTreeMap::new());
+static EMBEDDINGS_CACHE_REVISIONS: Mutex<BTreeMap<PathBuf, u64>> = Mutex::new(BTreeMap::new());
 
 #[derive(Clone)]
 struct EmbeddingsCacheEntry {
@@ -35,8 +37,30 @@ struct EmbeddingsCacheEntry {
 
 static EMBEDDINGS_IN_MEMORY_CACHE: Mutex<BTreeMap<PathBuf, EmbeddingsCacheEntry>> = Mutex::new(BTreeMap::new());
 
-pub fn bump_embeddings_cache_revision() {
+pub fn get_embeddings_cache_disk_read_count() -> u64 {
+    EMBEDDINGS_CACHE_DISK_READ_COUNT.load(Ordering::SeqCst)
+}
+
+pub fn get_embeddings_disk_read_count_for_vault(vault_path: &Path) -> u64 {
+    EMBEDDINGS_DISK_READ_COUNTS.lock().unwrap().get(vault_path).copied().unwrap_or(0)
+}
+
+fn increment_embeddings_disk_read_count(vault_path: &Path) {
+    EMBEDDINGS_CACHE_DISK_READ_COUNT.fetch_add(1, Ordering::SeqCst);
+    let mut guard = EMBEDDINGS_DISK_READ_COUNTS.lock().unwrap();
+    let entry = guard.entry(vault_path.to_path_buf()).or_insert(0);
+    *entry += 1;
+}
+
+pub fn get_embeddings_cache_revision(vault_path: &Path) -> u64 {
+    EMBEDDINGS_CACHE_REVISIONS.lock().unwrap().get(vault_path).copied().unwrap_or(0)
+}
+
+pub fn bump_embeddings_cache_revision(vault_path: &Path) {
     EMBEDDINGS_CACHE_REVISION.fetch_add(1, Ordering::SeqCst);
+    let mut guard = EMBEDDINGS_CACHE_REVISIONS.lock().unwrap();
+    let entry = guard.entry(vault_path.to_path_buf()).or_insert(0);
+    *entry += 1;
 }
 
 pub fn cancel_sync() {
@@ -339,24 +363,29 @@ pub fn load_embeddings_cache(vault_path: &Path) -> Result<Arc<EmbeddingsCache>, 
     }
 
     let emb_file = vault_path.join("00_SYSTEM").join(EMBEDDINGS_CACHE_FILE);
-    let rev = EMBEDDINGS_CACHE_REVISION.load(Ordering::SeqCst);
+    let current_rev = get_embeddings_cache_revision(vault_path);
 
     if let Ok(meta) = std::fs::metadata(&emb_file) {
         let size = meta.len();
         let mtime = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
         if let Ok(guard) = EMBEDDINGS_IN_MEMORY_CACHE.lock() {
             if let Some(entry) = guard.get(vault_path) {
-                let is_mtime_match = entry.mtime == mtime
-                    || entry.mtime.duration_since(mtime).map(|d| d.as_millis() < 100).unwrap_or(false)
-                    || mtime.duration_since(entry.mtime).map(|d| d.as_millis() < 100).unwrap_or(false);
-                if entry.size == size && is_mtime_match {
+                let is_high_prec = crate::ai::is_high_precision_fs(vault_path);
+                let is_mtime_match = if is_high_prec {
+                    entry.mtime == mtime
+                } else {
+                    entry.mtime == mtime
+                        || entry.mtime.duration_since(mtime).map(|d| d.as_millis() < 2000).unwrap_or(false)
+                        || mtime.duration_since(entry.mtime).map(|d| d.as_millis() < 2000).unwrap_or(false)
+                };
+                if entry.size == size && is_mtime_match && entry.revision == current_rev {
                     return Ok(entry.cache.clone());
                 }
             }
         }
     }
 
-    EMBEDDINGS_CACHE_DISK_READ_COUNT.fetch_add(1, Ordering::SeqCst);
+    increment_embeddings_disk_read_count(vault_path);
     let bytes = read(&sys, EMBEDDINGS_CACHE_FILE)?;
     if bytes.len() > 512 * 1024 * 1024 {
         return Err("Embeddings cache file exceeds 512 MB".into());
@@ -367,12 +396,13 @@ pub fn load_embeddings_cache(vault_path: &Path) -> Result<Arc<EmbeddingsCache>, 
     if let Ok(meta) = std::fs::metadata(&emb_file) {
         let size = meta.len();
         let mtime = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+        let current_rev = get_embeddings_cache_revision(vault_path);
         if let Ok(mut guard) = EMBEDDINGS_IN_MEMORY_CACHE.lock() {
             guard.insert(vault_path.to_path_buf(), EmbeddingsCacheEntry {
                 vault_path: vault_path.to_path_buf(),
                 size,
                 mtime,
-                revision: rev,
+                revision: current_rev,
                 cache: cache_arc.clone(),
             });
         }
@@ -393,7 +423,7 @@ pub fn save_embeddings_cache(vault_path: &Path, cache: &mut EmbeddingsCache) -> 
     if res.is_err() {
         let _ = sys.remove_file(&tmp);
     } else {
-        bump_embeddings_cache_revision();
+        bump_embeddings_cache_revision(vault_path);
     }
     res
 }

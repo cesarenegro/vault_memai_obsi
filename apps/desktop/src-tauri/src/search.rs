@@ -166,6 +166,10 @@ fn validate(data: &SearchIndexData) -> Result<(), String> {
 }
 pub static SEARCH_INDEX_REVISION: AtomicU64 = AtomicU64::new(1);
 pub static SEARCH_INDEX_DISK_READ_COUNT: AtomicU64 = AtomicU64::new(0);
+static SEARCH_INDEX_DISK_READ_COUNTS: std::sync::Mutex<std::collections::BTreeMap<std::path::PathBuf, u64>> =
+    std::sync::Mutex::new(std::collections::BTreeMap::new());
+static SEARCH_INDEX_REVISIONS: std::sync::Mutex<std::collections::BTreeMap<std::path::PathBuf, u64>> =
+    std::sync::Mutex::new(std::collections::BTreeMap::new());
 
 #[derive(Clone)]
 struct SearchIndexCacheEntry {
@@ -179,8 +183,32 @@ struct SearchIndexCacheEntry {
 static SEARCH_INDEX_CACHE: std::sync::Mutex<std::collections::BTreeMap<std::path::PathBuf, SearchIndexCacheEntry>> =
     std::sync::Mutex::new(std::collections::BTreeMap::new());
 
-pub fn bump_search_index_revision() {
+pub fn get_search_index_disk_read_count() -> u64 {
+    SEARCH_INDEX_DISK_READ_COUNT.load(Ordering::SeqCst)
+}
+
+pub fn get_search_index_disk_read_count_for_vault(vault_path: &Path) -> u64 {
+    SEARCH_INDEX_DISK_READ_COUNTS.lock().unwrap().get(vault_path).copied().unwrap_or(0)
+}
+
+fn increment_search_index_disk_read_count(vault_path: Option<&Path>) {
+    SEARCH_INDEX_DISK_READ_COUNT.fetch_add(1, Ordering::SeqCst);
+    if let Some(v_path) = vault_path {
+        let mut guard = SEARCH_INDEX_DISK_READ_COUNTS.lock().unwrap();
+        let entry = guard.entry(v_path.to_path_buf()).or_insert(0);
+        *entry += 1;
+    }
+}
+
+pub fn get_search_index_revision(vault_path: &Path) -> u64 {
+    SEARCH_INDEX_REVISIONS.lock().unwrap().get(vault_path).copied().unwrap_or(0)
+}
+
+pub fn bump_search_index_revision(vault_path: &Path) {
     SEARCH_INDEX_REVISION.fetch_add(1, Ordering::SeqCst);
+    let mut guard = SEARCH_INDEX_REVISIONS.lock().unwrap();
+    let entry = guard.entry(vault_path.to_path_buf()).or_insert(0);
+    *entry += 1;
 }
 
 fn load(system: &Dir) -> Result<Option<std::sync::Arc<SearchIndexData>>, String> {
@@ -197,19 +225,23 @@ pub fn load_with_vault_path(system: &Dir, vault_path: Option<&Path>) -> Result<O
         return Ok(None);
     }
 
-    let rev = SEARCH_INDEX_REVISION.load(Ordering::SeqCst);
-
     if let Some(v_path) = vault_path {
         let idx_file = v_path.join("00_SYSTEM").join("SEARCH_INDEX.json");
         if let Ok(meta) = std::fs::metadata(&idx_file) {
             let size = meta.len();
             let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+            let current_rev = get_search_index_revision(v_path);
             if let Ok(guard) = SEARCH_INDEX_CACHE.lock() {
                 if let Some(entry) = guard.get(v_path) {
-                    let is_mtime_match = entry.mtime == mtime
-                        || entry.mtime.duration_since(mtime).map(|d| d.as_millis() < 100).unwrap_or(false)
-                        || mtime.duration_since(entry.mtime).map(|d| d.as_millis() < 100).unwrap_or(false);
-                    if entry.size == size && is_mtime_match {
+                    let is_high_prec = crate::ai::is_high_precision_fs(v_path);
+                    let is_mtime_match = if is_high_prec {
+                        entry.mtime == mtime
+                    } else {
+                        entry.mtime == mtime
+                            || entry.mtime.duration_since(mtime).map(|d| d.as_millis() < 2000).unwrap_or(false)
+                            || mtime.duration_since(entry.mtime).map(|d| d.as_millis() < 2000).unwrap_or(false)
+                    };
+                    if entry.size == size && is_mtime_match && entry.revision == current_rev {
                         return Ok(Some(entry.data.clone()));
                     }
                 }
@@ -217,7 +249,7 @@ pub fn load_with_vault_path(system: &Dir, vault_path: Option<&Path>) -> Result<O
         }
     }
 
-    SEARCH_INDEX_DISK_READ_COUNT.fetch_add(1, Ordering::SeqCst);
+    increment_search_index_disk_read_count(vault_path);
     let value: Value = serde_json::from_slice(&read(system, "SEARCH_INDEX.json")?).map_err(err)?;
     if value["version"] == 1 && value["documents"].is_object() {
         return Ok(Some(std::sync::Arc::new(SearchIndexData {
@@ -235,12 +267,13 @@ pub fn load_with_vault_path(system: &Dir, vault_path: Option<&Path>) -> Result<O
         if let Ok(meta) = std::fs::metadata(&idx_file) {
             let size = meta.len();
             let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+            let current_rev = get_search_index_revision(v_path);
             if let Ok(mut guard) = SEARCH_INDEX_CACHE.lock() {
                 guard.insert(v_path.to_path_buf(), SearchIndexCacheEntry {
                     vault_path: v_path.to_path_buf(),
                     size,
                     mtime,
-                    revision: rev,
+                    revision: current_rev,
                     data: data_arc.clone(),
                 });
             }
@@ -699,6 +732,7 @@ pub fn index_vault_search(path: &Path) -> Result<IndexStatusReport, String> {
         documents: docs,
     };
     save(&s, &data)?;
+    bump_search_index_revision(path);
     Ok(status(Some(&data)))
 }
 pub fn search_vault(path: &Path, q: SearchQuery) -> Result<Vec<SearchResultItem>, String> {
@@ -1186,15 +1220,15 @@ mod tests {
         std::fs::write(path.join("01_CLIENTS/client_a.md"), "---\ntitle: Client A Note\ntags: [demo]\n---\nStrategic marketing notes.").unwrap();
         index_vault_search(path).unwrap();
 
-        let initial_reads = SEARCH_INDEX_DISK_READ_COUNT.load(Ordering::SeqCst);
+        let initial_reads = get_search_index_disk_read_count_for_vault(path);
         let res1 = search_vault(path, SearchQuery { term: Some("marketing".into()), ..Default::default() }).unwrap();
         assert!(!res1.is_empty());
-        let reads_after_first = SEARCH_INDEX_DISK_READ_COUNT.load(Ordering::SeqCst);
+        let reads_after_first = get_search_index_disk_read_count_for_vault(path);
         assert!(reads_after_first > initial_reads, "La prima ricerca legge da disco");
 
         let res2 = search_vault(path, SearchQuery { term: Some("marketing".into()), ..Default::default() }).unwrap();
         assert!(!res2.is_empty());
-        let reads_after_second = SEARCH_INDEX_DISK_READ_COUNT.load(Ordering::SeqCst);
+        let reads_after_second = get_search_index_disk_read_count_for_vault(path);
         assert_eq!(reads_after_second, reads_after_first, "La seconda ricerca usa la cache in memoria e NON rilegge il disco!");
 
         // Aggiorna indice -> vede nuovi documenti e incrementa il contatore alla ricerca successiva
@@ -1203,9 +1237,81 @@ mod tests {
 
         let res3 = search_vault(path, SearchQuery { term: Some("expansion".into()), ..Default::default() }).unwrap();
         assert!(!res3.is_empty(), "La ricerca dopo aggiornamento indice deve vedere i documenti nuovi");
-        let reads_after_third = SEARCH_INDEX_DISK_READ_COUNT.load(Ordering::SeqCst);
+        let reads_after_third = get_search_index_disk_read_count_for_vault(path);
         assert!(reads_after_third > reads_after_second, "Dopo l'aggiornamento dell'indice i dati vengono ricaricati");
     }
+
+    #[test]
+    fn test_search_index_rewrite_same_size_reloaded() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path();
+        std::fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        std::fs::create_dir_all(path.join("01_CLIENTS")).unwrap();
+
+        std::fs::write(path.join("01_CLIENTS/doc.md"), "---\ntitle: Doc\ntags: [a]\n---\nHello world 12345").unwrap();
+        index_vault_search(path).unwrap();
+
+        let initial_reads = get_search_index_disk_read_count_for_vault(path);
+        let _ = search_vault(path, SearchQuery { term: Some("world".into()), ..Default::default() }).unwrap();
+        let reads_after_first = get_search_index_disk_read_count_for_vault(path);
+        assert_eq!(reads_after_first, initial_reads + 1);
+
+        // Second search hits cache
+        let _ = search_vault(path, SearchQuery { term: Some("world".into()), ..Default::default() }).unwrap();
+        assert_eq!(get_search_index_disk_read_count_for_vault(path), reads_after_first);
+
+        // Rewrite doc with same byte length and re-index (bumps revision for this vault)
+        std::fs::write(path.join("01_CLIENTS/doc.md"), "---\ntitle: Doc\ntags: [b]\n---\nHello world 12345").unwrap();
+        index_vault_search(path).unwrap();
+
+        // Search again -> revision changed, so data must be reloaded from disk!
+        let _ = search_vault(path, SearchQuery { term: Some("world".into()), ..Default::default() }).unwrap();
+        let reads_after_reindex = get_search_index_disk_read_count_for_vault(path);
+        assert!(reads_after_reindex > reads_after_first, "Riscrittura con stessa dimensione ricarica i dati");
+    }
+
+    #[test]
+    fn test_search_index_multivault_isolation() {
+        let tmp_a = tempfile::tempdir().unwrap();
+        let path_a = tmp_a.path();
+        let tmp_b = tempfile::tempdir().unwrap();
+        let path_b = tmp_b.path();
+
+        std::fs::create_dir_all(path_a.join("00_SYSTEM")).unwrap();
+        std::fs::create_dir_all(path_a.join("01_CLIENTS")).unwrap();
+        std::fs::create_dir_all(path_b.join("00_SYSTEM")).unwrap();
+        std::fs::create_dir_all(path_b.join("01_CLIENTS")).unwrap();
+
+        std::fs::write(path_a.join("01_CLIENTS/a.md"), "---\ntitle: A\n---\nVault A Content").unwrap();
+        std::fs::write(path_b.join("01_CLIENTS/b.md"), "---\ntitle: B\n---\nVault B Content").unwrap();
+
+        index_vault_search(path_a).unwrap();
+        index_vault_search(path_b).unwrap();
+
+        // Load both into memory cache
+        let _ = search_vault(path_a, SearchQuery { term: Some("Vault".into()), ..Default::default() }).unwrap();
+        let _ = search_vault(path_b, SearchQuery { term: Some("Vault".into()), ..Default::default() }).unwrap();
+
+        let reads_b_before = get_search_index_disk_read_count_for_vault(path_b);
+
+        // Modify and re-index vault A
+        std::fs::write(path_a.join("01_CLIENTS/a2.md"), "---\ntitle: A2\n---\nVault A New Content").unwrap();
+        index_vault_search(path_a).unwrap();
+
+        // Query vault B again: MUST NOT reload from disk
+        let _ = search_vault(path_b, SearchQuery { term: Some("Vault".into()), ..Default::default() }).unwrap();
+        let reads_b_after = get_search_index_disk_read_count_for_vault(path_b);
+        assert_eq!(reads_b_after, reads_b_before, "Modifica di vault A non deve ricaricare vault B");
+    }
+}
+
+/// Lookup a search document record in the in-memory index cache
+pub fn get_search_document(path: &Path, document_id: &str) -> Result<SearchDocumentRecord, String> {
+    let r = root(path)?;
+    let data = load_with_vault_path(&child(&r, "00_SYSTEM")?, Some(path))?
+        .filter(|d| d.version == VERSION)
+        .ok_or("Search index missing or outdated")?;
+    data.documents.values().find(|d| d.id == document_id).cloned().ok_or_else(|| "Unknown document".into())
 }
 
 /// Read the exact indexed bytes or extracted text through a pinned directory, for AI/MCP citations.
