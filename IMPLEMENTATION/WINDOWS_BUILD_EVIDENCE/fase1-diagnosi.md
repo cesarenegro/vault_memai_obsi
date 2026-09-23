@@ -3,7 +3,7 @@
 **Data**: 2026-09-23  
 **Branch**: `windows-build`  
 **Commit di inizio Fase 1**: `865676dddc8daceabf6a87f91ff4109f8e0bfcee` (`865676d`)  
-**Stato**: Approvato (con rettifiche a ipotesi tecniche, esempio illustrativo e chiarimento conteggi 2.548/126)  
+**Stato**: Concluso (con rettifiche a ipotesi tecniche, esempio illustrativo e chiarimento conteggi 2.548/126)  
 **Vault analizzato**: `E:\VAULT WIN TEST DEV` (esattamente **376 documenti**, **23.482 passaggi** totali nel catalogo, **23.482 passaggi** nella cache semantica `EMBEDDINGS_CACHE.json`)  
 **Hardware & Runtime**: Windows 11, `llama-server.exe` PID 26580 su porta attiva `62021`, modello `bge-m3-Q8_0.gguf`  
 
@@ -35,7 +35,7 @@ Tutti i file toccati in questa fase e la relativa natura:
 ## 2. Dichiarazioni Obbligatorie (Timeout OpenAI, Log e Numeri del Vault)
 
 ### Numeri del Vault E:\VAULT WIN TEST DEV (Spiegazione Dettagliata)
-- Nel precedente testo del rapporto markdown era comparsa l'indicazione errata di "2548 passaggi, 126 documenti": quei numeri erano stati riportati a mano in modo errato. Da ora in avanti tutti i numeri e le tabelle vengono estratti esclusivamente dall'output grezzo verificato di [`fase1-diagnose-output.txt`](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase1-diagnose-output.txt).
+- Nel precedente testo del rapporto markdown era comparsa l'indicazione errata di "2548 passaggi, 126 documenti": i valori 2.548 e 126 erano stati riportati a mano in modo errato; da ora le tabelle vengono solo da fase1-diagnose-output.txt.
 - **Misurazione reale e verificata a codice**:
   - `E:\VAULT WIN TEST DEV\00_SYSTEM\VAULT_CATALOG.json` (`catalog.rs:180`): caricato da `catalog::load_catalog()`, contiene esattamente **376 documenti** e **23.482 passaggi** totali (`cat.documents.values().map(|d| d.passages.len()).sum()`).
   - `E:\VAULT WIN TEST DEV\00_SYSTEM\EMBEDDINGS_CACHE.json` (`embeddings.rs:331`): caricato da `embeddings::load_embeddings_cache()`, contiene esattamente **23.482 vettori** (`cache.entries.len()`).
@@ -272,11 +272,11 @@ La discrepanza tra la somma delle fasi e il totale era causata da due cicli di v
    Per ciascuna delle 10 fonti selezionate, `ask()` chiamava `read_source()`, la quale invoca:
    - `crate::catalog::get_document(path, id)`: ricarica e deserializza da disco per intero il file `VAULT_CATALOG.json` (**31,6 Megabyte**, 376 documenti e 23.482 passaggi) per 10 volte consecutive.
    - `search::read_indexed_document()`: rilegge da disco il file markdown o raw source e ricalcola da zero l'impronta crittografica SHA-256 su disco per 10 volte.
-   *Ipotesi ricavata dai totali, da confermare con la prova di Cesare: **~3.600 – 3.900 ms**.*
+   *Ipotesi ricavata dai totali; misura reale di Cesare (2026-09-23T03:04:35Z): verify_pre 10.013 ms, verify_post 10.082 ms.*
 2. **Verifica integrità post-chiamata** (`ai.rs:658-661`):
    Subito dopo aver ricevuto la risposta da OpenAI, `ask()` rieseguiva esattamente lo stesso ciclo su tutte le 10 fonti per verificare che nessun documento fosse stato modificato durante la chiamata HTTP di OpenAI.
    Ricaricava e deserializzava da disco `VAULT_CATALOG.json` (31,6 MB) per altre 10 volte consecutive, e ricalcolava lo SHA-256 dei 10 file per la seconda volta.
-   *Ipotesi ricavata dai totali, da confermare con la prova di Cesare: **~3.600 – 3.900 ms**.*
+   *Ipotesi ricavata dai totali; misura reale di Cesare (2026-09-23T03:04:35Z): verify_pre 10.013 ms, verify_post 10.082 ms.*
 3. **Payload & Parsing** (`ai.rs`):
    Costruzione client HTTPS, serializzazione JSON della richiesta e parsing della risposta JSON: **~40 – 80 ms**.
 
@@ -294,7 +294,7 @@ Il ciclo di vita completo di una richiesta comprende due passaggi asincroni dist
    - Prima che la domanda venga inviata a OpenAI, l'app seleziona le fonti pertinenti.
    - `select_with_port_timed()` esegue la ricerca ibrida: `index_cache` (65 ms) + `embed` (80–630 ms) + `search` (1.000–1.800 ms).
    - Poi esegue il ciclo di valutazione dei primi candidati (da 10 a 20 documenti) con `read_source()` ed estrazione dei passaggi: ciascuna lettura deserializza `VAULT_CATALOG.json` da 31,6 MB per estrarre `locator` e `revision`.
-   - Questa fase preliminare di sola anteprima dura (ipotesi ricavata dai totali, da confermare con la prova di Cesare) **tra 7.000 ms e 12.000 ms**.
+   - Questa fase preliminare di sola anteprima: misura reale di Cesare: 11.932 ms (2026-09-23T03:04:35Z).
    - Solo al termine della preview il backend genera il `ticket` e lo restituisce al frontend React.
 2. **Fase 2: Passaggio Anteprima -> Invio (`handoff`, righe 126-138)**:
    - Ricevuto il ticket di preview, il componente React aggiorna lo stato visivo (`setPreviewData`), imposta il messaggio *"Generazione della risposta con OpenAI…"* e invia il comando Tauri `ai_ask(ticket, uiElapsedSoFar)`.
@@ -393,7 +393,40 @@ per consentire all'utente di verificare all'istante la sincronia con il proprio 
 
 In accordo con le regole del Piano di Lavoro:
 1. Questa documentazione aggiornata e la patch finale della Fase 1 sono completate.
-2. La Task List è allineata con l'ordine ufficiale delle fasi (`1 → 2 → 3 → 4 → 5 → H1 → H2 → 6 → 6A → 7`).
-3. Nessuna modifica di codice per la Fase 2 verrà applicata prima dell'approvazione formale di Cesare.
+2. La Task List è allineata con l'ordine ufficiale delle fasi (`1 → 2L → 2 → 3 → 4 → 5 → H1 → H2 → 6 → 6A → 7`).
+
+---
+
+## 8. Riscontro Tempi Misurati Dopo la FASE 2L
+
+Grazie all'eliminazione delle riletture ridondanti di catalogo e indice da disco e all'uso della memoria condivisa conforme a NTFS:
+- **Prima della FASE 2L** (2026-09-23T03:04:35Z): **36.412 ms** (tempo UI 36.412 ms; doc_read 10.047 ms, verify_pre 10.013 ms, verify_post 10.082 ms, OpenAI 4.364 ms).
+- **Dopo FASE 2L — Prima misurazione** (2026-09-23T03:44:27Z): **5.330 ms**.
+- **Dopo FASE 2L — Prova di conferma di Cesare** (build ottimizzata, 2026-09-23T05:17:57Z): **4.978 ms** (doc_read 14 ms, verify_pre 12 ms, verify_post 11 ms, OpenAI 3.769 ms).
+Abbattimento complessivo del tempo di risposta: da **36,4 secondi** a **4,9 secondi** (riduzione dell'86%).
+
+---
+
+## 9. Proposta Tecnica sul Limite del Catalogo (32 MB)
+
+### Stato Attuale e Rischio di Saturazione
+La funzione `load_catalog_arc` rifiuta file di catalogo oltre $33.554.432$ byte (32 MB).
+Nel vault di sviluppo e test `E:\VAULT WIN TEST DEV`, il file `00_SYSTEM\VAULT_CATALOG.json` misura attualmente **31.605.698 byte** (pari al **94% del limite massimo**).
+Con una media di circa 84 KB per documento, l'aggiunta di circa 20-25 documenti comporterebbe il superamento della soglia dei 32 MB.
+
+### Cosa vede l'utente oggi quando il limite viene superato
+1. `load_catalog_arc` in `catalog.rs` restituisce `Err("Catalog file exceeds 32 MB".into())`.
+2. L'errore risale attraverso l'IPC Tauri (`ai_preview`, `catalog_sync`).
+3. Nel frontend React compare un banner o toast rosso di errore bloccante (`"Catalog file exceeds 32 MB"`).
+4. La funzione "Chiedi al Vault" fallisce all'anteprima impedendo l'emissione del ticket di interrogazione: il vault diventa totalmente inutilizzabile per l'assistente AI finché non vengono cancellati file per riportare il catalogo sotto soglia.
+
+### Analisi delle Opzioni Proposte
+
+| Opzione | Pro | Contro | Memoria RAM & Dettagli Tecnici |
+| :--- | :--- | :--- | :--- |
+| **1. Alzare il limite** (es. a 64 MB o 128 MB) | • Modifica immediata a una singola costante in `catalog.rs`<br>• Piena retrocompatibilità con tutti i vault esistenti<br>• Zero migrazioni di dati o script di conversione | • Dilaziona la saturazione senza rimuovere la causa radice della duplicazione dei dati<br>• A 128 MB la deserializzazione iniziale del JSON richiede circa 400-600 ms | **Memoria usata**: in memoria Rust, la struct `VaultCatalog` deserializzata occupa circa 1,5x-2x la dimensione su disco. Con 31,6 MB su disco l'`Arc<VaultCatalog>` in memoria occupa circa **~50 MB di RAM**; a 64 MB occuperà **~95-105 MB**; a 128 MB occuperà **~200 MB**. Con la cache `Arc` condivisa, l'occupazione in RAM è singola per ciascun vault. |
+| **2. Ridurre la dimensione del catalogo** (non ripetere il testo dei passaggi già presente nell'indice) | • **Soluzione raccomandata**: nel catalogo, ciascuno dei 23.482 passaggi memorizza l'intero testo (`text`, fino a 1.200 car.). Rimuovendo `text` da `DocumentPassage` e mantenendo solo `passage_id`, `locator`, `char_count`, `sha256`, la dimensione del file scende da **31,6 MB a ~2,8 – 3,5 MB** (-90%)<br>• Il limite dei 32 MB permetterebbe oltre 4.000 documenti invece di 380 | • Richiede di estrarre il testo dei passaggi su richiesta direttamente dai file sorgente o dall'indice quando serve (come già fa `read_indexed_document`)<br>• Richiede gestione della retrocompatibilità per cataloghi esistenti | **Memoria usata**: l'intero catalogo deserializzato occuperà **meno di 5 MB di RAM**, rendendo istantaneo il caricamento e azzerando definitivamente il problema della dimensione. |
+| **3. Formato binario** (Bincode / Memmap, equivalente al Piano B della cache semantica) | • Deserializzazione sub-millisecondo anche per file di centinaia di megabyte<br>• Zero-copy memory mapping da disco | • File binario proprietario non ispezionabile né modificabile in chiaro da Obsidian o dall'utente tramite editor di testo<br>• Maggiore complessità di serializzazione e versionamento | **Memoria usata**: occupazione minima in RAM grazie al memory-mapping del kernel OS. |
+
 
 
