@@ -998,7 +998,7 @@ pub async fn hybrid_search_vault_with_port_filtered<F>(
 where
     F: Fn(&search::SearchDocumentRecord) -> bool,
 {
-    let (items, degraded, _) = hybrid_search_vault_with_port_filtered_timed(
+    let (items, degraded, _, _) = hybrid_search_vault_with_port_filtered_timed(
         vault_path,
         q,
         api_key,
@@ -1017,7 +1017,7 @@ pub async fn hybrid_search_vault_with_port_filtered_timed<F>(
     use_semantic: bool,
     active_port: Option<u16>,
     filter_fn: Option<F>,
-) -> Result<(Vec<SearchResultItem>, bool, SearchPhaseTimings), String>
+) -> Result<(Vec<SearchResultItem>, bool, SearchPhaseTimings, Option<Vec<f32>>), String>
 where
     F: Fn(&search::SearchDocumentRecord) -> bool,
 {
@@ -1030,7 +1030,7 @@ where
         let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
         timings.t_index_cache_ms = t_idx;
         timings.t_search_ms = t_search;
-        return Ok((items, false, timings));
+        return Ok((items, false, timings, None));
     }
 
     let term = match &q.term {
@@ -1039,7 +1039,7 @@ where
             let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
             timings.t_index_cache_ms = t_idx;
             timings.t_search_ms = t_search;
-            return Ok((items, false, timings));
+            return Ok((items, false, timings, None));
         }
     };
 
@@ -1048,7 +1048,7 @@ where
         let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
         timings.t_index_cache_ms = t_idx;
         timings.t_search_ms = t_search;
-        return Ok((items, true, timings));
+        return Ok((items, true, timings, None));
     }
 
     // Mandatory security validation: local provider strictly forbids non-loopback endpoints
@@ -1060,7 +1060,7 @@ where
             let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, None, false, filter_fn.as_ref()).await?;
             timings.t_index_cache_ms = t_idx;
             timings.t_search_ms = t_search;
-            return Ok((items, is_local, timings));
+            return Ok((items, is_local, timings, None));
         }
     };
 
@@ -1123,10 +1123,49 @@ where
         degraded = true;
     }
 
-    let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, query_vector, true, filter_fn.as_ref()).await?;
+    let (items, t_idx, t_search) = hybrid_search_vault_with_vector_filtered_timed(vault_path, q, query_vector.clone(), true, filter_fn.as_ref()).await?;
     timings.t_index_cache_ms = t_idx;
     timings.t_search_ms = t_search;
-    Ok((items, degraded, timings))
+    Ok((items, degraded, timings, query_vector))
+}
+
+pub async fn compute_query_vector_for_prompt(
+    vault_path: &Path,
+    term: &str,
+    api_key: Option<String>,
+    active_port: Option<u16>,
+) -> Option<Vec<f32>> {
+    let prov_rep = get_embeddings_provider(vault_path, active_port.unwrap_or(0));
+    let endpoint = prov_rep.endpoint.clone();
+    if endpoint.is_empty() || (prov_rep.provider == "local" && active_port.unwrap_or(0) == 0) {
+        return None;
+    }
+    let cache = load_embeddings_cache(vault_path).ok()?;
+    let is_loopback = is_loopback_endpoint(&endpoint).unwrap_or(false);
+    let effective_key = if is_loopback {
+        api_key.filter(|k| !k.trim().is_empty())
+    } else {
+        match api_key.as_deref() {
+            Some(k) if !k.trim().is_empty() => Some(k.to_string()),
+            _ => crate::keychain::load().ok().flatten().filter(|k| !k.trim().is_empty()),
+        }
+    };
+    if is_loopback {
+        let key_str = effective_key.as_deref().unwrap_or("");
+        if let Ok(u) = reqwest::Url::parse(&endpoint) {
+            let port = u.port().unwrap_or(0);
+            if port == 0 || !crate::llama::check_health(port) {
+                return None;
+            }
+            fetch_openai_embeddings_with_endpoint(&endpoint, key_str, &cache.model, &[term.to_string()]).await.ok()?.pop()
+        } else {
+            None
+        }
+    } else if let Some(key) = effective_key.as_deref().filter(|k| !k.is_empty()) {
+        fetch_openai_embeddings_with_endpoint(&endpoint, key, &cache.model, &[term.to_string()]).await.ok()?.pop()
+    } else {
+        None
+    }
 }
 
 pub async fn hybrid_search_vault_with_vector(

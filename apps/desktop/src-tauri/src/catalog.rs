@@ -1123,12 +1123,23 @@ pub fn list_documents(vault_path: &Path, options: CatalogListOptions) -> Result<
 /// Get a single document record by ID
 pub fn get_document(vault_path: &Path, document_id: &str) -> Result<DocumentRecord, String> {
     let catalog = load_catalog_arc(vault_path)?;
-    catalog
-        .documents
-        .get(document_id)
-        .cloned()
-        .ok_or_else(|| format!("Documento non trovato: {}", document_id))
+    if let Some(doc) = catalog.documents.get(document_id) {
+        return Ok(doc.clone());
+    }
+    let norm = document_id.replace('\\', "/");
+    for doc in catalog.documents.values() {
+        if doc.document_id == document_id
+            || doc.original_path == norm
+            || doc.original_path == document_id
+            || doc.aliases.iter().any(|a| a == document_id || a == &norm)
+            || doc.original_path.strip_suffix(".md").unwrap_or(&doc.original_path).ends_with(&norm)
+        {
+            return Ok(doc.clone());
+        }
+    }
+    Err(format!("Documento non trovato: {}", document_id))
 }
+
 
 /// Direct unpaged lookup of a document by relative path or alias
 pub fn get_document_by_path(vault_path: &Path, rel_path: &str) -> Result<DocumentRecord, String> {

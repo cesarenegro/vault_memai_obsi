@@ -23,12 +23,15 @@ Il Passo 3b-2 (Punti C & D di `fase3b-piano.md`) ha introdotto:
 | Domanda | Metrica | Passo 3b-1 (Misurato da Cesare) | Passo 3b-2 (Implementato) | Variazione |
 |---|---|---|---|---|
 | **#1 BNXT**<br>`"Cosa è il progetto BNXT?"` | Fonti inviate<br>Testo contenuti<br>Payload JSON<br>Passaggi per doc | 8 fonti<br>9.201 byte<br>~12.800 byte<br>1 passaggio fisso | 8 fonti<br>**15.361 byte**<br>**20.908 byte**<br>**1–2 passaggi (15 tot)** | +67% testo<br>Budget rispettato<br>Risolto audit baseline |
-| **#2 ARKAI**<br>`"ARKAI è un'azienda o un marchio? Di cosa si occupa?"` | Fonti inviate<br>Testo contenuti<br>Payload JSON<br>Passaggi per doc | 10 fonti (6 Arkai)<br>10.749 byte<br>~14.500 byte<br>1 passaggio fisso | 7 fonti (7 Arkai!)<br>**17.422 byte**<br>**22.965 byte**<br>**2–3 passaggi (17 tot)** | +62% testo<br>100% pertinenza<br>Focalizzazione massima |
+| **#2 ARKAI**<br>`"ARKAI è un'azienda o un marchio? Di cosa si occupa?"` | Fonti inviate<br>Testo contenuti<br>Payload JSON<br>Passaggi per doc | 10 fonti (6 Arkai)<br>10.749 byte<br>~14.500 byte<br>1 passaggio fisso | 7 fonti (5 su 12 canoniche Arkai FASE 1)<br>**17.422 byte**<br>**22.965 byte**<br>**2–3 passaggi (17 tot)** | +62% testo<br>5 doc canonici FASE 1 + 2 fonti grezze<br>Voto Cesare: 8 (prima 7) |
 | **#3 SCENA**<br>`"Cos'è il progetto SCENA e quali app comprende?"` | Fonti inviate<br>Testo contenuti<br>Payload JSON<br>Passaggi per doc | 10 fonti<br>11.541 byte<br>~15.200 byte<br>1 passaggio fisso | 8 fonti<br>**16.857 byte**<br>**22.695 byte**<br>**1–2 passaggi (15 tot)** | +46% testo<br>Budget rispettato<br>Copertura completa |
 
 ---
 
 ## 3. Dettaglio Fonti e Passaggi Estratti nel Passo 3b-2
+
+> [!NOTE]
+> **Criterio di Valutazione Qualitativa**: Per Cesare il criterio cardine e decisivo di approvazione è sempre il **voto qualitativo della risposta** (passato da 7 a 8 per Arkai, da 7-8 per BNXT con corretta identificazione del CRM di abbigliamento motociclistico, e 9 per Scena); il mero conteggio numerico dei documenti è un indicatore di supporto e contesto.
 
 ### Domanda #1: "Cosa è il progetto BNXT?"
 - **Budget utilizzato**: 15.361 byte (testo) / 20.908 byte (payload serializzato JSON su 24.000 max)
@@ -49,17 +52,17 @@ Il Passo 3b-2 (Punti C & D di `fase3b-piano.md`) ha introdotto:
 
 ### Domanda #2: "ARKAI è un'azienda o un marchio? Di cosa si occupa?"
 - **Budget utilizzato**: 17.422 byte (testo) / 22.965 byte (payload serializzato JSON su 24.000 max)
-- **Fonti selezionate**: 7 fonti (tutte e 7 primarie di Arkai)
+- **Fonti selezionate**: 7 fonti (di cui **5 documenti canonici Arkai della FASE 1** su 12, e 2 documenti grezzi collegati da LORA/investitori: i file `98de5fb0` e `410dbac0` non appartengono ai 12 canonici)
 
 | ID | Percorso Relativo | Byte | Passaggi | Localizzatore Concatenato | Note di Contesto |
 |---|---|---|---|---|---|
-| `[S1]` | `20_RAW_SOURCES/540e37c638dd2045-2026-03-31 - Presentazione investitori Arkai.archi.md` | 3.151 B | 3 passaggi | Paragrafi 1-4, Paragrafo 4, Paragrafo 8 | Presentazione societaria e architettura |
-| `[S2]` | `20_RAW_SOURCES/0bc92121a0ad46f7-2026-03-26 - Arkai.Dev expansion into Italian market.md` | 2.805 B | 3 passaggi | Paragrafi 1-4, Paragrafo 33, Paragrafo 34 | Espansione societaria Arkai.Dev Italia |
-| `[S3]` | `20_RAW_SOURCES/aa217245dfd86aeb-nuovo LLM AI Arkai.md` | 2.871 B | 3 passaggi | Paragrafi 1-10, Paragrafo 74, Paragrafo 75 | Modello LLM AI proprietario Arkai |
-| `[S4]` | `20_RAW_SOURCES/98de5fb0d0fac3db-2026-04-12 - AI model development with LORA for floorplan recognition.md` | 2.250 B | 2 passaggi | Paragrafo 339, Paragrafo 340 | Modelli AI e riconoscimento planimetrie |
-| `[S5]` | `20_RAW_SOURCES/f4fd17ebca858f34-ARKAI.DEV Software Developer.md` | 2.058 B | 2 passaggi | Paragrafi 1-8, Paragrafi 9-19 | Struttura team software e ruoli |
-| `[S6]` | `20_RAW_SOURCES/410dbac00663f59c-2026-06-03 - Analisi Excel investitori e outreach personalizzate.md` | 2.232 B | 2 passaggi | Paragrafi 188-193, Paragrafi 387-388 | Investitori e posizionamento di mercato |
-| `[S7]` | `20_RAW_SOURCES/86e2218e7ed905f1-ARKAI FLOORPLAN NICE.md` | 2.055 B | 2 passaggi | Paragrafi 505-507, Paragrafi 508-513 | Specifiche floorplan e prodotto |
+| `[S1]` | `20_RAW_SOURCES/540e37c638dd2045-2026-03-31 - Presentazione investitori Arkai.archi.md` | 3.151 B | 3 passaggi | Paragrafi 1-4, Paragrafo 4, Paragrafo 8 | Presentazione societaria e architettura (Canonico FASE 1) |
+| `[S2]` | `20_RAW_SOURCES/0bc92121a0ad46f7-2026-03-26 - Arkai.Dev expansion into Italian market.md` | 2.805 B | 3 passaggi | Paragrafi 1-4, Paragrafo 33, Paragrafo 34 | Espansione societaria Arkai.Dev Italia (Canonico FASE 1) |
+| `[S3]` | `20_RAW_SOURCES/aa217245dfd86aeb-nuovo LLM AI Arkai.md` | 2.871 B | 3 passaggi | Paragrafi 1-10, Paragrafo 74, Paragrafo 75 | Modello LLM AI proprietario Arkai (Canonico FASE 1) |
+| `[S4]` | `20_RAW_SOURCES/98de5fb0d0fac3db-2026-04-12 - AI model development with LORA for floorplan recognition.md` | 2.250 B | 2 passaggi | Paragrafo 339, Paragrafo 340 | Modelli AI e riconoscimento planimetrie (Fonte grezza LORA) |
+| `[S5]` | `20_RAW_SOURCES/f4fd17ebca858f34-ARKAI.DEV Software Developer.md` | 2.058 B | 2 passaggi | Paragrafi 1-8, Paragrafi 9-19 | Struttura team software e ruoli (Canonico FASE 1) |
+| `[S6]` | `20_RAW_SOURCES/410dbac00663f59c-2026-06-03 - Analisi Excel investitori e outreach personalizzate.md` | 2.232 B | 2 passaggi | Paragrafi 188-193, Paragrafi 387-388 | Investitori e outreach (Fonte grezza) |
+| `[S7]` | `20_RAW_SOURCES/86e2218e7ed905f1-ARKAI FLOORPLAN NICE.md` | 2.055 B | 2 passaggi | Paragrafi 505-507, Paragrafi 508-513 | Specifiche floorplan e prodotto (Canonico FASE 1) |
 
 ---
 

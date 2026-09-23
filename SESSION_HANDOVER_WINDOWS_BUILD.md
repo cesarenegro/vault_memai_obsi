@@ -93,6 +93,36 @@ Conformemente alle direttive e alle due correzioni deliberate da Cesare:
 
 ---
 
+### FASE 3 — PASSO 3b-2b COMPLETATO (Rettifica ARKAI, Zero Sovrapposizioni, Zero Asterischi, Prestazioni)
+
+1. **Rettifica Rapporto ARKAI**:
+   - In `fase3b2-diagnosi.md` e nel presente handover rettificato il conteggio: delle 7 fonti selezionate per ARKAI, **5 appartengono alle 12 canoniche ARKAI FASE 1** (`aa217245`, `86e2218e`, `0bc92121`, `2ff8773d`, `b3f8add2`). Le altre 2 (`540e37c6` e `7254c793`) sono comunque strettamente pertinenti al dominio Arkai (presentazione investitori Arkai.archi e analisi icona Arkai Stager).
+   - **Criterio Primario di Valutazione**: Viene formalizzato che il criterio primario di approvazione per Cesare è il suo **voto qualitativo** (8 per Arkai, 7-8 per BNXT, 9 per Scena), mentre il conteggio dei documenti è solo un indicatore di supporto.
+
+2. **Esclusione Categorica Passaggi Sovrapposti (`locators_overlap`)**:
+   - Implementate le funzioni `parse_locator_range(loc)` e `locators_overlap(loc1, loc2)`: riconoscono e confrontano intervalli di paragrafi, pagine e slide (`s1.max(s2) <= e1.min(e2)`).
+   - In `extract_multi_passages_for_document`, qualunque passaggio candidato che si sovrappone a quelli già selezionati viene scartato.
+   - Il bonus di vicinanza posizionale è stato ridotto a mero tie-breaker ($\le 3.0$ solo per distanze $\le 3$), e viene valutata la similarità semantica con cosine similarity sui vettori in cache (+35.0 * sim).
+   - **Risultato della diagnostica reale**: ZERO passaggi sovrapposti su tutte le query BNXT, ARKAI e SCENA (es. S1 di BNXT include ora solo `Paragrafi 1-13, Paragrafi 52-68` distinti).
+
+3. **Abbattimento Tempi di Elaborazione**:
+   - Token pre-normalizzati una sola volta (`norm_rare_tokens_lower`) e ricerca stringa zero-allocazioni (`contains_case_insensitive_fast`).
+   - Caricamento unico di catalogo e cache vettoriale in memoria.
+   - Tempi su BNXT abbattuti drasticamente: `doc_read` sceso a **21 ms** e `passage_extract` a **3 ms**!
+
+4. **Divieto Assoluto di Asterischi ("non voglio asterischi")**:
+   - **Regola 7 di sistema nel prompt OpenAI (`ai.rs:request_body`)**:
+     *"NON USARE MAI ASTERISCHI (* o **): Non utilizzare mai asterischi per elenchi, grassetti, corsivi o enfasi. Per gli elenchi puntati usa esclusivamente trattini semplici ('- '). Scrivi il testo in prosa piana e pulita, senza marcatori markdown di tipo asterisco."*
+   - **Sanitizzazione sistematica in `sanitize_answer_prose` (`ai.rs`)**:
+     Converte elenchi puntati `* ` in `- `, rimuove marcatori di grassetto `**testo**` -> `testo`, corsivo `*testo*` -> `testo`, ed elimina categoricamente qualsiasi eventuale asterisco residuo `*`.
+   - Test unitario dedicato superato: `test_sanitize_answer_prose_removes_asterisks`.
+
+5. **Test Suite Completa Passo 3b-2b**:
+   - Parallel: **160 passed; 0 failed** (142 lib + 18 main). Log: [cargo-test-fase-3b2b-parallel.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-3b2b-parallel.log).
+   - Single-threaded: **160 passed; 0 failed** (142 lib + 18 main). Log: [cargo-test-fase-3b2b-single.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-3b2b-single.log).
+
+---
+
 ## 2. Stato Attuale e Prossimo Passo (STOP per Prova di Cesare)
 
 - **STATO ATTUALE**: **STOP OPERATIVO BLOCCANTE**.
@@ -102,4 +132,5 @@ Conformemente alle direttive e alle due correzioni deliberate da Cesare:
   1. *"Cosa è il progetto BNXT?"*
   2. *"ARKAI è un'azienda o un marchio? Di cosa si occupa?"*
   3. *"Cos'è il progetto SCENA e quali app comprende?"*
-- **Verifica nel Registro**: `C:\Users\user\.limen-vault\ask_timing.log` registrerà il volume incrementato di byte/passaggi inviati e le fonti citate.
+- **Verifica nel Registro**: `C:\Users\user\.limen-vault\ask_timing.log` registrerà il volume di byte, le fonti citate e la prosa pulita priva di asterischi.
+
