@@ -1117,10 +1117,12 @@ Regole fondamentali da seguire con la massima precisione:\n\
 /// Rimuove qualsiasi riferimento a identificativi di fonte come `[S1]`, `[S2]`,
 /// `[S1, S2]`, `[S1, S2, S5]`, `[S1; S2]`, `[S1][S2]`, `(S1)`, ecc.
 /// Rimuove categoricamente qualsiasi asterisco ('*'):
+/// Pulisce il testo della risposta generata dal provider:
+/// - Rimuove citazioni sintetiche residue nel corpo ([S1], (S1), ecc.);
 /// - Converte elenchi puntati con asterisco in trattini (`* punto` -> `- punto`);
 /// - Rimuove marcatori di grassetto markdown (`**testo**` -> `testo`);
 /// - Rimuove marcatori di corsivo con asterischi (`*testo*` -> `testo`);
-/// - Elimina ogni eventuale asterisco residuo.
+/// - Preserva gli asterischi letterali/matematici (es. `2*3`).
 /// Normalizza spazi multipli e punteggiatura orfana residua.
 pub fn sanitize_answer_prose(text: &str) -> String {
     use std::sync::OnceLock;
@@ -1142,7 +1144,7 @@ pub fn sanitize_answer_prose(text: &str) -> String {
         regex::Regex::new(r"\*\*([^*]+)\*\*").unwrap()
     });
     let re_italic = RE_ITALIC.get_or_init(|| {
-        regex::Regex::new(r"\*([^*\n]+)\*").unwrap()
+        regex::Regex::new(r"\*([^\s*](?:[^*\n]*?[^\s*])?)\*").unwrap()
     });
     let re_space_punct = RE_SPACE_PUNCT.get_or_init(|| {
         regex::Regex::new(r"[ \t]+([.,;:!?])").unwrap()
@@ -1171,11 +1173,8 @@ pub fn sanitize_answer_prose(text: &str) -> String {
         step3 = re_italic.replace_all(&step3, "$1").to_string();
     }
 
-    // 5. Rimuove categoricamente qualsiasi asterisco residuo
-    let step5 = step3.replace('*', "");
-
-    // 6. Rimuove parentesi o quadre rimaste vuote
-    let no_empty_parens = re_empty_parens.replace_all(&step5, "");
+    // 5. Rimuove parentesi o quadre rimaste vuote (senza cancellare asterischi letterali come 2*3)
+    let no_empty_parens = re_empty_parens.replace_all(&step3, "");
 
     let lines: Vec<String> = no_empty_parens
         .lines()
@@ -2492,9 +2491,10 @@ mod tests {
       let expected4 = "Riepilogo:\n- Punto 1: dettaglio tecnico\n- Punto 2: testo standard";
       assert_eq!(sanitize_answer_prose(input4), expected4);
 
-      // Test asterischi isolati o sparsi
-      let input5 = "Formula: 10 * 5 = 50 con nota * integrativa.";
-      assert_eq!(sanitize_answer_prose(input5), "Formula: 10 5 = 50 con nota integrativa.");
+      // Test asterischi aritmetici o letterali (es. "2*3" resta invariato)
+      let input5 = "Calcolo: 2*3 = 6 e formula 10 * 5 = 50.";
+      assert_eq!(sanitize_answer_prose(input5), "Calcolo: 2*3 = 6 e formula 10 * 5 = 50.");
+      assert_eq!(sanitize_answer_prose("2*3"), "2*3");
   }
 
   #[test]

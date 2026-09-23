@@ -1,158 +1,55 @@
-   Compiling limen-vault v0.3.0 (E:\Projects\vault_memai_obsi\apps\desktop\src-tauri)
-warning: unused import: `cap_std::fs::MetadataExt`
-   --> src\search.rs:450:9
-    |
-450 |     use cap_std::fs::MetadataExt;
-    |         ^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
-
-warning: unused import: `ffi::CString`
-  --> src\snapshots.rs:12:5
-   |
-12 |     ffi::CString,
-   |     ^^^^^^^^^^^^
-
-warning: unused imports: `Command`, `Duration`, `Instant`, and `Stdio`
- --> src\extraction.rs:6:15
-  |
-6 |     process::{Command, Stdio},
-  |               ^^^^^^^  ^^^^^
-7 |     time::{Duration, Instant},
-  |            ^^^^^^^^  ^^^^^^^
-
-warning: unused variable: `lock`
-   --> src\sync.rs:484:17
-    |
-484 |             let lock = sys.open_with(".m7-lock", &lock_opts).map_err(err)?;
-    |                 ^^^^ help: if this is intentional, prefix it with an underscore: `_lock`
-    |
-    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
-
-warning: variable does not need to be mutable
-  --> src\extraction.rs:17:13
-   |
-17 |         let mut builder = std::fs::DirBuilder::new();
-   |             ----^^^^^^^
-   |             |
-   |             help: remove this `mut`
-   |
-   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
-
-warning: field `vault_path` is never read
-   --> src\search.rs:178:5
-    |
-177 | struct SearchIndexCacheEntry {
-    |        --------------------- field in this struct
-178 |     vault_path: std::path::PathBuf,
-    |     ^^^^^^^^^^
-    |
-    = note: `SearchIndexCacheEntry` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
-    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
-
-warning: function `load` is never used
-   --> src\search.rs:216:4
-    |
-216 | fn load(system: &Dir) -> Result<Option<std::sync::Arc<SearchIndexData>>, String> {
-    |    ^^^^
-
-warning: constant `SERVICE` is never used
-   --> src\tunnel.rs:177:7
-    |
-177 | const SERVICE:&str="dev.arkai.limenvault.tunnel";
-    |       ^^^^^^^
-
-warning: struct `Scratch` is never constructed
-  --> src\extraction.rs:13:8
-   |
-13 | struct Scratch(std::path::PathBuf);
-   |        ^^^^^^^
-
-warning: associated function `new` is never used
-  --> src\extraction.rs:15:8
-   |
-14 | impl Scratch {
-   | ------------ associated function in this implementation
-15 |     fn new() -> Result<Self, String> {
-   |        ^^^
-
-warning: field `vault_path` is never read
-  --> src\catalog.rs:29:5
-   |
-28 | struct CatalogCacheEntry {
-   |        ----------------- field in this struct
-29 |     vault_path: std::path::PathBuf,
-   |     ^^^^^^^^^^
-   |
-   = note: `CatalogCacheEntry` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
-
-warning: field `vault_path` is never read
-  --> src\embeddings.rs:31:5
-   |
-30 | struct EmbeddingsCacheEntry {
-   |        -------------------- field in this struct
-31 |     vault_path: PathBuf,
-   |     ^^^^^^^^^^
-   |
-   = note: `EmbeddingsCacheEntry` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
-
-warning: `limen-vault` (lib) generated 12 warnings (run `cargo fix --lib -p limen-vault` to apply 5 suggestions)
-    Finished `release` profile [optimized] target(s) in 38.93s
-     Running `target\release\diagnose_fase3b2b.exe`
 ================================================================================
 DIAGNOSTICA COMPARATIVA PASSO 3b-2b — PRESTAZIONI E ZERO SOVRAPPOSIZIONI
 Vault: "E:\\VAULT WIN TEST DEV"
 ================================================================================
-Servizio locale bge-m3 rilevato attivo sulla porta 8080
+Servizio locale llama-server (bge-m3, 1024d) VERIFICATO e attivo sulla porta 53361
 
 --------------------------------------------------------------------------------
 DOMANDA #1: "Cosa è il progetto BNXT?"
 --------------------------------------------------------------------------------
-Fonti selezionate da select_with_port_timed: 10 fonti
-Volume testo contenuti (s.content): 15959 byte (su 24.000 byte budget)
-Volume payload serializzato JSON: 22857 byte
-Tempi Preview: totale: 3581 ms | search: 987 ms | doc_read: 21 ms | passage_extract: 3 ms
+Fonti selezionate da select_with_port_timed: 8 fonti
+Volume testo contenuti (s.content): 14459 byte (su 24.000 byte budget)
+Volume payload serializzato JSON: 19998 byte
+Tempi Preview: totale: 57060 ms | search: 26175 ms | doc_read: 30 ms | passage_extract: 48 ms
 
 Dettaglio Fonti Inviate:
 ID    | Percorso Relativo                                                      | Byte     | Passaggi  | Localizzatore                 
 ------+------------------------------------------------------------------------+----------+-----------+-------------------------------
 [S1  ] | 20_RAW_SOURCES/32f2a4081d13410e-BNXT CRM.md                            |   2439 B |       2 p | Paragrafi 1-13, Paragrafi 52-68
 [S2  ] | 20_RAW_SOURCES/a86061ba2701d614-_Progetto - BNXT AUDIT VICENZA.md      |    555 B |       1 p | Paragrafi 1-8
-[S3  ] | 20_RAW_SOURCES/957b10627e45aa38-_INDICE.md                             |   1104 B |       1 p | Paragrafi 1-2
-[S4  ] | 20_RAW_SOURCES/5a54c2ce2f581cf2-verifica-walkthrough-ux-email-whatsapp-2026-09-10.md |   1742 B |       2 p | Paragrafi 1-3, Paragrafo 4
-[S5  ] | 20_RAW_SOURCES/1e755ab82023a095-verifica-impl-plan-ux-email-whatsapp-2026-09-10.md |   1463 B |       2 p | Paragrafi 1-3, Paragrafo 4
-[S6  ] | 20_RAW_SOURCES/abaef2b48c6e5b70-audit-localizzazione-EN-baseline-6f2f2b8.md |   2394 B |       3 p | Paragrafi 1-4, Paragrafo 5, Paragrafo 6
-[S7  ] | 20_RAW_SOURCES/cb67beeece396682-2026-02-13 - Redesign UI home page macOS app.md |   2335 B |       2 p | Paragrafi 18-28, Paragrafi 29-42
-[S8  ] | 20_RAW_SOURCES/c428eb949fc0201f-areas - packaging-in-italy.md          |   1205 B |       1 p | Paragrafi 1-3
-[S9  ] | 20_RAW_SOURCES/966ef623917316c7-2026-02-16 - Creazione file Localizable.strings per iOS.md |   2381 B |       2 p | Paragrafi 13-25, Paragrafo 133
-[S10 ] | 20_RAW_SOURCES/e86a061e0f5becb0-_Progetto - Progetto senza nome 19-08-2026.md |    341 B |       1 p | Paragrafi 1-8
+[S3  ] | 20_RAW_SOURCES/d70f1c7b1d36f912-STEFANO APP.md                         |   2350 B |       2 p | Paragrafi 224-234, Paragrafi 235-243
+[S4  ] | 20_RAW_SOURCES/4245a51312c5c1f2-2026-04-07 - Workflow app iPhone nativa con Xcode.md |   2412 B |       2 p | Paragrafi 6-11, Paragrafi 12-25
+[S5  ] | 20_RAW_SOURCES/5a54c2ce2f581cf2-verifica-walkthrough-ux-email-whatsapp-2026-09-10.md |   1742 B |       2 p | Paragrafi 1-3, Paragrafo 4
+[S6  ] | 20_RAW_SOURCES/957b10627e45aa38-_INDICE.md                             |   1104 B |       1 p | Paragrafi 1-2
+[S7  ] | 20_RAW_SOURCES/abaef2b48c6e5b70-audit-localizzazione-EN-baseline-6f2f2b8.md |   2394 B |       3 p | Paragrafi 1-4, Paragrafo 5, Paragrafo 6
+[S8  ] | 20_RAW_SOURCES/1e755ab82023a095-verifica-impl-plan-ux-email-whatsapp-2026-09-10.md |   1463 B |       2 p | Paragrafi 1-3, Paragrafo 4
 
 --------------------------------------------------------------------------------
 DOMANDA #2: "ARKAI è un'azienda o un marchio? Di cosa si occupa?"
 --------------------------------------------------------------------------------
 Fonti selezionate da select_with_port_timed: 7 fonti
-Volume testo contenuti (s.content): 17168 byte (su 24.000 byte budget)
-Volume payload serializzato JSON: 22734 byte
-Tempi Preview: totale: 1850 ms | search: 1063 ms | doc_read: 401 ms | passage_extract: 182 ms
+Volume testo contenuti (s.content): 17671 byte (su 24.000 byte budget)
+Volume payload serializzato JSON: 23230 byte
+Tempi Preview: totale: 26158 ms | search: 15170 ms | doc_read: 2018 ms | passage_extract: 8265 ms
 
 Dettaglio Fonti Inviate:
 ID    | Percorso Relativo                                                      | Byte     | Passaggi  | Localizzatore                 
 ------+------------------------------------------------------------------------+----------+-----------+-------------------------------
-[S1  ] | 20_RAW_SOURCES/aa217245dfd86aeb-nuovo LLM AI Arkai.md                  |   2871 B |       3 p | Paragrafi 1-10, Paragrafo 74, Paragrafo 75
-[S2  ] | 20_RAW_SOURCES/86e2218e7ed905f1-ARKAI FLOORPLAN NICE.md                |   3235 B |       3 p | Paragrafi 505-507, Paragrafi 508-513, Paragrafi 614-621
-[S3  ] | 20_RAW_SOURCES/0bc92121a0ad46f7-2026-03-26 - Arkai.Dev expansion into Italian market.md |   2805 B |       3 p | Paragrafi 1-4, Paragrafo 33, Paragrafo 34
-[S4  ] | 20_RAW_SOURCES/2ff8773ddf4229e7-2026-04-06 - Building ARKAI free image generation web app.md |   1876 B |       2 p | Paragrafi 22-25, Paragrafo 26
-[S5  ] | 20_RAW_SOURCES/b3f8add2793aa3b3-CONTRATTI ARKAI ITALIA.md              |   2130 B |       2 p | Paragrafi 1-16, Paragrafi 17-26
-[S6  ] | 20_RAW_SOURCES/540e37c638dd2045-2026-03-31 - Presentazione investitori Arkai.archi.md |   2258 B |       2 p | Paragrafi 1-4, Paragrafo 5
-[S7  ] | 20_RAW_SOURCES/7254c793dd89f65d-2026-03-19 - Analisi icona app ARKAI STAGER.md |   1993 B |       2 p | Paragrafi 1-4, Paragrafi 9-15
+[S1  ] | 20_RAW_SOURCES/540e37c638dd2045-2026-03-31 - Presentazione investitori Arkai.archi.md |   3400 B |       3 p | Paragrafi 1-4, Paragrafo 5, Paragrafo 8
+[S2  ] | 20_RAW_SOURCES/0bc92121a0ad46f7-2026-03-26 - Arkai.Dev expansion into Italian market.md |   2805 B |       3 p | Paragrafi 1-4, Paragrafo 33, Paragrafo 34
+[S3  ] | 20_RAW_SOURCES/aa217245dfd86aeb-nuovo LLM AI Arkai.md                  |   2871 B |       3 p | Paragrafi 1-10, Paragrafo 74, Paragrafo 75
+[S4  ] | 20_RAW_SOURCES/98de5fb0d0fac3db-2026-04-12 - AI model development with LORA for floorplan recognition.md |   2250 B |       2 p | Paragrafo 339, Paragrafo 340
+[S5  ] | 20_RAW_SOURCES/f4fd17ebca858f34-ARKAI.DEV Software Developer.md        |   2058 B |       2 p | Paragrafi 1-8, Paragrafi 9-19
+[S6  ] | 20_RAW_SOURCES/410dbac00663f59c-2026-06-03 - Analisi Excel investitori e outreach personalizzate.md |   2232 B |       2 p | Paragrafi 188-193, Paragrafi 387-388
+[S7  ] | 20_RAW_SOURCES/86e2218e7ed905f1-ARKAI FLOORPLAN NICE.md                |   2055 B |       2 p | Paragrafi 505-507, Paragrafi 508-513
 
 --------------------------------------------------------------------------------
 DOMANDA #3: "Cos'è il progetto SCENA e quali app comprende?"
 --------------------------------------------------------------------------------
-Fonti selezionate da select_with_port_timed: 9 fonti
-Volume testo contenuti (s.content): 17650 byte (su 24.000 byte budget)
-Volume payload serializzato JSON: 23976 byte
-Tempi Preview: totale: 2761 ms | search: 2220 ms | doc_read: 215 ms | passage_extract: 192 ms
+Fonti selezionate da select_with_port_timed: 8 fonti
+Volume testo contenuti (s.content): 16854 byte (su 24.000 byte budget)
+Volume payload serializzato JSON: 22683 byte
+Tempi Preview: totale: 51118 ms | search: 42119 ms | doc_read: 1686 ms | passage_extract: 6479 ms
 
 Dettaglio Fonti Inviate:
 ID    | Percorso Relativo                                                      | Byte     | Passaggi  | Localizzatore                 
@@ -160,14 +57,12 @@ ID    | Percorso Relativo                                                      |
 [S1  ] | 20_RAW_SOURCES/1779683df5b44f8e-2026-04-29 - Presentazione funzionalità sistema SCENA.md |   2386 B |       2 p | Paragrafi 19-24, Paragrafi 29-35
 [S2  ] | 20_RAW_SOURCES/823633921a2bb46a-areas - scena.md                       |   1117 B |       1 p | Paragrafi 1-3
 [S3  ] | 20_RAW_SOURCES/ada7498f19b363c3-STUDIO CINEMA APP & DASHBOARD.md       |   2392 B |       2 p | Paragrafi 1405-1436, Paragrafi 1437-1454
-[S4  ] | 20_RAW_SOURCES/ea956cc6b97028d8-2026-04-29 - Manuale cliente gestionale e PWA.md |   1892 B |       2 p | Paragrafi 1-4, Paragrafi 21-26
-[S5  ] | 20_RAW_SOURCES/d70f1c7b1d36f912-STEFANO APP.md                         |   2278 B |       2 p | Paragrafi 1-12, Paragrafi 13-21
-[S6  ] | 20_RAW_SOURCES/309bcc15297b9408-2026-05-20 - Esecuzione di codice senza autorizzazione.md |   2324 B |       2 p | Paragrafo 430, Paragrafo 436
-[S7  ] | 20_RAW_SOURCES/c4f02a78e4b17fdc-2026-06-01 - Audit sincronizzazione dati tra gestionale e app iOS.md |   2317 B |       2 p | Paragrafi 114-118, Paragrafo 179
-[S8  ] | 20_RAW_SOURCES/2a3b60ff71c42897-Coordinating updates across three integrated projects.md |   2386 B |       2 p | Paragrafi 98-103, Paragrafi 139-146
-[S9  ] | 20_RAW_SOURCES/90d5c3efb5ed5930-_Progetto - LIMEN VAULT.md             |    558 B |       1 p | Paragrafi 1-8
+[S4  ] | 20_RAW_SOURCES/c4f02a78e4b17fdc-2026-06-01 - Audit sincronizzazione dati tra gestionale e app iOS.md |   2317 B |       2 p | Paragrafi 114-118, Paragrafo 179
+[S5  ] | 20_RAW_SOURCES/2a3b60ff71c42897-Coordinating updates across three integrated projects.md |   2143 B |       2 p | Paragrafi 98-103, Paragrafi 111-116
+[S6  ] | 20_RAW_SOURCES/c7fdf167bf695434-2026-05-16 - Manuale operativo minimalista e leggibile.md |   1785 B |       2 p | Paragrafi 1-4, Paragrafo 24
+[S7  ] | 20_RAW_SOURCES/18ce369ee3bd81fe-2026-06-02 - Migrazione chat a project.md |   2449 B |       2 p | Paragrafi 1147-1150, Paragrafo 1851
+[S8  ] | 20_RAW_SOURCES/7e90bad5776b00a0-Autorizzazioni CRM Packaging in Italy.md |   2265 B |       2 p | Paragrafi 1-12, Paragrafi 13-18
 
 ================================================================================
 DIAGNOSTICA PASSO 3b-2b COMPLETATA CON SUCCESSO
 ================================================================================
-

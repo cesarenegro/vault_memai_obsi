@@ -15,20 +15,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Vault: {:?}", vault_dir);
     println!("================================================================================");
 
-    // Rileva eventuale servizio locale bge-m3 già avviato
-    let candidate_ports = [59722, 62021, 8080];
-    let mut active_port: Option<u16> = None;
-    for &p in &candidate_ports {
-        if llama::check_health(p) {
-            println!("Servizio locale bge-m3 rilevato attivo sulla porta {}", p);
-            active_port = Some(p);
-            break;
+    // Rileva la porta del servizio llama-server dell'app verificando modello bge-m3 e dimensioni 1024d.
+    // Non usa porte cablate. Fallisce immediatamente con errore chiaro se il servizio non è verificato.
+    let active_port = match llama::find_active_bge_m3_service() {
+        Ok(port) => {
+            println!("Servizio locale llama-server (bge-m3, 1024d) VERIFICATO e attivo sulla porta {}", port);
+            port
         }
-    }
-
-    if active_port.is_none() {
-        println!("Nessun server locale rilevato; select_with_port_timed eseguirà ricerca ibrida/lessicale con fallback.");
-    }
+        Err(err) => {
+            eprintln!("ERRORE FATALE: Nessun servizio llama-server verificato (bge-m3, 1024d) attivo!");
+            eprintln!("Dettaglio errore: {}", err);
+            eprintln!("La diagnosi richiede il servizio dell'app attivo. Avviare l'app LIMEN Vault o impostare LIMEN_LOCAL_PORT.");
+            return Err(err.into());
+        }
+    };
 
     let queries = [
         "Cosa è il progetto BNXT?",
@@ -52,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             tags: None,
         };
 
-        match ai::select_with_port_timed(vault_dir, &options, active_port).await {
+        match ai::select_with_port_timed(vault_dir, &options, Some(active_port)).await {
             Ok((sources, timings)) => {
                 let total_content_bytes: usize = sources.iter().map(|s| s.content.len()).sum();
                 let serialized_bytes = serde_json::to_string(&sources).map(|s| s.len()).unwrap_or(0);

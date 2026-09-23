@@ -629,7 +629,7 @@ export default function App() {
                 {vaultLoaded && vaultName ? vaultName : 'Nessun Vault'}
               </div>
               <div style={{ fontSize: 10, color: 'var(--limen-text-muted)', fontWeight: 500 }}>
-                LIMEN Vault v4 {isTauriEnv ? '(app nativa)' : '(anteprima browser)'}
+                LIMEN Vault v3 {isTauriEnv ? '(app nativa)' : '(anteprima browser)'}
               </div>
             </div>
           </div>
@@ -936,7 +936,7 @@ export default function App() {
               }}
             >
               <div style={{ fontSize: 24, fontWeight: 700, margin: '0 0 8px 0', letterSpacing: '-0.02em' }}>
-              Benvenuto in LIMEN Vault v4
+              Benvenuto in LIMEN Vault v3
             </div>
             <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.6, margin: '0 0 28px 0' }}>
               Un ambiente di conoscenza locale e indipendente. Crea un nuovo Vault compatibile con Obsidian oppure apri la cartella di un Vault esistente.

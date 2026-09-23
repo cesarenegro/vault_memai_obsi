@@ -554,6 +554,11 @@ pub fn pid_file_path() -> Option<PathBuf> {
     get_models_dir().ok().map(|d| d.join("llama-server.pid"))
 }
 
+/// File con la porta dell'ultimo llama-server avviato da questa app.
+pub fn port_file_path() -> Option<PathBuf> {
+    get_models_dir().ok().map(|d| d.join("llama-server.port"))
+}
+
 fn write_pid_file(path: &Path, pid: u32) {
     let _ = fs::write(path, pid.to_string());
 }
@@ -561,6 +566,111 @@ fn write_pid_file(path: &Path, pid: u32) {
 fn read_pid_file(path: &Path) -> Option<u32> {
     fs::read_to_string(path).ok()?.trim().parse::<u32>().ok()
 }
+
+fn write_port_file(path: &Path, port: u16) {
+    let _ = fs::write(path, port.to_string());
+}
+
+fn read_port_file(path: &Path) -> Option<u16> {
+    fs::read_to_string(path).ok()?.trim().parse::<u16>().ok()
+}
+
+/// Trova la porta TCP su cui un dato PID è in ascolto.
+pub fn find_port_for_pid(pid: u32) -> Option<u16> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        let out = std::process::Command::new("powershell")
+            .args(["-NoProfile", "-Command", &format!("Get-NetTCPConnection -OwningProcess {} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort", pid)])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .ok()?;
+        let text = String::from_utf8_lossy(&out.stdout);
+        text.lines().find_map(|l| l.trim().parse::<u16>().ok())
+    }
+    #[cfg(unix)]
+    {
+        let out = std::process::Command::new("lsof")
+            .args(["-Pan", "-p", &pid.to_string(), "-iTCP", "-sTCP:LISTEN"])
+            .output()
+            .ok()?;
+        let text = String::from_utf8_lossy(&out.stdout);
+        for line in text.lines() {
+            if let Some(idx) = line.rfind(':') {
+                let rest = &line[idx + 1..];
+                if let Some(port_str) = rest.split_whitespace().next() {
+                    if let Ok(port) = port_str.parse::<u16>() {
+                        return Some(port);
+                    }
+                }
+            }
+        }
+        None
+    }
+}
+
+/// Rileva la porta del servizio llama-server attivo verificando modello (bge-m3) e dimensioni (1024).
+/// Cerca nell'ordine:
+/// 1. Variabile d'ambiente LIMEN_LOCAL_PORT
+/// 2. File llama-server.port
+/// 3. File llama-server.pid (interrogando la porta del PID)
+/// 4. Processi llama-server attivi sul sistema
+pub fn find_active_bge_m3_service() -> Result<u16, String> {
+    // 1. Variabile d'ambiente
+    if let Ok(env_val) = std::env::var("LIMEN_LOCAL_PORT") {
+        if let Ok(env_port) = env_val.trim().parse::<u16>() {
+            if check_health(env_port) && verify_dimensions(env_port).is_ok() {
+                return Ok(env_port);
+            }
+        }
+    }
+
+    // 2. File llama-server.port
+    if let Some(p_path) = port_file_path() {
+        if let Some(port) = read_port_file(&p_path) {
+            if check_health(port) && verify_dimensions(port).is_ok() {
+                return Ok(port);
+            }
+        }
+    }
+
+    // 3. File llama-server.pid
+    if let Some(p_path) = pid_file_path() {
+        if let Some(pid) = read_pid_file(&p_path) {
+            if let Some(port) = find_port_for_pid(pid) {
+                if check_health(port) && verify_dimensions(port).is_ok() {
+                    return Ok(port);
+                }
+            }
+        }
+    }
+
+    // 4. Processi llama-server attivi sul sistema
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        let out = std::process::Command::new("powershell")
+            .args(["-NoProfile", "-Command", "Get-Process -Name 'llama-server' -ErrorAction SilentlyContinue | ForEach-Object { $p = $_.Id; Get-NetTCPConnection -OwningProcess $p -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort }"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .ok();
+        if let Some(o) = out {
+            let text = String::from_utf8_lossy(&o.stdout);
+            for line in text.lines() {
+                if let Ok(port) = line.trim().parse::<u16>() {
+                    if check_health(port) && verify_dimensions(port).is_ok() {
+                        return Ok(port);
+                    }
+                }
+            }
+        }
+    }
+
+    Err("Nessun servizio locale llama-server con modello bge-m3 (1024d) trovato attivo.".to_string())
+}
+
 
 /// Decisione pura: orfano = genitore launchd (ppid 1) e riga di comando di un llama-server in modalita' embedding.
 pub fn is_orphan_llama_server(ppid: i32, command: &str) -> bool {
@@ -778,6 +888,9 @@ fn stop_child(s: &mut RunningState) {
     if let Some(p) = pid_file_path() {
         let _ = fs::remove_file(p);
     }
+    if let Some(p) = port_file_path() {
+        let _ = fs::remove_file(p);
+    }
     s.port = 0;
 }
 
@@ -897,6 +1010,9 @@ impl LlamaServerState {
 
         if let Some(p) = pid_file_path() {
             write_pid_file(&p, child.id());
+        }
+        if let Some(p) = port_file_path() {
+            write_port_file(&p, port);
         }
         s.child = Some(child);
         s.port = port;

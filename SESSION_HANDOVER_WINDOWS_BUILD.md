@@ -95,9 +95,11 @@ Conformemente alle direttive e alle due correzioni deliberate da Cesare:
 
 ### FASE 3 — PASSO 3b-2b COMPLETATO (Rettifica ARKAI, Zero Sovrapposizioni, Zero Asterischi, Prestazioni)
 
-1. **Rettifica Rapporto ARKAI**:
-   - In `fase3b2-diagnosi.md` e nel presente handover rettificato il conteggio: delle 7 fonti selezionate per ARKAI, **5 appartengono alle 12 canoniche ARKAI FASE 1** (`aa217245`, `86e2218e`, `0bc92121`, `2ff8773d`, `b3f8add2`). Le altre 2 (`540e37c6` e `7254c793`) sono comunque strettamente pertinenti al dominio Arkai (presentazione investitori Arkai.archi e analisi icona Arkai Stager).
-   - **Criterio Primario di Valutazione**: Viene formalizzato che il criterio primario di approvazione per Cesare è il suo **voto qualitativo** (8 per Arkai, 7-8 per BNXT, 9 per Scena), mentre il conteggio dei documenti è solo un indicatore di supporto.
+1. **Rettifica Rapporto ARKAI (dal registro reale dell'app ask_timing.log)**:
+   - Delle 7 fonti selezionate e inviate nell'app per la domanda ARKAI (registro di Cesare ore 10:48, 11:02 e 12:04 UTC), **5 appartengono alle 12 canoniche ARKAI FASE 1**: `540e37c638dd2045`, `0bc92121a0ad46f7`, `aa217245dfd86aeb`, `f4fd17ebca858f34`, `86e2218e7ed905f1`.
+   - Le restanti 2 fonti sono file grezzi correlati nel vault con menzione del dominio: `98de5fb0d0fac3db` e `410dbac00663f59c`.
+   - Le 4 fonti citate nella risposta dell'app (voto 9) sono state: `540e37c638dd2045`, `0bc92121a0ad46f7`, `f4fd17ebca858f34` e `410dbac00663f59c`.
+   - **Criterio Primario di Valutazione**: Viene confermato che il criterio primario di approvazione per Cesare è il suo **voto qualitativo** (9 per Arkai, 9 per BNXT, 9 per Scena), con zero passaggi sovrapposti e rispetto del budget.
 
 2. **Esclusione Categorica Passaggi Sovrapposti (`locators_overlap`)**:
    - Implementate le funzioni `parse_locator_range(loc)` e `locators_overlap(loc1, loc2)`: riconoscono e confrontano intervalli di paragrafi, pagine e slide (`s1.max(s2) <= e1.min(e2)`).
@@ -123,14 +125,47 @@ Conformemente alle direttive e alle due correzioni deliberate da Cesare:
 
 ---
 
-## 2. Stato Attuale e Prossimo Passo (STOP per Prova di Cesare)
+### FASE 3 — CHIUSA SULLA QUALITÀ (VOTI 9 - 9 - 9) ED APPROVATA DA CESARE
+
+- **Prova di Cesare post 3b-2b (registro `C:\Users\user\.limen-vault\ask_timing.log`, 23/09/2026 12:03-12:05 UTC)**:
+  - **BNXT**: **Voto 9** (5 fonti citate tra 8 inviate, 14.459 byte, Preview 1.119 ms, totale 6.965 ms, OpenAI 5.846 ms).
+  - **ARKAI**: **Voto 9** (4 fonti citate tra 7 inviate, 17.671 byte, Preview 2.131 ms, totale 8.048 ms, OpenAI 5.917 ms).
+  - **SCENA**: **Voto 9** (3 fonti citate tra 8 inviate, 16.854 byte, Preview 2.624 ms, totale 11.772 ms, OpenAI 9.048 ms).
+  - **Zero passaggi sovrapposti**: conformità verificata al 100%.
+  - **Tempi di risposta**: OpenAI rappresenta il 70-80% del tempo totale (5,8 - 9,0 s su 7,0 - 11,8 s).
+  - **Qualità**: FASE 3 ufficialmente **APPROVATA**.
+
+---
+
+### CORREZIONI FINALI PASSO 3b-2c
+
+1. **Diagnosi su Servizio Verificato (`llama::find_active_bge_m3_service`)**:
+   - `diagnose_fase3b2b.rs` eliminata la ricerca su porte fisse (59722, 62021, 8080).
+   - Accertato che sulla porta 8080 ascoltavano i processi Docker Desktop / WSL (`com.docker.backend.exe` PID 39604, `wslrelay.exe` PID 31948).
+   - Implementata in `llama.rs` la funzione `find_active_bge_m3_service()`, che cerca su `LIMEN_LOCAL_PORT`, file `llama-server.port`, `llama-server.pid`, o processi `llama-server` attivi, convalidando obbligatoriamente salute e dimensioni vettoriali a 1024d su `POST /v1/embeddings` (modello `bge-m3`). Se non verificato, fallisce immediatamente con errore bloccante.
+   - Diagnostica rieseguita con successo su servizio verificato porta 53361: le fonti estratte coincidono perfettamente con quelle dell'app di Cesare (8 fonti BNXT, 7 fonti ARKAI, 8 fonti SCENA).
+
+2. **Pulizia Asterischi e Preservazione Asterischi Aritmetici (`sanitize_answer_prose`)**:
+   - Eliminata la rimozione indiscriminata di `*` (`step3.replace('*', "")`).
+   - Mantenuta la pulizia puntuale dei marcatori di formattazione markdown: `**testo**` -> `testo`, `*testo*` -> `testo`, `* ` a inizio riga -> `- `.
+   - Espressioni matematiche e letterali come `"2*3"` o `"10 * 5 = 50"` restano intatte.
+   - Test unitari passati: `test_sanitize_answer_prose_removes_asterisks` valida sia la rimozione dei marcatori sia `assert_eq!(sanitize_answer_prose("2*3"), "2*3")`.
+
+3. **Ripristino Modifiche Non Dichiarate**:
+   - Ripristinato `productName: "LIMEN Vault v3"`, `version: "0.3.0"`, `title: "LIMEN Vault v3"` in `tauri.conf.json`.
+   - Ripristinati i comandi di build da npm a pnpm (`beforeDevCommand: "pnpm dev"`, `beforeBuildCommand: "pnpm build"`).
+   - Ripristinato il branding a `LIMEN Vault v3` in `App.tsx`.
+
+4. **Piano FASE 4 Predisposto (senza codice)**:
+   - Documento creato in `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase4-piano.md` con Task List dettagliata conforme alla regola di progetto `.agents/AGENTS.md`.
+
+---
+
+## 2. Stato Attuale e Consegna
 
 - **STATO ATTUALE**: **STOP OPERATIVO BLOCCANTE**.
-- **Binario Release Ottimizzato**: `apps/desktop/src-tauri/target/release/limen-vault.exe` compilato e aggiornato.
+- **Patch completa**: `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-3b2c.patch`.
 - **ZERO chiamate OpenAI** effettuate dall'assistente.
-- **PROSSIMO PASSO**: Prova live nell'app desktop condotta da **Cesare** sulle tre domande di validazione con `gpt-4o`:
-  1. *"Cosa è il progetto BNXT?"*
-  2. *"ARKAI è un'azienda o un marchio? Di cosa si occupa?"*
-  3. *"Cos'è il progetto SCENA e quali app comprende?"*
-- **Verifica nel Registro**: `C:\Users\user\.limen-vault\ask_timing.log` registrerà il volume di byte, le fonti citate e la prosa pulita priva di asterischi.
+- **ZERO processi terminati** senza autorizzazione.
+
 
