@@ -2945,29 +2945,29 @@ mod tests {
 
     #[test]
     fn test_fase5h_codex_fixture_acceptance() {
+        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         // 1. Usa cartella target separata (NON target/release/llama-server.exe)
         let separate_target = tempfile::tempdir().unwrap();
-        let fixture_exe = separate_target.path().join(if cfg!(windows) { "llama-server.exe" } else { "llama-server" });
+        let fixture_exe = separate_target.path().join(if cfg!(windows) { "invalid_embeddings.exe" } else { "invalid_embeddings" });
 
-        let source_fixture = PathBuf::from("E:\\Projects\\vault_memai_obsi\\IMPLEMENTATION\\AUDIT_OPENAI\\evidenze\\session_1215\\invalid_embeddings.exe");
-        if !source_fixture.is_file() {
-            let source_rs = PathBuf::from("E:\\Projects\\vault_memai_obsi\\IMPLEMENTATION\\AUDIT_OPENAI\\evidenze\\session_1215\\invalid_embeddings.rs");
-            if source_rs.is_file() {
-                let status = std::process::Command::new("rustc")
-                    .arg(&source_rs)
-                    .arg("-o")
-                    .arg(&fixture_exe)
-                    .status();
-                assert!(status.map(|s| s.success()).unwrap_or(false), "Compilazione del fixture fallita");
-            } else {
-                return;
-            }
-        } else {
-            std::fs::copy(&source_fixture, &fixture_exe).expect("Copia del fixture nel target separato");
-        }
+        // N6: Fixture nel repository (tests/fixtures/invalid_embeddings.rs), compilazione obbligatoria in cartella temporanea
+        let source_candidates = [
+            PathBuf::from("tests/fixtures/invalid_embeddings.rs"),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/invalid_embeddings.rs"),
+        ];
+        let source_rs = source_candidates
+            .iter()
+            .find(|p| p.is_file())
+            .unwrap_or_else(|| panic!("Sorgente fixture tests/fixtures/invalid_embeddings.rs NON trovato nel repository!"));
 
-        // Imposta LLAMA_SERVER_PATH verso la cartella separata
-        std::env::set_var("LLAMA_SERVER_PATH", &fixture_exe);
+        let status = std::process::Command::new("rustc")
+            .arg(source_rs)
+            .arg("-o")
+            .arg(&fixture_exe)
+            .status()
+            .expect("Esecuzione rustc per compilazione invalid_embeddings.rs");
+        assert!(status.success(), "Compilazione del fixture invalid_embeddings.rs fallita con stato {:?}", status);
+        assert!(fixture_exe.is_file(), "L'eseguibile compilato del fixture deve esistere: {}", fixture_exe.display());
 
         // Verifica che target/release/llama-server.exe NON sia toccato
         let release_target = PathBuf::from("apps/desktop/src-tauri/target/release/llama-server.exe");
@@ -2976,14 +2976,11 @@ mod tests {
         let state = LlamaServerState::default();
         let start_time = Instant::now();
 
-        // Esegui l'avvio del fixture con il timeout dichiarato (5 secondi)
+        // Esegui l'avvio passando il percorso del fixture come parametro esplicito (senza variabile d'ambiente globale)
         let prep_timeout = Duration::from_secs(5);
-        let start_res = state.start_with_timeout(prep_timeout);
+        let start_res = state.start_with_custom_binary(&fixture_exe, prep_timeout);
 
         let elapsed = start_time.elapsed();
-
-        // Pulizia immediata della variabile d'ambiente
-        std::env::remove_var("LLAMA_SERVER_PATH");
 
         // Asserzioni fondamentali della prova di accettazione:
         // A) Deve terminare entro il tempo massimo dichiarato (senza bloccarsi)
