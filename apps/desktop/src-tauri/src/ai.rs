@@ -1300,6 +1300,73 @@ impl AiState {
     }
 }
 
+/// Guardia RAII di prodotto che garantisce il rilascio del ticket da `AiState.active`
+/// al termine del blocco/task, sia in caso di successo, di errore o di panic unwind.
+pub struct ActiveGuard {
+    pub state: Arc<AiState>,
+    pub ticket: String,
+}
+
+impl Drop for ActiveGuard {
+    fn drop(&mut self) {
+        self.state.finish(&self.ticket);
+    }
+}
+
+/// Esegue un worker di streaming con protezione `ActiveGuard` condivisa e cattura del panic:
+/// garantisce che il ticket sia rimosso da `active` anche in caso di crash o errore nel worker.
+pub async fn execute_guarded_ask_stream_worker<F, Fut>(
+    state: Arc<AiState>,
+    ticket: String,
+    worker: F,
+) -> Result<Value, String>
+where
+    F: FnOnce(Pending, Arc<AtomicBool>) -> Fut + Send + 'static,
+    Fut: std::future::Future<Output = Result<Value, String>> + Send + 'static,
+{
+    let (pending, cancel) = state.begin(&ticket)?;
+    let _guard = ActiveGuard {
+        state: state.clone(),
+        ticket: ticket.clone(),
+    };
+
+    let handle = tokio::spawn(async move {
+        worker(pending, cancel).await
+    });
+
+    match handle.await {
+        Ok(res) => res,
+        Err(join_err) => {
+            let panic_msg = if join_err.is_panic() {
+                "Panic durante l'esecuzione dello streaming in ai_ask_stream"
+            } else {
+                "Task di streaming interrotto inaspettatamente"
+            };
+            log_internal_error(&ticket, panic_msg);
+            Err("Errore interno durante la generazione della risposta, riprova".to_string())
+        }
+    }
+}
+
+/// Esegue un worker standard con protezione `ActiveGuard` e rilascio garantito alla fine.
+pub async fn execute_guarded_ask<F, Fut>(
+    state: Arc<AiState>,
+    ticket: String,
+    worker: F,
+) -> Result<Value, String>
+where
+    F: FnOnce(Pending, Arc<AtomicBool>) -> Fut + Send + 'static,
+    Fut: std::future::Future<Output = Result<Value, String>> + Send + 'static,
+{
+    let (pending, cancel) = state.begin(&ticket)?;
+    let _guard = ActiveGuard {
+        state: state.clone(),
+        ticket: ticket.clone(),
+    };
+
+    worker(pending, cancel).await
+}
+
 pub fn request_body(o: &Options, sources: &[Source]) -> Value {
     let source_ids: Vec<String> = (1..=sources.len()).map(|i| format!("S{}", i)).collect();
     let enum_values = if source_ids.is_empty() {
@@ -4618,8 +4685,8 @@ mod tests {
       std::env::remove_var("LIMEN_ASK_TIMING_LOG");
   }
 
-  #[test]
-  fn test_active_guard_releases_ticket_on_panic() {
+  #[tokio::test]
+  async fn test_active_guard_releases_ticket_on_worker_panic() {
       let state = Arc::new(AiState::default());
       let temp_dir = tempfile::tempdir().unwrap();
       {
@@ -4654,29 +4721,30 @@ mod tests {
               }],
               preview_timings: PreviewTimings::default(),
           };
-          p.insert("ticket-panic".into(), pending_obj);
+          p.insert("ticket-panic-test".into(), pending_obj.clone());
+          p.insert("ticket-following".into(), pending_obj);
       }
 
-      let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-          let (_pending, _cancel) = state.begin("ticket-panic").unwrap();
-          struct TestGuard {
-              state: Arc<AiState>,
-              ticket: String,
-          }
-          impl Drop for TestGuard {
-              fn drop(&mut self) {
-                  self.state.finish(&self.ticket);
-              }
-          }
-          let _guard = TestGuard {
-              state: state.clone(),
-              ticket: "ticket-panic".into(),
-          };
-          panic!("Simulated worker panic!");
-      }));
+      // Esegue la funzione di prodotto reale execute_guarded_ask_stream_worker con panic iniettato nel worker
+      let res = execute_guarded_ask_stream_worker(
+          state.clone(),
+          "ticket-panic-test".into(),
+          |_pending, _cancel| async move {
+              panic!("Simulated worker panic inside stream task!");
+          },
+      ).await;
 
-      // Dopo il panic, la mappa active deve essere vuota e non restare bloccata
-      assert!(state.active.lock().unwrap().is_empty(), "Active map must be empty after guard drop on panic");
+      // Il panic deve essere intercettato e trasformato in errore controllato
+      assert!(res.is_err(), "execute_guarded_ask_stream_worker must return Err on worker panic");
+      assert_eq!(res.unwrap_err(), "Errore interno durante la generazione della risposta, riprova");
+
+      // CRITICO: la mappa active DEVE essere stata svuotata da ActiveGuard di prodotto (non da guardie definite nel test!)
+      assert!(state.active.lock().unwrap().is_empty(), "Active map must be empty after panic in execute_guarded_ask_stream_worker");
+
+      // Una richiesta successiva deve poter partire senza essere rifiutata
+      let next_begin = state.begin("ticket-following");
+      assert!(next_begin.is_ok(), "Subsequent request must succeed after ticket release");
+      state.finish("ticket-following");
   }
 }
 #[cfg(test)]

@@ -519,18 +519,14 @@ async fn ai_ask(
     state: tauri::State<'_, std::sync::Arc<limen_vault::ai::AiState>>,
 ) -> Result<serde_json::Value, String> {
     let state = state.inner().clone();
-    let (pending, cancel) = state.begin(&ticket)?;
-    let key = tauri::async_runtime::spawn_blocking(limen_vault::keychain::load)
-        .await
-        .map_err(|_| "Keychain worker failed".to_string())
-        .and_then(|r| r)
-        .and_then(|k| k.ok_or("Configure API key in Settings".into()));
-    let result = match key {
-        Ok(key) => limen_vault::ai::ask(pending, key, cancel, ui_elapsed_ms).await,
-        Err(e) => Err(e),
-    };
-    state.finish(&ticket);
-    result
+    limen_vault::ai::execute_guarded_ask(state, ticket, move |pending, cancel| async move {
+        let key = tauri::async_runtime::spawn_blocking(limen_vault::keychain::load)
+            .await
+            .map_err(|_| "Keychain worker failed".to_string())
+            .and_then(|r| r)
+            .and_then(|k| k.ok_or("Configure API key in Settings".into()))?;
+        limen_vault::ai::ask(pending, key, cancel, ui_elapsed_ms).await
+    }).await
 }
 #[tauri::command]
 async fn ai_ask_stream(
@@ -540,18 +536,15 @@ async fn ai_ask_stream(
     state: tauri::State<'_, std::sync::Arc<limen_vault::ai::AiState>>,
 ) -> Result<serde_json::Value, String> {
     let state = state.inner().clone();
-    let (pending, cancel) = state.begin(&ticket)?;
-    let key = tauri::async_runtime::spawn_blocking(limen_vault::keychain::load)
-        .await
-        .map_err(|_| "Keychain worker failed".to_string())
-        .and_then(|r| r)
-        .and_then(|k| k.ok_or("Configure API key in Settings".into()));
-    let result = match key {
-        Ok(key) => limen_vault::ai::ask_stream(Some(window), ticket.clone(), pending, key, cancel, ui_elapsed_ms).await,
-        Err(e) => Err(e),
-    };
-    state.finish(&ticket);
-    result
+    let ticket_clone = ticket.clone();
+    limen_vault::ai::execute_guarded_ask_stream_worker(state, ticket, move |pending, cancel| async move {
+        let key = tauri::async_runtime::spawn_blocking(limen_vault::keychain::load)
+            .await
+            .map_err(|_| "Keychain worker failed".to_string())
+            .and_then(|r| r)
+            .and_then(|k| k.ok_or("Configure API key in Settings".into()))?;
+        limen_vault::ai::ask_stream(Some(window), ticket_clone, pending, key, cancel, ui_elapsed_ms).await
+    }).await
 }
 #[tauri::command]
 fn ai_cancel(ticket:String,state:tauri::State<'_,std::sync::Arc<limen_vault::ai::AiState>>){state.cancel(&ticket);}
