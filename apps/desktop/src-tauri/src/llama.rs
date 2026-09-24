@@ -1644,9 +1644,17 @@ impl LlamaServerState {
         // 6. Timeout di preparazione della domanda scaduto (Regola 2):
         // NON chiude il servizio in avvio! L'avvio prosegue in background.
         // Questa domanda ripiega sulla ricerca per parole con motivo visibile.
+        // Distinzione architetturale (D4): il PID qui estratto identifica il PROCESSO DI SERVIZIO
+        // (processo figlio locale o servizio esterno adottato), da non confondere con il PID dell'applicazione
+        // chiamante (app_pid). Restituire Some(pid) se noto consente a log_preview_timing_detailed
+        // di registrare service_pid corretto nel file di diagnostica anche durante la fase transitoria "in avvio".
+        let pid_opt = {
+            let guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+            guard.child.as_ref().map(|c| c.id()).or(guard.owned_pid).or(guard.adopted_pid)
+        };
         (
             None,
-            None,
+            pid_opt,
             false,
             "in avvio".to_string(),
             Some("Servizio locale in avvio: ripiego temporaneo sulla ricerca per parole per questa domanda.".to_string()),
@@ -3600,5 +3608,25 @@ mod tests {
         assert!(bin_res.is_some(), "Binary path must be found for current process");
         assert_eq!(status_count, 10);
         assert!(elapsed < Duration::from_millis(500), "status() non deve essere bloccato da get_binary_path: {:?}", elapsed);
+    }
+    #[test]
+    fn test_fase5i_bis_d4_starting_state_reports_service_pid_when_available() {
+        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let state = LlamaServerState::default();
+        let expected_service_pid = 54321;
+        {
+            let mut s = state.0.lock().unwrap();
+            s.starting = true;
+            s.owned_pid = Some(expected_service_pid);
+            s.port = 0; // non pronto
+        }
+
+        let (port, pid, is_ready, status, reason) =
+            state.get_or_adopt_or_start_service_with_timeout(Duration::from_millis(50));
+        assert!(!is_ready);
+        assert_eq!(status, "in avvio");
+        assert_eq!(port, None);
+        assert_eq!(pid, Some(expected_service_pid), "Il PID del processo di servizio deve essere riportato anche in stato in avvio");
+        assert!(reason.is_some());
     }
 }
