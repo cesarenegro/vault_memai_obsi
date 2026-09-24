@@ -49,6 +49,8 @@ struct RunningState {
     binary_path: Option<PathBuf>,
     last_error: Option<String>,
     crash_count: u32,
+    auto_start_failed: bool,
+    auto_start_failure_reason: Option<String>,
 }
 
 #[derive(Clone, Default)]
@@ -577,6 +579,73 @@ pub fn read_port_file(path: &Path) -> Option<u16> {
     fs::read_to_string(path).ok()?.trim().parse::<u16>().ok()
 }
 
+/// Timeout massimo vincolante per ciascun singolo comando esterno di scoperta/ispezione (PowerShell, pgrep, lsof).
+/// Evita qualsiasi hang indefinito su chiamate a processi di sistema operativo.
+pub const DISCOVERY_COMMAND_TIMEOUT: Duration = Duration::from_millis(2000);
+
+/// Timeout massimo complessivo per la fase di preparazione del servizio locale durante ai_preview (scoperta, adozione, eventuale avvio).
+/// Se il servizio non è pronto entro questo limite, la preparazione ripiega immediatamente e in modo trasparente
+/// sulla ricerca per sole parole chiave, indicando la causa in ask_timing.log e nell'interfaccia utente.
+pub const SERVICE_PREPARATION_TIMEOUT: Duration = Duration::from_secs(5);
+
+pub fn service_preparation_timeout() -> Duration {
+    if let Ok(val) = std::env::var("LIMEN_SERVICE_PREP_TIMEOUT_MS") {
+        if let Ok(ms) = val.trim().parse::<u64>() {
+            return Duration::from_millis(ms);
+        }
+    }
+    SERVICE_PREPARATION_TIMEOUT
+}
+
+/// Esegue un comando esterno con limite di tempo garantito, terminando il processo in caso di scadenza.
+pub fn run_command_with_timeout(
+    mut cmd: std::process::Command,
+    timeout: Duration,
+) -> Option<std::process::Output> {
+    let mut child = cmd
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .ok()?;
+
+    let t_start = Instant::now();
+    let poll_interval = Duration::from_millis(30);
+    while t_start.elapsed() < timeout {
+        match child.try_wait() {
+            Ok(Some(_status)) => {
+                return child.wait_with_output().ok();
+            }
+            Ok(None) => {
+                std::thread::sleep(poll_interval);
+            }
+            Err(_) => {
+                let _ = child.kill();
+                return None;
+            }
+        }
+    }
+
+    // Timeout scaduto: termina forzatamente il processo
+    let _ = child.kill();
+    #[cfg(windows)]
+    {
+        let pid = child.id();
+        unsafe {
+            let handle = windows_sys::Win32::System::Threading::OpenProcess(
+                windows_sys::Win32::System::Threading::PROCESS_TERMINATE,
+                0,
+                pid,
+            );
+            if !handle.is_null() {
+                windows_sys::Win32::System::Threading::TerminateProcess(handle, 1);
+                windows_sys::Win32::Foundation::CloseHandle(handle);
+            }
+        }
+    }
+    let _ = child.try_wait();
+    None
+}
+
 /// Verifica se un processo con il PID specificato è attualmente vivo nel sistema operativo.
 pub fn is_process_alive(pid: u32) -> bool {
     if pid == 0 {
@@ -586,12 +655,10 @@ pub fn is_process_alive(pid: u32) -> bool {
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
-        let out = std::process::Command::new("powershell")
-            .args(["-NoProfile", "-Command", &format!("Get-Process -Id {} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id", pid)])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-            .ok();
-        if let Some(o) = out {
+        let mut cmd = std::process::Command::new("powershell");
+        cmd.args(["-NoProfile", "-Command", &format!("Get-Process -Id {} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id", pid)])
+            .creation_flags(CREATE_NO_WINDOW);
+        if let Some(o) = run_command_with_timeout(cmd, DISCOVERY_COMMAND_TIMEOUT) {
             let s = String::from_utf8_lossy(&o.stdout);
             s.trim().parse::<u32>().ok() == Some(pid)
         } else {
@@ -676,20 +743,18 @@ pub fn find_port_for_pid(pid: u32) -> Option<u16> {
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
-        let out = std::process::Command::new("powershell")
-            .args(["-NoProfile", "-Command", &format!("Get-NetTCPConnection -OwningProcess {} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort", pid)])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-            .ok()?;
+        let mut cmd = std::process::Command::new("powershell");
+        cmd.args(["-NoProfile", "-Command", &format!("Get-NetTCPConnection -OwningProcess {} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort", pid)])
+            .creation_flags(CREATE_NO_WINDOW);
+        let out = run_command_with_timeout(cmd, DISCOVERY_COMMAND_TIMEOUT)?;
         let text = String::from_utf8_lossy(&out.stdout);
         text.lines().find_map(|l| l.trim().parse::<u16>().ok())
     }
     #[cfg(unix)]
     {
-        let out = std::process::Command::new("lsof")
-            .args(["-Pan", "-p", &pid.to_string(), "-iTCP", "-sTCP:LISTEN"])
-            .output()
-            .ok()?;
+        let mut cmd = std::process::Command::new("lsof");
+        cmd.args(["-Pan", "-p", &pid.to_string(), "-iTCP", "-sTCP:LISTEN"]);
+        let out = run_command_with_timeout(cmd, DISCOVERY_COMMAND_TIMEOUT)?;
         let text = String::from_utf8_lossy(&out.stdout);
         for line in text.lines() {
             if let Some(idx) = line.rfind(':') {
@@ -749,11 +814,10 @@ pub fn find_active_bge_m3_service_with_pid() -> Result<(u16, Option<u32>), Strin
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
-        let out = std::process::Command::new("powershell")
-            .args(["-NoProfile", "-Command", "Get-Process -Name 'llama-server' -ErrorAction SilentlyContinue | ForEach-Object { $p = $_.Id; Get-NetTCPConnection -OwningProcess $p -State Listen -ErrorAction SilentlyContinue | ForEach-Object { \"$p:$($_.LocalPort)\" } }"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-            .ok();
+        let mut cmd = std::process::Command::new("powershell");
+        cmd.args(["-NoProfile", "-Command", "Get-Process -Name 'llama-server' -ErrorAction SilentlyContinue | ForEach-Object { $p = $_.Id; Get-NetTCPConnection -OwningProcess $p -State Listen -ErrorAction SilentlyContinue | ForEach-Object { \"$p:$($_.LocalPort)\" } }"])
+            .creation_flags(CREATE_NO_WINDOW);
+        let out = run_command_with_timeout(cmd, DISCOVERY_COMMAND_TIMEOUT);
         if let Some(o) = out {
             let text = String::from_utf8_lossy(&o.stdout);
             for line in text.lines() {
@@ -770,10 +834,9 @@ pub fn find_active_bge_m3_service_with_pid() -> Result<(u16, Option<u32>), Strin
     }
     #[cfg(unix)]
     {
-        let out = std::process::Command::new("pgrep")
-            .arg("llama-server")
-            .output()
-            .ok();
+        let mut cmd = std::process::Command::new("pgrep");
+        cmd.arg("llama-server");
+        let out = run_command_with_timeout(cmd, DISCOVERY_COMMAND_TIMEOUT);
         if let Some(o) = out {
             let text = String::from_utf8_lossy(&o.stdout);
             for line in text.lines() {
@@ -805,10 +868,9 @@ pub fn is_orphan_llama_server(ppid: i32, command: &str) -> bool {
 fn process_parent_and_command(pid: u32) -> Option<(i32, String)> {
     #[cfg(unix)]
     {
-        let out = Command::new("/bin/ps")
-            .args(["-o", "ppid=,command=", "-p", &pid.to_string()])
-            .output()
-            .ok()?;
+        let mut cmd = Command::new("/bin/ps");
+        cmd.args(["-o", "ppid=,command=", "-p", &pid.to_string()]);
+        let out = run_command_with_timeout(cmd, DISCOVERY_COMMAND_TIMEOUT)?;
         if !out.status.success() {
             return None;
         }
@@ -823,11 +885,10 @@ fn process_parent_and_command(pid: u32) -> Option<(i32, String)> {
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
-        let out = Command::new("powershell")
-            .args(["-NoProfile", "-Command", &format!("Get-CimInstance Win32_Process -Filter 'ProcessId = {}' | Select-Object -ExpandProperty ParentProcessId", pid)])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-            .ok()?;
+        let mut cmd = Command::new("powershell");
+        cmd.args(["-NoProfile", "-Command", &format!("Get-CimInstance Win32_Process -Filter 'ProcessId = {}' | Select-Object -ExpandProperty ParentProcessId", pid)])
+            .creation_flags(CREATE_NO_WINDOW);
+        let out = run_command_with_timeout(cmd, DISCOVERY_COMMAND_TIMEOUT)?;
         if !out.status.success() {
             return None;
         }
@@ -1096,43 +1157,114 @@ impl LlamaServerState {
         s.last_error = None;
     }
 
+    pub fn reset_auto_start_failure(&self) {
+        let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        s.auto_start_failed = false;
+        s.auto_start_failure_reason = None;
+    }
+
+    pub fn is_auto_start_failed(&self) -> bool {
+        let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        s.auto_start_failed
+    }
+
     pub fn get_or_adopt_or_start_service(&self) -> (Option<u16>, Option<u32>, bool, Option<String>) {
+        let timeout = service_preparation_timeout();
+        self.get_or_adopt_or_start_service_with_timeout(timeout)
+    }
+
+    pub fn get_or_adopt_or_start_service_with_timeout(
+        &self,
+        timeout: Duration,
+    ) -> (Option<u16>, Option<u32>, bool, Option<String>) {
+        let t_start = Instant::now();
+
+        // 1. Servizio già attivo e pronto nell'istanza corrente
         let s = self.status();
         if s.healthy && s.port > 0 {
             return (Some(s.port), s.pid, true, None);
         }
 
-        match find_active_bge_m3_service_with_pid() {
-            Ok((port, pid)) => {
-                self.adopt_service(port, pid);
-                (Some(port), pid, true, None)
+        // 2. Controllo se l'avvio è già fallito in questa sessione (Regola c): risposta immediata senza retry
+        let (auto_start_previously_failed, prev_reason) = {
+            let guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+            (guard.auto_start_failed, guard.auto_start_failure_reason.clone())
+        };
+
+        if auto_start_previously_failed {
+            let reason = format!(
+                "Avvio automatico del servizio locale già fallito in questa sessione ({}): ripiego sulla ricerca per parole. Per riprovare, avvia il servizio dalle impostazioni o premi AVVIA SERVIZIO LOCALE.",
+                prev_reason.unwrap_or_else(|| "fallimento precedente".to_string())
+            );
+            return (None, None, false, Some(reason));
+        }
+
+        // 3. Scoperta servizio esterno (con comandi esterni a timeout limitato, Regola a)
+        let discover_res = find_active_bge_m3_service_with_pid();
+        if let Ok((port, pid)) = discover_res {
+            self.adopt_service(port, pid);
+            return (Some(port), pid, true, None);
+        }
+        let discover_err = discover_res.err().unwrap_or_else(|| "Nessun servizio rilevato".to_string());
+
+        // Se il tempo trascorso nella scoperta supera o è troppo vicino al timeout complessivo, ripiego immediato (Regola b)
+        if t_start.elapsed() >= timeout {
+            let reason = format!(
+                "Tempo limite per la preparazione del servizio locale superato ({} s): ripiego sulla ricerca per parole.",
+                timeout.as_secs()
+            );
+            return (None, None, false, Some(reason));
+        }
+
+        // 4. Tentativo di avvio del proprio servizio (limitato dal tempo rimanente)
+        let remaining = timeout.saturating_sub(t_start.elapsed());
+        if remaining < Duration::from_millis(1000) {
+            let reason = format!(
+                "Tempo limite residuo insufficiente per l'avvio del servizio locale ({:.1} s rimanenti su {} s): ripiego sulla ricerca per parole.",
+                remaining.as_secs_f32(),
+                timeout.as_secs()
+            );
+            return (None, None, false, Some(reason));
+        }
+
+        match self.start_with_timeout(remaining) {
+            Ok(rep) if rep.healthy => {
+                (Some(rep.port), rep.pid, true, None)
             }
-            Err(discover_err) => {
-                match self.start() {
-                    Ok(rep) if rep.healthy => {
-                        (Some(rep.port), rep.pid, true, None)
-                    }
-                    Ok(rep) => {
-                        let reason = format!(
-                            "Servizio locale avviato ma non pronto (porta {}): ripiego sulla ricerca per parole. {}",
-                            rep.port,
-                            rep.last_error.unwrap_or_default()
-                        );
-                        (None, None, false, Some(reason))
-                    }
-                    Err(start_err) => {
-                        let reason = format!(
-                            "Nessun servizio esterno verificato ({}) e avvio del proprio servizio fallito ({}): ripiego sulla ricerca per parole.",
-                            discover_err, start_err
-                        );
-                        (None, None, false, Some(reason))
-                    }
+            Ok(rep) => {
+                {
+                    let mut guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                    guard.auto_start_failed = true;
+                    guard.auto_start_failure_reason = rep.last_error.clone();
                 }
+                let reason = format!(
+                    "Servizio locale avviato ma non pronto (porta {}): ripiego sulla ricerca per parole. {}",
+                    rep.port,
+                    rep.last_error.unwrap_or_default()
+                );
+                (None, None, false, Some(reason))
+            }
+            Err(start_err) => {
+                {
+                    let mut guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                    guard.auto_start_failed = true;
+                    guard.auto_start_failure_reason = Some(start_err.clone());
+                }
+                let reason = format!(
+                    "Nessun servizio esterno verificato ({}) e avvio del proprio servizio fallito ({}): ripiego sulla ricerca per parole.",
+                    discover_err, start_err
+                );
+                (None, None, false, Some(reason))
             }
         }
     }
 
     pub fn start(&self) -> Result<LocalServerReport, String> {
+        self.reset_auto_start_failure();
+        self.start_with_timeout(Duration::from_secs(25))
+    }
+
+    pub fn start_with_timeout(&self, timeout: Duration) -> Result<LocalServerReport, String> {
         let t_start = Instant::now();
         // 1. Verify model is installed
         let model_rep = local_model_status();
@@ -1222,8 +1354,8 @@ impl LlamaServerState {
         s.binary_path = Some(binary);
         drop(s);
 
-        // 6. Poll /health endpoint up to 25 seconds
-        let deadline = Instant::now() + Duration::from_secs(25);
+        // 6. Poll /health endpoint up to timeout
+        let deadline = Instant::now() + timeout;
         let mut healthy = false;
         while Instant::now() < deadline {
             std::thread::sleep(Duration::from_millis(200));
@@ -1257,7 +1389,7 @@ impl LlamaServerState {
 
         if !healthy {
             self.stop()?;
-            return Err("Timeout: llama-server non ha risposto sull'endpoint /health entro 25s.".into());
+            return Err(format!("Timeout: llama-server non ha risposto sull'endpoint /health entro {:.1}s.", timeout.as_secs_f32()));
         }
 
         // 7. Verify dimensions are exactly 1024
@@ -1866,5 +1998,81 @@ mod tests {
         remove_service_registration_from_paths_if_owned(&pid_path, &port_path, pid_a);
         assert!(!pid_path.exists(), "llama-server.pid deve essere cancellato dal titolare legittimo");
         assert!(!port_path.exists(), "llama-server.port deve essere cancellato dal titolare legittimo");
+    }
+
+    #[test]
+    fn test_fase5f_run_command_with_timeout_terminates_hanging_process() {
+        #[cfg(windows)]
+        let mut cmd = std::process::Command::new("powershell");
+        #[cfg(windows)]
+        cmd.args(["-NoProfile", "-Command", "Start-Sleep -Seconds 10"]);
+
+        #[cfg(unix)]
+        let mut cmd = std::process::Command::new("sleep");
+        #[cfg(unix)]
+        cmd.arg("10");
+
+        let t0 = Instant::now();
+        let out = run_command_with_timeout(cmd, Duration::from_millis(300));
+        let elapsed = t0.elapsed();
+
+        assert!(out.is_none(), "run_command_with_timeout deve restituire None se il comando supera il timeout");
+        assert!(elapsed < Duration::from_millis(2500), "Il timeout deve arrestare il processo entro tempi contenuti (impiegati {:?})", elapsed);
+    }
+
+    #[test]
+    fn test_fase5f_discovery_external_command_hang_terminates_within_timeout_with_fallback() {
+        let state = LlamaServerState::default();
+        let timeout = Duration::from_millis(50);
+        let t0 = Instant::now();
+        let (port, pid, is_ready, fallback_reason) = state.get_or_adopt_or_start_service_with_timeout(timeout);
+        let elapsed = t0.elapsed();
+
+        assert!(!is_ready, "Il servizio non deve risultare pronto se il timeout di preparazione spira");
+        assert!(port.is_none(), "Nessuna porta deve essere associata");
+        assert!(pid.is_none());
+        assert!(elapsed < Duration::from_millis(1500), "La preparazione deve terminare entro il tempo massimo dichiarato (impiegati {:?})", elapsed);
+
+        let reason = fallback_reason.expect("Deve essere presente il motivo del ripiego");
+        assert!(
+            reason.contains("ripiego sulla ricerca per parole"),
+            "Il motivo deve esplicitare il ripiego sulla ricerca per parole: {}", reason
+        );
+    }
+
+    #[test]
+    fn test_fase5f_failed_auto_start_prevents_retry_on_subsequent_question() {
+        let state = LlamaServerState::default();
+
+        // 1. Simula la registrazione di un fallimento di avvio (come avviene quando start_with_timeout fallisce)
+        {
+            let mut guard = state.0.lock().unwrap();
+            guard.auto_start_failed = true;
+            guard.auto_start_failure_reason = Some("Avvio llama-server fallito: modello non presente".to_string());
+        }
+
+        assert!(state.is_auto_start_failed(), "Lo stato deve registrare auto_start_failed = true");
+
+        // 2. Seconda richiesta (domanda successiva): NON deve tentare nuovamente start()!
+        // Deve ritornare istantaneamente con il motivo del fallimento precedente
+        let t_start2 = Instant::now();
+        let (port2, pid2, is_ready2, fallback_reason2) = state.get_or_adopt_or_start_service();
+        let elapsed2 = t_start2.elapsed();
+
+        assert!(!is_ready2);
+        assert!(port2.is_none());
+        assert!(pid2.is_none());
+        assert!(elapsed2 < Duration::from_millis(150), "La seconda domanda non deve ritentare l'avvio e deve terminare immediatamente (impiegati {:?})", elapsed2);
+
+        let r2 = fallback_reason2.expect("Motivo fallback atteso alla seconda domanda");
+        assert!(
+            r2.contains("già fallito in questa sessione"),
+            "Il motivo deve indicare che l'avvio è già fallito nella sessione: {}", r2
+        );
+        assert!(r2.contains("ripiego sulla ricerca per parole"));
+
+        // 3. L'utente clicca 'AVVIA SERVIZIO LOCALE': il blocco viene resettato
+        state.reset_auto_start_failure();
+        assert!(!state.is_auto_start_failed(), "reset_auto_start_failure deve riabilitare i tentativi");
     }
 }

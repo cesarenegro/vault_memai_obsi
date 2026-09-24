@@ -503,11 +503,31 @@ async fn ai_preview(
 ) -> Result<limen_vault::ai::Preview, String> {
     let state = state.inner().clone();
     let llama = llama_state.inner().clone();
-    let (port, pid, is_ready, fallback_reason) = tauri::async_runtime::spawn_blocking(move || {
-        llama.get_or_adopt_or_start_service()
-    })
+    let prep_timeout = limen_vault::llama::service_preparation_timeout();
+
+    let (port, pid, is_ready, fallback_reason) = match tokio::time::timeout(
+        prep_timeout + std::time::Duration::from_millis(500),
+        tauri::async_runtime::spawn_blocking(move || {
+            llama.get_or_adopt_or_start_service_with_timeout(prep_timeout)
+        }),
+    )
     .await
-    .map_err(|e| format!("Llama server inspection task failed: {e}"))?;
+    {
+        Ok(Ok(res)) => res,
+        Ok(Err(e)) => (
+            None,
+            None,
+            false,
+            Some(format!("Errore nel task di ispezione del servizio locale: {e}")),
+        ),
+        Err(_) => {
+            let reason = format!(
+                "Tempo limite per la preparazione del servizio locale superato ({} s): ripiego sulla ricerca per parole.",
+                prep_timeout.as_secs()
+            );
+            (None, None, false, Some(reason))
+        }
+    };
 
     state
         .preview_with_service_info(
@@ -899,6 +919,7 @@ async fn local_server_start(
     state: tauri::State<'_, limen_vault::llama::LlamaServerState>,
 ) -> Result<limen_vault::llama::LocalServerReport, String> {
     let state = state.inner().clone();
+    state.reset_auto_start_failure();
     tauri::async_runtime::spawn_blocking(move || state.start())
         .await
         .map_err(|e| e.to_string())?
