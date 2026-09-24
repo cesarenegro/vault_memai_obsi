@@ -323,15 +323,20 @@ Conformemente all'analisi e alle correzioni vincolanti richieste:
 
 ---
 
-## 3. Regola Fissa Compilazione e Avvio Versione Ottimizzata da Provare
+## 3. Regola Fissa Compilazione ed Esecuzione per la Prova
 
-- **Comando vincolante**:
-  `cd "E:\Projects\vault_memai_obsi"; npx pnpm --filter @limen-vault/desktop tauri dev --release`
-  *(preserva la cache di compilazione evitando ri-compilazioni complete al riavvio di Cesare; NON usare `cargo build --release`)*.
-- **Istanza in esecuzione per la prova**:
-  - **Commit di riferimento**: `ef2532ca700c712b4c68d25fd26324702dce0782` (2026-09-24 08:19:16 UTC+8).
-  - **Eseguibile avviato**: `E:\Projects\vault_memai_obsi\apps\desktop\src-tauri\target\release\limen-vault.exe` (PID 5340).
-  - **Ora di avvio**: `2026-09-24 08:20:15 UTC+8`.
+- **Regola vincolante da ora in poi**:
+  1. L'assistente esegue la compilazione ottimizzata con:
+     `cd "E:\Projects\vault_memai_obsi"; npx pnpm --filter @limen-vault/desktop tauri dev --release`
+     per preparare e riscaldare la cache (NON usare mai `cargo build --release`).
+  2. L'assistente **non lascia aperta l'app dal proprio terminale** (in quanto su Windows i processi figli dei subtask/terminali dell'assistente non aprono finestre interattive sulla sessione desktop di Cesare). L'assistente chiude solo il task/processo avviato in quella stessa sessione e ne dichiara il PID.
+  3. **Cesare avvia l'app direttamente dal suo terminale**: grazie alla compilazione release già completata dall'assistente, l'avvio interattivo di Cesare richiede solo pochissimi secondi.
+  4. **Divieto assoluto di terminazione processi**: nessun `Stop-Process`, `taskkill` o chiusura finestre su `limen-vault`, `llama-server`, `cargo` o `node`. Se un processo dovesse mai bloccare una compilazione, l'assistente deve fermarsi e segnalare a Cesare il PID e la motivazione.
+- **Stato al termine della FASE 5c**:
+  - Compilazione ottimizzata eseguita con successo sul commit `ef2532c`.
+  - Processo assistente chiuso: PID **5340** terminato.
+  - Cesare può ora avviare l'app con:  
+    `cd "E:\Projects\vault_memai_obsi"; npx pnpm --filter @limen-vault/desktop tauri dev --release`
 
 
 

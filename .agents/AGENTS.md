@@ -10,6 +10,7 @@
 - Per ogni compilazione ottimizzata usare SEMPRE e SOLO:
   `cd "E:\Projects\vault_memai_obsi"; npx pnpm --filter @limen-vault/desktop tauri dev --release`
   (NON usare `cargo build --release` per preparare la versione da provare, così la cache di compilazione resta valida anche quando Cesare riavvia l'app).
-- Alla fine di ogni consegna, prima dello STOP: chiudere solo la versione di sviluppo eventualmente avviata dall'assistente (MAI processi avviati da Cesare), avviare la versione ottimizzata con quel comando e lasciarla aperta.
-- Nel rapporto finale dichiarare SEMPRE: commit di riferimento (hash e ora UTC+8), percorso dell'eseguibile avviato, ora di avvio.
+- L'assistente compila soltanto con quel comando per riscaldare la cache di compilazione, poi chiude il processo avviato dal proprio terminale nella stessa sessione e ne dichiara il PID. Non avviare né lasciare app in background dal terminale dell'assistente: Cesare avvia l'app direttamente con il suo comando, che grazie alla compilazione release già pronta si apre in pochi secondi.
+- **Divieto assoluto di terminazione processi**: nessun `Stop-Process`, `taskkill` o chiusura di finestre su `limen-vault`, `llama-server`, `cargo` o `node`, per nessun motivo. Se un processo blocca la compilazione, fermarsi immediatamente e scrivere a Cesare indicando quale PID e per quale motivo.
+
 
