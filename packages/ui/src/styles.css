@@ -1,6 +1,7 @@
 :root {
   --limen-lime: #77F117;
   --limen-lime-30: rgba(119, 241, 23, 0.30);
+  --limen-lime-60: rgba(119, 241, 23, 0.60);
 
   --limen-bg-app: #f8fafc;
   --limen-bg-surface: #ffffff;

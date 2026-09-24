@@ -50,13 +50,34 @@ export interface ConversationTurnItem {
   sourcesOpen?: boolean;
 }
 
+export interface AiPanelProps {
+  vaultPath: string;
+  onOpenDocument?: (req: CitationOpenRequest) => void;
+  archivedConversation?: {
+    conversationId: string;
+    turns: ConversationTurnItem[];
+  } | null;
+  onNewConversation?: () => void;
+  onHistoryUpdated?: () => void;
+  onSelectedTurnChange?: (turn: ConversationTurnItem | null) => void;
+  selectedTurnIndex?: number;
+  onSelectTurnIndex?: (index: number) => void;
+  onOpenSourcesSidebar?: () => void;
+  newConversationTrigger?: number;
+}
+
 export function AiPanel({
   vaultPath,
   onOpenDocument,
-}: {
-  vaultPath: string;
-  onOpenDocument?: (req: CitationOpenRequest) => void;
-}) {
+  archivedConversation,
+  onNewConversation,
+  onHistoryUpdated,
+  onSelectedTurnChange,
+  selectedTurnIndex,
+  onSelectTurnIndex,
+  onOpenSourcesSidebar,
+  newConversationTrigger,
+}: AiPanelProps) {
   const terms = getPlatformTerms();
   const [prompt, setPrompt] = useState('');
   const [activePrompt, setActivePrompt] = useState('');
@@ -71,25 +92,42 @@ export function AiPanel({
   const [loadingStep, setLoadingStep] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingSourcesOpen, setStreamingSourcesOpen] = useState(false);
   const [previewData, setPreviewData] = useState<AiPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [techError, setTechError] = useState<string | null>(null);
 
-  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
-  const [historyCount, setHistoryCount] = useState<number>(0);
+  const isArchived = Boolean(archivedConversation);
+  const effectiveTurns = archivedConversation ? archivedConversation.turns : turns;
+  const activeTurnIndex =
+    typeof selectedTurnIndex === 'number' && selectedTurnIndex >= 0 && selectedTurnIndex < effectiveTurns.length
+      ? selectedTurnIndex
+      : effectiveTurns.length - 1;
 
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Notifica la risposta selezionata al genitore
   useEffect(() => {
-    if (vaultPath) {
-      void historyIpc.list(vaultPath).then(l => setHistoryCount(l.length)).catch(() => {});
-    }
-  }, [vaultPath]);
+    const currentSelected = effectiveTurns[activeTurnIndex] || null;
+    onSelectedTurnChange?.(currentSelected);
+  }, [activeTurnIndex, effectiveTurns, onSelectedTurnChange]);
 
   const seq = useRef(0);
   const unlistenChunkRef = useRef<UnlistenFn | null>(null);
   const unlistenEndRef = useRef<UnlistenFn | null>(null);
   const isRunningRef = useRef(false);
   const isBusy = !!loadingStep || isStreaming;
+
+  // Scorrimento automatico all'ultimo messaggio
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [effectiveTurns.length, streamingText, isBusy, isArchived]);
+
+  // Gestione trigger nuova conversazione
+  useEffect(() => {
+    if (newConversationTrigger) {
+      handleNewConversation();
+    }
+  }, [newConversationTrigger]);
 
   // Carica i modelli disponibili e il modello selezionato memorizzato (default: gpt-4o)
   useEffect(() => {
@@ -164,12 +202,12 @@ export function AiPanel({
     setPreviewData(null);
     setStreamingText('');
     setIsStreaming(false);
-    setStreamingSourcesOpen(false);
     setLoadingStep(null);
+    onNewConversation?.();
   }
 
   async function handleSaveDraft(turnIdx: number) {
-    const turn = turns[turnIdx];
+    const turn = effectiveTurns[turnIdx];
     if (!turn || !turn.answer) return;
     try {
       await m7(vaultPath, {
@@ -181,18 +219,12 @@ export function AiPanel({
         model: turn.answer.model,
         sources: turn.answer.citations,
       });
-      setTurns(prev => prev.map((t, idx) => idx === turnIdx ? { ...t, saveMessage: 'Bozza salvata in locale.' } : t));
+      if (!isArchived) {
+        setTurns(prev => prev.map((t, idx) => idx === turnIdx ? { ...t, saveMessage: 'Bozza salvata in locale.' } : t));
+      }
     } catch (e) {
       setError(String(e));
     }
-  }
-
-  function toggleTurnSources(turnIdx: number) {
-    setTurns(prev => prev.map((t, idx) => idx === turnIdx ? { ...t, sourcesOpen: !(t.sourcesOpen ?? false) } : t));
-  }
-
-  function toggleTurnTechDetails(turnIdx: number) {
-    setTurns(prev => prev.map((t, idx) => idx === turnIdx ? { ...t, techDetailsOpen: !t.techDetailsOpen } : t));
   }
 
   async function executeAsk(queryText: string) {
@@ -208,7 +240,6 @@ export function AiPanel({
     setPreviewData(null);
     setStreamingText('');
     setIsStreaming(false);
-    setStreamingSourcesOpen(false);
 
     if (unlistenChunkRef.current) {
       unlistenChunkRef.current();
@@ -351,19 +382,20 @@ export function AiPanel({
       if (res.conversationId) {
         setConversationId(res.conversationId);
       }
-      setTurns(prev => [
-        ...prev,
-        {
-          id: res.historyEntryId || `turn_${Date.now()}`,
-          prompt: queryText,
-          answer: res,
-          previewData: preview,
-          sourcesOpen: false,
-        }
-      ]);
+      const newTurn: ConversationTurnItem = {
+        id: res.historyEntryId || `turn_${Date.now()}`,
+        prompt: queryText,
+        answer: res,
+        previewData: preview,
+      };
+      setTurns(prev => {
+        const next = [...prev, newTurn];
+        onSelectTurnIndex?.(next.length - 1);
+        return next;
+      });
       setActivePrompt('');
       setPreviewData(null);
-      setHistoryCount(c => c + 1);
+      onHistoryUpdated?.();
     } catch (e: any) {
       if (currentSeq !== seq.current) return;
       setIsStreaming(false);
@@ -384,10 +416,8 @@ export function AiPanel({
             prompt: queryText,
             answer: docErrAns,
             previewData: previewData || undefined,
-            sourcesOpen: false,
           }
         ]);
-        setStreamingText('');
         setActivePrompt('');
         setPreviewData(null);
       } else if (errStr.includes('Consenso')) {
@@ -420,714 +450,595 @@ export function AiPanel({
   }
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Header Card with Nuova conversazione and Storico */}
-      <div className="limen-card" style={{ padding: 20, backgroundColor: 'var(--limen-lime-30)', border: '1px solid rgba(119, 241, 23, 0.45)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Sparkles size={20} color="#0f172a" />
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#0f172a' }}>
-              Chiedi al Vault
-            </h2>
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
+      {/* Top Header Bar */}
+      <div
+        style={{
+          flexShrink: 0,
+          padding: '10px 24px',
+          borderBottom: '1px solid var(--limen-border-light)',
+          backgroundColor: '#ffffff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              onClick={handleNewConversation}
+            <Sparkles size={18} color="#0f172a" />
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Chiedi al Vault</span>
+          </div>
+
+          {isArchived ? (
+            <span
               style={{
-                padding: '6px 12px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '2px 8px',
+                borderRadius: 12,
+                backgroundColor: '#f1f5f9',
+                color: '#475569',
+                fontSize: 11,
+                fontWeight: 600,
+              }}
+            >
+              <Lock size={12} />
+              Conversazione archiviata
+            </span>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label htmlFor="ai-model-select" style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
+                Modello:
+              </label>
+              <select
+                id="ai-model-select"
+                aria-label="Seleziona modello AI"
+                value={model}
+                onChange={e => void handleModelChange(e.target.value)}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  border: '1px solid #cbd5e1',
+                  fontSize: 12,
+                  backgroundColor: '#ffffff',
+                  color: '#0f172a',
+                  outline: 'none',
+                }}
+              >
+                {!model && <option value="">-- Seleziona --</option>}
+                {availableModels.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+                {model && !availableModels.includes(model) && (
+                  <option key={model} value={model}>{model}</option>
+                )}
+              </select>
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {isArchived ? (
+            <button
+              onClick={onNewConversation}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '5px 12px',
+                borderRadius: 6,
                 border: '1px solid #cbd5e1',
-                borderRadius: 8,
-                background: '#ffffff',
+                backgroundColor: '#ffffff',
                 color: '#0f172a',
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
               }}
-              title="Apre una nuova conversazione azzerando il contesto precedente"
             >
-              <PlusCircle size={16} />
+              <PlusCircle size={14} />
               <span>Nuova conversazione</span>
             </button>
-            <button
-              onClick={() => setHistoryDrawerOpen(true)}
-              style={{
-                padding: '6px 12px',
-                border: '1px solid #cbd5e1',
-                borderRadius: 8,
-                background: '#ffffff',
-                color: '#334155',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-              title="Apri lo storico delle domande e risposte"
-            >
-              <Clock size={16} />
-              <span>Storico</span>
-              {historyCount > 0 && (
-                <span
-                  style={{
-                    background: '#0f172a',
-                    color: 'white',
-                    borderRadius: 10,
-                    padding: '1px 6px',
-                    fontSize: 11,
-                    fontWeight: 600,
-                  }}
-                >
-                  {historyCount}
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
-        <p style={{ margin: '0 0 16px 0', fontSize: 13, color: '#334155', lineHeight: 1.5 }}>
-          Fai una domanda per ottenere una risposta in prosa sintetizzata direttamente dai tuoi documenti. Per domande di seguito, la conversazione mantiene il contesto precedente.
-        </p>
-
-        {/* Model selection row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
-            <label htmlFor="ai-model-select" style={{ fontSize: 13, fontWeight: 600, color: '#334155', whiteSpace: 'nowrap' }}>
-              Modello:
-            </label>
-            <select
-              id="ai-model-select"
-              aria-label="Seleziona modello AI"
-              value={model}
-              onChange={e => void handleModelChange(e.target.value)}
-              style={{
-                ...fieldStyle,
-                width: 'auto',
-                flex: 1,
-                padding: '6px 12px',
-                fontSize: 13,
-                borderColor: !model ? '#f59e0b' : '#cbd5e1',
-                backgroundColor: !model ? '#fffbeb' : '#ffffff',
-              }}
-            >
-              {!model && <option value="">-- Seleziona un modello --</option>}
-              {availableModels.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-              {model && !availableModels.includes(model) && (
-                <option key={model} value={model}>{model}</option>
-              )}
-            </select>
-          </div>
-          {!model && (
-            <span style={{ fontSize: 12, color: '#b45309', fontWeight: 500 }}>
-              ⚠️ Seleziona un modello per poter procedere
-            </span>
+          ) : (
+            effectiveTurns.length > 0 && (
+              <button
+                onClick={handleNewConversation}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '5px 12px',
+                  borderRadius: 6,
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: '#0f172a',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <PlusCircle size={14} />
+                <span>Nuova conversazione</span>
+              </button>
+            )
           )}
         </div>
       </div>
 
-      {/* Conversazione mostrata in stile messaggistica */}
-      {turns.map((turn, tIdx) => {
-        const citedCount = turn.answer.citations?.length || 0;
-        const totalConsulted = turn.previewData?.sources.length || 0;
-        const isSourcesOpen = turn.sourcesOpen ?? false;
+      {/* Area Messaggi a Scorrimento Continuo */}
+      <div
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '20px 24px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
+        }}
+      >
+        {effectiveTurns.length === 0 && !isBusy && (
+          <div style={{ margin: 'auto', textAlign: 'center', color: '#64748b', maxWidth: 460 }}>
+            <Sparkles size={36} color="#0f172a" style={{ marginBottom: 12 }} />
+            <h3 style={{ margin: '0 0 6px 0', fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
+              Chiedi al Vault
+            </h3>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: '#475569' }}>
+              Fai una domanda per ottenere una risposta in prosa sintetizzata direttamente dai tuoi documenti. Per domande di seguito, la conversazione mantiene il contesto precedente.
+            </p>
+          </div>
+        )}
 
-        return (
-          <div key={turn.id || tIdx} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {/* 1. Domanda utente allineata a destra in verde lime */}
+        {/* Turni in sequenza continua */}
+        {effectiveTurns.map((turn, tIdx) => {
+          const isSelected = activeTurnIndex === tIdx;
+          const citedCount = turn.answer.citations?.length || 0;
+          const totalConsulted = turn.previewData?.sources?.length || 0;
+
+          return (
+            <div key={turn.id || tIdx} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* 1. Domanda utente a destra con verde lime 60% */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+                <div
+                  style={{
+                    maxWidth: '85%',
+                    padding: '12px 18px',
+                    backgroundColor: 'var(--limen-lime-60)',
+                    color: '#0f172a',
+                    borderRadius: '16px 16px 4px 16px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <span
+                      style={{
+                        background: '#0f172a',
+                        color: '#ffffff',
+                        padding: '1px 6px',
+                        borderRadius: 4,
+                        fontSize: 10,
+                        fontWeight: 700,
+                      }}
+                    >
+                      Turno {turn.answer.turnIndex ?? (tIdx + 1)}
+                    </span>
+                    <span style={{ fontSize: 11, color: '#0f172a', opacity: 0.8, fontWeight: 600 }}>
+                      {turn.answer.model}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', lineHeight: 1.4, wordBreak: 'break-word' }}>
+                    {turn.prompt}
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Risposta dell'AI a sinistra in riquadro bianco */}
+              <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%' }}>
+                <div
+                  className="limen-card"
+                  onClick={() => {
+                    onSelectTurnIndex?.(tIdx);
+                  }}
+                  style={{
+                    width: '100%',
+                    maxWidth: '92%',
+                    padding: 18,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 12,
+                    backgroundColor: '#ffffff',
+                    border: isSelected ? '1.5px solid #0f172a' : '1px solid #e2e8f0',
+                    boxShadow: isSelected ? '0 0 0 2px rgba(15, 23, 42, 0.08)' : '0 1px 3px rgba(0,0,0,0.04)',
+                    cursor: 'pointer',
+                    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                  }}
+                >
+                  {turn.answer.status === 'error' && (
+                    <div
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: 6,
+                        backgroundColor: '#fef2f2',
+                        border: '1px solid #fecaca',
+                        color: '#991b1b',
+                        fontSize: 13,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}
+                    >
+                      <AlertCircle size={18} style={{ flexShrink: 0, color: '#dc2626' }} />
+                      <div><strong>Attenzione:</strong> {turn.answer.answer}</div>
+                    </div>
+                  )}
+
+                  {turn.answer.incomplete && turn.answer.status !== 'error' && (
+                    <div
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: 6,
+                        backgroundColor: '#fffbeb',
+                        border: '1px solid #fde68a',
+                        color: '#92400e',
+                        fontSize: 12,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}
+                    >
+                      <AlertCircle size={16} style={{ flexShrink: 0, color: '#d97706' }} />
+                      <div>
+                        <strong>Risposta incompleta:</strong>{' '}
+                        {turn.answer.incompleteReason || 'La generazione della risposta è stata interrotta.'}
+                      </div>
+                    </div>
+                  )}
+
+                  {turn.answer.status !== 'error' && (
+                    <div style={{ fontSize: 14, lineHeight: 1.65, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
+                      {turn.answer.answer}
+                    </div>
+                  )}
+
+                  {/* Indicazione discreta delle fonti & Azioni */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderTop: '1px solid #f1f5f9',
+                      paddingTop: 10,
+                      flexWrap: 'wrap',
+                      gap: 8,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectTurnIndex?.(tIdx);
+                          onOpenSourcesSidebar?.();
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '4px 10px',
+                          borderRadius: 16,
+                          border: isSelected ? '1px solid #0f172a' : '1px solid #cbd5e1',
+                          backgroundColor: isSelected ? '#0f172a' : '#f8fafc',
+                          color: isSelected ? '#ffffff' : '#334155',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                        title="Clicca per aprire le fonti di questa risposta nella barra laterale"
+                      >
+                        <FileText size={12} color={isSelected ? '#ffffff' : '#64748b'} />
+                        <span>
+                          {citedCount} font{citedCount === 1 ? 'e citata' : 'i citate'}
+                          {totalConsulted > citedCount ? ` (${totalConsulted} consultate)` : ''}
+                        </span>
+                      </button>
+
+                      {!isArchived && (
+                        <button
+                          style={{
+                            ...primaryButtonStyle,
+                            backgroundColor: '#ffffff',
+                            color: '#0f172a',
+                            border: '1px solid #cbd5e1',
+                            fontSize: 11,
+                            padding: '4px 10px',
+                          }}
+                          disabled={!!turn.saveMessage || turn.answer.status === 'error'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleSaveDraft(tIdx);
+                          }}
+                        >
+                          {turn.saveMessage || 'Salva bozza'}
+                        </button>
+                      )}
+                    </div>
+
+                    <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>
+                      OpenAI · {turn.answer.model}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Streaming in elaborazione */}
+        {isBusy && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
               <div
                 style={{
                   maxWidth: '85%',
-                  padding: '14px 18px',
-                  backgroundColor: 'var(--limen-lime)',
+                  padding: '12px 18px',
+                  backgroundColor: 'var(--limen-lime-60)',
                   color: '#0f172a',
                   borderRadius: '16px 16px 4px 16px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                   display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span
                     style={{
                       background: '#0f172a',
                       color: '#ffffff',
-                      padding: '2px 8px',
+                      padding: '1px 6px',
                       borderRadius: 4,
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: 700,
                     }}
                   >
-                    Turno {turn.answer.turnIndex ?? (tIdx + 1)}
+                    Turno {turns.length + 1}
                   </span>
-                  <span style={{ fontSize: 11, color: '#0f172a', opacity: 0.8, fontWeight: 600 }}>
-                    {turn.answer.model}
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
+                    {activePrompt}
                   </span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', lineHeight: 1.4, wordBreak: 'break-word' }}>
-                  {turn.prompt}
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Risposta dell'AI allineata a sinistra in riquadro bianco */}
-            <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%' }}>
-              <div className="limen-card" style={{ width: '100%', maxWidth: '92%', padding: 22, display: 'flex', flexDirection: 'column', gap: 16, backgroundColor: '#ffffff' }}>
-                {turn.answer.status === 'error' && (
-                  <div
-                    style={{
-                      padding: '12px 16px',
-                      borderRadius: 8,
-                      backgroundColor: '#fef2f2',
-                      border: '1px solid #fecaca',
-                      color: '#991b1b',
-                      fontSize: 14,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                    }}
-                  >
-                    <AlertCircle size={20} style={{ flexShrink: 0, color: '#dc2626' }} />
-                    <div><strong>Attenzione:</strong> {turn.answer.answer}</div>
-                  </div>
-                )}
-
-                {turn.answer.incomplete && turn.answer.status !== 'error' && (
-                  <div
-                    style={{
-                      padding: '12px 16px',
-                      borderRadius: 8,
-                      backgroundColor: '#fffbeb',
-                      border: '1px solid #fde68a',
-                      color: '#92400e',
-                      fontSize: 13,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                    }}
-                  >
-                    <AlertCircle size={18} style={{ flexShrink: 0, color: '#d97706' }} />
-                    <div>
-                      <strong>Risposta incompleta:</strong>{' '}
-                      {turn.answer.incompleteReason || 'La generazione della risposta è stata interrotta. La risposta parziale è stata preservata con 0 citazioni.'}
-                    </div>
-                  </div>
-                )}
-
-                {turn.answer.status !== 'error' && (
-                  <div style={{ fontSize: 15, lineHeight: 1.7, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
-                    {turn.answer.answer}
-                  </div>
-                )}
-
-                {/* Save as Draft & Technical Details */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: 14, flexWrap: 'wrap', gap: 10 }}>
+                {previewData?.ticket && (
                   <button
-                    style={{
-                      ...primaryButtonStyle,
-                      backgroundColor: '#ffffff',
-                      color: '#0f172a',
-                      border: '1px solid #cbd5e1',
-                      fontSize: 13,
-                      padding: '6px 14px',
+                    type="button"
+                    onClick={() => {
+                      if (previewData?.ticket) void aiIpc.cancel(previewData.ticket);
                     }}
-                    disabled={!!turn.saveMessage || turn.answer.status === 'error'}
-                    onClick={() => void handleSaveDraft(tIdx)}
+                    style={{
+                      padding: '4px 8px',
+                      borderRadius: 4,
+                      border: 'none',
+                      backgroundColor: '#0f172a',
+                      color: '#ffffff',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
                   >
-                    {turn.saveMessage || 'Salva risposta come bozza'}
+                    Annulla
                   </button>
-
-                  <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>
-                    Risposta generata con OpenAI ({turn.answer.model})
-                  </span>
-                </div>
-
-                {/* Technical details accordion */}
-                <div style={{ marginTop: 2 }}>
-                  <details
-                    open={turn.techDetailsOpen}
-                    onToggle={() => toggleTurnTechDetails(tIdx)}
-                    style={{ fontSize: 12, color: '#64748b' }}
-                  >
-                    <summary style={{ cursor: 'pointer', fontWeight: 500, color: '#64748b' }}>
-                      Dettagli tecnici
-                    </summary>
-                    <div style={{ marginTop: 8, padding: 12, backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <div><strong>Fornitore:</strong> {turn.answer.provider}</div>
-                      <div><strong>Modello:</strong> {turn.answer.model}</div>
-                      <div><strong>Stato risposta:</strong> {turn.answer.status || (turn.answer.incomplete ? 'incompleta' : 'completa')} {turn.answer.incompleteReason ? `(${turn.answer.incompleteReason})` : ''}</div>
-                      <div>
-                        <strong>Token usati:</strong> {turn.answer.tokensUsed ?? 'N/A'}
-                        {(turn.answer.tokensPrompt !== undefined || turn.answer.tokensCompletion !== undefined) && (
-                          <span> (input: {turn.answer.tokensPrompt ?? 'N/A'}, output: {turn.answer.tokensCompletion ?? 'N/A'}{turn.answer.tokensReasoning !== undefined ? `, ragionamento: ${turn.answer.tokensReasoning}` : ''})</span>
-                        )}
-                      </div>
-                      {turn.answer.uiTotalMs && <div><strong>Tempo interfaccia (totale):</strong> {(turn.answer.uiTotalMs / 1000).toFixed(1)} s ({turn.answer.uiTotalMs} ms)</div>}
-                      {turn.previewData && <div><strong>Dimensione contesto:</strong> {turn.previewData.contextBytes} byte (passaggi consultati: {turn.previewData.sources.length})</div>}
-                      <div>
-                        <strong>Ricerca semantica:</strong>{' '}
-                        {(turn.answer.semanticUsed ?? turn.previewData?.semanticUsed) ? (
-                          <span style={{ color: '#166534', fontWeight: 600 }}>Attiva (bge-m3 1024d)</span>
-                        ) : (
-                          <span style={{ color: '#b45309' }}>Non attiva — {turn.answer.semanticFallbackReason || turn.previewData?.semanticFallbackReason || 'Ripiego su ricerca per parole'}</span>
-                        )}
-                      </div>
-                      <div><strong>Citazioni grezze:</strong></div>
-                      {turn.answer.citations.map((c, i) => (
-                        <div key={i} style={{ fontSize: 11, fontFamily: 'monospace', color: '#475569' }}>
-                          • {c.documentId} | SHA256: {c.sha256} | Path: {c.relativePath}
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                </div>
+                )}
               </div>
             </div>
 
-            {/* 3. Fonti consultate SOTTO la risposta in ogni turno, richiuse di default */}
-            {turn.previewData && turn.previewData.sources && turn.previewData.sources.length > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%' }}>
-                <div className="limen-card" style={{ width: '100%', maxWidth: '92%', padding: 16, backgroundColor: '#f8fafc' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isSourcesOpen ? 12 : 0 }}>
-                    <button
-                      onClick={() => toggleTurnSources(tIdx)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: 0,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        textAlign: 'left',
-                      }}
-                    >
-                      {isSourcesOpen ? <ChevronDown size={18} color="#0f172a" /> : <ChevronRight size={18} color="#0f172a" />}
-                      <FileText size={18} color="#0f172a" />
-                      <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
-                        Fonti consultate dal Vault ({turn.previewData.sources.length})
-                      </h3>
-                    </button>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#2563eb' }}>
-                      {citedCount} citat{citedCount === 1 ? 'o' : 'i'} tra {totalConsulted} consultat{totalConsulted === 1 ? 'o' : 'i'}
-                    </span>
-                  </div>
-
-                  {isSourcesOpen && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          padding: '6px 12px',
-                          borderRadius: 6,
-                          fontSize: 12,
-                          backgroundColor: turn.previewData.semanticUsed ? '#f0fdf4' : '#fffbeb',
-                          border: turn.previewData.semanticUsed ? '1px solid #bbf7d0' : '1px solid #fde68a',
-                          color: turn.previewData.semanticUsed ? '#166534' : '#92400e',
-                        }}
-                      >
-                        <Sparkles size={14} color={turn.previewData.semanticUsed ? '#16a34a' : '#d97706'} style={{ flexShrink: 0 }} />
-                        {turn.previewData.semanticUsed ? (
-                          <span><strong>Ricerca semantica attiva:</strong> passaggi selezionati e ordinati con modello locale bge-m3</span>
-                        ) : (
-                          <span><strong>Ricerca per parole chiave (ripiego):</strong> {turn.previewData.semanticFallbackReason || 'servizio locale non disponibile'}</span>
-                        )}
-                      </div>
-
-                      {turn.previewData.sources.map((s, sIdx) => {
-                        const isCited = Boolean(turn.answer.citations && turn.answer.citations.some(c => c.documentId === s.documentId || c.relativePath === s.relativePath));
-                        return (
-                          <div
-                            key={`${s.documentId}-${sIdx}`}
-                            onClick={() => {
-                              if (onOpenDocument) {
-                                const pHashPair = s.passageHashes?.find(([pid]) => pid === s.passageId);
-                                const pHash = pHashPair ? pHashPair[1] : undefined;
-                                if (pHash && s.passageId) {
-                                  onOpenDocument({
-                                    documentId: s.documentId,
-                                    passageId: s.passageId,
-                                    locator: s.locator,
-                                    revision: s.revision,
-                                    sha256: pHash,
-                                  });
-                                } else {
-                                  onOpenDocument({
-                                    documentId: s.documentId,
-                                    locator: s.locator,
-                                    revision: s.revision,
-                                    sha256: s.sha256,
-                                  });
-                                }
-                              }
-                            }}
-                            style={{
-                              padding: '8px 12px',
-                              borderRadius: 6,
-                              backgroundColor: isCited ? '#f0fdf4' : '#ffffff',
-                              border: isCited ? '1px solid #86efac' : '1px solid #e2e8f0',
-                              cursor: onOpenDocument ? 'pointer' : 'default',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              transition: 'all 0.15s ease',
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                              <FileText size={15} color={isCited ? '#16a34a' : '#64748b'} style={{ flexShrink: 0 }} />
-                              <span style={{ fontSize: 13, fontWeight: isCited ? 700 : 500, color: isCited ? '#14532d' : '#1e293b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                                {formatSourceLabel(s.title, s.relativePath, s.category, s.locator)}
-                              </span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                              {isCited && (
-                                <span
-                                  style={{
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    padding: '2px 8px',
-                                    borderRadius: 4,
-                                    backgroundColor: '#22c55e',
-                                    color: '#ffffff',
-                                    letterSpacing: '0.04em',
-                                  }}
-                                >
-                                  CITATA
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
+            <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%' }}>
+              <div className="limen-card" style={{ width: '100%', maxWidth: '92%', padding: 18, display: 'flex', flexDirection: 'column', gap: 12, backgroundColor: '#ffffff' }}>
+                {loadingStep && (
+                  <div style={{ textAlign: 'center', color: '#475569', padding: '10px 0' }}>
+                    <div className="animate-spin" style={{ display: 'inline-block', marginBottom: 6 }}>
+                      <Sparkles size={20} color="#0f172a" />
                     </div>
-                  )}
-                </div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 500 }}>{loadingStep}</p>
+                  </div>
+                )}
+                {isStreaming && (
+                  <div style={{ fontSize: 14, lineHeight: 1.65, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
+                    {streamingText || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Elaborazione in corso e attesa token…</span>}
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        width: 8,
+                        height: 15,
+                        backgroundColor: '#0f172a',
+                        marginLeft: 4,
+                        verticalAlign: 'text-bottom',
+                        animation: 'pulse 1s infinite',
+                      }}
+                    />
+                  </div>
+                )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Errori e avvisi */}
+        {error && !loadingStep && (
+          <div
+            style={{
+              padding: 14,
+              borderRadius: 8,
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              color: '#991b1b',
+              fontSize: 13,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, marginBottom: 4 }}>
+              <AlertCircle size={16} />
+              <span>{error}</span>
+            </div>
+            {techError && (
+              <details style={{ marginTop: 8, fontSize: 12, color: '#7f1d1d' }}>
+                <summary style={{ cursor: 'pointer', fontWeight: 500 }}>Dettaglio tecnico errore</summary>
+                <pre style={{ margin: '6px 0 0 0', padding: 8, background: '#fee2e2', borderRadius: 4, whiteSpace: 'pre-wrap' }}>
+                  {techError}
+                </pre>
+              </details>
             )}
           </div>
-        );
-      })}
+        )}
 
-      {/* Ongoing Streaming Turn (in elaborazione) */}
-      {isBusy && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Domanda in corso allineata a destra in verde lime */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
-            <div
-              style={{
-                maxWidth: '85%',
-                padding: '14px 18px',
-                backgroundColor: 'var(--limen-lime)',
-                color: '#0f172a',
-                borderRadius: '16px 16px 4px 16px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span
-                  style={{
-                    background: '#0f172a',
-                    color: '#ffffff',
-                    padding: '2px 8px',
-                    borderRadius: 4,
-                    fontSize: 11,
-                    fontWeight: 700,
-                  }}
-                >
-                  Turno {turns.length + 1}
-                </span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
-                  {activePrompt}
-                </span>
-              </div>
-              {previewData?.ticket && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (previewData?.ticket) {
-                      void aiIpc.cancel(previewData.ticket);
-                    }
-                  }}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: 6,
-                    border: '1px solid #0f172a',
-                    backgroundColor: '#0f172a',
-                    color: '#ffffff',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Annulla domanda
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Streaming Box allineato a sinistra in bianco */}
-          <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%' }}>
-            <div className="limen-card" style={{ width: '100%', maxWidth: '92%', padding: 22, display: 'flex', flexDirection: 'column', gap: 16, backgroundColor: '#ffffff' }}>
-              {loadingStep && (
-                <div style={{ textAlign: 'center', color: '#475569' }}>
-                  <div className="animate-spin" style={{ display: 'inline-block', marginBottom: 8 }}>
-                    <Sparkles size={24} color="#0f172a" />
-                  </div>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>{loadingStep}</p>
-                </div>
-              )}
-              {isStreaming && (
-                <div style={{ fontSize: 15, lineHeight: 1.7, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
-                  {streamingText || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Elaborazione in corso e attesa token…</span>}
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      width: 8,
-                      height: 16,
-                      backgroundColor: '#0f172a',
-                      marginLeft: 4,
-                      verticalAlign: 'text-bottom',
-                      animation: 'pulse 1s infinite',
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Fonti consultate preview SOTTO lo streaming box, richiuse di default */}
-          {previewData && previewData.sources && previewData.sources.length > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%' }}>
-              <div className="limen-card" style={{ width: '100%', maxWidth: '92%', padding: 16, backgroundColor: '#f8fafc' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: streamingSourcesOpen ? 10 : 0 }}>
-                  <button
-                    onClick={() => setStreamingSourcesOpen(o => !o)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      textAlign: 'left',
-                    }}
-                  >
-                    {streamingSourcesOpen ? <ChevronDown size={18} color="#0f172a" /> : <ChevronRight size={18} color="#0f172a" />}
-                    <FileText size={18} color="#0f172a" />
-                    <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
-                      Fonti consultate dal Vault per questa domanda ({previewData.sources.length})
-                    </h3>
-                  </button>
-                  <span style={{ fontSize: 12, color: '#2563eb', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Sparkles size={14} className="animate-spin" /> Ricezione streaming…
-                  </span>
-                </div>
-
-                {streamingSourcesOpen && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-                    {previewData.sources.map((s, sIdx) => (
-                      <div
-                        key={`${s.documentId}-${sIdx}`}
-                        style={{
-                          padding: '8px 12px',
-                          borderRadius: 6,
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e2e8f0',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                        }}
-                      >
-                        <FileText size={15} color="#64748b" style={{ flexShrink: 0 }} />
-                        <span style={{ fontSize: 13, color: '#1e293b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                          {formatSourceLabel(s.title, s.relativePath, s.category, s.locator)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+        {consentGranted === false && (
+          <div
+            style={{
+              padding: 16,
+              borderRadius: 8,
+              backgroundColor: '#fffbe6',
+              border: '1px solid #ffe58f',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <ShieldAlert size={20} color="#d48806" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h4 style={{ margin: '0 0 4px 0', fontSize: 13, fontWeight: 600, color: '#d48806' }}>
+                  Consenso all’invio dei dati richiesto
+                </h4>
+                <p style={{ margin: 0, fontSize: 12, color: '#595959', lineHeight: 1.4 }}>
+                  Per generare la risposta, i soli passaggi dei documenti pertinenti alla domanda verranno inviati in modo sicuro a OpenAI. Nessun documento viene salvato o usato per l'addestramento.
+                </p>
               </div>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Error Message */}
-      {error && !loadingStep && (
-        <div
-          style={{
-            padding: 16,
-            borderRadius: 8,
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#991b1b',
-            fontSize: 13,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, marginBottom: 4 }}>
-            <AlertCircle size={16} />
-            <span>{error}</span>
-          </div>
-          {techError && (
-            <details style={{ marginTop: 8, fontSize: 12, color: '#7f1d1d' }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 500 }}>Dettaglio tecnico errore</summary>
-              <pre style={{ margin: '6px 0 0 0', padding: 8, background: '#fee2e2', borderRadius: 4, whiteSpace: 'pre-wrap' }}>
-                {techError}
-              </pre>
-            </details>
-          )}
-        </div>
-      )}
-
-      {/* Consent Warning Banner Inline if missing */}
-      {consentGranted === false && (
-        <div
-          style={{
-            padding: 20,
-            borderRadius: 10,
-            backgroundColor: '#fffbe6',
-            border: '1px solid #ffe58f',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <ShieldAlert size={22} color="#d48806" style={{ flexShrink: 0, marginTop: 2 }} />
-            <div>
-              <h4 style={{ margin: '0 0 4px 0', fontSize: 14, fontWeight: 600, color: '#d48806' }}>
-                Consenso all’invio dei dati richiesto
-              </h4>
-              <p style={{ margin: 0, fontSize: 13, color: '#595959', lineHeight: 1.4 }}>
-                Per generare la risposta, i soli passaggi dei documenti pertinenti alla domanda verranno inviati in modo sicuro a OpenAI. Nessun documento viene salvato o usato per l'addestramento.
-              </p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              onClick={handleGrantConsentInline}
-              style={{
-                ...primaryButtonStyle,
-                backgroundColor: '#d48806',
-                color: '#fff',
-                fontSize: 13,
-                padding: '8px 16px',
-              }}
-            >
-              <Check size={16} />
-              Consenti l’invio a OpenAI e genera risposta
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Question Input Box (In calce alla conversazione a filo) */}
-      <div className="limen-card" style={{ padding: 20 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
-              {turns.length === 0 ? 'Fai una domanda al Vault:' : `Domanda di seguito (Turno ${turns.length + 1}):`}
-            </span>
-            {turns.length > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
-                type="button"
-                onClick={handleNewConversation}
+                onClick={handleGrantConsentInline}
                 style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  color: '#2563eb',
+                  ...primaryButtonStyle,
+                  backgroundColor: '#d48806',
+                  color: '#fff',
                   fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
+                  padding: '6px 14px',
                 }}
               >
-                <PlusCircle size={14} />
-                Nuova conversazione
+                <Check size={14} />
+                Consenti l’invio a OpenAI e genera risposta
               </button>
-            )}
+            </div>
           </div>
+        )}
 
-          <div style={{ position: 'relative' }}>
-            <textarea
-              aria-label="Domanda al Vault"
-              placeholder={
-                !model
-                  ? 'Seleziona prima un modello sopra per fare una domanda...'
-                  : turns.length === 0
-                  ? 'Es. Cosa è il progetto BNXT e quali requisiti prevede?'
-                  : 'Fai una domanda di seguito sulla conversazione...'
-              }
-              maxLength={2000}
-              value={prompt}
-              onChange={e => setPrompt(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  if (!isBusy && prompt.trim() && model) void executeAsk(prompt.trim());
-                }
-              }}
-              style={{
-                ...fieldStyle,
-                minHeight: 85,
-                resize: 'vertical',
-                paddingRight: 100,
-                fontSize: 14,
-                lineHeight: 1.5,
-              }}
-            />
-            <button
-              style={{
-                ...primaryButtonStyle,
-                position: 'absolute',
-                right: 10,
-                bottom: 14,
-                padding: '8px 16px',
-                opacity: (!model || !prompt.trim() || isBusy) ? 0.6 : 1,
-              }}
-              disabled={isBusy || !prompt.trim() || !model}
-              onClick={() => !isBusy && prompt.trim() && model && void executeAsk(prompt.trim())}
-              title={!model ? "Seleziona un modello per abilitare l'invio" : isBusy ? "Generazione in corso..." : undefined}
-            >
-              Chiedi
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: '#64748b' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={drafts}
-                onChange={e => setDrafts(e.target.checked)}
-              />
-              Includi bozze e note non approvate
-            </label>
-            <span>Premere Invio per inviare</span>
-          </div>
-        </div>
+        <div ref={messagesEndRef} />
       </div>
 
-      <AiHistoryDrawer
-        vaultPath={vaultPath}
-        isOpen={historyDrawerOpen}
-        onClose={() => setHistoryDrawerOpen(false)}
-        onCountChange={count => setHistoryCount(count)}
-      />
+      {/* Casella di Scrittura FISSA in Basso */}
+      <div
+        style={{
+          flexShrink: 0,
+          padding: '14px 24px',
+          borderTop: '1px solid var(--limen-border-light)',
+          backgroundColor: '#ffffff',
+          boxShadow: '0 -2px 10px rgba(0,0,0,0.03)',
+        }}
+      >
+        {isArchived ? (
+          <div
+            style={{
+              padding: '12px 18px',
+              borderRadius: 8,
+              backgroundColor: '#f8fafc',
+              border: '1px solid #cbd5e1',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#475569', fontSize: 13 }}>
+              <Lock size={16} color="#64748b" />
+              <span><strong>Conversazione archiviata:</strong> consultazione in sola lettura. Non è possibile proseguire.</span>
+            </div>
+            <button
+              onClick={onNewConversation}
+              style={{
+                ...primaryButtonStyle,
+                padding: '6px 14px',
+                fontSize: 12,
+              }}
+            >
+              <PlusCircle size={14} />
+              <span>Nuova conversazione</span>
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ position: 'relative' }}>
+              <textarea
+                aria-label="Domanda al Vault"
+                placeholder={
+                  !model
+                    ? 'Seleziona prima un modello per fare una domanda...'
+                    : effectiveTurns.length === 0
+                    ? 'Es. Cosa è il progetto BNXT e quali requisiti prevede?'
+                    : 'Fai una domanda di seguito sulla conversazione...'
+                }
+                maxLength={2000}
+                value={prompt}
+                onChange={e => setPrompt(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!isBusy && prompt.trim() && model) void executeAsk(prompt.trim());
+                  }
+                }}
+                style={{
+                  ...fieldStyle,
+                  minHeight: 75,
+                  resize: 'vertical',
+                  paddingRight: 100,
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  backgroundColor: 'var(--limen-lime-30)',
+                }}
+              />
+              <button
+                style={{
+                  ...primaryButtonStyle,
+                  position: 'absolute',
+                  right: 10,
+                  bottom: 14,
+                  padding: '8px 16px',
+                  opacity: (!model || !prompt.trim() || isBusy) ? 0.6 : 1,
+                }}
+                disabled={isBusy || !prompt.trim() || !model}
+                onClick={() => !isBusy && prompt.trim() && model && void executeAsk(prompt.trim())}
+                title={!model ? "Seleziona un modello per abilitare l'invio" : isBusy ? "Generazione in corso..." : undefined}
+              >
+                Chiedi
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: '#64748b' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={drafts}
+                  onChange={e => setDrafts(e.target.checked)}
+                />
+                Includi bozze e note non approvate
+              </label>
+              <span>Premere Invio per inviare</span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

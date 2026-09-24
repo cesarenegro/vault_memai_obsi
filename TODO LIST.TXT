@@ -1,4 +1,5 @@
 COORDINAMENTO — 19 settembre 2026
+- Documenti di 20_RAW_SOURCES non categorizzati nelle cartelle di Memoria: vedere analisi FASE 6b
 - AG: completata implementazione e verifica delle non conformità R1…R6 e requisiti del piano MA-01…MA-12.
 - Nuova release compilata, firmata Developer ID e consegnata in USER INSTALL e /Applications; precedenti in STORICO.
 - Report tecnico completo, matrice criteri A01…A16 e diff sorgenti in IMPLEMENTATION/2026-09-19_AUDIT_CLOSURE_REPORT_AG.md.
