@@ -85,6 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             client: None,
             project: None,
             tags: None,
+            ..Default::default()
         };
 
         // 1. Select passages ONCE using hybrid search & eligibility filter

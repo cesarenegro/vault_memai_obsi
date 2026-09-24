@@ -13,6 +13,7 @@ export interface HistorySourceRef {
   docSha256: string;
   passages: HistoryPassageRef[];
   citationIndex: number;
+  cited?: boolean;
 }
 
 export interface HistoryEntry {
@@ -36,6 +37,7 @@ export interface HistoryEntryHeader {
   id: string;
   conversationId: string;
   turnIndex: number;
+  parentEntryId?: string;
   createdAtUtc: string;
   utcOffsetSeconds: number;
   requestedModel: string;
@@ -45,6 +47,7 @@ export interface HistoryEntryHeader {
   status: string;
   durationMs: number;
   sourcesCount: number;
+  citedSourcesCount?: number;
   pid?: number;
 }
 

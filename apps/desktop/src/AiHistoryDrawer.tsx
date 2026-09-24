@@ -5,13 +5,13 @@ import {
   type HistoryEntryHeader,
   type VerifiedSourceResult,
 } from './history-ipc';
-import { X, Trash2, Clock, AlertTriangle, AlertCircle, FileText, CheckCircle2 } from 'lucide-react';
+import { X, Trash2, Clock, AlertTriangle, AlertCircle, FileText, CheckCircle2, MessageSquare, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface AiHistoryDrawerProps {
   vaultPath: string;
   isOpen: boolean;
   onClose: () => void;
-  onSelectEntry: (entry: HistoryEntry, verifiedSources: VerifiedSourceResult[]) => void;
+  onSelectEntry?: (entry: HistoryEntry, verifiedSources: VerifiedSourceResult[]) => void;
   onCountChange?: (count: number) => void;
 }
 
@@ -340,9 +340,15 @@ export function AiHistoryDrawer({
 
             {/* Sources section with live verification */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', textTransform: 'uppercase' }}>
-                Fonti verificate dal Vault:
-              </div>
+              {(() => {
+                const citedCount = selectedEntry.sources.filter(s => s.cited).length;
+                const totalCount = selectedEntry.sources.length;
+                return (
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', textTransform: 'uppercase' }}>
+                    Fonti verificate ({citedCount} citat{citedCount === 1 ? 'o' : 'i'} tra {totalCount} consultat{totalCount === 1 ? 'o' : 'i'}):
+                  </div>
+                );
+              })()}
 
               {loadingDetail ? (
                 <div style={{ padding: 12, fontSize: 12, color: '#64748b' }}>
@@ -353,6 +359,8 @@ export function AiHistoryDrawer({
                   const isModified = s.status === 'modified';
                   const isMissing = s.status === 'missing';
                   const isFresh = s.status === 'fresh';
+                  const sourceRef = selectedEntry.sources[idx];
+                  const isCited = sourceRef?.cited ?? false;
 
                   return (
                     <div
@@ -360,12 +368,16 @@ export function AiHistoryDrawer({
                       style={{
                         padding: 12,
                         borderRadius: 8,
-                        border: isModified
+                        border: isCited
+                          ? '1px solid #86efac'
+                          : isModified
                           ? '1px solid #fde68a'
                           : isMissing
                           ? '1px solid #fecaca'
                           : '1px solid #e2e8f0',
-                        background: isModified
+                        background: isCited
+                          ? '#f0fdf4'
+                          : isModified
                           ? '#fffbeb'
                           : isMissing
                           ? '#fef2f2'
@@ -377,24 +389,41 @@ export function AiHistoryDrawer({
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}>
-                          <FileText size={14} color="#64748b" />
-                          <span style={{ color: '#0f172a' }}>[{s.citationIndex}] {s.title}</span>
+                          <FileText size={14} color={isCited ? '#16a34a' : '#64748b'} />
+                          <span style={{ color: isCited ? '#14532d' : '#0f172a' }}>[{s.citationIndex}] {s.title}</span>
                         </div>
-                        {isFresh && (
-                          <span style={{ fontSize: 11, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
-                            <CheckCircle2 size={13} /> Inalterata
-                          </span>
-                        )}
-                        {isModified && (
-                          <span style={{ fontSize: 11, color: '#d97706', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                            <AlertTriangle size={13} /> Modificata
-                          </span>
-                        )}
-                        {isMissing && (
-                          <span style={{ fontSize: 11, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                            <AlertCircle size={13} /> Rimossa
-                          </span>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {isCited && (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: 4,
+                                backgroundColor: '#22c55e',
+                                color: '#ffffff',
+                                letterSpacing: '0.04em',
+                              }}
+                            >
+                              CITATA
+                            </span>
+                          )}
+                          {isFresh && (
+                            <span style={{ fontSize: 11, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
+                              <CheckCircle2 size={13} /> Inalterata
+                            </span>
+                          )}
+                          {isModified && (
+                            <span style={{ fontSize: 11, color: '#d97706', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                              <AlertTriangle size={13} /> Modificata
+                            </span>
+                          )}
+                          {isMissing && (
+                            <span style={{ fontSize: 11, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                              <AlertCircle size={13} /> Rimossa
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div style={{ fontSize: 11, color: '#64748b' }}>
@@ -447,28 +476,26 @@ export function AiHistoryDrawer({
               )}
             </div>
 
-            {/* Action buttons */}
+            {/* Back button only: nessuna ripresa di una conversazione dallo storico */}
             <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
               <button
                 onClick={() => {
-                  if (selectedEntry && verifiedSources) {
-                    onSelectEntry(selectedEntry, verifiedSources);
-                    onClose();
-                  }
+                  setSelectedEntry(null);
+                  setVerifiedSources(null);
                 }}
                 style={{
                   flex: 1,
                   padding: '10px 16px',
-                  background: '#0f172a',
-                  color: 'white',
-                  border: 'none',
+                  background: '#f1f5f9',
+                  color: '#0f172a',
+                  border: '1px solid #cbd5e1',
                   borderRadius: 6,
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'pointer',
                 }}
               >
-                Ripristina nella scheda
+                Torna all'elenco
               </button>
             </div>
           </div>
@@ -477,179 +504,278 @@ export function AiHistoryDrawer({
             Nessuna domanda salvata per questo Vault.
           </div>
         ) : (
-          /* List of Entries (Newest First) */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {entries.map(entry => {
-              const isDeletingThis = entryToDelete === entry.id;
+          /* List of Entries Grouped by Conversation */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {(() => {
+              const map = new Map<string, HistoryEntryHeader[]>();
+              for (const entry of entries) {
+                const list = map.get(entry.conversationId) || [];
+                list.push(entry);
+                map.set(entry.conversationId, list);
+              }
+              const groups: { conversationId: string; latestCreatedAtUtc: string; turns: HistoryEntryHeader[] }[] = [];
+              for (const [conversationId, turns] of map.entries()) {
+                turns.sort((a, b) => a.turnIndex - b.turnIndex);
+                const latest = turns.reduce(
+                  (max, t) => (t.createdAtUtc > max ? t.createdAtUtc : max),
+                  turns[0].createdAtUtc
+                );
+                groups.push({ conversationId, latestCreatedAtUtc: latest, turns });
+              }
+              groups.sort((a, b) => b.latestCreatedAtUtc.localeCompare(a.latestCreatedAtUtc));
 
-              return (
-                <div
-                  key={entry.id}
-                  style={{
-                    padding: 12,
-                    border: '1px solid #e2e8f0',
-                    borderRadius: 8,
-                    background: '#ffffff',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 6,
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <span
-                        style={{
-                          background: '#f1f5f9',
-                          border: '1px solid #cbd5e1',
-                          color: '#0f172a',
-                          padding: '1px 6px',
-                          borderRadius: 4,
-                          fontSize: 11,
-                          fontWeight: 600,
-                        }}
-                      >
-                        {entry.responseModel}
-                      </span>
-                      {entry.status === 'incomplete' && (
-                        <span
-                          style={{
-                            background: '#fef3c7',
-                            color: '#b45309',
-                            padding: '1px 6px',
-                            borderRadius: 4,
-                            fontSize: 10,
-                            fontWeight: 600,
-                          }}
-                        >
-                          Incompleta
-                        </span>
-                      )}
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 11, color: '#64748b' }}>
-                        {formatLocalDate(entry.createdAtUtc)}
-                      </span>
-                      <button
-                        onClick={e => {
-                          e.stopPropagation();
-                          setEntryToDelete(entry.id);
-                        }}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: 4,
-                          color: '#94a3b8',
-                          display: 'flex',
-                        }}
-                        title="Elimina voce"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Inline Delete Confirmation */}
-                  {isDeletingThis ? (
+              return groups.map(group => {
+                const firstPrompt = group.turns[0]?.prompt || 'Conversazione';
+                return (
+                  <div
+                    key={group.conversationId}
+                    style={{
+                      border: '1px solid #cbd5e1',
+                      borderRadius: 10,
+                      background: '#ffffff',
+                      overflow: 'hidden',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    }}
+                  >
+                    {/* Conversation Group Header */}
                     <div
                       style={{
-                        padding: 8,
-                        background: '#fef2f2',
-                        border: '1px solid #fecaca',
-                        borderRadius: 6,
+                        padding: '10px 14px',
+                        background: '#f8fafc',
+                        borderBottom: '1px solid #e2e8f0',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         gap: 8,
-                        fontSize: 12,
-                        color: '#991b1b',
                       }}
                     >
-                      <span>Eliminare questa risposta dallo storico?</span>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          onClick={() => setEntryToDelete(null)}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                        <MessageSquare size={16} color="#0f172a" style={{ flexShrink: 0 }} />
+                        <span
                           style={{
-                            padding: '3px 8px',
-                            background: '#ffffff',
-                            border: '1px solid #cbd5e1',
-                            borderRadius: 4,
-                            fontSize: 11,
-                            cursor: 'pointer',
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: '#0f172a',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
                           }}
+                          title={firstPrompt}
                         >
-                          Annulla
-                        </button>
-                        <button
-                          onClick={() => handleDeleteEntry(entry.id)}
-                          disabled={actionInProgress}
+                          {firstPrompt}
+                        </span>
+                        <span
                           style={{
-                            padding: '3px 8px',
-                            background: '#dc2626',
-                            color: '#ffffff',
-                            border: 'none',
-                            borderRadius: 4,
+                            background: '#e2e8f0',
+                            color: '#334155',
+                            padding: '1px 6px',
+                            borderRadius: 10,
                             fontSize: 11,
                             fontWeight: 600,
-                            cursor: 'pointer',
+                            flexShrink: 0,
                           }}
                         >
-                          Elimina
-                        </button>
+                          {group.turns.length} {group.turns.length === 1 ? 'turno' : 'turni'}
+                        </span>
                       </div>
+                      <span style={{ fontSize: 11, color: '#64748b', flexShrink: 0 }}>
+                        {formatLocalDate(group.latestCreatedAtUtc)}
+                      </span>
                     </div>
-                  ) : (
-                    /* Entry prompt click to open */
-                    <div
-                      onClick={() => handleSelectEntry(entry)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: '#0f172a',
-                          lineHeight: 1.4,
-                          marginBottom: 4,
-                        }}
-                      >
-                        {entry.prompt}
-                      </div>
 
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: '#475569',
-                          lineHeight: 1.4,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {entry.answerPreview}
-                      </div>
+                    {/* Turns inside Conversation */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 10 }}>
+                      {group.turns.map(entry => {
+                        const isDeletingThis = entryToDelete === entry.id;
 
-                      <div
-                        style={{
-                          marginTop: 6,
-                          fontSize: 11,
-                          color: '#64748b',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 12,
-                        }}
-                      >
-                        <span>{entry.sourcesCount} fonti consultate</span>
-                        <span>{(entry.durationMs / 1000).toFixed(1)}s</span>
-                      </div>
+                        return (
+                          <div
+                            key={entry.id}
+                            style={{
+                              padding: 10,
+                              border: '1px solid #e2e8f0',
+                              borderRadius: 6,
+                              background: '#fcfcfd',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 6,
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span
+                                  style={{
+                                    background: '#0f172a',
+                                    color: '#ffffff',
+                                    padding: '1px 6px',
+                                    borderRadius: 4,
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  Turno {entry.turnIndex + 1}
+                                </span>
+                                <span
+                                  style={{
+                                    background: '#f1f5f9',
+                                    border: '1px solid #cbd5e1',
+                                    color: '#0f172a',
+                                    padding: '1px 6px',
+                                    borderRadius: 4,
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {entry.responseModel}
+                                </span>
+                                {entry.status === 'incomplete' && (
+                                  <span
+                                    style={{
+                                      background: '#fef3c7',
+                                      color: '#b45309',
+                                      padding: '1px 6px',
+                                      borderRadius: 4,
+                                      fontSize: 10,
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    Incompleta
+                                  </span>
+                                )}
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 11, color: '#64748b' }}>
+                                  {formatLocalDate(entry.createdAtUtc)}
+                                </span>
+                                <button
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    setEntryToDelete(entry.id);
+                                  }}
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: 4,
+                                    color: '#94a3b8',
+                                    display: 'flex',
+                                  }}
+                                  title="Elimina voce"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Inline Delete Confirmation */}
+                            {isDeletingThis ? (
+                              <div
+                                style={{
+                                  padding: 8,
+                                  background: '#fef2f2',
+                                  border: '1px solid #fecaca',
+                                  borderRadius: 6,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: 8,
+                                  fontSize: 12,
+                                  color: '#991b1b',
+                                }}
+                              >
+                                <span>Eliminare questo turno dallo storico?</span>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                  <button
+                                    onClick={() => setEntryToDelete(null)}
+                                    style={{
+                                      padding: '3px 8px',
+                                      background: '#ffffff',
+                                      border: '1px solid #cbd5e1',
+                                      borderRadius: 4,
+                                      fontSize: 11,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    Annulla
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteEntry(entry.id)}
+                                    disabled={actionInProgress}
+                                    style={{
+                                      padding: '3px 8px',
+                                      background: '#dc2626',
+                                      color: '#ffffff',
+                                      border: 'none',
+                                      borderRadius: 4,
+                                      fontSize: 11,
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    Elimina
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              /* Entry prompt click to open */
+                              <div
+                                onClick={() => handleSelectEntry(entry)}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                <div
+                                  style={{
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    color: '#0f172a',
+                                    lineHeight: 1.4,
+                                    marginBottom: 4,
+                                  }}
+                                >
+                                  {entry.prompt}
+                                </div>
+
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    color: '#475569',
+                                    lineHeight: 1.4,
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                  }}
+                                >
+                                  {entry.answerPreview}
+                                </div>
+
+                                <div
+                                  style={{
+                                    marginTop: 6,
+                                    fontSize: 11,
+                                    color: '#64748b',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 12,
+                                    flexWrap: 'wrap',
+                                  }}
+                                >
+                                  <span style={{ fontWeight: 600, color: '#2563eb' }}>
+                                    {entry.citedSourcesCount ?? 0} citat{(entry.citedSourcesCount ?? 0) === 1 ? 'o' : 'i'} tra {entry.sourcesCount} consultat{entry.sourcesCount === 1 ? 'o' : 'i'}
+                                  </span>
+                                  <span>{(entry.durationMs / 1000).toFixed(1)}s</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  </div>
+                );
+              });
+            })()}
           </div>
         )}
       </div>

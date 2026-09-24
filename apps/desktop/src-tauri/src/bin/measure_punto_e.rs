@@ -492,6 +492,7 @@ async fn execute_real_selection_checks() -> Result<(), Box<dyn std::error::Error
         client: None,
         project: None,
         tags: None,
+        ..Default::default()
     };
 
     let (sources_bnxt, timings_bnxt) = ai::select_with_port_timed(vault_path, &o_bnxt, Some(port)).await?;
@@ -538,6 +539,7 @@ async fn execute_real_selection_checks() -> Result<(), Box<dyn std::error::Error
         client: None,
         project: None,
         tags: None,
+        ..Default::default()
     };
 
     let (sources_arkai, timings_arkai) = ai::select_with_port_timed(vault_path, &o_arkai, Some(port)).await?;

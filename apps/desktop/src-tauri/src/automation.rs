@@ -1266,6 +1266,7 @@ mod tests {
             client: None,
             project: None,
             tags: None,
+            ..Default::default()
         };
         let selected = crate::ai::select(t.path(), &o).await.unwrap();
         assert_eq!(selected.len(), 2);

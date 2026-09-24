@@ -2386,9 +2386,25 @@ mod tests {
             listener.set_nonblocking(true).unwrap();
             while flag_clone.load(Ordering::SeqCst) {
                 if let Ok((mut stream, _)) = listener.accept() {
+                    let _ = stream.set_nonblocking(false);
+                    let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
                     let mut req_buf = [0u8; 1024];
-                    let n = stream.read(&mut req_buf).unwrap_or(0);
-                    let req_str = String::from_utf8_lossy(&req_buf[..n]);
+                    let mut total_read = 0;
+                    while total_read < req_buf.len() {
+                        match stream.read(&mut req_buf[total_read..]) {
+                            Ok(0) => break,
+                            Ok(n) => {
+                                total_read += n;
+                                if req_buf[..total_read].windows(4).any(|w| w == b"\r\n\r\n")
+                                    || req_buf[..total_read].contains(&b'\n')
+                                {
+                                    break;
+                                }
+                            }
+                            Err(_) => break,
+                        }
+                    }
+                    let req_str = String::from_utf8_lossy(&req_buf[..total_read]);
 
                     if req_str.contains("/health") {
                         let resp = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 15\r\n\r\n{\"status\":\"ok\"}";
@@ -2429,8 +2445,8 @@ mod tests {
         assert!(res.is_err(), "La richiesta deve andare in timeout");
         let err_msg = res.unwrap_err().to_lowercase();
         assert!(
-            err_msg.contains("timed out") || err_msg.contains("timeout") || err_msg.contains("error sending request"),
-            "Il messaggio di errore deve indicare timeout o mancata risposta: {}",
+            err_msg.contains("timed out") || err_msg.contains("timeout"),
+            "Il messaggio di errore deve indicare timeout: {}",
             err_msg
         );
 

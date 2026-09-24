@@ -3164,6 +3164,7 @@ mod tests {
                     client: None,
                     project: None,
                     tags: None,
+                    ..Default::default()
                 },
                 None,
                 None,

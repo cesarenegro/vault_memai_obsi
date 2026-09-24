@@ -50,6 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             client: None,
             project: None,
             tags: None,
+            ..Default::default()
         };
 
         match ai::select_with_port_timed(vault_dir, &options, Some(active_port)).await {

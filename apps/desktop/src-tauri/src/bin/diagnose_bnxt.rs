@@ -93,6 +93,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         client: None,
         project: None,
         tags: None,
+        ..Default::default()
     };
 
     let selected_sources = limen_vault::ai::select(vault_path, &options).await?;

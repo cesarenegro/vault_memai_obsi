@@ -7,9 +7,9 @@ import { SemanticEngineSettings } from './SemanticEngineSettings';
 import { TunnelPanel } from './TunnelPanel';
 import { getPlatformTerms } from './platform';
 import { m7, operationId } from './proposal-ipc';
-import { ChevronDown, ChevronRight, ShieldAlert, Sparkles, FileText, Check, AlertCircle, Key, Lock, Clock } from 'lucide-react';
+import { ChevronDown, ChevronRight, ShieldAlert, Sparkles, FileText, Check, AlertCircle, Key, Lock, Clock, PlusCircle } from 'lucide-react';
 import { AiHistoryDrawer } from './AiHistoryDrawer';
-import { historyIpc, type HistoryEntry, type VerifiedSourceResult } from './history-ipc';
+import { historyIpc } from './history-ipc';
 
 const fieldStyle: React.CSSProperties = {
   padding: '10px 14px',
@@ -48,6 +48,16 @@ function cleanTitle(title: string, relativePath: string): string {
   return base.replace(/\.md$/i, '').replace(/^[a-f0-9_-]{8,16}_/i, '');
 }
 
+export interface ConversationTurnItem {
+  id: string;
+  prompt: string;
+  answer: AiAnswer;
+  previewData?: AiPreview;
+  saveMessage?: string;
+  techDetailsOpen?: boolean;
+  sourcesOpen?: boolean;
+}
+
 export function AiPanel({
   vaultPath,
   onOpenDocument,
@@ -57,23 +67,22 @@ export function AiPanel({
 }) {
   const terms = getPlatformTerms();
   const [prompt, setPrompt] = useState('');
+  const [activePrompt, setActivePrompt] = useState('');
   const [model, setModel] = useState<string>('gpt-4o');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [drafts, setDrafts] = useState(false);
   const [consentGranted, setConsentGranted] = useState<boolean | null>(null);
 
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [turns, setTurns] = useState<ConversationTurnItem[]>([]);
+
   const [loadingStep, setLoadingStep] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [answer, setAnswer] = useState<AiAnswer | null>(null);
   const [previewData, setPreviewData] = useState<AiPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [techError, setTechError] = useState<string | null>(null);
 
-  const [sourcesOpen, setSourcesOpen] = useState(true);
-  const [techDetailsOpen, setTechDetailsOpen] = useState(false);
-
-  const [saveMessage, setSaveMessage] = useState('');
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const [historyCount, setHistoryCount] = useState<number>(0);
 
@@ -83,38 +92,6 @@ export function AiPanel({
     }
   }, [vaultPath]);
 
-  const handleSelectHistoryEntry = (entry: HistoryEntry, verified: VerifiedSourceResult[]) => {
-    setPrompt(entry.prompt);
-    const restoredCitations = verified.map(v => ({
-      documentId: v.documentId,
-      relativePath: v.relativePath,
-      title: v.title,
-      category: 'restored',
-      sha256: '',
-      locator: v.locator,
-    }));
-
-    const hasModified = verified.some(v => v.status === 'modified');
-    const hasMissing = verified.some(v => v.status === 'missing');
-    let warningMsg: string | undefined = undefined;
-    if (hasModified) {
-      warningMsg = 'Uno o più documenti citati sono stati modificati dopo la generazione di questa risposta.';
-    } else if (hasMissing) {
-      warningMsg = 'Uno o più documenti citati non sono più presenti nel Vault.';
-    }
-
-    setAnswer({
-      answer: entry.answer,
-      provider: 'OpenAI',
-      model: entry.responseModel,
-      status: entry.status,
-      incomplete: entry.status === 'incomplete',
-      warning: warningMsg,
-      citations: restoredCitations,
-      citedIndices: verified.map((_, i) => i),
-    });
-  };
-  const saveOperation = useRef(operationId());
   const seq = useRef(0);
   const unlistenChunkRef = useRef<UnlistenFn | null>(null);
   const unlistenEndRef = useRef<UnlistenFn | null>(null);
@@ -172,7 +149,6 @@ export function AiPanel({
       await aiIpc.setConsent(vaultPath, true);
       setConsentGranted(true);
       setError(null);
-      // Automatically trigger answer request if prompt is not empty
       if (!isBusy && prompt.trim()) {
         void executeAsk(prompt.trim());
       }
@@ -182,19 +158,62 @@ export function AiPanel({
     }
   }
 
+  function handleNewConversation() {
+    if (isBusy && previewData?.ticket) {
+      void aiIpc.cancel(previewData.ticket);
+    }
+    setConversationId(null);
+    setTurns([]);
+    setPrompt('');
+    setActivePrompt('');
+    setError(null);
+    setTechError(null);
+    setPreviewData(null);
+    setStreamingText('');
+    setIsStreaming(false);
+    setLoadingStep(null);
+  }
+
+  async function handleSaveDraft(turnIdx: number) {
+    const turn = turns[turnIdx];
+    if (!turn || !turn.answer) return;
+    try {
+      await m7(vaultPath, {
+        action: 'save',
+        operationId: operationId(),
+        title: turn.prompt.slice(0, 200),
+        content: turn.answer.answer,
+        provider: turn.answer.provider,
+        model: turn.answer.model,
+        sources: turn.answer.citations,
+      });
+      setTurns(prev => prev.map((t, idx) => idx === turnIdx ? { ...t, saveMessage: 'Bozza salvata in locale.' } : t));
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  function toggleTurnSources(turnIdx: number) {
+    setTurns(prev => prev.map((t, idx) => idx === turnIdx ? { ...t, sourcesOpen: !(t.sourcesOpen ?? true) } : t));
+  }
+
+  function toggleTurnTechDetails(turnIdx: number) {
+    setTurns(prev => prev.map((t, idx) => idx === turnIdx ? { ...t, techDetailsOpen: !t.techDetailsOpen } : t));
+  }
+
   async function executeAsk(queryText: string) {
     if (!queryText || isRunningRef.current || loadingStep || isStreaming) return;
     isRunningRef.current = true;
     const currentModel = model || 'gpt-4o';
+    setActivePrompt(queryText);
+    setPrompt('');
 
     const currentSeq = ++seq.current;
     setError(null);
     setTechError(null);
-    setAnswer(null);
     setPreviewData(null);
     setStreamingText('');
     setIsStreaming(false);
-    setSaveMessage('');
 
     if (unlistenChunkRef.current) {
       unlistenChunkRef.current();
@@ -211,20 +230,34 @@ export function AiPanel({
 
     if (!hasConsent) {
       isRunningRef.current = false;
-      return; // Inline consent banner will be shown
+      return;
     }
 
     setLoadingStep('Selezione passaggi pertinenti dal Vault…');
-
     const t0 = Date.now();
 
+    // Contesto al modello: per ogni domanda di seguito si inviano, oltre alle fonti,
+    // le ultime 3 coppie domanda-risposta della stessa conversazione come testo nella richiesta.
+    const completedTurns = turns
+      .filter(t => t.answer && t.answer.status !== 'error')
+      .map(t => ({ question: t.prompt, answer: t.answer.answer }));
+    const previousTurns = completedTurns.slice(-3);
+    const previousQuestion = completedTurns.length > 0 ? completedTurns[completedTurns.length - 1].question : undefined;
+    const parentEntryId = turns.length > 0 ? turns[turns.length - 1].answer.historyEntryId : undefined;
+    const turnIndex = turns.length;
+
     try {
-      // Step 1: Preview / Select sources automatically
+      // Step 1: Preview / Select sources automaticamente
       const preview = await aiIpc.preview(vaultPath, {
         prompt: queryText,
         model: currentModel,
         includeDrafts: drafts,
         sourceIds: [],
+        conversationId: conversationId || undefined,
+        turnIndex,
+        parentEntryId,
+        previousTurns,
+        previousQuestion,
       });
 
       if (currentSeq !== seq.current) return;
@@ -236,8 +269,6 @@ export function AiPanel({
         return;
       }
 
-      // Fonti consultate mostrate SUBITO non appena la preview è pronta!
-      setSourcesOpen(true);
       setLoadingStep('Avvio generazione in streaming con OpenAI…');
       setIsStreaming(true);
 
@@ -258,17 +289,29 @@ export function AiPanel({
             setIsStreaming(false);
             setLoadingStep(null);
             if (event.payload.cancelled && (event.payload.error?.includes('Un documento è cambiato') || event.payload.status === 'error')) {
-              setAnswer({
+              const errAns: AiAnswer = {
                 answer: event.payload.answer || 'Un documento è cambiato durante la generazione: la risposta è stata annullata, riprova',
                 provider: 'OpenAI',
                 model: currentModel,
                 citations: [],
                 status: 'error',
                 warning: event.payload.answer,
-              });
+              };
+              setTurns(prev => [
+                ...prev,
+                {
+                  id: `err_${Date.now()}`,
+                  prompt: queryText,
+                  answer: errAns,
+                  previewData: preview,
+                  sourcesOpen: true,
+                }
+              ]);
               setStreamingText('');
+              setActivePrompt('');
+              setPreviewData(null);
             } else if (event.payload.incomplete || event.payload.cancelled) {
-              setAnswer({
+              const incAns: AiAnswer = {
                 answer: event.payload.answer,
                 provider: 'OpenAI',
                 model: currentModel,
@@ -276,7 +319,20 @@ export function AiPanel({
                 incomplete: true,
                 incompleteReason: event.payload.incompleteReason || 'La generazione della risposta è stata interrotta.',
                 warning: 'Risposta parziale: generazione interrotta prima del completamento.',
-              });
+              };
+              setTurns(prev => [
+                ...prev,
+                {
+                  id: event.payload.historyEntryId || `inc_${Date.now()}`,
+                  prompt: queryText,
+                  answer: incAns,
+                  previewData: preview,
+                  sourcesOpen: true,
+                }
+              ]);
+              setStreamingText('');
+              setActivePrompt('');
+              setPreviewData(null);
             }
           }
         });
@@ -293,24 +349,49 @@ export function AiPanel({
       res.uiTotalMs = Math.round(Date.now() - t0);
       setIsStreaming(false);
       setStreamingText('');
-      setAnswer(res);
-      saveOperation.current = operationId();
+      setLoadingStep(null);
+      if (!conversationId && res.conversationId) {
+        setConversationId(res.conversationId);
+      }
+      setTurns(prev => [
+        ...prev,
+        {
+          id: res.historyEntryId || `turn_${Date.now()}`,
+          prompt: queryText,
+          answer: res,
+          previewData: preview,
+          sourcesOpen: true,
+        }
+      ]);
+      setActivePrompt('');
+      setPreviewData(null);
       setHistoryCount(c => c + 1);
     } catch (e: any) {
       if (currentSeq !== seq.current) return;
       setIsStreaming(false);
       const errStr = String(e?.message || e);
       if (errStr.includes('Un documento è cambiato durante la generazione')) {
-        // Regola vincolante: testo sostituito per intero da messaggio errore e 0 citazioni
-        setStreamingText('');
-        setAnswer({
+        const docErrAns: AiAnswer = {
           answer: 'Un documento è cambiato durante la generazione: la risposta è stata annullata, riprova',
           provider: 'OpenAI',
           model: currentModel,
           citations: [],
           status: 'error',
           warning: 'Un documento è cambiato durante la generazione: la risposta è stata annullata, riprova',
-        });
+        };
+        setTurns(prev => [
+          ...prev,
+          {
+            id: `err_${Date.now()}`,
+            prompt: queryText,
+            answer: docErrAns,
+            previewData: previewData || undefined,
+            sourcesOpen: true,
+          }
+        ]);
+        setStreamingText('');
+        setActivePrompt('');
+        setPreviewData(null);
       } else if (errStr.includes('Consenso')) {
         setConsentGranted(false);
       } else if (errStr.includes('An AI request is already running') || errStr.includes('già una domanda in corso')) {
@@ -342,7 +423,7 @@ export function AiPanel({
 
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Search / Question Header */}
+      {/* Header Card with Nuova conversazione and Storico */}
       <div className="limen-card" style={{ padding: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -351,136 +432,530 @@ export function AiPanel({
               Chiedi al Vault
             </h2>
           </div>
-          <button
-            onClick={() => setHistoryDrawerOpen(true)}
-            style={{
-              padding: '6px 12px',
-              border: '1px solid #cbd5e1',
-              borderRadius: 8,
-              background: '#f8fafc',
-              color: '#334155',
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-            title="Apri lo storico delle domande e risposte"
-          >
-            <Clock size={16} />
-            <span>Storico</span>
-            {historyCount > 0 && (
-              <span
-                style={{
-                  background: '#0f172a',
-                  color: 'white',
-                  borderRadius: 10,
-                  padding: '1px 6px',
-                  fontSize: 11,
-                  fontWeight: 600,
-                }}
-              >
-                {historyCount}
-              </span>
-            )}
-          </button>
-        </div>
-        <p style={{ margin: '0 0 16px 0', fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
-          Fai una domanda per ottenere una risposta in prosa sintetizzata direttamente dai tuoi documenti.
-        </p>
-
-        {/* Question Input Box */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Model selection row */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
-              <label htmlFor="ai-model-select" style={{ fontSize: 13, fontWeight: 600, color: '#334155', whiteSpace: 'nowrap' }}>
-                Modello:
-              </label>
-              <select
-                id="ai-model-select"
-                aria-label="Seleziona modello AI"
-                value={model}
-                onChange={e => void handleModelChange(e.target.value)}
-                style={{
-                  ...fieldStyle,
-                  width: 'auto',
-                  flex: 1,
-                  padding: '6px 12px',
-                  fontSize: 13,
-                  borderColor: !model ? '#f59e0b' : '#cbd5e1',
-                  backgroundColor: !model ? '#fffbeb' : '#ffffff',
-                }}
-              >
-                {!model && <option value="">-- Seleziona un modello --</option>}
-                {availableModels.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-                {model && !availableModels.includes(model) && (
-                  <option key={model} value={model}>{model}</option>
-                )}
-              </select>
-            </div>
-            {!model && (
-              <span style={{ fontSize: 12, color: '#b45309', fontWeight: 500 }}>
-                ⚠️ Seleziona un modello per poter procedere
-              </span>
-            )}
-          </div>
-
-          <div style={{ position: 'relative' }}>
-            <textarea
-              aria-label="Domanda al Vault"
-              placeholder={model ? "Es. Cosa è il progetto BNXT e quali requisiti prevede?" : "Seleziona prima un modello sopra per fare una domanda..."}
-              maxLength={2000}
-              value={prompt}
-              onChange={e => setPrompt(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  if (!isBusy && prompt.trim() && model) void executeAsk(prompt.trim());
-                }
-              }}
-              style={{
-                ...fieldStyle,
-                minHeight: 90,
-                resize: 'vertical',
-                paddingRight: 100,
-                fontSize: 14,
-                lineHeight: 1.5,
-              }}
-            />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
+              onClick={handleNewConversation}
               style={{
-                ...primaryButtonStyle,
-                position: 'absolute',
-                right: 10,
-                bottom: 14,
-                padding: '8px 16px',
-                opacity: (!model || !prompt.trim() || isBusy) ? 0.6 : 1,
+                padding: '6px 12px',
+                border: '1px solid #cbd5e1',
+                borderRadius: 8,
+                background: '#f8fafc',
+                color: '#0f172a',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
               }}
-              disabled={isBusy || !prompt.trim() || !model}
-              onClick={() => !isBusy && prompt.trim() && model && void executeAsk(prompt.trim())}
-              title={!model ? "Seleziona un modello per abilitare l'invio" : isBusy ? "Generazione in corso..." : undefined}
+              title="Apre una nuova conversazione azzerando il contesto precedente"
             >
-              Chiedi
+              <PlusCircle size={16} />
+              <span>Nuova conversazione</span>
+            </button>
+            <button
+              onClick={() => setHistoryDrawerOpen(true)}
+              style={{
+                padding: '6px 12px',
+                border: '1px solid #cbd5e1',
+                borderRadius: 8,
+                background: '#f8fafc',
+                color: '#334155',
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+              title="Apri lo storico delle domande e risposte"
+            >
+              <Clock size={16} />
+              <span>Storico</span>
+              {historyCount > 0 && (
+                <span
+                  style={{
+                    background: '#0f172a',
+                    color: 'white',
+                    borderRadius: 10,
+                    padding: '1px 6px',
+                    fontSize: 11,
+                    fontWeight: 600,
+                  }}
+                >
+                  {historyCount}
+                </span>
+              )}
             </button>
           </div>
+        </div>
+        <p style={{ margin: '0 0 16px 0', fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
+          Fai una domanda per ottenere una risposta in prosa sintetizzata direttamente dai tuoi documenti. Per domande di seguito, la conversazione mantiene il contesto precedente.
+        </p>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: '#64748b' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={drafts}
-                onChange={e => setDrafts(e.target.checked)}
-              />
-              Includi bozze e note non approvate
+        {/* Model selection row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
+            <label htmlFor="ai-model-select" style={{ fontSize: 13, fontWeight: 600, color: '#334155', whiteSpace: 'nowrap' }}>
+              Modello:
             </label>
-            <span>Premere Invio per inviare</span>
+            <select
+              id="ai-model-select"
+              aria-label="Seleziona modello AI"
+              value={model}
+              onChange={e => void handleModelChange(e.target.value)}
+              style={{
+                ...fieldStyle,
+                width: 'auto',
+                flex: 1,
+                padding: '6px 12px',
+                fontSize: 13,
+                borderColor: !model ? '#f59e0b' : '#cbd5e1',
+                backgroundColor: !model ? '#fffbeb' : '#ffffff',
+              }}
+            >
+              {!model && <option value="">-- Seleziona un modello --</option>}
+              {availableModels.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+              {model && !availableModels.includes(model) && (
+                <option key={model} value={model}>{model}</option>
+              )}
+            </select>
           </div>
+          {!model && (
+            <span style={{ fontSize: 12, color: '#b45309', fontWeight: 500 }}>
+              ⚠️ Seleziona un modello per poter procedere
+            </span>
+          )}
         </div>
       </div>
+
+      {/* Conversazione mostrata a filo nel pannello */}
+      {turns.map((turn, tIdx) => {
+        const citedCount = turn.answer.citations?.length || 0;
+        const totalConsulted = turn.previewData?.sources.length || 0;
+        const isSourcesOpen = turn.sourcesOpen ?? true;
+
+        return (
+          <div key={turn.id || tIdx} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* User Question Bubble */}
+            <div
+              style={{
+                padding: '12px 18px',
+                background: '#f1f5f9',
+                borderRadius: 10,
+                border: '1px solid #cbd5e1',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <span
+                  style={{
+                    background: '#0f172a',
+                    color: '#ffffff',
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                >
+                  Turno {tIdx + 1}
+                </span>
+                <span style={{ fontSize: 12, color: '#64748b' }}>
+                  {turn.answer.model}
+                </span>
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', lineHeight: 1.4 }}>
+                {turn.prompt}
+              </div>
+            </div>
+
+            {/* Consulted Sources Card for this turn */}
+            {turn.previewData && turn.previewData.sources && turn.previewData.sources.length > 0 && (
+              <div className="limen-card" style={{ padding: 18 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isSourcesOpen ? 12 : 0 }}>
+                  <button
+                    onClick={() => toggleTurnSources(tIdx)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      textAlign: 'left',
+                    }}
+                  >
+                    {isSourcesOpen ? <ChevronDown size={18} color="#0f172a" /> : <ChevronRight size={18} color="#0f172a" />}
+                    <FileText size={18} color="#0f172a" />
+                    <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
+                      Fonti consultate dal Vault ({turn.previewData.sources.length})
+                    </h3>
+                  </button>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#2563eb' }}>
+                    {citedCount} citat{citedCount === 1 ? 'o' : 'i'} tra {totalConsulted} consultat{totalConsulted === 1 ? 'o' : 'i'}
+                  </span>
+                </div>
+
+                {isSourcesOpen && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        backgroundColor: turn.previewData.semanticUsed ? '#f0fdf4' : '#fffbeb',
+                        border: turn.previewData.semanticUsed ? '1px solid #bbf7d0' : '1px solid #fde68a',
+                        color: turn.previewData.semanticUsed ? '#166534' : '#92400e',
+                      }}
+                    >
+                      <Sparkles size={14} color={turn.previewData.semanticUsed ? '#16a34a' : '#d97706'} style={{ flexShrink: 0 }} />
+                      {turn.previewData.semanticUsed ? (
+                        <span><strong>Ricerca semantica attiva:</strong> passaggi selezionati e ordinati con modello locale bge-m3</span>
+                      ) : (
+                        <span><strong>Ricerca per parole chiave (ripiego):</strong> {turn.previewData.semanticFallbackReason || 'servizio locale non disponibile'}</span>
+                      )}
+                    </div>
+
+                    {turn.previewData.sources.map((s, sIdx) => {
+                      const clean = cleanTitle(s.title, s.relativePath);
+                      const isCited = Boolean(turn.answer.citations && turn.answer.citations.some(c => c.documentId === s.documentId || c.relativePath === s.relativePath));
+                      return (
+                        <div
+                          key={`${s.documentId}-${sIdx}`}
+                          onClick={() => {
+                            if (onOpenDocument) {
+                              onOpenDocument({
+                                documentId: s.documentId,
+                                passageId: s.passageId,
+                                locator: s.locator,
+                                revision: s.revision,
+                                sha256: s.sha256,
+                              });
+                            }
+                          }}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: 6,
+                            backgroundColor: isCited ? '#f0fdf4' : '#f8fafc',
+                            border: isCited ? '1px solid #86efac' : '1px solid #e2e8f0',
+                            cursor: onOpenDocument ? 'pointer' : 'default',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                            <FileText size={15} color={isCited ? '#16a34a' : '#64748b'} style={{ flexShrink: 0 }} />
+                            <span style={{ fontSize: 13, fontWeight: isCited ? 700 : 500, color: isCited ? '#14532d' : '#1e293b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                              {clean}
+                            </span>
+                            {s.category && (
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  padding: '2px 6px',
+                                  borderRadius: 4,
+                                  backgroundColor: isCited ? '#dcfce7' : '#e2e8f0',
+                                  color: isCited ? '#166534' : '#475569',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {s.category}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                            {isCited && (
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  padding: '2px 8px',
+                                  borderRadius: 4,
+                                  backgroundColor: '#22c55e',
+                                  color: '#ffffff',
+                                  letterSpacing: '0.04em',
+                                }}
+                              >
+                                CITATA
+                              </span>
+                            )}
+                            {s.locator && (
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  padding: '2px 6px',
+                                  borderRadius: 4,
+                                  backgroundColor: isCited ? '#ecfdf5' : '#eff6ff',
+                                  color: isCited ? '#047857' : '#1d4ed8',
+                                  border: isCited ? '1px solid #a7f3d0' : '1px solid #bfdbfe',
+                                }}
+                              >
+                                {s.locator}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Answer Card for this turn */}
+            <div className="limen-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {turn.answer.status === 'error' && (
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#991b1b',
+                    fontSize: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                  }}
+                >
+                  <AlertCircle size={20} style={{ flexShrink: 0, color: '#dc2626' }} />
+                  <div><strong>Attenzione:</strong> {turn.answer.answer}</div>
+                </div>
+              )}
+
+              {turn.answer.incomplete && turn.answer.status !== 'error' && (
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    backgroundColor: '#fffbeb',
+                    border: '1px solid #fde68a',
+                    color: '#92400e',
+                    fontSize: 13,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                  }}
+                >
+                  <AlertCircle size={18} style={{ flexShrink: 0, color: '#d97706' }} />
+                  <div>
+                    <strong>Risposta incompleta:</strong>{' '}
+                    {turn.answer.incompleteReason || 'La generazione della risposta è stata interrotta. La risposta parziale è stata preservata con 0 citazioni.'}
+                  </div>
+                </div>
+              )}
+
+              {turn.answer.status !== 'error' && (
+                <div style={{ fontSize: 15, lineHeight: 1.7, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
+                  {turn.answer.answer}
+                </div>
+              )}
+
+              {/* Save as Draft & Technical Details */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: 14, flexWrap: 'wrap', gap: 10 }}>
+                <button
+                  style={{
+                    ...primaryButtonStyle,
+                    backgroundColor: '#ffffff',
+                    color: '#0f172a',
+                    border: '1px solid #cbd5e1',
+                    fontSize: 13,
+                    padding: '6px 14px',
+                  }}
+                  disabled={!!turn.saveMessage || turn.answer.status === 'error'}
+                  onClick={() => void handleSaveDraft(tIdx)}
+                >
+                  {turn.saveMessage || 'Salva risposta come bozza'}
+                </button>
+
+                <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>
+                  Risposta generata con OpenAI ({turn.answer.model})
+                </span>
+              </div>
+
+              {/* Technical details accordion */}
+              <div style={{ marginTop: 2 }}>
+                <details
+                  open={turn.techDetailsOpen}
+                  onToggle={() => toggleTurnTechDetails(tIdx)}
+                  style={{ fontSize: 12, color: '#64748b' }}
+                >
+                  <summary style={{ cursor: 'pointer', fontWeight: 500, color: '#64748b' }}>
+                    Dettagli tecnici
+                  </summary>
+                  <div style={{ marginTop: 8, padding: 12, backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div><strong>Fornitore:</strong> {turn.answer.provider}</div>
+                    <div><strong>Modello:</strong> {turn.answer.model}</div>
+                    <div><strong>Stato risposta:</strong> {turn.answer.status || (turn.answer.incomplete ? 'incompleta' : 'completa')} {turn.answer.incompleteReason ? `(${turn.answer.incompleteReason})` : ''}</div>
+                    <div>
+                      <strong>Token usati:</strong> {turn.answer.tokensUsed ?? 'N/A'}
+                      {(turn.answer.tokensPrompt !== undefined || turn.answer.tokensCompletion !== undefined) && (
+                        <span> (input: {turn.answer.tokensPrompt ?? 'N/A'}, output: {turn.answer.tokensCompletion ?? 'N/A'}{turn.answer.tokensReasoning !== undefined ? `, ragionamento: ${turn.answer.tokensReasoning}` : ''})</span>
+                      )}
+                    </div>
+                    {turn.answer.uiTotalMs && <div><strong>Tempo interfaccia (totale):</strong> {(turn.answer.uiTotalMs / 1000).toFixed(1)} s ({turn.answer.uiTotalMs} ms)</div>}
+                    {turn.previewData && <div><strong>Dimensione contesto:</strong> {turn.previewData.contextBytes} byte (passaggi consultati: {turn.previewData.sources.length})</div>}
+                    <div>
+                      <strong>Ricerca semantica:</strong>{' '}
+                      {(turn.answer.semanticUsed ?? turn.previewData?.semanticUsed) ? (
+                        <span style={{ color: '#166534', fontWeight: 600 }}>Attiva (bge-m3 1024d)</span>
+                      ) : (
+                        <span style={{ color: '#b45309' }}>Non attiva — {turn.answer.semanticFallbackReason || turn.previewData?.semanticFallbackReason || 'Ripiego su ricerca per parole'}</span>
+                      )}
+                    </div>
+                    <div><strong>Citazioni grezze:</strong></div>
+                    {turn.answer.citations.map((c, i) => (
+                      <div key={i} style={{ fontSize: 11, fontFamily: 'monospace', color: '#475569' }}>
+                        • {c.documentId} | SHA256: {c.sha256} | Path: {c.relativePath}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Ongoing Streaming Turn (in elaborazione) */}
+      {isBusy && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div
+            style={{
+              padding: '12px 18px',
+              background: '#f1f5f9',
+              borderRadius: 10,
+              border: '1px solid #cbd5e1',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span
+                style={{
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
+              >
+                Turno {turns.length + 1}
+              </span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
+                {activePrompt}
+              </span>
+            </div>
+            {previewData?.ticket && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (previewData?.ticket) {
+                    void aiIpc.cancel(previewData.ticket);
+                  }
+                }}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  border: '1px solid #fca5a5',
+                  backgroundColor: '#fef2f2',
+                  color: '#dc2626',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Annulla domanda
+              </button>
+            )}
+          </div>
+
+          {/* Sources preview during stream */}
+          {previewData && previewData.sources && previewData.sources.length > 0 && (
+            <div className="limen-card" style={{ padding: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FileText size={18} color="#0f172a" />
+                  <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
+                    Fonti consultate dal Vault per questa domanda ({previewData.sources.length})
+                  </h3>
+                </div>
+                <span style={{ fontSize: 12, color: '#2563eb', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Sparkles size={14} className="animate-spin" /> Ricezione streaming…
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Streaming Box */}
+          <div className="limen-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {loadingStep && (
+              <div style={{ textAlign: 'center', color: '#475569' }}>
+                <div className="animate-spin" style={{ display: 'inline-block', marginBottom: 8 }}>
+                  <Sparkles size={24} color="#0f172a" />
+                </div>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>{loadingStep}</p>
+              </div>
+            )}
+            {isStreaming && (
+              <div style={{ fontSize: 15, lineHeight: 1.7, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
+                {streamingText || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Elaborazione in corso e attesa token…</span>}
+                <span
+                  style={{
+                    display: 'inline-block',
+                    width: 8,
+                    height: 16,
+                    backgroundColor: '#2563eb',
+                    marginLeft: 4,
+                    verticalAlign: 'text-bottom',
+                    animation: 'pulse 1s infinite',
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && !loadingStep && (
+        <div
+          style={{
+            padding: 16,
+            borderRadius: 8,
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#991b1b',
+            fontSize: 13,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, marginBottom: 4 }}>
+            <AlertCircle size={16} />
+            <span>{error}</span>
+          </div>
+          {techError && (
+            <details style={{ marginTop: 8, fontSize: 12, color: '#7f1d1d' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 500 }}>Dettaglio tecnico errore</summary>
+              <pre style={{ margin: '6px 0 0 0', padding: 8, background: '#fee2e2', borderRadius: 4, whiteSpace: 'pre-wrap' }}>
+                {techError}
+              </pre>
+            </details>
+          )}
+        </div>
+      )}
 
       {/* Consent Warning Banner Inline if missing */}
       {consentGranted === false && (
@@ -524,387 +999,99 @@ export function AiPanel({
         </div>
       )}
 
-      {/* Loading State */}
-      {loadingStep && (
-        <div className="limen-card" style={{ padding: 24, textAlign: 'center', color: '#475569' }}>
-          <div className="animate-spin" style={{ display: 'inline-block', marginBottom: 8 }}>
-            <Sparkles size={24} color="#0f172a" />
-          </div>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>{loadingStep}</p>
-        </div>
-      )}
-
-      {/* Error Message */}
-      {error && !loadingStep && (
-        <div
-          style={{
-            padding: 16,
-            borderRadius: 8,
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#991b1b',
-            fontSize: 13,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, marginBottom: 4 }}>
-            <AlertCircle size={16} />
-            <span>{error}</span>
-          </div>
-          {techError && (
-            <details style={{ marginTop: 8, fontSize: 12, color: '#7f1d1d' }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 500 }}>Dettaglio tecnico errore</summary>
-              <pre style={{ margin: '6px 0 0 0', padding: 8, background: '#fee2e2', borderRadius: 4, whiteSpace: 'pre-wrap' }}>
-                {techError}
-              </pre>
-            </details>
-          )}
-        </div>
-      )}
-
-      {/* Fonti consultate dal Vault per questa domanda — Mostrate SUBITO appena la preview è pronta */}
-      {previewData && previewData.sources && previewData.sources.length > 0 && (
-        <div className="limen-card" style={{ padding: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <button
-              onClick={() => setSourcesOpen(!sourcesOpen)}
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                textAlign: 'left',
-              }}
-            >
-              {sourcesOpen ? <ChevronDown size={18} color="#0f172a" /> : <ChevronRight size={18} color="#0f172a" />}
-              <FileText size={18} color="#0f172a" />
-              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
-                Fonti consultate dal Vault per questa domanda ({previewData.sources.length})
-              </h3>
-            </button>
-            {isStreaming && (
-              <span style={{ fontSize: 12, color: '#2563eb', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Sparkles size={14} className="animate-spin" /> Ricezione streaming…
-              </span>
-            )}
-          </div>
-
-          {sourcesOpen && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {/* Indicatore trasparente: ricerca semantica vs parole chiave */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '6px 12px',
-                  borderRadius: 6,
-                  fontSize: 12,
-                  backgroundColor: previewData.semanticUsed ? '#f0fdf4' : '#fffbeb',
-                  border: previewData.semanticUsed ? '1px solid #bbf7d0' : '1px solid #fde68a',
-                  color: previewData.semanticUsed ? '#166534' : '#92400e',
-                }}
-              >
-                <Sparkles size={14} color={previewData.semanticUsed ? '#16a34a' : '#d97706'} style={{ flexShrink: 0 }} />
-                {previewData.semanticUsed ? (
-                  <span><strong>Ricerca semantica attiva:</strong> passaggi selezionati e ordinati con modello locale bge-m3 (1024d)</span>
-                ) : (
-                  <span><strong>Ricerca per parole chiave (ripiego):</strong> {previewData.semanticFallbackReason || 'servizio locale non disponibile'}</span>
-                )}
-              </div>
-
-              {previewData.sources.map((s, idx) => {
-                const clean = cleanTitle(s.title, s.relativePath);
-                const isCited = Boolean(answer?.citations && answer.citations.some(c => c.documentId === s.documentId || c.relativePath === s.relativePath));
-                return (
-                  <div
-                    key={`${s.documentId}-${idx}`}
-                    onClick={() => {
-                      if (onOpenDocument) {
-                        onOpenDocument({
-                          documentId: s.documentId,
-                          passageId: s.passageId,
-                          locator: s.locator,
-                          revision: s.revision,
-                          sha256: s.sha256,
-                        });
-                      }
-                    }}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: 6,
-                      backgroundColor: isCited ? '#f0fdf4' : '#f8fafc',
-                      border: isCited ? '1px solid #86efac' : '1px solid #e2e8f0',
-                      cursor: onOpenDocument ? 'pointer' : 'default',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                      <FileText size={15} color={isCited ? '#16a34a' : '#64748b'} style={{ flexShrink: 0 }} />
-                      <span style={{ fontSize: 13, fontWeight: isCited ? 700 : 500, color: isCited ? '#14532d' : '#1e293b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                        {clean}
-                      </span>
-                      {s.category && (
-                        <span
-                          style={{
-                            fontSize: 11,
-                            padding: '2px 6px',
-                            borderRadius: 4,
-                            backgroundColor: isCited ? '#dcfce7' : '#e2e8f0',
-                            color: isCited ? '#166534' : '#475569',
-                            flexShrink: 0,
-                          }}
-                        >
-                          {s.category}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                      {isCited && (
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: 4,
-                            backgroundColor: '#22c55e',
-                            color: '#ffffff',
-                            letterSpacing: '0.04em',
-                          }}
-                        >
-                          CITATA
-                        </span>
-                      )}
-                      {s.locator && (
-                        <span
-                          style={{
-                            fontSize: 11,
-                            padding: '2px 6px',
-                            borderRadius: 4,
-                            backgroundColor: isCited ? '#ecfdf5' : '#eff6ff',
-                            color: isCited ? '#047857' : '#1d4ed8',
-                            border: isCited ? '1px solid #a7f3d0' : '1px solid #bfdbfe',
-                          }}
-                        >
-                          {s.locator}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Dicitura trasparente: "Basata su N documenti citati tra M consultati" quando la risposta è pronta */}
-          {answer && (
-            <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#2563eb' }}>
-                Basata su {answer.citations?.length || 0} document{answer.citations?.length === 1 ? 'o citato' : 'i citati'} tra {previewData.sources.length} consultat{previewData.sources.length === 1 ? 'o' : 'i'}
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 500, color: (answer.semanticUsed ?? previewData.semanticUsed) ? '#166534' : '#92400e' }}>
-                {(answer.semanticUsed ?? previewData.semanticUsed)
-                  ? '✓ Ricerca semantica bge-m3'
-                  : `⚠️ ${answer.semanticFallbackReason || previewData.semanticFallbackReason || 'Ricerca solo per parole'}`}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Box di generazione progressiva in streaming */}
-      {isStreaming && (
-        <div className="limen-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, color: '#2563eb', fontSize: 13, fontWeight: 600 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Sparkles size={16} className="animate-spin" />
-              <span>Generazione in streaming con OpenAI ({model || 'gpt-4o'})…</span>
-            </div>
-            {previewData?.ticket && (
+      {/* Question Input Box (In calce alla conversazione a filo) */}
+      <div className="limen-card" style={{ padding: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
+              {turns.length === 0 ? 'Fai una domanda al Vault:' : `Domanda di seguito (Turno ${turns.length + 1}):`}
+            </span>
+            {turns.length > 0 && (
               <button
                 type="button"
-                onClick={() => {
-                  if (previewData?.ticket) {
-                    void aiIpc.cancel(previewData.ticket);
-                  }
-                }}
+                onClick={handleNewConversation}
                 style={{
-                  padding: '4px 10px',
-                  borderRadius: 6,
-                  border: '1px solid #fca5a5',
-                  backgroundColor: '#fef2f2',
-                  color: '#dc2626',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  color: '#2563eb',
                   fontSize: 12,
                   fontWeight: 600,
                   cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
                 }}
               >
-                Annulla domanda
+                <PlusCircle size={14} />
+                Nuova conversazione
               </button>
             )}
           </div>
-          <div style={{ fontSize: 15, lineHeight: 1.7, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
-            {streamingText || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Elaborazione in corso e attesa token…</span>}
-            <span
+
+          <div style={{ position: 'relative' }}>
+            <textarea
+              aria-label="Domanda al Vault"
+              placeholder={
+                !model
+                  ? 'Seleziona prima un modello sopra per fare una domanda...'
+                  : turns.length === 0
+                  ? 'Es. Cosa è il progetto BNXT e quali requisiti prevede?'
+                  : 'Fai una domanda di seguito sulla conversazione...'
+              }
+              maxLength={2000}
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (!isBusy && prompt.trim() && model) void executeAsk(prompt.trim());
+                }
+              }}
               style={{
-                display: 'inline-block',
-                width: 8,
-                height: 16,
-                backgroundColor: '#2563eb',
-                marginLeft: 4,
-                verticalAlign: 'text-bottom',
-                animation: 'pulse 1s infinite',
+                ...fieldStyle,
+                minHeight: 85,
+                resize: 'vertical',
+                paddingRight: 100,
+                fontSize: 14,
+                lineHeight: 1.5,
               }}
             />
-          </div>
-        </div>
-      )}
-
-      {/* Prose Answer Result Block */}
-      {answer && !loadingStep && !isStreaming && (
-        <div className="limen-card" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Sostituzione protettiva testo per errore verify_post */}
-          {answer.status === 'error' && (
-            <div
-              style={{
-                padding: '14px 18px',
-                borderRadius: 8,
-                backgroundColor: '#fef2f2',
-                border: '1px solid #fecaca',
-                color: '#991b1b',
-                fontSize: 14,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-              }}
-            >
-              <AlertCircle size={20} style={{ flexShrink: 0, color: '#dc2626' }} />
-              <div>
-                <strong>Attenzione:</strong> {answer.answer}
-              </div>
-            </div>
-          )}
-
-          {/* Banner Risposta Incompleta per modelli con limite token o stream interrotto */}
-          {answer.incomplete && answer.status !== 'error' && (
-            <div
-              style={{
-                padding: '12px 16px',
-                borderRadius: 8,
-                backgroundColor: '#fffbeb',
-                border: '1px solid #fde68a',
-                color: '#92400e',
-                fontSize: 13,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-              }}
-            >
-              <AlertCircle size={18} style={{ flexShrink: 0, color: '#d97706' }} />
-              <div>
-                <strong>Risposta incompleta:</strong>{' '}
-                {answer.incompleteReason === 'max_output_tokens'
-                  ? 'Il modello ha raggiunto il limite massimo di token generabili. La risposta parziale è stata preservata con 0 citazioni.'
-                  : (answer.incompleteReason || 'La generazione della risposta è stata interrotta. La risposta parziale è stata preservata con 0 citazioni.')}
-              </div>
-            </div>
-          )}
-
-          {/* Answer Foreground Prose */}
-          {answer.status !== 'error' && (
-            <div style={{ fontSize: 15, lineHeight: 1.7, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
-              {answer.answer}
-            </div>
-          )}
-
-          {/* Save as Draft & Technical Details Accordion */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: 16 }}>
             <button
               style={{
                 ...primaryButtonStyle,
-                backgroundColor: '#ffffff',
-                color: '#0f172a',
-                border: '1px solid #cbd5e1',
-                fontSize: 13,
-                padding: '6px 14px',
+                position: 'absolute',
+                right: 10,
+                bottom: 14,
+                padding: '8px 16px',
+                opacity: (!model || !prompt.trim() || isBusy) ? 0.6 : 1,
               }}
-              disabled={!!saveMessage || answer.status === 'error'}
-              onClick={async () => {
-                try {
-                  await m7(vaultPath, {
-                    action: 'save',
-                    operationId: saveOperation.current,
-                    title: prompt.slice(0, 200),
-                    content: answer.answer,
-                    provider: answer.provider,
-                    model: answer.model,
-                    sources: answer.citations,
-                  });
-                  setSaveMessage('Bozza salvata in locale.');
-                } catch (e) {
-                  setError(String(e));
-                }
-              }}
+              disabled={isBusy || !prompt.trim() || !model}
+              onClick={() => !isBusy && prompt.trim() && model && void executeAsk(prompt.trim())}
+              title={!model ? "Seleziona un modello per abilitare l'invio" : isBusy ? "Generazione in corso..." : undefined}
             >
-              {saveMessage || 'Salva risposta come bozza'}
+              Chiedi
             </button>
-
-            <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>
-              Risposta generata con OpenAI ({answer.model})
-            </span>
           </div>
 
-          {/* Dettagli Tecnici Accordion */}
-          <div style={{ marginTop: 4 }}>
-            <details
-              open={techDetailsOpen}
-              onToggle={e => setTechDetailsOpen((e.target as HTMLDetailsElement).open)}
-              style={{ fontSize: 12, color: '#64748b' }}
-            >
-              <summary style={{ cursor: 'pointer', fontWeight: 500, color: '#64748b' }}>
-                Dettagli tecnici
-              </summary>
-              <div style={{ marginTop: 8, padding: 12, backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div><strong>Fornitore:</strong> {answer.provider}</div>
-                <div><strong>Modello:</strong> {answer.model}</div>
-                <div><strong>Stato risposta:</strong> {answer.status || (answer.incomplete ? 'incompleta' : 'completa')} {answer.incompleteReason ? `(${answer.incompleteReason})` : ''}</div>
-                <div>
-                  <strong>Token usati:</strong> {answer.tokensUsed ?? 'N/A'}
-                  {(answer.tokensPrompt !== undefined || answer.tokensCompletion !== undefined) && (
-                    <span> (input: {answer.tokensPrompt ?? 'N/A'}, output: {answer.tokensCompletion ?? 'N/A'}{answer.tokensReasoning !== undefined ? `, ragionamento: ${answer.tokensReasoning}` : ''})</span>
-                  )}
-                </div>
-                {answer.uiTotalMs && <div><strong>Tempo interfaccia (totale):</strong> {(answer.uiTotalMs / 1000).toFixed(1)} s ({answer.uiTotalMs} ms)</div>}
-                {previewData && <div><strong>Dimensione contesto:</strong> {previewData.contextBytes} byte (passaggi consultati: {previewData.sources.length})</div>}
-                <div>
-                  <strong>Ricerca semantica:</strong>{' '}
-                  {(answer.semanticUsed ?? previewData?.semanticUsed) ? (
-                    <span style={{ color: '#166534', fontWeight: 600 }}>Attiva (bge-m3 1024d)</span>
-                  ) : (
-                    <span style={{ color: '#b45309' }}>Non attiva — {answer.semanticFallbackReason || previewData?.semanticFallbackReason || 'Ripiego su ricerca per parole'}</span>
-                  )}
-                </div>
-                <div><strong>Citazioni grezze:</strong></div>
-                {answer.citations.map((c, i) => (
-                  <div key={i} style={{ fontSize: 11, fontFamily: 'monospace', color: '#475569' }}>
-                    • {c.documentId} | SHA256: {c.sha256} | Path: {c.relativePath}
-                  </div>
-                ))}
-              </div>
-            </details>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: '#64748b' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={drafts}
+                onChange={e => setDrafts(e.target.checked)}
+              />
+              Includi bozze e note non approvate
+            </label>
+            <span>Premere Invio per inviare</span>
           </div>
         </div>
-      )}
+      </div>
+
       <AiHistoryDrawer
         vaultPath={vaultPath}
         isOpen={historyDrawerOpen}
         onClose={() => setHistoryDrawerOpen(false)}
-        onSelectEntry={handleSelectHistoryEntry}
         onCountChange={count => setHistoryCount(count)}
       />
     </div>

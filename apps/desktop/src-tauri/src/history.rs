@@ -4,6 +4,20 @@ use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+pub fn generate_random_conversation_id() -> String {
+    let mut random_bytes = [0u8; 12];
+    if getrandom::fill(&mut random_bytes).is_ok() {
+        let id_hex = random_bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+        format!("conv_{}", id_hex)
+    } else {
+        format!(
+            "conv_{}_{:08x}",
+            chrono::Utc::now().timestamp_millis(),
+            std::process::id()
+        )
+    }
+}
+
 pub fn record_ai_completion(
     vault_path: &Path,
     prompt: &str,
@@ -13,7 +27,11 @@ pub fn record_ai_completion(
     status_str: &str,
     duration_ms: u64,
     sources: &[crate::ai::Source],
-) {
+    cited_indices: &[usize],
+    conversation_id: Option<&str>,
+    turn_index: Option<usize>,
+    parent_entry_id: Option<&str>,
+) -> String {
     let history_sources: Vec<HistorySourceRef> = sources
         .iter()
         .enumerate()
@@ -26,6 +44,7 @@ pub fn record_ai_completion(
                     passage_sha256: p_sha.clone(),
                 })
                 .collect();
+            let is_cited = cited_indices.contains(&idx);
             HistorySourceRef {
                 document_id: s.document_id.clone(),
                 relative_path: s.relative_path.clone(),
@@ -34,6 +53,7 @@ pub fn record_ai_completion(
                 doc_sha256: s.sha256.clone(),
                 passages,
                 citation_index: idx + 1,
+                cited: is_cited,
             }
         })
         .collect();
@@ -48,10 +68,14 @@ pub fn record_ai_completion(
             format!("{}_{}", prompt, chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)).as_bytes()
         )[..8]
     );
-    let conv_id = format!(
-        "conv_{}",
-        &crate::snapshots::compute_sha256(prompt.as_bytes())[..12]
-    );
+
+    // Correzione H1 (punto 4): conversation_id casuale creato all'inizio di ogni conversazione.
+    // Non viene calcolato dall'impronta del prompt.
+    let conv_id = match conversation_id {
+        Some(cid) if !cid.trim().is_empty() => cid.trim().to_string(),
+        _ => generate_random_conversation_id(),
+    };
+
     let entry_status = if status_str == "incomplete" {
         "incomplete"
     } else {
@@ -59,10 +83,10 @@ pub fn record_ai_completion(
     };
 
     let entry = HistoryEntry {
-        id: entry_id,
+        id: entry_id.clone(),
         conversation_id: conv_id,
-        turn_index: 1,
-        parent_entry_id: None,
+        turn_index: turn_index.unwrap_or(1),
+        parent_entry_id: parent_entry_id.filter(|s| !s.trim().is_empty()).map(|s| s.to_string()),
         created_at_utc: now_utc,
         utc_offset_seconds: utc_offset,
         requested_model: requested_model.to_string(),
@@ -75,6 +99,7 @@ pub fn record_ai_completion(
         pid: Some(std::process::id()),
     };
     let _ = save_history_entry(vault_path, entry);
+    entry_id
 }
 
 #[cfg(test)]
@@ -108,6 +133,8 @@ pub struct HistorySourceRef {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub passages: Vec<HistoryPassageRef>,
     pub citation_index: usize,
+    #[serde(default)]
+    pub cited: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -146,6 +173,8 @@ pub struct HistoryEntryHeader {
     pub status: String,
     pub duration_ms: u64,
     pub sources_count: usize,
+    #[serde(default)]
+    pub cited_sources_count: usize,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pid: Option<u32>,
 }
@@ -400,6 +429,7 @@ pub fn list_history_entries(vault_path: &Path) -> Result<Vec<HistoryEntryHeader>
             entry.answer.clone()
         };
 
+        let cited_count = entry.sources.iter().filter(|s| s.cited).count();
         headers.push(HistoryEntryHeader {
             id: entry.id,
             conversation_id: entry.conversation_id,
@@ -413,6 +443,7 @@ pub fn list_history_entries(vault_path: &Path) -> Result<Vec<HistoryEntryHeader>
             status: entry.status,
             duration_ms: entry.duration_ms,
             sources_count: entry.sources.len(),
+            cited_sources_count: cited_count,
             pid: entry.pid,
         });
     }
@@ -768,6 +799,7 @@ pub mod tests {
                 },
             ],
             citation_index: 1,
+            cited: false,
         };
 
         let entry = HistoryEntry {
@@ -874,6 +906,7 @@ pub mod tests {
                 doc_sha256: note1_sha,
                 passages: vec![],
                 citation_index: 1,
+                cited: false,
             },
             // 2. Modified
             HistorySourceRef {
@@ -884,6 +917,7 @@ pub mod tests {
                 doc_sha256: note2_sha,
                 passages: vec![],
                 citation_index: 2,
+                cited: false,
             },
             // 3. Missing (never created on disk)
             HistorySourceRef {
@@ -894,6 +928,7 @@ pub mod tests {
                 doc_sha256: note3_sha,
                 passages: vec![],
                 citation_index: 3,
+                cited: false,
             },
         ];
 
@@ -955,5 +990,191 @@ pub mod tests {
         let cleared = clear_vault_history(&vault_path).unwrap();
         assert_eq!(cleared, 4);
         assert_eq!(list_history_entries(&vault_path).unwrap().len(), 0);
+    }
+
+    #[test]
+    fn test_same_question_in_different_conversations_has_different_conversation_id() {
+        let temp = tempdir().unwrap();
+        set_test_history_dir(temp.path().to_path_buf());
+        let vault_path = temp.path().join("vault");
+        fs::create_dir_all(&vault_path.join("00_SYSTEM")).unwrap();
+
+        let prompt = "Qual è il budget del progetto BNXT?";
+        let sources: Vec<crate::ai::Source> = vec![];
+
+        // Due registrazioni separate con lo stesso identico prompt senza specificare conversation_id
+        let id1 = record_ai_completion(
+            &vault_path,
+            prompt,
+            "gpt-4o",
+            "gpt-4o-2024-08-06",
+            "Risposta 1",
+            "complete",
+            1000,
+            &sources,
+            &[],
+            None,
+            None,
+            None,
+        );
+
+        let id2 = record_ai_completion(
+            &vault_path,
+            prompt,
+            "gpt-4o",
+            "gpt-4o-2024-08-06",
+            "Risposta 2",
+            "complete",
+            1100,
+            &sources,
+            &[],
+            None,
+            None,
+            None,
+        );
+
+        let entry1 = get_history_entry(&vault_path, &id1).unwrap();
+        let entry2 = get_history_entry(&vault_path, &id2).unwrap();
+
+        assert_ne!(
+            entry1.conversation_id, entry2.conversation_id,
+            "La stessa domanda in conversazioni diverse deve avere conversation_id diversi"
+        );
+        assert!(entry1.conversation_id.starts_with("conv_"));
+        assert!(entry2.conversation_id.starts_with("conv_"));
+        assert_eq!(entry1.turn_index, 1);
+        assert_eq!(entry2.turn_index, 1);
+        assert_eq!(entry1.parent_entry_id, None);
+        assert_eq!(entry2.parent_entry_id, None);
+    }
+
+    #[test]
+    fn test_history_three_turns_parent_and_turn_indices_and_cited_sources() {
+        let temp = tempdir().unwrap();
+        set_test_history_dir(temp.path().to_path_buf());
+        let vault_path = temp.path().join("vault");
+        fs::create_dir_all(&vault_path.join("00_SYSTEM")).unwrap();
+
+        let s1 = crate::ai::Source {
+            document_id: "doc1".into(),
+            relative_path: "01_CLIENTS/d1.md".into(),
+            title: "Doc 1".into(),
+            category: "client".into(),
+            status: Some("approved".into()),
+            sha256: "h1".into(),
+            content: "Testo 1".into(),
+            locator: Some("P1".into()),
+            passage_id: None,
+            revision: None,
+            mtime_ms: None,
+            file_size: None,
+            passage_hashes: vec![],
+        };
+        let s2 = crate::ai::Source {
+            document_id: "doc2".into(),
+            relative_path: "01_CLIENTS/d2.md".into(),
+            title: "Doc 2".into(),
+            category: "client".into(),
+            status: Some("approved".into()),
+            sha256: "h2".into(),
+            content: "Testo 2".into(),
+            locator: Some("P2".into()),
+            passage_id: None,
+            revision: None,
+            mtime_ms: None,
+            file_size: None,
+            passage_hashes: vec![],
+        };
+
+        let conv_id = "conv_thread_xyz";
+
+        // Turno 1: s1 citata (indice 0), s2 non citata. parent: None
+        let id1 = record_ai_completion(
+            &vault_path,
+            "Domanda 1",
+            "gpt-4o",
+            "gpt-4o-2024-08-06",
+            "Risposta 1",
+            "complete",
+            1000,
+            &[s1.clone(), s2.clone()],
+            &[0],
+            Some(conv_id),
+            Some(1),
+            None,
+        );
+
+        // Turno 2: entrambe citate ([0, 1]). parent: id1
+        let id2 = record_ai_completion(
+            &vault_path,
+            "Domanda 2",
+            "gpt-4o",
+            "gpt-4o-2024-08-06",
+            "Risposta 2",
+            "complete",
+            1200,
+            &[s1.clone(), s2.clone()],
+            &[0, 1],
+            Some(conv_id),
+            Some(2),
+            Some(&id1),
+        );
+
+        // Turno 3: nessuna citata ([]). parent: id2
+        let id3 = record_ai_completion(
+            &vault_path,
+            "Domanda 3",
+            "gpt-4o",
+            "gpt-4o-2024-08-06",
+            "Risposta 3",
+            "complete",
+            1100,
+            &[s1.clone(), s2.clone()],
+            &[],
+            Some(conv_id),
+            Some(3),
+            Some(&id2),
+        );
+
+        let e1 = get_history_entry(&vault_path, &id1).unwrap();
+        let e2 = get_history_entry(&vault_path, &id2).unwrap();
+        let e3 = get_history_entry(&vault_path, &id3).unwrap();
+
+        assert_eq!(e1.conversation_id, conv_id);
+        assert_eq!(e2.conversation_id, conv_id);
+        assert_eq!(e3.conversation_id, conv_id);
+
+        assert_eq!(e1.turn_index, 1);
+        assert_eq!(e1.parent_entry_id, None);
+        assert_eq!(e1.sources.len(), 2);
+        assert_eq!(e1.sources[0].cited, true);
+        assert_eq!(e1.sources[1].cited, false);
+
+        assert_eq!(e2.turn_index, 2);
+        assert_eq!(e2.parent_entry_id, Some(id1.clone()));
+        assert_eq!(e2.sources.len(), 2);
+        assert_eq!(e2.sources[0].cited, true);
+        assert_eq!(e2.sources[1].cited, true);
+
+        assert_eq!(e3.turn_index, 3);
+        assert_eq!(e3.parent_entry_id, Some(id2.clone()));
+        assert_eq!(e3.sources.len(), 2);
+        assert_eq!(e3.sources[0].cited, false);
+        assert_eq!(e3.sources[1].cited, false);
+
+        let headers = list_history_entries(&vault_path).unwrap();
+        assert_eq!(headers.len(), 3);
+        let h1 = headers.iter().find(|h| h.id == id1).unwrap();
+        let h2 = headers.iter().find(|h| h.id == id2).unwrap();
+        let h3 = headers.iter().find(|h| h.id == id3).unwrap();
+
+        assert_eq!(h1.sources_count, 2);
+        assert_eq!(h1.cited_sources_count, 1);
+
+        assert_eq!(h2.sources_count, 2);
+        assert_eq!(h2.cited_sources_count, 2);
+
+        assert_eq!(h3.sources_count, 2);
+        assert_eq!(h3.cited_sources_count, 0);
     }
 }
