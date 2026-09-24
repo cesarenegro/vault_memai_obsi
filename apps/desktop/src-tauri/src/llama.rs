@@ -44,6 +44,7 @@ struct RunningState {
     child: Option<Child>,
     port: u16,
     adopted_pid: Option<u32>,
+    owned_pid: Option<u32>,
     model_path: PathBuf,
     binary_path: Option<PathBuf>,
     last_error: Option<String>,
@@ -560,20 +561,113 @@ pub fn port_file_path() -> Option<PathBuf> {
     get_models_dir().ok().map(|d| d.join("llama-server.port"))
 }
 
-fn write_pid_file(path: &Path, pid: u32) {
+pub fn write_pid_file(path: &Path, pid: u32) {
     let _ = fs::write(path, pid.to_string());
 }
 
-fn read_pid_file(path: &Path) -> Option<u32> {
+pub fn read_pid_file(path: &Path) -> Option<u32> {
     fs::read_to_string(path).ok()?.trim().parse::<u32>().ok()
 }
 
-fn write_port_file(path: &Path, port: u16) {
+pub fn write_port_file(path: &Path, port: u16) {
     let _ = fs::write(path, port.to_string());
 }
 
-fn read_port_file(path: &Path) -> Option<u16> {
+pub fn read_port_file(path: &Path) -> Option<u16> {
     fs::read_to_string(path).ok()?.trim().parse::<u16>().ok()
+}
+
+/// Verifica se un processo con il PID specificato è attualmente vivo nel sistema operativo.
+pub fn is_process_alive(pid: u32) -> bool {
+    if pid == 0 {
+        return false;
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        let out = std::process::Command::new("powershell")
+            .args(["-NoProfile", "-Command", &format!("Get-Process -Id {} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id", pid)])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .ok();
+        if let Some(o) = out {
+            let s = String::from_utf8_lossy(&o.stdout);
+            s.trim().parse::<u32>().ok() == Some(pid)
+        } else {
+            false
+        }
+    }
+    #[cfg(unix)]
+    {
+        unsafe { libc::kill(pid as i32, 0) == 0 }
+    }
+}
+
+/// Scrittura consistente della coppia (llama-server.pid e llama-server.port).
+/// Se esiste già una registrazione per un PID attivo e sano (healthy), NON sovrascrive.
+pub fn write_service_registration(pid: u32, port: u16) -> Result<(), String> {
+    let pid_path = pid_file_path().ok_or("Impossibile determinare il percorso di llama-server.pid")?;
+    let port_path = port_file_path().ok_or("Impossibile determinare il percorso di llama-server.port")?;
+    write_service_registration_to_paths(&pid_path, &port_path, pid, port)
+}
+
+/// Scrittura consistente atomica su percorsi espliciti con protezione da sovrascrittura di istanze attive.
+pub fn write_service_registration_to_paths(
+    pid_path: &Path,
+    port_path: &Path,
+    pid: u32,
+    port: u16,
+) -> Result<(), String> {
+    if let Some(existing_pid) = read_pid_file(pid_path) {
+        if existing_pid != pid && is_process_alive(existing_pid) {
+            let existing_port = read_port_file(port_path).unwrap_or(0);
+            if existing_port > 0 && check_health(existing_port) {
+                return Err(format!(
+                    "Registrazione non sovrascritta: appartiene a un'altra istanza attiva (PID {}, porta {})",
+                    existing_pid, existing_port
+                ));
+            }
+        }
+    }
+
+    let dir = pid_path.parent().ok_or("Parent directory assente")?;
+    let _ = fs::create_dir_all(dir);
+    let pid_tmp = dir.join(format!("llama-server.pid.tmp.{}", pid));
+    let port_tmp = dir.join(format!("llama-server.port.tmp.{}", pid));
+
+    fs::write(&pid_tmp, pid.to_string()).map_err(|e| e.to_string())?;
+    fs::write(&port_tmp, port.to_string()).map_err(|e| e.to_string())?;
+
+    let _ = fs::rename(&pid_tmp, pid_path);
+    let _ = fs::rename(&port_tmp, port_path);
+
+    Ok(())
+}
+
+/// Rimuove la registrazione (llama-server.pid e llama-server.port) SOLO se appartiene al PID specificato.
+/// Se il file contiene un PID diverso o appartiene ad altra istanza attiva, NON cancella.
+pub fn remove_service_registration_if_owned(owned_pid: u32) {
+    if let (Some(pid_path), Some(port_path)) = (pid_file_path(), port_file_path()) {
+        remove_service_registration_from_paths_if_owned(&pid_path, &port_path, owned_pid);
+    }
+}
+
+/// Rimuove la registrazione su percorsi espliciti SOLO se appartiene al PID specificato.
+pub fn remove_service_registration_from_paths_if_owned(
+    pid_path: &Path,
+    port_path: &Path,
+    owned_pid: u32,
+) {
+    if owned_pid == 0 {
+        return;
+    }
+    if let Some(current_pid) = read_pid_file(pid_path) {
+        if current_pid == owned_pid {
+            let _ = fs::remove_file(pid_path);
+            let _ = fs::remove_file(port_path);
+        }
+    }
 }
 
 /// Trova la porta TCP su cui un dato PID è in ascolto.
@@ -946,12 +1040,12 @@ fn stop_child(s: &mut RunningState) {
             std::thread::sleep(Duration::from_millis(50));
         }
     }
-    if let Some(p) = pid_file_path() {
-        let _ = fs::remove_file(p);
+    let owned = s.child.as_ref().map(|c| c.id()).or(s.owned_pid);
+    if let Some(pid) = owned {
+        remove_service_registration_if_owned(pid);
     }
-    if let Some(p) = port_file_path() {
-        let _ = fs::remove_file(p);
-    }
+    s.owned_pid = None;
+    s.adopted_pid = None;
     s.port = 0;
 }
 
@@ -998,6 +1092,7 @@ impl LlamaServerState {
         let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
         s.port = port;
         s.adopted_pid = pid;
+        s.owned_pid = None;
         s.last_error = None;
     }
 
@@ -1118,13 +1213,10 @@ impl LlamaServerState {
             .spawn()
             .map_err(|e| format!("Impossibile avviare il processo llama-server: {}", e))?;
 
-        if let Some(p) = pid_file_path() {
-            write_pid_file(&p, child.id());
-        }
-        if let Some(p) = port_file_path() {
-            write_port_file(&p, port);
-        }
+        let child_pid = child.id();
+        let _ = write_service_registration(child_pid, port);
         s.child = Some(child);
+        s.owned_pid = Some(child_pid);
         s.port = port;
         s.model_path = model_path;
         s.binary_path = Some(binary);
@@ -1219,12 +1311,14 @@ impl LlamaServerState {
     }
 
     pub fn stop(&self) -> Result<LocalServerReport, String> {
-        let child = {
+        let (child, owned_pid) = {
             let mut s = self.0.lock().map_err(|e| e.to_string())?;
             s.port = 0;
             s.adopted_pid = None;
             s.last_error = None;
-            s.child.take()
+            let owned = s.child.as_ref().map(|c| c.id()).or(s.owned_pid);
+            s.owned_pid = None;
+            (s.child.take(), owned)
         }; // Lock rilasciato IMMEDIATAMENTE: nessuna attesa su processi o I/O sotto lock!
 
         if let Some(mut c) = child {
@@ -1262,11 +1356,8 @@ impl LlamaServerState {
             }
         }
 
-        if let Some(p) = pid_file_path() {
-            let _ = fs::remove_file(p);
-        }
-        if let Some(p) = port_file_path() {
-            let _ = fs::remove_file(p);
+        if let Some(pid) = owned_pid {
+            remove_service_registration_if_owned(pid);
         }
 
         Ok(self.status())
@@ -1723,5 +1814,57 @@ mod tests {
         std::env::remove_var("LIMEN_LOCAL_PORT");
         running_flag.store(false, Ordering::SeqCst);
         let _ = server_thread.join();
+    }
+
+    #[test]
+    fn test_p3_two_instances_service_registration_ownership() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let pid_path = temp_dir.path().join("llama-server.pid");
+        let port_path = temp_dir.path().join("llama-server.port");
+
+        let pid_a = 11111u32;
+        let port_a = 8081u16;
+
+        // 1. Scrittura consistente della coppia (pid_a, port_a)
+        let res_a = write_service_registration_to_paths(&pid_path, &port_path, pid_a, port_a);
+        assert!(res_a.is_ok(), "La scrittura iniziale della registrazione deve riuscire");
+        assert_eq!(read_pid_file(&pid_path), Some(pid_a));
+        assert_eq!(read_port_file(&port_path), Some(port_a));
+
+        // 2. Istanza B (PID 22222) tenta di rimuovere la registrazione di A:
+        // Poiché non ne possiede la titolarità, NON deve cancellare i file di A
+        let pid_b = 22222u32;
+        remove_service_registration_from_paths_if_owned(&pid_path, &port_path, pid_b);
+        assert!(pid_path.exists(), "llama-server.pid non deve essere cancellato da istanza diversa");
+        assert!(port_path.exists(), "llama-server.port non deve essere cancellato da istanza diversa");
+        assert_eq!(read_pid_file(&pid_path), Some(pid_a));
+        assert_eq!(read_port_file(&port_path), Some(port_a));
+
+        // 3. Test con 2 istanze di LlamaServerState:
+        // Istanza A avvia/possiede il servizio, Istanza B lo adotta
+        let state_a = LlamaServerState::default();
+        {
+            let mut s = state_a.0.lock().unwrap();
+            s.owned_pid = Some(pid_a);
+            s.port = port_a;
+        }
+
+        let state_b = LlamaServerState::default();
+        state_b.adopt_service(port_a, Some(pid_a));
+        assert_eq!(state_b.status().port, port_a);
+
+        // Quando Istanza B viene chiusa o esegue stop():
+        // NON deve cancellare la registrazione su disco né terminare il processo di A
+        let stop_b = state_b.stop();
+        assert!(stop_b.is_ok());
+        assert_eq!(state_b.status().port, 0);
+        assert!(pid_path.exists(), "La chiusura dell'istanza B che ha adottato il servizio non cancella i file");
+        assert!(port_path.exists(), "La chiusura dell'istanza B che ha adottato il servizio non cancella i file");
+
+        // 4. Istanza A (titolare legittimo) esegue la rimozione:
+        // Avendo la titolarità del proprio PID, rimuove consistentemente la coppia
+        remove_service_registration_from_paths_if_owned(&pid_path, &port_path, pid_a);
+        assert!(!pid_path.exists(), "llama-server.pid deve essere cancellato dal titolare legittimo");
+        assert!(!port_path.exists(), "llama-server.port deve essere cancellato dal titolare legittimo");
     }
 }
