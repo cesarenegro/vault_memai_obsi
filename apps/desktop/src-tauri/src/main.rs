@@ -92,12 +92,20 @@ fn create_vault(
 }
 
 #[tauri::command]
-fn open_vault(target_path: String) -> OpenVaultResponse {
+fn open_vault(
+    target_path: String,
+    llama_state: tauri::State<'_, limen_vault::llama::LlamaServerState>,
+) -> OpenVaultResponse {
     let p = Path::new(&target_path);
     let res = vault::open(p);
     if res.validation.is_valid {
         let _ = limen_vault::catalog::sync_catalog(p);
         let _ = limen_vault::catalog::process_pending_extractions(p);
+        let rep = limen_vault::embeddings::get_embeddings_provider(p, 0);
+        if rep.provider == "local" {
+            let _ = limen_vault::ai::save_embeddings_provider_setting("local");
+            llama_state.on_app_startup();
+        }
     }
     res
 }
@@ -303,6 +311,10 @@ fn main() {
         return;
     }
 
+    let llama_state = limen_vault::llama::LlamaServerState::default();
+    // Avvio in background all'apertura dell'app se il modello locale è installato e il fornitore scelto è Locale
+    llama_state.on_app_startup();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .menu(|app| {
@@ -344,7 +356,7 @@ fn main() {
         .manage(std::sync::Arc::new(limen_vault::sync::State::default()))
         .manage(limen_vault::mcp::McpState::default())
         .manage(limen_vault::tunnel::TunnelState::default())
-        .manage(limen_vault::llama::LlamaServerState::default())
+        .manage(llama_state)
         .manage(std::sync::Arc::new(limen_vault::automation::AutomationScheduler::default()))
         .invoke_handler(tauri::generate_handler![automation_status,automation_configure,automation_run,automation_retry,automation_choose_files,automation_import_files,sync_revoke_publication,sync_select_notes,sync_list_releases,sync_get_status,sync_save_config,sync_save_key,sync_disconnect,sync_test_connection,sync_plan_transfer,sync_execute_transfer,sync_cancel_transfer,
             get_default_vault_path,
@@ -505,7 +517,7 @@ async fn ai_preview(
     let llama = llama_state.inner().clone();
     let prep_timeout = limen_vault::llama::service_preparation_timeout();
 
-    let (port, pid, is_ready, fallback_reason) = match tokio::time::timeout(
+    let (port, pid, is_ready, service_status, fallback_reason) = match tokio::time::timeout(
         prep_timeout + std::time::Duration::from_millis(500),
         tauri::async_runtime::spawn_blocking(move || {
             llama.get_or_adopt_or_start_service_with_timeout(prep_timeout)
@@ -518,6 +530,7 @@ async fn ai_preview(
             None,
             None,
             false,
+            "fallito".to_string(),
             Some(format!("Errore nel task di ispezione del servizio locale: {e}")),
         ),
         Err(_) => {
@@ -525,7 +538,7 @@ async fn ai_preview(
                 "Tempo limite per la preparazione del servizio locale superato ({} s): ripiego sulla ricerca per parole.",
                 prep_timeout.as_secs()
             );
-            (None, None, false, Some(reason))
+            (None, None, false, "in avvio".to_string(), Some(reason))
         }
     };
 
@@ -536,6 +549,7 @@ async fn ai_preview(
             port,
             pid,
             is_ready,
+            Some(service_status),
             fallback_reason,
         )
         .await
@@ -788,11 +802,17 @@ async fn embeddings_set_provider(
     llama_state: tauri::State<'_, limen_vault::llama::LlamaServerState>,
 ) -> Result<limen_vault::embeddings::EmbeddingsProviderReport, String> {
     let port = llama_state.status().port;
-    tauri::async_runtime::spawn_blocking(move || {
+    let llama_clone = llama_state.inner().clone();
+    let rep = tauri::async_runtime::spawn_blocking(move || {
         limen_vault::embeddings::set_embeddings_provider(Path::new(&vault_path), &provider, port)
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())??;
+
+    if rep.provider == "local" {
+        llama_clone.on_app_startup();
+    }
+    Ok(rep)
 }
 
 #[tauri::command]

@@ -216,6 +216,7 @@ pub fn set_embeddings_provider(
 
     let serialized = serde_json::to_string_pretty(&val).map_err(|e| e.to_string())?;
     std::fs::write(&profile_path, serialized.as_bytes()).map_err(|e| e.to_string())?;
+    let _ = crate::ai::save_embeddings_provider_setting(&prov);
 
     Ok(get_embeddings_provider(vault_path, active_port))
 }

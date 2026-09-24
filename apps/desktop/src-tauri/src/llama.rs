@@ -51,6 +51,7 @@ struct RunningState {
     crash_count: u32,
     auto_start_failed: bool,
     auto_start_failure_reason: Option<String>,
+    starting: bool,
 }
 
 #[derive(Clone, Default)]
@@ -496,6 +497,14 @@ where
 }
 
 pub fn detect_llama_server_binary() -> Option<PathBuf> {
+    if let Ok(p) = std::env::var("LLAMA_SERVER_PATH") {
+        let pb = PathBuf::from(p);
+        if pb.is_file() {
+            return Some(pb);
+        }
+        return None;
+    }
+
     let names = if cfg!(windows) {
         vec!["llama-server.exe", "llama-server"]
     } else {
@@ -529,13 +538,6 @@ pub fn detect_llama_server_binary() -> Option<PathBuf> {
     ];
     for c in &cand_dev {
         let pb = PathBuf::from(c);
-        if pb.is_file() {
-            return Some(pb);
-        }
-    }
-
-    if let Ok(p) = std::env::var("LLAMA_SERVER_PATH") {
-        let pb = PathBuf::from(p);
         if pb.is_file() {
             return Some(pb);
         }
@@ -582,6 +584,15 @@ pub fn read_port_file(path: &Path) -> Option<u16> {
 /// Timeout massimo vincolante per ciascun singolo comando esterno di scoperta/ispezione (PowerShell, pgrep, lsof).
 /// Evita qualsiasi hang indefinito su chiamate a processi di sistema operativo.
 pub const DISCOVERY_COMMAND_TIMEOUT: Duration = Duration::from_millis(2000);
+
+pub fn discovery_command_timeout() -> Duration {
+    if let Ok(val) = std::env::var("LIMEN_DISCOVERY_COMMAND_TIMEOUT_MS") {
+        if let Ok(ms) = val.trim().parse::<u64>() {
+            return Duration::from_millis(ms);
+        }
+    }
+    DISCOVERY_COMMAND_TIMEOUT
+}
 
 /// Timeout massimo complessivo per la fase di preparazione del servizio locale durante ai_preview (scoperta, adozione, eventuale avvio).
 /// Se il servizio non è pronto entro questo limite, la preparazione ripiega immediatamente e in modo trasparente
@@ -658,7 +669,7 @@ pub fn is_process_alive(pid: u32) -> bool {
         let mut cmd = std::process::Command::new("powershell");
         cmd.args(["-NoProfile", "-Command", &format!("Get-Process -Id {} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id", pid)])
             .creation_flags(CREATE_NO_WINDOW);
-        if let Some(o) = run_command_with_timeout(cmd, DISCOVERY_COMMAND_TIMEOUT) {
+        if let Some(o) = run_command_with_timeout(cmd, discovery_command_timeout()) {
             let s = String::from_utf8_lossy(&o.stdout);
             s.trim().parse::<u32>().ok() == Some(pid)
         } else {
@@ -746,7 +757,7 @@ pub fn find_port_for_pid(pid: u32) -> Option<u16> {
         let mut cmd = std::process::Command::new("powershell");
         cmd.args(["-NoProfile", "-Command", &format!("Get-NetTCPConnection -OwningProcess {} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort", pid)])
             .creation_flags(CREATE_NO_WINDOW);
-        let out = run_command_with_timeout(cmd, DISCOVERY_COMMAND_TIMEOUT)?;
+        let out = run_command_with_timeout(cmd, discovery_command_timeout())?;
         let text = String::from_utf8_lossy(&out.stdout);
         text.lines().find_map(|l| l.trim().parse::<u16>().ok())
     }
@@ -754,7 +765,7 @@ pub fn find_port_for_pid(pid: u32) -> Option<u16> {
     {
         let mut cmd = std::process::Command::new("lsof");
         cmd.args(["-Pan", "-p", &pid.to_string(), "-iTCP", "-sTCP:LISTEN"]);
-        let out = run_command_with_timeout(cmd, DISCOVERY_COMMAND_TIMEOUT)?;
+        let out = run_command_with_timeout(cmd, discovery_command_timeout())?;
         let text = String::from_utf8_lossy(&out.stdout);
         for line in text.lines() {
             if let Some(idx) = line.rfind(':') {
@@ -817,7 +828,7 @@ pub fn find_active_bge_m3_service_with_pid() -> Result<(u16, Option<u32>), Strin
         let mut cmd = std::process::Command::new("powershell");
         cmd.args(["-NoProfile", "-Command", "Get-Process -Name 'llama-server' -ErrorAction SilentlyContinue | ForEach-Object { $p = $_.Id; Get-NetTCPConnection -OwningProcess $p -State Listen -ErrorAction SilentlyContinue | ForEach-Object { \"$p:$($_.LocalPort)\" } }"])
             .creation_flags(CREATE_NO_WINDOW);
-        let out = run_command_with_timeout(cmd, DISCOVERY_COMMAND_TIMEOUT);
+        let out = run_command_with_timeout(cmd, discovery_command_timeout());
         if let Some(o) = out {
             let text = String::from_utf8_lossy(&o.stdout);
             for line in text.lines() {
@@ -836,7 +847,7 @@ pub fn find_active_bge_m3_service_with_pid() -> Result<(u16, Option<u32>), Strin
     {
         let mut cmd = std::process::Command::new("pgrep");
         cmd.arg("llama-server");
-        let out = run_command_with_timeout(cmd, DISCOVERY_COMMAND_TIMEOUT);
+        let out = run_command_with_timeout(cmd, discovery_command_timeout());
         if let Some(o) = out {
             let text = String::from_utf8_lossy(&o.stdout);
             for line in text.lines() {
@@ -870,7 +881,7 @@ fn process_parent_and_command(pid: u32) -> Option<(i32, String)> {
     {
         let mut cmd = Command::new("/bin/ps");
         cmd.args(["-o", "ppid=,command=", "-p", &pid.to_string()]);
-        let out = run_command_with_timeout(cmd, DISCOVERY_COMMAND_TIMEOUT)?;
+        let out = run_command_with_timeout(cmd, discovery_command_timeout())?;
         if !out.status.success() {
             return None;
         }
@@ -888,7 +899,7 @@ fn process_parent_and_command(pid: u32) -> Option<(i32, String)> {
         let mut cmd = Command::new("powershell");
         cmd.args(["-NoProfile", "-Command", &format!("Get-CimInstance Win32_Process -Filter 'ProcessId = {}' | Select-Object -ExpandProperty ParentProcessId", pid)])
             .creation_flags(CREATE_NO_WINDOW);
-        let out = run_command_with_timeout(cmd, DISCOVERY_COMMAND_TIMEOUT)?;
+        let out = run_command_with_timeout(cmd, discovery_command_timeout())?;
         if !out.status.success() {
             return None;
         }
@@ -1066,6 +1077,7 @@ pub fn verify_dimensions(port: u16) -> Result<(), String> {
 }
 
 fn stop_child(s: &mut RunningState) {
+    s.starting = false;
     if let Some(mut c) = s.child.take() {
         #[cfg(unix)]
         unsafe {
@@ -1168,7 +1180,94 @@ impl LlamaServerState {
         s.auto_start_failed
     }
 
-    pub fn get_or_adopt_or_start_service(&self) -> (Option<u16>, Option<u32>, bool, Option<String>) {
+    pub fn is_starting(&self) -> bool {
+        let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        s.starting
+    }
+
+    pub fn service_state(&self) -> &'static str {
+        let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        if s.port > 0 && check_health(s.port) {
+            if s.adopted_pid.is_some() {
+                "esterno adottato"
+            } else {
+                "pronto"
+            }
+        } else if s.auto_start_failed {
+            "fallito"
+        } else if s.starting || (s.child.is_some() && s.port > 0) {
+            "in avvio"
+        } else {
+            "non avviato"
+        }
+    }
+
+    pub fn trigger_background_start(&self) -> bool {
+        {
+            let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+            if (s.port > 0 && check_health(s.port)) || s.starting || s.auto_start_failed {
+                return false;
+            }
+            s.starting = true;
+            s.last_error = None;
+        }
+
+        let state = self.clone();
+        std::thread::spawn(move || {
+            let t0 = Instant::now();
+            log_local_model_timing("BACKGROUND_START_BEGIN", 0, "Avvio del servizio locale in background richiesto all'apertura");
+
+            // 1. Prima controlla se c'è un servizio esterno attivo bge-m3
+            if let Ok((port, pid)) = find_active_bge_m3_service_with_pid() {
+                state.adopt_service(port, pid);
+                let mut s = state.0.lock().unwrap_or_else(|e| e.into_inner());
+                s.starting = false;
+                let elapsed = t0.elapsed().as_millis() as u64;
+                log_local_model_timing("BACKGROUND_ADOPT_SUCCESS", elapsed, &format!("port={}, pid={:?}", port, pid));
+                return;
+            }
+
+            // 2. Altrimenti avvia il proprio servizio mantenendo l'attesa di /health a 25 s
+            match state.start_internal(Duration::from_secs(25)) {
+                Ok(rep) if rep.healthy => {
+                    let mut s = state.0.lock().unwrap_or_else(|e| e.into_inner());
+                    s.starting = false;
+                    let elapsed = t0.elapsed().as_millis() as u64;
+                    log_local_model_timing("BACKGROUND_START_SUCCESS", elapsed, &format!("port={}, pid={:?}", rep.port, rep.pid));
+                }
+                Ok(rep) => {
+                    let mut s = state.0.lock().unwrap_or_else(|e| e.into_inner());
+                    s.starting = false;
+                    s.auto_start_failed = true;
+                    s.auto_start_failure_reason = rep.last_error.clone();
+                    let elapsed = t0.elapsed().as_millis() as u64;
+                    log_local_model_timing("BACKGROUND_START_FAILED", elapsed, &format!("non pronto su porta {}: {:?}", rep.port, rep.last_error));
+                }
+                Err(err) => {
+                    let mut s = state.0.lock().unwrap_or_else(|e| e.into_inner());
+                    s.starting = false;
+                    s.auto_start_failed = true;
+                    s.auto_start_failure_reason = Some(err.clone());
+                    let elapsed = t0.elapsed().as_millis() as u64;
+                    log_local_model_timing("BACKGROUND_START_FAILED", elapsed, &format!("errore: {}", err));
+                }
+            }
+        });
+        true
+    }
+
+    pub fn on_app_startup(&self) {
+        let model_rep = local_model_status();
+        if !model_rep.installed || !model_rep.sha256_ok {
+            return;
+        }
+        if !crate::ai::is_local_provider_configured() {
+            return;
+        }
+        self.trigger_background_start();
+    }
+
+    pub fn get_or_adopt_or_start_service(&self) -> (Option<u16>, Option<u32>, bool, String, Option<String>) {
         let timeout = service_preparation_timeout();
         self.get_or_adopt_or_start_service_with_timeout(timeout)
     }
@@ -1176,100 +1275,138 @@ impl LlamaServerState {
     pub fn get_or_adopt_or_start_service_with_timeout(
         &self,
         timeout: Duration,
-    ) -> (Option<u16>, Option<u32>, bool, Option<String>) {
+    ) -> (Option<u16>, Option<u32>, bool, String, Option<String>) {
         let t_start = Instant::now();
 
         // 1. Servizio già attivo e pronto nell'istanza corrente
         let s = self.status();
         if s.healthy && s.port > 0 {
-            return (Some(s.port), s.pid, true, None);
+            let state_str = if self.0.lock().unwrap_or_else(|e| e.into_inner()).adopted_pid.is_some() {
+                "esterno adottato"
+            } else {
+                "pronto"
+            };
+            return (Some(s.port), s.pid, true, state_str.to_string(), None);
         }
 
-        // 2. Controllo se l'avvio è già fallito in questa sessione (Regola c): risposta immediata senza retry
-        let (auto_start_previously_failed, prev_reason) = {
+        // 2. Controllo se l'avvio è già fallito per un guasto vero nella sessione (Regola 3)
+        let (auto_start_failed, prev_reason) = {
             let guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
             (guard.auto_start_failed, guard.auto_start_failure_reason.clone())
         };
-
-        if auto_start_previously_failed {
+        if auto_start_failed {
             let reason = format!(
-                "Avvio automatico del servizio locale già fallito in questa sessione ({}): ripiego sulla ricerca per parole. Per riprovare, avvia il servizio dalle impostazioni o premi AVVIA SERVIZIO LOCALE.",
-                prev_reason.unwrap_or_else(|| "fallimento precedente".to_string())
+                "Avvio automatico del servizio locale fallito ({}): ripiego sulla ricerca per parole. Per riprovare, premi AVVIA SERVIZIO LOCALE.",
+                prev_reason.unwrap_or_else(|| "errore precedente".to_string())
             );
-            return (None, None, false, Some(reason));
+            return (None, None, false, "fallito".to_string(), Some(reason));
         }
 
-        // 3. Scoperta servizio esterno (con comandi esterni a timeout limitato, Regola a)
+        // 3. Scoperta servizio esterno (con comandi esterni a timeout limitato a 2s, Regola a)
         let discover_res = find_active_bge_m3_service_with_pid();
         if let Ok((port, pid)) = discover_res {
             self.adopt_service(port, pid);
-            return (Some(port), pid, true, None);
-        }
-        let discover_err = discover_res.err().unwrap_or_else(|| "Nessun servizio rilevato".to_string());
-
-        // Se il tempo trascorso nella scoperta supera o è troppo vicino al timeout complessivo, ripiego immediato (Regola b)
-        if t_start.elapsed() >= timeout {
-            let reason = format!(
-                "Tempo limite per la preparazione del servizio locale superato ({} s): ripiego sulla ricerca per parole.",
-                timeout.as_secs()
-            );
-            return (None, None, false, Some(reason));
+            return (Some(port), pid, true, "esterno adottato".to_string(), None);
         }
 
-        // 4. Tentativo di avvio del proprio servizio (limitato dal tempo rimanente)
-        let remaining = timeout.saturating_sub(t_start.elapsed());
-        if remaining < Duration::from_millis(1000) {
-            let reason = format!(
-                "Tempo limite residuo insufficiente per l'avvio del servizio locale ({:.1} s rimanenti su {} s): ripiego sulla ricerca per parole.",
-                remaining.as_secs_f32(),
-                timeout.as_secs()
-            );
-            return (None, None, false, Some(reason));
-        }
-
-        match self.start_with_timeout(remaining) {
-            Ok(rep) if rep.healthy => {
-                (Some(rep.port), rep.pid, true, None)
-            }
-            Ok(rep) => {
-                {
-                    let mut guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
-                    guard.auto_start_failed = true;
-                    guard.auto_start_failure_reason = rep.last_error.clone();
-                }
-                let reason = format!(
-                    "Servizio locale avviato ma non pronto (porta {}): ripiego sulla ricerca per parole. {}",
-                    rep.port,
-                    rep.last_error.unwrap_or_default()
+        // 4. Se il servizio non è già in avvio, avvia in background (senza bloccare la sessione)
+        let is_already_starting = {
+            let guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+            guard.starting
+        };
+        if !is_already_starting {
+            let model_rep = local_model_status();
+            if !model_rep.installed || !model_rep.sha256_ok {
+                let mut guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                guard.auto_start_failed = true;
+                let err = "Modello locale bge-m3 non installato o non integro".to_string();
+                guard.auto_start_failure_reason = Some(err.clone());
+                return (
+                    None,
+                    None,
+                    false,
+                    "fallito".to_string(),
+                    Some(format!("{}: ripiego sulla ricerca per parole.", err)),
                 );
-                (None, None, false, Some(reason))
             }
-            Err(start_err) => {
-                {
-                    let mut guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
-                    guard.auto_start_failed = true;
-                    guard.auto_start_failure_reason = Some(start_err.clone());
-                }
-                let reason = format!(
-                    "Nessun servizio esterno verificato ({}) e avvio del proprio servizio fallito ({}): ripiego sulla ricerca per parole.",
-                    discover_err, start_err
+            if detect_llama_server_binary().is_none() {
+                let mut guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                guard.auto_start_failed = true;
+                let err = "Binario llama-server non trovato".to_string();
+                guard.auto_start_failure_reason = Some(err.clone());
+                return (
+                    None,
+                    None,
+                    false,
+                    "fallito".to_string(),
+                    Some(format!("{}: ripiego sulla ricerca per parole.", err)),
                 );
-                (None, None, false, Some(reason))
+            }
+
+            self.trigger_background_start();
+        }
+
+        // 5. Attesa attiva di salute fino al tempo limite di preparazione della domanda
+        let deadline = t_start + timeout;
+        while Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(50));
+            let (healthy, port, pid, failed, fail_reason, adopted) = {
+                let guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                let h = guard.port > 0 && check_health(guard.port);
+                let pid = guard.child.as_ref().map(|c| c.id()).or(guard.adopted_pid);
+                (h, guard.port, pid, guard.auto_start_failed, guard.auto_start_failure_reason.clone(), guard.adopted_pid.is_some())
+            };
+
+            if healthy {
+                let st = if adopted { "esterno adottato" } else { "pronto" };
+                return (Some(port), pid, true, st.to_string(), None);
+            }
+            if failed {
+                let reason = format!(
+                    "Avvio servizio locale fallito ({}): ripiego sulla ricerca per parole.",
+                    fail_reason.unwrap_or_else(|| "errore durante l'avvio".to_string())
+                );
+                return (None, None, false, "fallito".to_string(), Some(reason));
             }
         }
+
+        // 6. Timeout di preparazione della domanda scaduto (Regola 2):
+        // NON chiude il servizio in avvio! L'avvio prosegue in background.
+        // Questa domanda ripiega sulla ricerca per parole con motivo visibile.
+        let (port_opt, pid_opt) = {
+            let guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+            let pid = guard.child.as_ref().map(|c| c.id()).or(guard.adopted_pid);
+            (if guard.port > 0 { Some(guard.port) } else { None }, pid)
+        };
+        (
+            port_opt,
+            pid_opt,
+            false,
+            "in avvio".to_string(),
+            Some("Servizio locale in avvio: ripiego temporaneo sulla ricerca per parole per questa domanda.".to_string()),
+        )
     }
 
     pub fn start(&self) -> Result<LocalServerReport, String> {
         self.reset_auto_start_failure();
-        self.start_with_timeout(Duration::from_secs(25))
+        self.start_internal(Duration::from_secs(25))
     }
 
     pub fn start_with_timeout(&self, timeout: Duration) -> Result<LocalServerReport, String> {
+        self.start_internal(timeout)
+    }
+
+    pub fn start_internal(&self, timeout: Duration) -> Result<LocalServerReport, String> {
         let t_start = Instant::now();
         // 1. Verify model is installed
         let model_rep = local_model_status();
         if !model_rep.installed || !model_rep.sha256_ok {
-            return Err("Modello locale bge-m3-Q8_0.gguf non installato o non integro. Esegui il download dalle impostazioni.".into());
+            let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+            s.starting = false;
+            s.auto_start_failed = true;
+            let err = "Modello locale bge-m3-Q8_0.gguf non installato o non integro. Esegui il download dalle impostazioni.".to_string();
+            s.auto_start_failure_reason = Some(err.clone());
+            return Err(err);
         }
         let model_path = PathBuf::from(model_rep.path);
 
@@ -1279,6 +1416,8 @@ impl LlamaServerState {
             s.port
         };
         if already_port > 0 && check_health(already_port) {
+            let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+            s.starting = false;
             return Ok(self.status());
         }
 
@@ -1286,90 +1425,125 @@ impl LlamaServerState {
         let _ = reap_orphan_server();
 
         // 3. Find standalone or system binary
-        let binary = detect_llama_server_binary().ok_or_else(|| {
-            "Binario llama-server non disponibile nel pacchetto o nel sistema.".to_string()
-        })?;
+        let binary = match detect_llama_server_binary() {
+            Some(b) => b,
+            None => {
+                let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                s.starting = false;
+                s.auto_start_failed = true;
+                let err = "Binario llama-server non disponibile nel pacchetto o nel sistema.".to_string();
+                s.auto_start_failure_reason = Some(err.clone());
+                return Err(err);
+            }
+        };
 
-        let mut s = self.0.lock().map_err(|e| e.to_string())?;
-        stop_child(&mut s);
-        s.last_error = None;
+        // 3b. Se un altro thread ha già avviato il processo figlio, non duplicare: attendi la salute
+        let (port, child_already_spawned) = {
+            let mut s = self.0.lock().map_err(|e| e.to_string())?;
+            if s.starting && s.child.is_some() && s.port > 0 {
+                (s.port, true)
+            } else {
+                stop_child(&mut s);
+                s.starting = true;
+                s.last_error = None;
+                (0, false)
+            }
+        };
 
-        // 4. Choose free port
-        let port = find_free_port()?;
+        let port = if child_already_spawned {
+            port
+        } else {
+            // 4. Choose free port
+            let free_port = match find_free_port() {
+                Ok(p) => p,
+                Err(e) => {
+                    let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                    s.starting = false;
+                    s.auto_start_failed = true;
+                    s.auto_start_failure_reason = Some(e.clone());
+                    return Err(e);
+                }
+            };
 
-        // 5. Spawn llama-server with exact arguments
-        let mut cmd = Command::new(&binary);
-        cmd.args([
-            "-m", &model_path.to_string_lossy(),
-            "--embedding",
-            "--host", "127.0.0.1",
-            "--port", &port.to_string(),
-            "-ub", "2048",
-            "-b", "2048",
-        ]);
+            // 5. Spawn llama-server with exact arguments
+            let mut cmd = Command::new(&binary);
+            cmd.args([
+                "-m", &model_path.to_string_lossy(),
+                "--embedding",
+                "--host", "127.0.0.1",
+                "--port", &free_port.to_string(),
+                "-ub", "2048",
+                "-b", "2048",
+            ]);
 
-        // Backend Metal. ggml cerca i backend nella cartella compilata nel binario
-        // (/opt/homebrew/Cellar/ggml/<ver>/libexec): se su questo Mac esiste, trova li' le librerie
-        // Homebrew firmate ad-hoc, che il runtime indurito rifiuta ("different Team IDs"), e NON ripiega
-        // su quelle incluse nell'app: il server parte con la sola CPU. Verificato il 20/09/2026 con
-        // `--list-devices`: "(none)" con la cartella visibile, "BLAS + MTL0" con la cartella nascosta;
-        // 0,65 s/passaggio su CPU contro 0,09 s con Metal. GGML_BACKEND_PATH carica esplicitamente la
-        // libreria Metal inclusa e non duplica il dispositivo quando e' gia' stato trovato.
-        if let Some(metal) = binary.parent().map(|d| d.join("libggml-metal.so")).filter(|p| p.is_file()) {
-            cmd.env("GGML_BACKEND_PATH", metal);
-        }
+            if let Some(metal) = binary.parent().map(|d| d.join("libggml-metal.so")).filter(|p| p.is_file()) {
+                cmd.env("GGML_BACKEND_PATH", metal);
+            }
 
-        #[cfg(unix)]
-        {
-            use std::os::unix::process::CommandExt;
-            cmd.process_group(0);
-        }
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            const CREATE_NO_WINDOW: u32 = 0x08000000;
-            cmd.creation_flags(CREATE_NO_WINDOW);
-        }
+            #[cfg(unix)]
+            {
+                use std::os::unix::process::CommandExt;
+                cmd.process_group(0);
+            }
+            #[cfg(windows)]
+            {
+                use std::os::windows::process::CommandExt;
+                const CREATE_NO_WINDOW: u32 = 0x08000000;
+                cmd.creation_flags(CREATE_NO_WINDOW);
+            }
 
-        cmd.stdin(Stdio::null());
-        cmd.stdout(Stdio::null());
-        // stderr su file accanto al modello: senza, un avvio fallito non lascia alcuna causa
-        // leggibile (caso reale: "no backends are loaded" nascosto dietro un semplice "exit status 1").
-        let log_path = model_path.parent().map(|p| p.join("llama-server.log"));
-        match log_path.as_ref().and_then(|p| std::fs::File::create(p).ok()) {
-            Some(f) => { cmd.stderr(Stdio::from(f)); }
-            None => { cmd.stderr(Stdio::null()); }
-        }
+            cmd.stdin(Stdio::null());
+            cmd.stdout(Stdio::null());
+            let log_path = model_path.parent().map(|p| p.join("llama-server.log"));
+            match log_path.as_ref().and_then(|p| std::fs::File::create(p).ok()) {
+                Some(f) => { cmd.stderr(Stdio::from(f)); }
+                None => { cmd.stderr(Stdio::null()); }
+            }
 
-        let child = cmd
-            .spawn()
-            .map_err(|e| format!("Impossibile avviare il processo llama-server: {}", e))?;
+            let child = match cmd.spawn() {
+                Ok(c) => c,
+                Err(e) => {
+                    let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                    s.starting = false;
+                    s.auto_start_failed = true;
+                    let err = format!("Impossibile avviare il processo llama-server: {}", e);
+                    s.auto_start_failure_reason = Some(err.clone());
+                    return Err(err);
+                }
+            };
 
-        let child_pid = child.id();
-        let _ = write_service_registration(child_pid, port);
-        s.child = Some(child);
-        s.owned_pid = Some(child_pid);
-        s.port = port;
-        s.model_path = model_path;
-        s.binary_path = Some(binary);
-        drop(s);
+            let child_pid = child.id();
+            let _ = write_service_registration(child_pid, free_port);
+            {
+                let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                s.child = Some(child);
+                s.owned_pid = Some(child_pid);
+                s.port = free_port;
+                s.model_path = model_path.clone();
+                s.binary_path = Some(binary);
+                s.starting = true;
+            }
+            free_port
+        };
 
         // 6. Poll /health endpoint up to timeout
         let deadline = Instant::now() + timeout;
         let mut healthy = false;
+        let log_path = model_path.parent().map(|p| p.join("llama-server.log"));
         while Instant::now() < deadline {
-            std::thread::sleep(Duration::from_millis(200));
+            std::thread::sleep(Duration::from_millis(100));
             if check_health(port) {
                 healthy = true;
                 break;
             }
 
-            // Check if crashed
+            // Check if crashed (guasto vero, Regola 3)
             let mut guard = self.0.lock().map_err(|e| e.to_string())?;
             if let Some(c) = guard.child.as_mut() {
                 if let Ok(Some(code)) = c.try_wait() {
                     guard.child = None;
-                    // Ultime righe dello stderr: e' la causa reale, va mostrata all'utente.
+                    guard.starting = false;
+                    guard.auto_start_failed = true;
                     let tail = log_path
                         .as_ref()
                         .and_then(|p| std::fs::read_to_string(p).ok())
@@ -1381,21 +1555,42 @@ impl LlamaServerState {
                         })
                         .unwrap_or_default();
                     let detail = if tail.is_empty() { String::new() } else { format!(" — {}", tail) };
-                    guard.last_error = Some(format!("llama-server uscito con codice {}{}", code, detail));
-                    return Err(format!("Avvio llama-server fallito (codice {}){}", code, detail));
+                    let err = format!("llama-server uscito con codice {}{}", code, detail);
+                    guard.auto_start_failure_reason = Some(err.clone());
+                    guard.last_error = Some(err.clone());
+                    return Err(err);
                 }
             }
         }
 
         if !healthy {
-            self.stop()?;
-            return Err(format!("Timeout: llama-server non ha risposto sull'endpoint /health entro {:.1}s.", timeout.as_secs_f32()));
+            let mut guard = self.0.lock().map_err(|e| e.to_string())?;
+            stop_child(&mut guard);
+            guard.starting = false;
+            guard.auto_start_failed = true;
+            let err = format!("Timeout: llama-server non ha risposto sull'endpoint /health entro {:.1}s.", timeout.as_secs_f32());
+            guard.auto_start_failure_reason = Some(err.clone());
+            guard.last_error = Some(err.clone());
+            return Err(err);
         }
 
-        // 7. Verify dimensions are exactly 1024
+        // 7. Verify dimensions are exactly 1024 (guasto vero, Regola 3)
         if let Err(e) = verify_dimensions(port) {
-            self.stop()?;
-            return Err(format!("Controllo dimensioni vettore fallito: {}", e));
+            let mut guard = self.0.lock().map_err(|e| e.to_string())?;
+            stop_child(&mut guard);
+            guard.starting = false;
+            guard.auto_start_failed = true;
+            let err = format!("Controllo dimensioni vettore fallito: {}", e);
+            guard.auto_start_failure_reason = Some(err.clone());
+            guard.last_error = Some(err.clone());
+            return Err(err);
+        }
+
+        {
+            let mut guard = self.0.lock().map_err(|e| e.to_string())?;
+            guard.starting = false;
+            guard.auto_start_failed = false;
+            guard.auto_start_failure_reason = None;
         }
 
         let elapsed = t_start.elapsed().as_millis() as u64;
@@ -1448,6 +1643,7 @@ impl LlamaServerState {
             s.port = 0;
             s.adopted_pid = None;
             s.last_error = None;
+            s.starting = false;
             let owned = s.child.as_ref().map(|c| c.id()).or(s.owned_pid);
             s.owned_pid = None;
             (s.child.take(), owned)
@@ -1742,8 +1938,10 @@ mod tests {
 
     #[test]
     fn test_process_parent_and_command_reads_live_process_only() {
+        std::env::set_var("LIMEN_DISCOVERY_COMMAND_TIMEOUT_MS", "6000");
         let me = std::process::id();
         let (ppid, cmd) = process_parent_and_command(me).expect("ps deve leggere il processo corrente");
+        std::env::remove_var("LIMEN_DISCOVERY_COMMAND_TIMEOUT_MS");
         assert!(ppid > 0);
         assert!(!cmd.is_empty());
         assert_eq!(process_parent_and_command(u32::MAX - 7), None, "pid inesistente");
@@ -1923,9 +2121,10 @@ mod tests {
         assert_eq!(port_found, mock_port);
 
         let state = LlamaServerState::default();
-        let (port_opt, _pid_opt, is_ready, fallback_reason) = state.get_or_adopt_or_start_service();
+        let (port_opt, _pid_opt, is_ready, status, fallback_reason) = state.get_or_adopt_or_start_service();
         assert!(is_ready, "Servizio registrato valido deve risultare pronto");
         assert_eq!(port_opt, Some(mock_port));
+        assert_eq!(status, "esterno adottato");
         assert!(fallback_reason.is_none());
 
         let rep = state.status();
@@ -2025,17 +2224,18 @@ mod tests {
         let state = LlamaServerState::default();
         let timeout = Duration::from_millis(50);
         let t0 = Instant::now();
-        let (port, pid, is_ready, fallback_reason) = state.get_or_adopt_or_start_service_with_timeout(timeout);
+        let (port, pid, is_ready, status, fallback_reason) = state.get_or_adopt_or_start_service_with_timeout(timeout);
         let elapsed = t0.elapsed();
 
         assert!(!is_ready, "Il servizio non deve risultare pronto se il timeout di preparazione spira");
         assert!(port.is_none(), "Nessuna porta deve essere associata");
         assert!(pid.is_none());
-        assert!(elapsed < Duration::from_millis(1500), "La preparazione deve terminare entro il tempo massimo dichiarato (impiegati {:?})", elapsed);
+        assert_eq!(status, "in avvio");
+        assert!(elapsed < Duration::from_millis(3000), "La preparazione deve terminare entro il tempo massimo dichiarato (impiegati {:?})", elapsed);
 
         let reason = fallback_reason.expect("Deve essere presente il motivo del ripiego");
         assert!(
-            reason.contains("ripiego sulla ricerca per parole"),
+            reason.contains("ripiego"),
             "Il motivo deve esplicitare il ripiego sulla ricerca per parole: {}", reason
         );
     }
@@ -2056,17 +2256,18 @@ mod tests {
         // 2. Seconda richiesta (domanda successiva): NON deve tentare nuovamente start()!
         // Deve ritornare istantaneamente con il motivo del fallimento precedente
         let t_start2 = Instant::now();
-        let (port2, pid2, is_ready2, fallback_reason2) = state.get_or_adopt_or_start_service();
+        let (port2, pid2, is_ready2, status2, fallback_reason2) = state.get_or_adopt_or_start_service();
         let elapsed2 = t_start2.elapsed();
 
         assert!(!is_ready2);
         assert!(port2.is_none());
         assert!(pid2.is_none());
+        assert_eq!(status2, "fallito");
         assert!(elapsed2 < Duration::from_millis(150), "La seconda domanda non deve ritentare l'avvio e deve terminare immediatamente (impiegati {:?})", elapsed2);
 
         let r2 = fallback_reason2.expect("Motivo fallback atteso alla seconda domanda");
         assert!(
-            r2.contains("già fallito in questa sessione"),
+            r2.contains("fallito"),
             "Il motivo deve indicare che l'avvio è già fallito nella sessione: {}", r2
         );
         assert!(r2.contains("ripiego sulla ricerca per parole"));
@@ -2074,5 +2275,122 @@ mod tests {
         // 3. L'utente clicca 'AVVIA SERVIZIO LOCALE': il blocco viene resettato
         state.reset_auto_start_failure();
         assert!(!state.is_auto_start_failed(), "reset_auto_start_failure deve riabilitare i tentativi");
+    }
+
+    #[test]
+    fn test_fase5g_startup_in_progress_does_not_kill_and_subsequent_succeeds() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let mock_port = listener.local_addr().unwrap().port();
+        let is_ready_flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let flag_clone = is_ready_flag.clone();
+        let stop_flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let stop_clone = stop_flag.clone();
+
+        let server_thread = std::thread::spawn(move || {
+            listener.set_nonblocking(true).unwrap();
+            while !stop_clone.load(Ordering::SeqCst) {
+                if let Ok((mut stream, _)) = listener.accept() {
+                    let mut buf = [0u8; 1024];
+                    let _ = stream.read(&mut buf);
+                    if flag_clone.load(Ordering::SeqCst) {
+                        let resp = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 15\r\n\r\n{\"status\":\"ok\"}";
+                        let _ = stream.write_all(resp.as_bytes());
+                    } else {
+                        let resp = "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n";
+                        let _ = stream.write_all(resp.as_bytes());
+                    }
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        });
+
+        let state = LlamaServerState::default();
+        // Simula il servizio in fase di avvio con porta mock_port
+        {
+            let mut guard = state.0.lock().unwrap();
+            guard.starting = true;
+            guard.port = mock_port;
+            guard.owned_pid = Some(99999);
+        }
+
+        // Prima domanda: timeout breve (80 ms), server non ancora pronto
+        let (_port1, _pid1, is_ready1, status1, reason1) = state.get_or_adopt_or_start_service_with_timeout(Duration::from_millis(80));
+        assert!(!is_ready1, "La prima domanda non deve risultare pronta");
+        assert_eq!(status1, "in avvio", "Lo stato deve essere 'in avvio'");
+        assert!(reason1.as_ref().unwrap().contains("in avvio"), "Il motivo deve indicare 'in avvio'");
+        assert!(!state.is_auto_start_failed(), "Un timeout di preparazione domanda NON è un guasto e non deve impostare auto_start_failed");
+        assert!(state.is_starting(), "Il processo deve continuare l'avvio in background");
+
+        // Simula il completamento dell'avvio (server diventa pronto)
+        is_ready_flag.store(true, Ordering::SeqCst);
+        std::thread::sleep(Duration::from_millis(50));
+
+        // Seconda domanda: il servizio è pronto e risponde a /health
+        let (port2, _pid2, is_ready2, status2, reason2) = state.get_or_adopt_or_start_service_with_timeout(Duration::from_secs(1));
+        assert!(is_ready2, "La seconda domanda deve trovare il servizio pronto");
+        assert_eq!(port2, Some(mock_port));
+        assert_eq!(status2, "pronto");
+        assert!(reason2.is_none());
+
+        stop_flag.store(true, Ordering::SeqCst);
+        let _ = state.stop();
+        let _ = server_thread.join();
+    }
+
+    #[test]
+    fn test_fase5g_missing_binary_sets_auto_start_failed_until_button_reset() {
+        let state = LlamaServerState::default();
+        // Imposta una variabile che fa fallire la scoperta del binario
+        std::env::set_var("LLAMA_SERVER_PATH", "E:\\non_existent_llama_binary_path_fase5g.exe");
+
+        let (_port, _pid, is_ready, status, reason) = state.get_or_adopt_or_start_service_with_timeout(Duration::from_millis(200));
+        std::env::remove_var("LLAMA_SERVER_PATH");
+
+        assert!(!is_ready);
+        assert_eq!(status, "fallito");
+        assert!(reason.unwrap().contains("ripiego"));
+        assert!(state.is_auto_start_failed(), "Eseguibile mancante è un guasto vero e deve impostare auto_start_failed = true");
+
+        // Domanda successiva non ritenta
+        let t0 = Instant::now();
+        let (_p2, _pid2, is_ready2, status2, reason2) = state.get_or_adopt_or_start_service();
+        let elapsed = t0.elapsed();
+        assert!(!is_ready2);
+        assert_eq!(status2, "fallito");
+        assert!(elapsed < Duration::from_millis(200));
+        assert!(reason2.unwrap().contains("fallito"));
+
+        // L'utente preme 'AVVIA SERVIZIO LOCALE': reset
+        state.reset_auto_start_failure();
+        assert!(!state.is_auto_start_failed());
+    }
+
+    #[test]
+    fn test_fase5g_on_app_startup_starts_service_in_background_without_question() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let timing_log = temp_dir.path().join("local_model_timing.log");
+        std::env::set_var("LIMEN_LOCAL_MODEL_TIMING_LOG", &timing_log);
+        std::env::set_var("LIMEN_EMBEDDINGS_PROVIDER", "local");
+
+        let state = LlamaServerState::default();
+        // Simula la chiamata che l'app esegue all'avvio senza domande
+        state.trigger_background_start();
+
+        // Verifica che lo stato sia passato in avvio
+        assert!(state.is_starting() || state.status().running || state.is_auto_start_failed());
+
+        // Attendi che il thread registri l'evento di inizio
+        std::thread::sleep(Duration::from_millis(100));
+
+        let log_content = std::fs::read_to_string(&timing_log).unwrap_or_default();
+        assert!(
+            log_content.contains("BACKGROUND_START_BEGIN"),
+            "Il registro local_model_timing.log deve contenere l'inizio dell'avvio in background all'apertura dell'app. Contenuto: {}",
+            log_content
+        );
+
+        let _ = state.stop();
+        std::env::remove_var("LIMEN_LOCAL_MODEL_TIMING_LOG");
+        std::env::remove_var("LIMEN_EMBEDDINGS_PROVIDER");
     }
 }

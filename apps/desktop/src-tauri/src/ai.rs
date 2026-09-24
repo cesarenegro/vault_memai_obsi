@@ -190,11 +190,78 @@ pub fn save_selected_model(model: &str) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    let data = serde_json::json!({
-        "selected_model": model.trim()
-    });
-    std::fs::write(&path, serde_json::to_string_pretty(&data).unwrap_or_default())
+    let mut val: serde_json::Value = if path.exists() {
+        std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|t| serde_json::from_str(&t).ok())
+            .unwrap_or_else(|| serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+    if !val.is_object() {
+        val = serde_json::json!({});
+    }
+    val["selected_model"] = serde_json::Value::String(model.trim().to_string());
+    std::fs::write(&path, serde_json::to_string_pretty(&val).unwrap_or_default())
         .map_err(|e| format!("Impossibile salvare il modello selezionato in {:?}: {}", path, e))
+}
+
+pub fn load_embeddings_provider_setting() -> Option<String> {
+    let path = get_ai_settings_path();
+    let text = std::fs::read_to_string(path).ok()?;
+    let val: serde_json::Value = serde_json::from_str(&text).ok()?;
+    val.get("embeddings_provider")
+        .and_then(|v| v.as_str())
+        .map(|s| s.trim().to_lowercase())
+        .filter(|s| !s.is_empty())
+}
+
+pub fn save_embeddings_provider_setting(provider: &str) -> Result<(), String> {
+    let path = get_ai_settings_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let mut val: serde_json::Value = if path.exists() {
+        std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|t| serde_json::from_str(&t).ok())
+            .unwrap_or_else(|| serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+    if !val.is_object() {
+        val = serde_json::json!({});
+    }
+    val["embeddings_provider"] = serde_json::Value::String(provider.trim().to_lowercase());
+    std::fs::write(&path, serde_json::to_string_pretty(&val).unwrap_or_default())
+        .map_err(|e| format!("Impossibile salvare il fornitore embeddings in {:?}: {}", path, e))
+}
+
+pub fn is_local_provider_configured() -> bool {
+    if let Ok(p) = std::env::var("LIMEN_EMBEDDINGS_PROVIDER") {
+        if p.trim().eq_ignore_ascii_case("local") {
+            return true;
+        }
+    }
+    if let Some(p) = load_embeddings_provider_setting() {
+        if p.eq_ignore_ascii_case("local") {
+            return true;
+        }
+    }
+    if let Ok(home) = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")) {
+        let default_vault = std::path::PathBuf::from(home).join("Documents").join("VAULT");
+        let profile = default_vault.join("00_SYSTEM").join("SYNC_PROFILE.json");
+        if let Ok(content) = std::fs::read_to_string(profile) {
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(p) = val.get("embeddingsProvider").and_then(|v| v.as_str()) {
+                    if p.trim().eq_ignore_ascii_case("local") {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    false
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -439,6 +506,7 @@ pub fn log_preview_timing_detailed(
     prompt: &str,
     port: Option<u16>,
     pid: Option<u32>,
+    service_status: Option<&str>,
     semantic_used: bool,
     fallback_reason: Option<&str>,
     timings: &PreviewTimings,
@@ -455,12 +523,20 @@ pub fn log_preview_timing_detailed(
         format!("RIPIEGO SU PAROLE ({})", fallback_reason.unwrap_or("motivo non specificato"))
     };
 
+    let status_str = service_status.unwrap_or_else(|| {
+        if port.is_some() && port != Some(0) {
+            "pronto"
+        } else {
+            "non attivo"
+        }
+    });
+
     let prompt_snippet = prompt.chars().take(80).collect::<String>();
     let formatted_block = format!(
         "================================================================================\n\
          REGISTRO PREPARAZIONE DOMANDA (PREVIEW) [{}]\n\
          Domanda: \"{}\"\n\
-         Porta locale: {} | PID: {} | Ricerca semantica: {} | Esito: {}\n\
+         Porta locale: {} | PID: {} | Stato servizio: {} | Ricerca semantica: {} | Esito: {}\n\
          Fasi preparazione (totale {} ms):\n\
            ├─ Indice & cache (t_index_cache_ms): {} ms\n\
            ├─ Vettore semantico domanda (t_embed_ms): {} ms\n\
@@ -477,6 +553,7 @@ pub fn log_preview_timing_detailed(
         prompt_snippet,
         port.map(|p| p.to_string()).unwrap_or_else(|| "nessuna".into()),
         pid.map(|p| p.to_string()).unwrap_or_else(|| "nessuno".into()),
+        status_str,
         if semantic_used { "UTILIZZATA" } else { "NON UTILIZZATA" },
         esito_str,
         timings.t_preview_total_ms,
@@ -495,6 +572,7 @@ pub fn log_preview_timing_detailed(
             "vault": vault_path.to_string_lossy(),
             "port": port,
             "pid": pid,
+            "serviceStatus": status_str,
             "semanticUsed": semantic_used,
             "semanticFallbackReason": fallback_reason,
             "esito": esito_str,
@@ -1379,11 +1457,11 @@ pub async fn select_with_port_detailed(
 
 impl AiState {
     pub async fn preview(&self, path: PathBuf, o: Options) -> Result<Preview, String> {
-        self.preview_with_service_info(path, o, None, None, false, None).await
+        self.preview_with_service_info(path, o, None, None, false, None, None).await
     }
 
     pub async fn preview_with_port(&self, path: PathBuf, o: Options, active_port: Option<u16>) -> Result<Preview, String> {
-        self.preview_with_service_info(path, o, active_port, None, active_port.is_some(), None).await
+        self.preview_with_service_info(path, o, active_port, None, active_port.is_some(), None, None).await
     }
 
     pub async fn preview_with_service_info(
@@ -1393,6 +1471,7 @@ impl AiState {
         active_port: Option<u16>,
         service_pid: Option<u32>,
         initial_semantic_used: bool,
+        service_status: Option<String>,
         initial_fallback_reason: Option<String>,
     ) -> Result<Preview, String> {
         let (sources, timings, search_semantic_used, search_fallback_reason) =
@@ -1418,6 +1497,7 @@ impl AiState {
             &o.prompt,
             active_port,
             service_pid,
+            service_status.as_deref(),
             semantic_used,
             semantic_fallback_reason.as_deref(),
             &timings,
@@ -4064,6 +4144,7 @@ mod tests {
           "Domanda di test",
           Some(8080),
           Some(44123),
+          Some("pronto"),
           true,
           None,
           &timings,
@@ -4072,13 +4153,14 @@ mod tests {
 
       let content = std::fs::read_to_string(&log_file).unwrap();
       assert!(content.contains("REGISTRO PREPARAZIONE DOMANDA (PREVIEW)"));
-      assert!(content.contains("Porta locale: 8080 | PID: 44123"));
+      assert!(content.contains("Porta locale: 8080 | PID: 44123 | Stato servizio: pronto"));
       assert!(content.contains("Ricerca semantica: UTILIZZATA"));
 
       let json_line = content.lines().find(|l| l.starts_with("JSON: ")).unwrap();
       let parsed_json: Value = serde_json::from_str(&json_line[6..]).unwrap();
       assert_eq!(parsed_json["port"], 8080);
       assert_eq!(parsed_json["pid"], 44123);
+      assert_eq!(parsed_json["serviceStatus"], "pronto");
       assert_eq!(parsed_json["semanticUsed"], true);
       assert_eq!(parsed_json["sourceCount"], 3);
 
