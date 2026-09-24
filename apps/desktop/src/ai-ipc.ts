@@ -20,7 +20,7 @@ export interface AiOptions {
   previousTurns?: ConversationTurn[];
   previousQuestion?: string;
 }
-export interface AiSource {documentId:string;relativePath:string;title:string;category:string;status?:string;sha256:string;content:string;locator?:string;passageId?:string;revision?:number}
+export interface AiSource {documentId:string;relativePath:string;title:string;category:string;status?:string;sha256:string;content:string;locator?:string;passageId?:string;revision?:number;passageHashes?:[string,string][]}
 export interface AiPreview {
   ticket: string;
   sources: AiSource[];

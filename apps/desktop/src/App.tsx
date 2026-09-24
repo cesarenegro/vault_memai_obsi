@@ -4,7 +4,7 @@ import {KnowledgePanel} from './KnowledgePanel';
 import {ProposalPanel} from './ProposalPanel';
 import {SyncPanel} from './SyncPanel';
 import {HelpPanel} from './HelpPanel';
-import {normalizeVaultPath} from './platform';
+import {normalizeVaultPath, getPlatformTerms} from './platform';
 import {aiIpc} from './ai-ipc';
 import {AiPanel,AiSettings} from './AiPanel';
 import { DocumentReaderModal } from './DocumentReaderModal';
@@ -93,6 +93,7 @@ export default function App() {
     }
     return '';
   });
+  const terms = getPlatformTerms();
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   useEffect(() => { void aiIpc.mcpStop().catch(() => {}); void aiIpc.tunnelStop().catch(() => {}); }, [vaultPath]);
   const automation=useAutomation(vaultLoaded&&vaultState==='READY'?vaultPath:null);
@@ -106,6 +107,7 @@ export default function App() {
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const [obsidianAvailable, setObsidianAvailable] = useState<boolean>(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isTauriEnv, setIsTauriEnv] = useState<boolean>(false);
@@ -135,7 +137,7 @@ export default function App() {
   const [catalogFilterStatus, setCatalogFilterStatus] = useState<string>('all');
   const [catalogSearchText, setCatalogSearchText] = useState<string>('');
   const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [advancedTab, setAdvancedTab] = useState<'proposals' | 'snapshots' | 'transfers' | 'settings' | 'system' | 'help' | 'compiler'>('proposals');
+  const [advancedTab, setAdvancedTab] = useState<'proposals' | 'snapshots' | 'transfers' | 'settings' | 'system' | 'help' | 'compiler'>('settings');
   const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
 
   // Document Reader Modal state
@@ -178,6 +180,14 @@ export default function App() {
         .catch(() => {});
     }
   }, [currentTab, vaultPath, isTauriEnv, searchRevision]);
+
+  useEffect(() => {
+    if ((currentTab === 'memory' || currentTab === 'knowledge') && vaultPath && isTauriEnv) {
+      invoke<Record<string, number>>('count_knowledge_notes', { vaultPath })
+        .then(counts => setCategoryCounts(counts || {}))
+        .catch(err => console.error('Errore conteggio note per categoria:', err));
+    }
+  }, [currentTab, vaultPath, isTauriEnv]);
 
   const openReader = (target: string, passageId?: string, query?: string, revision?: number, hash?: string) => {
     setReaderTarget(target);
@@ -728,7 +738,10 @@ export default function App() {
 
             {/* AVANZATE NAVIGATION */}
             <button
-              onClick={() => setCurrentTab('advanced')}
+              onClick={() => {
+                setCurrentTab('advanced');
+                setAdvancedTab('settings');
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1026,14 +1039,15 @@ export default function App() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  backgroundColor: '#ffffff',
-                  color: isProcessing ? '#94a3b8' : '#0f172a',
-                  border: '1px solid #cbd5e1',
+                  backgroundColor: isProcessing ? '#f1f5f9' : 'var(--limen-lime)',
+                  color: '#0f172a',
+                  border: '1px solid rgba(119, 241, 23, 0.6)',
                   borderRadius: 8,
                   padding: '12px 20px',
                   fontSize: 13,
-                  fontWeight: 600,
+                  fontWeight: 700,
                   cursor: isProcessing ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
                 }}
               >
                 {isProcessing ? <Loader2 size={16} className="spin" /> : <FolderOpen size={16} />}
@@ -1099,28 +1113,38 @@ export default function App() {
                 </div>
 
                 {/* SHA-256 DISCREPANCIES CARD IF ANY */}
-                {integrityReport && !integrityReport.is_integrity_valid && integrityReport.errors.length === 0 && (
-                  <div style={{ marginBottom: 24, backgroundColor: '#fffbe5', padding: 16, borderRadius: 8, border: '1px solid #fef08a' }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#854d0e', marginBottom: 8 }}>
-                      Differenze rilevate rispetto al manifesto SHA-256
+                {integrityReport && !integrityReport.is_integrity_valid && integrityReport.errors.length === 0 && (() => {
+                  const modCount = integrityReport.modified_files.length;
+                  const misCount = integrityReport.missing_files.length;
+                  const addCount = integrityReport.added_files.length;
+                  const diffSummary = `${modCount} modificat${modCount === 1 ? 'o' : 'i'}, ${misCount} mancant${misCount === 1 ? 'e' : 'i'}, ${addCount} aggiunt${addCount === 1 ? 'o' : 'i'}`;
+                  return (
+                    <div style={{ marginBottom: 20, backgroundColor: '#fffbe5', padding: '10px 16px', borderRadius: 8, border: '1px solid #fef08a' }}>
+                      <details>
+                        <summary style={{ fontSize: 13, fontWeight: 700, color: '#854d0e', cursor: 'pointer' }}>
+                          Differenze rispetto al manifesto SHA-256 ({diffSummary})
+                        </summary>
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {modCount > 0 && (
+                            <div style={{ fontSize: 12, color: '#a16207' }}>
+                              <strong>File modificati ({modCount}):</strong> {integrityReport.modified_files.join(', ')}
+                            </div>
+                          )}
+                          {misCount > 0 && (
+                            <div style={{ fontSize: 12, color: '#a16207' }}>
+                              <strong>File mancanti ({misCount}):</strong> {integrityReport.missing_files.join(', ')}
+                            </div>
+                          )}
+                          {addCount > 0 && (
+                            <div style={{ fontSize: 12, color: '#a16207' }}>
+                              <strong>File aggiunti non presenti nel manifesto ({addCount}):</strong> {integrityReport.added_files.join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      </details>
                     </div>
-                    {integrityReport.modified_files.length > 0 && (
-                      <div style={{ fontSize: 12, color: '#a16207', marginBottom: 4 }}>
-                        <strong>File modificati ({integrityReport.modified_files.length}):</strong> {integrityReport.modified_files.join(', ')}
-                      </div>
-                    )}
-                    {integrityReport.missing_files.length > 0 && (
-                      <div style={{ fontSize: 12, color: '#a16207', marginBottom: 4 }}>
-                        <strong>File mancanti ({integrityReport.missing_files.length}):</strong> {integrityReport.missing_files.join(', ')}
-                      </div>
-                    )}
-                    {integrityReport.added_files.length > 0 && (
-                      <div style={{ fontSize: 12, color: '#a16207' }}>
-                        <strong>File aggiunti non presenti nel manifesto ({integrityReport.added_files.length}):</strong> {integrityReport.added_files.join(', ')}
-                      </div>
-                    )}
-                  </div>
-                )}
+                  );
+                })()}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
                   <div className="limen-card" style={{ padding: 24 }}>
@@ -1444,7 +1468,7 @@ export default function App() {
                     <div>
                       <strong>Modalità degradata (solo ricerca lessicale):</strong> il servizio semantico locale non è
                       attivo o non ha risposto. I risultati sono calcolati esclusivamente tramite indice lessicale. Nessun
-                      dato è uscito dal Mac.
+                      dato è uscito {terms.fromDeviceTerm}.
                     </div>
                   </div>
                 )}
@@ -1459,7 +1483,7 @@ export default function App() {
                       {searchResults.slice(0, 5).map((item) => (
                         <div
                           key={item.relative_path}
-                          onClick={() => openReader(item.id || item.relative_path, item.matching_passage_id, searchTerm, undefined, item.sha256)}
+                          onClick={() => openReader(item.id || item.relative_path, undefined, searchTerm, undefined, item.sha256)}
                           style={{
                             padding: 12,
                             borderRadius: 8,
@@ -1586,7 +1610,7 @@ export default function App() {
                 >
                   <Upload size={28} style={{ margin: '0 auto 8px', color: isDragging ? '#c8ff00' : '#64748b' }} />
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
-                    Trascina qui i tuoi documenti o clicca per selezionare dal Mac
+                    Trascina qui i tuoi documenti o clicca per selezionare {terms.fromDeviceTerm}
                   </div>
                   <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
                     PDF, Word (.docx), Excel (.xlsx), presentazioni, scansioni, note e testi. Massimo 32 MB per file.
@@ -1757,9 +1781,9 @@ export default function App() {
                                       fontSize: 11,
                                       cursor: 'pointer',
                                     }}
-                                    title="Mostra nel Finder"
+                                    title={`Mostra in ${terms.fileManager}`}
                                   >
-                                    Finder
+                                    {terms.fileManager}
                                   </button>
                                 </div>
                               </td>
@@ -1793,7 +1817,7 @@ export default function App() {
                         textTransform: 'capitalize',
                       }}
                     >
-                      {cat === 'all' ? 'Tutte le note' : labelIt(cat)}
+                      {cat === 'all' ? 'Tutte le note' : `${labelIt(cat)} (${categoryCounts[cat] ?? 0})`}
                     </button>
                   ))}
                 </div>
@@ -1816,6 +1840,7 @@ export default function App() {
                     { id: 'system', label: 'Stato di Sistema' },
                     { id: 'help', label: 'Guida Vault' },
                   ].map((sub) => {
+                    const isHelp = sub.id === 'help';
                     const active = (advancedTab === sub.id) || (currentTab === sub.id);
                     return (
                       <button
@@ -1827,12 +1852,19 @@ export default function App() {
                         style={{
                           padding: '6px 12px',
                           borderRadius: 6,
-                          border: active ? '1px solid #0f172a' : '1px solid #e2e8f0',
-                          backgroundColor: active ? '#0f172a' : '#ffffff',
-                          color: active ? '#ffffff' : '#334155',
+                          border: isHelp
+                            ? active ? '2px solid #0f172a' : '1px solid rgba(119, 241, 23, 0.7)'
+                            : active ? '1px solid #0f172a' : '1px solid #e2e8f0',
+                          backgroundColor: isHelp
+                            ? 'var(--limen-lime)'
+                            : active ? '#0f172a' : '#ffffff',
+                          color: isHelp
+                            ? '#0f172a'
+                            : active ? '#ffffff' : '#334155',
                           fontSize: 12,
-                          fontWeight: 600,
+                          fontWeight: isHelp ? 700 : 600,
                           cursor: 'pointer',
+                          boxShadow: isHelp ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                         }}
                       >
                         {sub.label}
@@ -2020,7 +2052,7 @@ export default function App() {
                         </tr>
                         <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                           <td style={{ padding: '10px 0', color: '#64748b' }}>Ambiente di esecuzione</td>
-                          <td style={{ padding: '10px 0', color: '#0f172a', fontWeight: 600 }}>{isTauriEnv ? 'Applicazione nativa macOS' : 'Anteprima nel browser'}</td>
+                          <td style={{ padding: '10px 0', color: '#0f172a', fontWeight: 600 }}>{isTauriEnv ? `Applicazione nativa ${terms.osName}` : 'Anteprima nel browser'}</td>
                         </tr>
                       </tbody>
                     </table>

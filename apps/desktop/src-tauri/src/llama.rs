@@ -2824,9 +2824,19 @@ mod tests {
         assert!(state.is_starting() || state.status().running || state.is_auto_start_failed());
 
         // Attendi che il thread registri l'evento di inizio
-        std::thread::sleep(Duration::from_millis(100));
-
-        let log_content = std::fs::read_to_string(&timing_log).unwrap_or_default();
+        let mut log_content = String::new();
+        for _ in 0..40 {
+            if let Ok(c) = std::fs::read_to_string(&timing_log) {
+                if c.contains("BACKGROUND_START_BEGIN") {
+                    log_content = c;
+                    break;
+                }
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        if log_content.is_empty() {
+            log_content = std::fs::read_to_string(&timing_log).unwrap_or_default();
+        }
         assert!(
             log_content.contains("BACKGROUND_START_BEGIN"),
             "Il registro local_model_timing.log deve contenere l'inizio dell'avvio in background all'apertura dell'app. Contenuto: {}",

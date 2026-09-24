@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { getPlatformTerms } from './platform';
 import {
   Search,
   BookOpen,
@@ -143,6 +144,7 @@ export function HelpPanel({
   onOpenObsidian?: () => void;
   onNavigateTab?: (tab: string) => void;
 }) {
+  const terms = getPlatformTerms();
   const [activeChapterId, setActiveChapterId] = useState('rag-locale');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -156,13 +158,13 @@ export function HelpPanel({
         summary: 'Cos’è un Vault, distinzione tra RAG locale e OpenAI, ciclo di vita e privacy a rete zero.',
         content: (
           <div>
-            <h3>Un Vault è una cartella di lavoro sul tuo Mac</h3>
+            <h3>Un Vault è una cartella di lavoro {terms.onDeviceTerm}</h3>
             <p>
-              Il <strong>Vault</strong> contiene note Markdown, documenti originali, bozze e indici di sistema. Rimane salvato sul tuo Mac ed è pienamente compatibile e consultabile con Obsidian.
+              Il <strong>Vault</strong> contiene note Markdown, documenti originali, bozze e indici di sistema. Rimane salvato {terms.onDeviceTerm} ed è pienamente compatibile e consultabile con Obsidian.
             </p>
             <ul>
               <li><strong>Obsidian</strong> serve per scrivere e modificare liberamente le note di conoscenza.</li>
-              <li><strong>LIMEN Vault</strong> serve per consultarle, indicizzarle, estrarre trascrizioni e documenti con OCR, calcolare vettori semantici sul Mac a rete zero, fare ricerche ibride BM25 + semantiche, interrogare l’AI con anteprima locale e gestire copie verificate.</li>
+              <li><strong>LIMEN Vault</strong> serve per consultarle, indicizzarle, estrarre trascrizioni e documenti con OCR, calcolare vettori semantici {terms.onDeviceTerm} a rete zero, fare ricerche ibride BM25 + semantiche, interrogare l’AI con anteprima locale e gestire copie verificate.</li>
             </ul>
 
             <h4>Due motori di intelligenza: Locale vs Rete</h4>
@@ -185,13 +187,13 @@ export function HelpPanel({
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '8px 12px', fontWeight: 600 }}>Chiedi al Vault (AI)</td>
-                    <td style={{ padding: '8px 12px' }}>Modello OpenAI (es. gpt-4o) con chiave nel Portachiavi</td>
+                    <td style={{ padding: '8px 12px' }}>Modello OpenAI (es. gpt-4o) con chiave in {terms.keychainTerm}</td>
                     <td style={{ padding: '8px 12px', color: '#854d0e' }}>Solo le fonti mostrate in Anteprima Locale</td>
                     <td style={{ padding: '8px 12px' }}>A consumo API OpenAI</td>
                   </tr>
                   <tr>
                     <td style={{ padding: '8px 12px', fontWeight: 600 }}>Classificazione Automatica RAW</td>
-                    <td style={{ padding: '8px 12px' }}>Estrattore nativo Swift sul Mac + chiamata OpenAI opt-in</td>
+                    <td style={{ padding: '8px 12px' }}>{terms.extractorTerm} + chiamata OpenAI opt-in</td>
                     <td style={{ padding: '8px 12px', color: '#854d0e' }}>Solo se automazione attivata dall’utente</td>
                     <td style={{ padding: '8px 12px' }}>A consumo API OpenAI</td>
                   </tr>
@@ -200,7 +202,7 @@ export function HelpPanel({
             </div>
 
             <Callout type="info" title="Privacy e Garanzia Rete Zero">
-              Con il fornitore semantico <strong>Locale</strong>, nessun dato lascia mai il tuo Mac. Il calcolo degli embedding semantici e la ricerca lessicale BM25 avvengono esclusivamente sulla memoria del Mac tramite socket di loopback interno (<code>127.0.0.1</code>), verificato e isolato.
+              Con il fornitore semantico <strong>Locale</strong>, nessun dato lascia mai {terms.deviceTerm}. Il calcolo degli embedding semantici e la ricerca lessicale BM25 avvengono esclusivamente sulla memoria locale tramite socket di loopback interno (<code>127.0.0.1</code>), verificato e isolato.
             </Callout>
           </div>
         ),
@@ -217,8 +219,8 @@ export function HelpPanel({
 
             <h4>Passo 1 — Apri o crea il Vault</h4>
             <ol>
-              <li>Avvia <strong>LIMEN Vault v3</strong> sul Mac.</li>
-              <li>Nella schermata di benvenuto, seleziona il percorso della cartella locale (es. <code>/Users/nome/Documents/VAULT</code>).</li>
+              <li>Avvia <strong>LIMEN Vault v3</strong> {terms.onDeviceTerm}.</li>
+              <li>Nella schermata di benvenuto, seleziona il percorso della cartella locale.</li>
               <li>Premi <strong>APRI VAULT ESISTENTE</strong> se possiedi già un Vault LIMEN, oppure <strong>CREA NUOVO VAULT</strong> se la cartella è vuota.</li>
             </ol>
             <p><strong>Risultato atteso:</strong> la schermata si apre sulla <strong>Panoramica</strong> con stato <strong>Pronto</strong>.</p>
@@ -226,10 +228,10 @@ export function HelpPanel({
             <h4>Passo 2 — Configura il RAG Locale (100% Offline)</h4>
             <ol>
               <li>Vai in <strong>Avanzate e Manutenzione → Collegamenti AI & MCP</strong>.</li>
-              <li>Nel pannello <strong>Motore semantico</strong>, assicurati che sia selezionato <strong>Locale (bge-m3, nessun dato esce dal Mac)</strong>.</li>
+              <li>Nel pannello <strong>Motore semantico</strong>, assicurati che sia selezionato <strong>Locale (bge-m3, nessun dato esce {terms.fromDeviceTerm})</strong>.</li>
               <li>Se il modello non è installato, premi <strong>SCARICA MODELLO (635 MB)</strong> oppure <strong>SELEZIONA FILE GGUF DA DISCO…</strong> per un file già presente sul disco.</li>
               <li>Premi <strong>AVVIA SERVIZIO LOCALE</strong>: il sistema avvierà <code>llama-server</code> su una porta libera locale e verificherà la salute (<code>/health</code>).</li>
-              <li>Se la cache indica disallineamento, premi <strong>RICALCOLA CACHE</strong> per generare i vettori semantici sul Mac.</li>
+              <li>Se la cache indica disallineamento, premi <strong>RICALCOLA CACHE</strong> per generare i vettori semantici {terms.onDeviceTerm}.</li>
             </ol>
 
             <h4>Passo 3 — Collega Obsidian</h4>
@@ -241,7 +243,7 @@ export function HelpPanel({
 
             <h4>Passo 4 — Carica documenti e fai domande</h4>
             <p>
-              Premi il pulsante verde <strong>CARICA DOCUMENTI</strong> per importare PDF, presentazioni, trascrizioni o fogli di calcolo in <code>20_RAW_SOURCES</code>. L’estrattore nativo estrae il testo in passaggi; poi vai nella scheda <strong>Chiedi</strong>, scrivi la tua domanda e premi Invio o il pulsante <strong>Chiedi</strong>. LIMEN risponderà in prosa in primo piano con le fonti raggruppate in una riga espandibile ("Basata su N documenti").
+              Premi il pulsante verde <strong>CARICA DOCUMENTI</strong> per importare PDF, presentazioni, trascrizioni o fogli di calcolo in <code>20_RAW_SOURCES</code>. L’estrattore nativo estrae il testo in passaggi; poi vai nella scheda <strong>Chiedi</strong>, scrivi la tua domanda e premi Invio o il pulsante <strong>Chiedi</strong>. LIMEN risponderà in prosa in stile chat a messaggistica con le fonti consultate posizionate sotto la risposta in un blocco richiudibile.
             </p>
           </div>
         ),
@@ -251,7 +253,7 @@ export function HelpPanel({
         title: '3. Motore Semantico & RAG 100% Locale',
         badge: 'RAG Locale',
         icon: <Sparkles size={16} />,
-        summary: 'Come funziona bge-m3 su Mac: modello Q8_0, porta dinamica, salute /health, zero rete e staging.',
+        summary: `Come funziona bge-m3 su ${terms.osName}: modello Q8_0, porta dinamica, salute /health, zero rete e staging.`,
         content: (
           <div>
             <h3>Architettura del RAG Locale integrato</h3>
@@ -267,7 +269,7 @@ export function HelpPanel({
                   <li><strong>Dimensioni vettore:</strong> 1024 float</li>
                   <li><strong>Dimensione file:</strong> 605,2 MB (634.553.760 byte)</li>
                   <li><strong>SHA-256 atteso:</strong> <code>950f4a8e5e19477a...</code></li>
-                  <li><strong>Percorso:</strong> <code>~/Library/Application Support/LIMEN Vault/models/</code></li>
+                  <li><strong>Percorso:</strong> <code>{terms.modelsPath}</code></li>
                 </ul>
               </div>
 
@@ -277,7 +279,7 @@ export function HelpPanel({
                   <li><strong>Endpoint dinamico:</strong> <code>http://127.0.0.1:&lt;porta_libera&gt;/v1/embeddings</code></li>
                   <li><strong>Nessuna porta cablata:</strong> assegnata a runtime tramite socket OS</li>
                   <li><strong>Controllo Loopback:</strong> qualsiasi richiesta esterna viene respinta</li>
-                  <li><strong>Nessuna API Key:</strong> non serve e non viene interrogato il Portachiavi</li>
+                  <li><strong>Nessuna API Key:</strong> non serve e non viene interrogata la {terms.keychainTerm}</li>
                   <li><strong>Processo monitorato:</strong> arresto pulito alla chiusura dell’app</li>
                 </ul>
               </div>
@@ -382,7 +384,7 @@ export function HelpPanel({
               Quando scatta la modalità degradata:
             </p>
             <ul>
-              <li><strong>Nessun dato esce dal Mac:</strong> l’applicazione non ripiega mai silenziosamente su OpenAI se il fornitore è locale.</li>
+              <li><strong>Nessun dato esce {terms.fromDeviceTerm}:</strong> l’applicazione non ripiega mai silenziosamente su OpenAI se il fornitore è locale.</li>
               <li><strong>Segnalazione visiva:</strong> compare il banner giallo e il badge accanto ai risultati indica <em>RAG LOCALE SPENTO (SOLO LESSICALE)</em>.</li>
               <li><strong>Ripristino:</strong> vai in <em>Avanzate → Collegamenti AI & MCP → Motore semantico</em> e premi <strong>AVVIA SERVIZIO LOCALE</strong> (il banner non ha pulsanti); il ricalcolo della cache avvia il servizio da solo, la ricerca no.</li>
             </ul>
@@ -394,7 +396,7 @@ export function HelpPanel({
         title: '5. Caricamento e conoscenza automatica',
         badge: 'RAW',
         icon: <FolderArchive size={16} />,
-        summary: 'Carica file grezzi in 20_RAW_SOURCES: OCR nativo Swift, chunking a 1200 caratteri e indicizzazione.',
+        summary: 'Carica file grezzi in 20_RAW_SOURCES: estrazione nativa, chunking a 1200 caratteri e indicizzazione.',
         content: (
           <div>
             <h3>La pipeline di ingestione dei documenti</h3>
@@ -402,11 +404,11 @@ export function HelpPanel({
               La cartella <code>20_RAW_SOURCES/</code> è il deposito protetto per i materiali originali. I file caricati rimangono <strong>immutabili e in sola lettura</strong>.
             </p>
 
-            <h4>Formati supportati dall’estrattore nativo (limen-extract)</h4>
+            <h4>Formati supportati dall’estrattore nativo</h4>
             <ul>
               <li><strong>Testo e Markdown:</strong> <code>.txt</code>, <code>.md</code> letti direttamente.</li>
               <li><strong>Documenti e Presentazioni:</strong> <code>.pdf</code>, <code>.docx</code>, <code>.pptx</code>, <code>.xlsx</code>.</li>
-              <li><strong>Immagini e Scansioni:</strong> <code>.png</code>, <code>.jpg</code> con OCR integrato tramite framework Vision su macOS e supporto per estrazione di testi su Windows.</li>
+              <li><strong>Immagini e Scansioni:</strong> {terms.ocrDescription}</li>
             </ul>
 
             <h4>Come vengono segmentati i passaggi (Chunking)</h4>
@@ -478,23 +480,41 @@ Richiede soluzioni di packaging compostabile.`}
       },
       {
         id: 'ai',
-        title: '7. Chiedi al Vault (AI Generativa)',
-        badge: 'OpenAI & Chat',
+        title: '7. Chiedi al Vault (Conversazione & AI)',
+        badge: 'Chat & RAG',
         icon: <MessageSquare size={16} />,
-        summary: 'Domande guidate all’AI con anteprima locale verificata delle fonti prima dell’invio a OpenAI.',
+        summary: 'Conversazione a più turni con contesto, stile messaggistica, fonti verificate sotto la risposta e storico.',
         content: (
           <div>
-            <h3>Domande con anteprima e controllo delle fonti</h3>
+            <h3>Conversazione a messaggistica e intelligenza aumentata</h3>
             <p>
-              In <strong>Chiedi al Vault</strong> puoi porre domande complesse alla conoscenza del Vault sfruttando modelli generativi (es. OpenAI GPT-4o), con la massima riservatezza:
+              La scheda <strong>Chiedi al Vault</strong> ti consente di dialogare direttamente con la conoscenza aziendale accumulata nel Vault attraverso un'interfaccia a messaggistica fluida e trasparente:
             </p>
-            <ol>
-              <li>Scrivi la domanda nel campo dedicato.</li>
-              <li>Premi <strong>ANTEPRIMA FONTI</strong>: il sistema individua i passaggi pertinenti dalle note approvate ed evidenzia quanti byte e quali documenti compongono il contesto.</li>
-              <li>Nessun dato lascia il Mac durante l’anteprima.</li>
-              <li>Se le fonti sono adeguate, premi <strong>INVIA A OPENAI LE FONTI MOSTRATE</strong>.</li>
-              <li>Puoi salvare la risposta con il pulsante <strong>SALVA RISPOSTA COME BOZZA</strong> (verrà archiviata in <code>80_AI_OUTPUTS/</code>).</li>
-            </ol>
+
+            <h4>Caratteristiche e Funzionalità Principali</h4>
+            <ul>
+              <li>
+                <strong>Conversazione a più turni con contesto:</strong> ogni domanda di seguito mantiene automaticamente il contesto dei turni precedenti. Puoi fare approfondimenti consecutivi (es. <em>«E quali app comprende?»</em>, <em>«Chi le usa?»</em>) senza dover ripetere il soggetto.
+              </li>
+              <li>
+                <strong>Stile messaggistica moderno:</strong> le tue domande compaiono allineate a destra con sfondo verde lime (<code>#77F117</code>) e testo scuro ben leggibile; le risposte sintetizzate dall'AI compaiono a sinistra in riquadri bianchi distinti.
+              </li>
+              <li>
+                <strong>Pulsante «Nuova conversazione»:</strong> posizionato in alto a destra nel riquadro verde lime al 30% e in calce all'input, permette di azzerare istantaneamente il contesto precedente e iniziare una nuova sessione pulita.
+              </li>
+              <li>
+                <strong>Fonti consultate e citate SOTTO la risposta:</strong> le fonti estratte dal Vault sono posizionate rigorosamente sotto il testo della risposta, sia nei turni completati sia durante lo streaming. Il blocco è richiudibile e chiuso all'inizio (<code>sourcesOpen: false</code>) per non distrarre dalla lettura.
+              </li>
+              <li>
+                <strong>Nomi delle fonti leggibili:</strong> le fonti mostrano il titolo pulito senza estensione né prefissi tecnici, la categoria in chiaro (es. <em>Documento caricato</em> al posto di <code>raw_source</code>) e i paragrafi raggruppati (es. <em>Paragrafi 1–13, 52–68</em>).
+              </li>
+              <li>
+                <strong>Storico delle conversazioni («Storico»):</strong> il cassetto laterale raggruppa le domande di seguito nella stessa sessione di dialogo, indicando il numero di turni, i token consumati, il modello utilizzato e lo stato di integrità di ciascuna fonte (inalterata, modificata o rimossa).
+              </li>
+              <li>
+                <strong>Riservatezza assoluta:</strong> con il motore semantico locale bge-m3, la ricerca dei passaggi avviene a rete zero sul computer; a OpenAI vengono trasmessi unicamente i passaggi rilevanti selezionati. Nessun dato non pertinente esce dal dispositivo.
+              </li>
+            </ul>
           </div>
         ),
       },
@@ -631,7 +651,7 @@ Richiede soluzioni di packaging compostabile.`}
                   Perché compare il banner giallo «Modalità degradata (solo ricerca lessicale)»?
                 </summary>
                 <div style={{ marginTop: 8, fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
-                  Il banner compare quando hai attiva la <em>Ricerca Ibrida</em> ma il servizio semantico locale (<code>llama-server</code>) non è in esecuzione, non risponde entro il timeout o è stato arrestato. In questa modalità, l’applicazione garantisce la continuità operativa calcolando i risultati con il solo motore lessicale BM25. Nessun dato lascia il Mac. Per ripristinare la semantica, vai in <strong>Avanzate → Collegamenti AI & MCP → Motore semantico</strong> e premi <strong>AVVIA SERVIZIO LOCALE</strong>.
+                  Il banner compare quando hai attiva la <em>Ricerca Ibrida</em> ma il servizio semantico locale (<code>llama-server</code>) non è in esecuzione, non risponde entro il timeout o è stato arrestato. In questa modalità, l’applicazione garantisce la continuità operativa calcolando i risultati con il solo motore lessicale BM25. Nessun dato lascia {terms.deviceTerm}. Per ripristinare la semantica, vai in <strong>Avanzate → Collegamenti AI & MCP → Motore semantico</strong> e premi <strong>AVVIA SERVIZIO LOCALE</strong>.
                 </div>
               </details>
 
@@ -642,7 +662,7 @@ Richiede soluzioni di packaging compostabile.`}
                 <div style={{ marginTop: 8, fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
                   Verifica che il modello sia integro aprendo la scheda <em>Motore semantico</em> (deve riportare <em>INSTALLATO (SHA-256 OK)</em>). Se l’errore persiste, consulta il file di log dettagliato generato dal processo in:
                   <br />
-                  <code>~/Library/Application Support/LIMEN Vault/models/llama-server.log</code>.
+                  <code>{terms.modelsLogPath}</code>.
                 </div>
               </details>
 
@@ -651,7 +671,7 @@ Richiede soluzioni di packaging compostabile.`}
                   La cache semantica mostra «assente», «Disallineamento dimensioni vettore» o «incompleta»
                 </summary>
                 <div style={{ marginTop: 8, fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
-                  Questo accade se hai cambiato fornitore (es. da OpenAI con 1536 dimensioni a Locale bge-m3 con 1024 dimensioni) o se hai aggiunto nuovi documenti in <code>20_RAW_SOURCES</code>. Premi <strong>RICALCOLA CACHE SEMANTICA (1024 DIM)</strong> nel pannello del motore semantico: il servizio locale parte da solo se è spento, la barra mostra «K/N passaggi» e la percentuale, la cache precedente resta in uso fino al 100%. Durata misurata: 9.458 passaggi in 49 minuti su un Mac M2 8 GB.
+                  Questo accade se hai cambiato fornitore (es. da OpenAI con 1536 dimensioni a Locale bge-m3 con 1024 dimensioni) o se hai aggiunto nuovi documenti in <code>20_RAW_SOURCES</code>. Premi <strong>RICALCOLA CACHE SEMANTICA (1024 DIM)</strong> nel pannello del motore semantico: il servizio locale parte da solo se è spento, la barra mostra «K/N passaggi» e la percentuale, la cache precedente resta in uso fino al 100%. Durata indicativa: ~9.400 passaggi in ~45–50 minuti (misurata con accelerazione locale).
                 </div>
               </details>
 
@@ -778,7 +798,7 @@ Richiede soluzioni di packaging compostabile.`}
           {
             id: 'rag-locale',
             title: 'RAG 100% Locale',
-            desc: 'bge-m3, zero rete e calcolo sul Mac',
+            desc: 'bge-m3, zero rete e calcolo locale',
             icon: <Sparkles size={20} color="#16a34a" />,
             bg: '#f0fdf4',
             border: '#bbf7d0',

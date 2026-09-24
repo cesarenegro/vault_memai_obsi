@@ -29,7 +29,46 @@ fn walk(dir:&Dir,prefix:&str,depth:usize,items:&mut Vec<Value>,total:&mut usize)
  items.push(json!({"relativePath":relative,"title":fm.as_ref().and_then(|f|f["title"].as_str()).unwrap_or(&name),"status":fm.as_ref().and_then(|f|f["status"].as_str()).unwrap_or("unspecified"),"sha256":hash,"automationKind":fm.as_ref().and_then(|f|f["automation_kind"].as_str()),"markdown":text}));
  }Ok(())
 }
+pub fn count_notes_by_category(path:&Path)->Result<std::collections::HashMap<String, usize>, String>{
+ let root=root(path)?;let mut counts=std::collections::HashMap::new();
+ for f in &FOLDERS {
+  let mut count=0;
+  if let Ok(dir)=child(&root, f) {
+   count_walk(&dir, 0, &mut count)?;
+  }
+  counts.insert((*f).to_string(), count);
+ }
+ Ok(counts)
+}
+fn count_walk(dir:&Dir,depth:usize,count:&mut usize)->Result<(),String>{
+ if depth>32{return Err("Knowledge directory depth limit".into())}
+ for name in names(dir)?{
+  if name.starts_with('.') {continue}
+  let meta=match dir.symlink_metadata(&name){Ok(m)=>m,Err(_)=>continue};
+  if meta.file_type().is_symlink(){continue}
+  if meta.is_dir(){if let Ok(c)=child(dir,&name){count_walk(&c,depth+1,count)?;}continue}
+  if name.to_lowercase().ends_with(".md")&&meta.is_file(){*count+=1;}
+ }
+ Ok(())
+}
 #[cfg(test)]mod tests{use super::*;use std::fs;
  #[test]fn actual_notes_without_index_and_no_mutations(){let t=tempfile::tempdir().unwrap();fs::create_dir_all(t.path().join("01_CLIENTS/nested")).unwrap();let p=t.path().join("01_CLIENTS/nested/note.md");let text="---\nschema_version: 1\nid: knowledge-test\ntitle: Aurora\ntype: client\nstatus: approved\ncreated_at: \"2026-09-12T00:00:00Z\"\nupdated_at: \"2026-09-12T00:00:00Z\"\ntags: []\nsource_ids: []\n---\nActual local note";fs::write(&p,text).unwrap();let rows=list(t.path(),"01_CLIENTS").unwrap();assert_eq!(rows.len(),1);assert_eq!(rows[0]["title"],"Aurora");assert_eq!(rows[0]["sha256"],compute_sha256(text.as_bytes()));assert_eq!(fs::read_to_string(p).unwrap(),text);assert!(!t.path().join("00_SYSTEM").exists());}
  #[test]fn symlink_and_oversized_notes_fail_explicitly(){let t=tempfile::tempdir().unwrap();fs::create_dir(t.path().join("01_CLIENTS")).unwrap();let p=t.path().join("01_CLIENTS/link.md");#[cfg(unix)]{std::os::unix::fs::symlink("/etc/passwd",&p).unwrap();assert!(list(t.path(),"01_CLIENTS").is_err());fs::remove_file(&p).unwrap();}fs::write(&p,vec![b'x';512*1024+1]).unwrap();assert!(list(t.path(),"01_CLIENTS").is_err());assert!(list(t.path(),"20_RAW_SOURCES").is_err());}
+ #[test]fn test_count_notes_by_category(){
+  let t=tempfile::tempdir().unwrap();
+  fs::create_dir_all(t.path().join("01_CLIENTS/sub")).unwrap();
+  fs::write(t.path().join("01_CLIENTS/c1.md"),"note 1").unwrap();
+  fs::write(t.path().join("01_CLIENTS/sub/c2.md"),"note 2").unwrap();
+  fs::write(t.path().join("01_CLIENTS/ignore.txt"),"ignore me").unwrap();
+  fs::create_dir_all(t.path().join("02_PROJECTS")).unwrap();
+  fs::write(t.path().join("02_PROJECTS/p1.md"),"proj 1").unwrap();
+  fs::create_dir_all(t.path().join("03_BRANDS")).unwrap();
+
+  let counts=count_notes_by_category(t.path()).unwrap();
+  assert_eq!(counts.get("01_CLIENTS").copied().unwrap_or(0),2);
+  assert_eq!(counts.get("02_PROJECTS").copied().unwrap_or(0),1);
+  assert_eq!(counts.get("03_BRANDS").copied().unwrap_or(0),0);
+  assert_eq!(counts.get("04_POSITIONING").copied().unwrap_or(0),0);
+  assert_eq!(counts.len(),10);
+ }
 }

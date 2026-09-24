@@ -61,6 +61,9 @@ fn tunnel_config(app:tauri::AppHandle)->Result<Option<limen_vault::tunnel::Confi
 async fn list_knowledge(vault_path:String,folder:String)->Result<Vec<serde_json::Value>,String>{tauri::async_runtime::spawn_blocking(move||limen_vault::knowledge::list(Path::new(&vault_path),&folder)).await.map_err(|e|e.to_string())?}
 
 #[tauri::command]
+async fn count_knowledge_notes(vault_path:String)->Result<std::collections::HashMap<String, usize>,String>{tauri::async_runtime::spawn_blocking(move||limen_vault::knowledge::count_notes_by_category(Path::new(&vault_path))).await.map_err(|e|e.to_string())?}
+
+#[tauri::command]
 async fn m7_execute(vault_path: String, request: limen_vault::proposals::Request) -> Result<serde_json::Value, String> {
     tauri::async_runtime::spawn_blocking(move || limen_vault::proposals::execute(Path::new(&vault_path), request)).await.map_err(|e|e.to_string())?
 }
@@ -372,7 +375,7 @@ fn main() {
             list_raw_sources,
             list_proposals,
             m7_execute,
-            tunnel_start,tunnel_stop,tunnel_status,tunnel_save_key,tunnel_config,list_knowledge,
+            tunnel_start,tunnel_stop,tunnel_status,tunnel_save_key,tunnel_config,list_knowledge,count_knowledge_notes,
             compile_source,
             batch_compile_sources,
             index_vault_search,

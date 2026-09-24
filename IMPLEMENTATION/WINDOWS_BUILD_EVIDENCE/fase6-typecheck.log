@@ -1,0 +1,5 @@
+
+> @limen-vault/desktop@0.4.0 typecheck
+> tsc --noEmit
+
+Exit code: 0

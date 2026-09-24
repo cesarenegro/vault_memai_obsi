@@ -3,8 +3,12 @@
 ## Session Handover Files
 - Quando viene richiesto un file di session handover (o riassunto/passaggio di consegne per l'avvio di una nuova chat), **salvarlo SEMPRE direttamente nella root del workspace** (es. `SESSION_HANDOVER.md` o `SESSION_HANDOVER_<NOME_TASK>.md`), rendendolo immediatamente visibile all'utente nel suo IDE workspace.
 
-## Implementation Plans & Task Lists
-- Per ogni piano di implementazione (`implementation_plan.md` o piani di lavoro strutturati), includere SEMPRE la corrispondente **Task List** dettagliata e tracciabile con checkbox (`[ ]` / `[x]`), suddivisa per fasi o componenti, aggiornandone progressivamente lo stato di avanzamento.
+## Implementation Plans & Task Lists (REGOLA CRITICA)
+- Per ogni piano di implementazione (`implementation_plan.md` o piani di lavoro strutturati per fasi):
+  1. È **MANDATORIO** creare SEMPRE l'artifact corrispondente con `UserFacing: true` salvato nella cartella artifact della conversazione (`<appDataDir>\brain\<conversation-id>\<nome_artifact>.md`).
+  2. L'artifact deve essere visualizzato e presentato all'utente in **modalità preview renderizzata** (Artifact UI viewer) e **MAI** solo come file `.md` raw o semplice testo nel terminale/workspace.
+  3. Includere SEMPRE la corrispondente **Task List** dettagliata e tracciabile con checkbox (`[ ]` / `[x]`), suddivisa per fasi o componenti.
+  4. L'artifact deve essere **progressivamente aggiornato in tempo reale** ad ogni avanzamento o completamento di ciascuna fase, mantenendo sincronizzato lo stato.
 
 ## Compilazione e Avvio Versione Ottimizzata da Provare
 - Per ogni compilazione ottimizzata usare SEMPRE e SOLO:

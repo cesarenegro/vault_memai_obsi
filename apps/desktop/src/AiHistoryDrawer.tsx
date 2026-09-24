@@ -6,6 +6,7 @@ import {
   type VerifiedSourceResult,
 } from './history-ipc';
 import { X, Trash2, Clock, AlertTriangle, AlertCircle, FileText, CheckCircle2, MessageSquare, ChevronDown, ChevronRight } from 'lucide-react';
+import { cleanTitle, formatSourceLabel } from './source-utils';
 
 interface AiHistoryDrawerProps {
   vaultPath: string;
@@ -45,6 +46,7 @@ export function AiHistoryDrawer({
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [verifiedSources, setVerifiedSources] = useState<VerifiedSourceResult[] | null>(null);
 
@@ -80,6 +82,7 @@ export function AiHistoryDrawer({
     if (isOpen) {
       void loadHistory();
       setSelectedEntry(null);
+      setSourcesOpen(false);
       setVerifiedSources(null);
       setEntryToDelete(null);
       setShowClearConfirm(false);
@@ -92,6 +95,7 @@ export function AiHistoryDrawer({
     try {
       const fullEntry = await historyIpc.get(vaultPath, header.id);
       setSelectedEntry(fullEntry);
+      setSourcesOpen(false);
       const verified = await historyIpc.verifySources(vaultPath, fullEntry.sources);
       setVerifiedSources(verified);
     } catch (e: any) {
@@ -353,141 +357,164 @@ export function AiHistoryDrawer({
               </div>
             </div>
 
-            {/* Sources section with live verification */}
+            {/* Sources section with live verification (richiudibile, chiusa all'inizio) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {(() => {
                 const citedCount = selectedEntry.sources.filter(s => s.cited).length;
                 const totalCount = selectedEntry.sources.length;
                 return (
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', textTransform: 'uppercase' }}>
-                    Fonti verificate ({citedCount} citat{citedCount === 1 ? 'o' : 'i'} tra {totalCount} consultat{totalCount === 1 ? 'o' : 'i'}):
-                  </div>
+                  <button
+                    onClick={() => setSourcesOpen(o => !o)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      textAlign: 'left',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#475569',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {sourcesOpen ? <ChevronDown size={16} color="#475569" /> : <ChevronRight size={16} color="#475569" />}
+                    <span>
+                      Fonti verificate ({citedCount} citat{citedCount === 1 ? 'o' : 'i'} tra {totalCount} consultat{totalCount === 1 ? 'o' : 'i'})
+                    </span>
+                  </button>
                 );
               })()}
 
-              {loadingDetail ? (
-                <div style={{ padding: 12, fontSize: 12, color: '#64748b' }}>
-                  Verifica impronte e documenti in corso...
-                </div>
-              ) : verifiedSources && verifiedSources.length > 0 ? (
-                verifiedSources.map((s, idx) => {
-                  const isModified = s.status === 'modified';
-                  const isMissing = s.status === 'missing';
-                  const isFresh = s.status === 'fresh';
-                  const sourceRef = selectedEntry.sources[idx];
-                  const isCited = sourceRef?.cited ?? false;
+              {sourcesOpen && (
+                <>
+                  {loadingDetail ? (
+                    <div style={{ padding: 12, fontSize: 12, color: '#64748b' }}>
+                      Verifica impronte e documenti in corso...
+                    </div>
+                  ) : verifiedSources && verifiedSources.length > 0 ? (
+                    verifiedSources.map((s, idx) => {
+                      const isModified = s.status === 'modified';
+                      const isMissing = s.status === 'missing';
+                      const isFresh = s.status === 'fresh';
+                      const sourceRef = selectedEntry.sources[idx];
+                      const isCited = sourceRef?.cited ?? false;
 
-                  return (
-                    <div
-                      key={idx}
-                      style={{
-                        padding: 12,
-                        borderRadius: 8,
-                        border: isCited
-                          ? '1px solid #86efac'
-                          : isModified
-                          ? '1px solid #fde68a'
-                          : isMissing
-                          ? '1px solid #fecaca'
-                          : '1px solid #e2e8f0',
-                        background: isCited
-                          ? '#f0fdf4'
-                          : isModified
-                          ? '#fffbeb'
-                          : isMissing
-                          ? '#fef2f2'
-                          : '#f8fafc',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 6,
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}>
-                          <FileText size={14} color={isCited ? '#16a34a' : '#64748b'} />
-                          <span style={{ color: isCited ? '#14532d' : '#0f172a' }}>[{s.citationIndex}] {s.title}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {isCited && (
-                            <span
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            padding: 12,
+                            borderRadius: 8,
+                            border: isCited
+                              ? '1px solid #86efac'
+                              : isModified
+                              ? '1px solid #fde68a'
+                              : isMissing
+                              ? '1px solid #fecaca'
+                              : '1px solid #e2e8f0',
+                            background: isCited
+                              ? '#f0fdf4'
+                              : isModified
+                              ? '#fffbeb'
+                              : isMissing
+                              ? '#fef2f2'
+                              : '#f8fafc',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 6,
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}>
+                              <FileText size={14} color={isCited ? '#16a34a' : '#64748b'} />
+                              <span style={{ color: isCited ? '#14532d' : '#0f172a' }}>[{s.citationIndex}] {cleanTitle(s.title, s.relativePath)}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {isCited && (
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    padding: '2px 8px',
+                                    borderRadius: 4,
+                                    backgroundColor: '#22c55e',
+                                    color: '#ffffff',
+                                    letterSpacing: '0.04em',
+                                  }}
+                                >
+                                  CITATA
+                                </span>
+                              )}
+                              {isFresh && (
+                                <span style={{ fontSize: 11, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
+                                  <CheckCircle2 size={13} /> Inalterata
+                                </span>
+                              )}
+                              {isModified && (
+                                <span style={{ fontSize: 11, color: '#d97706', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                                  <AlertTriangle size={13} /> Modificata
+                                </span>
+                              )}
+                              {isMissing && (
+                                <span style={{ fontSize: 11, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                                  <AlertCircle size={13} /> Rimossa
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div style={{ fontSize: 11, color: '#64748b' }}>
+                            {formatSourceLabel(s.title, s.relativePath, undefined, s.locator)}
+                          </div>
+
+                          {/* Warning banner if modified or missing */}
+                          {s.warning && (
+                            <div
                               style={{
+                                padding: '6px 10px',
+                                borderRadius: 6,
                                 fontSize: 11,
-                                fontWeight: 700,
-                                padding: '2px 8px',
-                                borderRadius: 4,
-                                backgroundColor: '#22c55e',
-                                color: '#ffffff',
-                                letterSpacing: '0.04em',
+                                lineHeight: 1.4,
+                                background: isModified ? '#fef3c7' : '#fee2e2',
+                                color: isModified ? '#92400e' : '#991b1b',
                               }}
                             >
-                              CITATA
-                            </span>
+                              ⚠️ {s.warning}
+                            </div>
                           )}
-                          {isFresh && (
-                            <span style={{ fontSize: 11, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
-                              <CheckCircle2 size={13} /> Inalterata
-                            </span>
-                          )}
-                          {isModified && (
-                            <span style={{ fontSize: 11, color: '#d97706', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                              <AlertTriangle size={13} /> Modificata
-                            </span>
-                          )}
-                          {isMissing && (
-                            <span style={{ fontSize: 11, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                              <AlertCircle size={13} /> Rimossa
-                            </span>
+
+                          {/* Display live text if fresh */}
+                          {isFresh && s.text && (
+                            <div
+                              style={{
+                                marginTop: 4,
+                                padding: 8,
+                                background: '#ffffff',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: 6,
+                                fontSize: 12,
+                                color: '#334155',
+                                lineHeight: 1.4,
+                                maxHeight: 120,
+                                overflowY: 'auto',
+                                whiteSpace: 'pre-wrap',
+                              }}
+                            >
+                              {s.text}
+                            </div>
                           )}
                         </div>
-                      </div>
-
-                      <div style={{ fontSize: 11, color: '#64748b' }}>
-                        {s.relativePath} {s.locator ? `(${s.locator})` : ''}
-                      </div>
-
-                      {/* Warning banner if modified or missing */}
-                      {s.warning && (
-                        <div
-                          style={{
-                            padding: '6px 10px',
-                            borderRadius: 6,
-                            fontSize: 11,
-                            lineHeight: 1.4,
-                            background: isModified ? '#fef3c7' : '#fee2e2',
-                            color: isModified ? '#92400e' : '#991b1b',
-                          }}
-                        >
-                          ⚠️ {s.warning}
-                        </div>
-                      )}
-
-                      {/* Display live text if fresh */}
-                      {isFresh && s.text && (
-                        <div
-                          style={{
-                            marginTop: 4,
-                            padding: 8,
-                            background: '#ffffff',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: 6,
-                            fontSize: 12,
-                            color: '#334155',
-                            lineHeight: 1.4,
-                            maxHeight: 120,
-                            overflowY: 'auto',
-                            whiteSpace: 'pre-wrap',
-                          }}
-                        >
-                          {s.text}
-                        </div>
-                      )}
+                      );
+                    })
+                  ) : (
+                    <div style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic' }}>
+                      Nessuna fonte salvata per questa risposta.
                     </div>
-                  );
-                })
-              ) : (
-                <div style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic' }}>
-                  Nessuna fonte salvata per questa risposta.
-                </div>
+                  )}
+                </>
               )}
             </div>
 
