@@ -828,21 +828,7 @@ async fn local_model_status(
         .await
         .map_err(|e| e.to_string())?;
     let elapsed = t0.elapsed().as_millis() as u64;
-    let s_rep = llama_state.status();
-    let (srv_bin, srv_pid, srv_port) = if s_rep.running || s_rep.healthy {
-        let bin = llama_state.get_binary_path();
-        (bin, s_rep.pid, if s_rep.port > 0 { Some(s_rep.port) } else { None })
-    } else {
-        (None, None, None)
-    };
-    limen_vault::llama::log_local_model_timing_meta(
-        "PANEL_OPEN_STATUS",
-        elapsed,
-        srv_bin.as_deref(),
-        srv_pid,
-        srv_port,
-        &format!("installed={}, sha256_ok={}", rep.installed, rep.sha256_ok),
-    );
+    limen_vault::llama::log_panel_open_status(&llama_state, elapsed, &rep);
     Ok(rep)
 }
 

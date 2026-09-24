@@ -151,6 +151,28 @@ pub fn log_local_model_timing(event: &str, elapsed_ms: u64, details: &str) {
     log_local_model_timing_meta(event, elapsed_ms, None, None, None, details);
 }
 
+pub fn log_panel_open_status(
+    llama_state: &LlamaServerState,
+    elapsed_ms: u64,
+    rep: &LocalModelReport,
+) {
+    let s_rep = llama_state.status();
+    let (srv_bin, srv_pid, srv_port) = if s_rep.running || s_rep.healthy {
+        let bin = llama_state.get_binary_path();
+        (bin, s_rep.pid, if s_rep.port > 0 { Some(s_rep.port) } else { None })
+    } else {
+        (None, None, None)
+    };
+    log_local_model_timing_meta(
+        "PANEL_OPEN_STATUS",
+        elapsed_ms,
+        srv_bin.as_deref(),
+        srv_pid,
+        srv_port,
+        &format!("installed={}, sha256_ok={}", rep.installed, rep.sha256_ok),
+    );
+}
+
 pub fn rotate_llama_server_logs(logs_dir: &Path, max_files: usize) {
     if let Ok(entries) = fs::read_dir(logs_dir) {
         let mut files: Vec<PathBuf> = entries
@@ -1278,11 +1300,16 @@ impl LlamaServerState {
     }
 
     pub fn get_binary_path(&self) -> Option<PathBuf> {
-        let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
-        if s.binary_path.is_some() {
-            return s.binary_path.clone();
+        let (cached, pid_opt) = {
+            let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+            let cached = s.binary_path.clone();
+            let pid_opt = s.child.as_ref().map(|c| c.id()).or(s.adopted_pid);
+            (cached, pid_opt)
+        };
+        if cached.is_some() {
+            return cached;
         }
-        if let Some(pid) = s.child.as_ref().map(|c| c.id()).or(s.adopted_pid) {
+        if let Some(pid) = pid_opt {
             return get_process_exe_path(pid);
         }
         None
@@ -3316,21 +3343,14 @@ mod tests {
             bin_str
         );
 
-        // 2. Simula log di PANEL_OPEN_STATUS con il servizio adottato attivo
-        let s_rep = state.status();
-        let (srv_bin, srv_pid, srv_port) = if s_rep.running || s_rep.healthy {
-            (state.get_binary_path(), s_rep.pid, if s_rep.port > 0 { Some(s_rep.port) } else { None })
-        } else {
-            (None, None, None)
+        // 2. Simula log di PANEL_OPEN_STATUS con il servizio adottato attivo usando log_panel_open_status
+        let dummy_rep = LocalModelReport {
+            installed: true,
+            sha256_ok: true,
+            path: other_dir.path().join("model.gguf").to_string_lossy().to_string(),
+            bytes: 12345,
         };
-        log_local_model_timing_meta(
-            "PANEL_OPEN_STATUS",
-            123,
-            srv_bin.as_deref(),
-            srv_pid,
-            srv_port,
-            "installed=true, sha256_ok=true",
-        );
+        log_panel_open_status(&state, 123, &dummy_rep);
 
         let content = fs::read_to_string(&log_path).expect("Lettura local_model_timing.log");
 
@@ -3481,4 +3501,34 @@ mod tests {
         let _ = state.stop();
     }
 
+    #[test]
+    fn test_fase5i_bis_d2_get_binary_path_releases_mutex_before_process_resolution() {
+        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let state = LlamaServerState::default();
+        let my_pid = std::process::id();
+        {
+            let mut s = state.0.lock().unwrap();
+            s.adopted_pid = Some(my_pid);
+            s.binary_path = None; // assicura che non sia in cache per forzare get_process_exe_path
+            s.port = 0; // evita check_health di rete per misurare solo la latenza mutex
+        }
+
+        let state_clone = state.clone();
+        let handle = std::thread::spawn(move || {
+            state_clone.get_binary_path()
+        });
+
+        let t0 = Instant::now();
+        let mut status_count = 0;
+        for _ in 0..10 {
+            let st = state.status();
+            assert_eq!(st.pid, Some(my_pid));
+            status_count += 1;
+        }
+        let elapsed = t0.elapsed();
+        let bin_res = handle.join().expect("Background thread succeeded");
+        assert!(bin_res.is_some(), "Binary path must be found for current process");
+        assert_eq!(status_count, 10);
+        assert!(elapsed < Duration::from_millis(500), "status() non deve essere bloccato da get_binary_path: {:?}", elapsed);
+    }
 }
