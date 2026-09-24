@@ -116,9 +116,9 @@ pub struct AskTimingLogEntry {
     pub port: Option<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pid: Option<u32>,
-    #[serde(default)]
+    #[serde(default, rename = "semanticUsed")]
     pub semantic_used: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "semanticFallbackReason")]
     pub semantic_fallback_reason: Option<String>,
 }
 
@@ -2215,6 +2215,7 @@ pub struct JsonStreamAnswerParser {
     in_escape: bool,
     in_unicode: bool,
     unicode_buffer: String,
+    pending_high_surrogate: Option<u16>,
 }
 
 impl Default for JsonStreamAnswerParser {
@@ -2225,6 +2226,7 @@ impl Default for JsonStreamAnswerParser {
             in_escape: false,
             in_unicode: false,
             unicode_buffer: String::new(),
+            pending_high_surrogate: None,
         }
     }
 }
@@ -2256,32 +2258,105 @@ impl JsonStreamAnswerParser {
                 JsonParserState::InAnswerString => {
                     if self.in_escape {
                         if self.in_unicode {
-                            self.unicode_buffer.push(c);
-                            if self.unicode_buffer.len() == 4 {
-                                if let Ok(val) = u16::from_str_radix(&self.unicode_buffer, 16) {
-                                    if let Some(ch) = char::from_u32(val as u32) {
-                                        emitted.push(ch);
+                            if c.is_ascii_hexdigit() {
+                                self.unicode_buffer.push(c);
+                                if self.unicode_buffer.len() == 4 {
+                                    if let Ok(val) = u16::from_str_radix(&self.unicode_buffer, 16) {
+                                        if (0xD800..=0xDBFF).contains(&val) {
+                                            // High surrogate: attendi la low surrogate successiva
+                                            if let Some(_) = self.pending_high_surrogate.take() {
+                                                emitted.push('\u{FFFD}');
+                                            }
+                                            self.pending_high_surrogate = Some(val);
+                                        } else if (0xDC00..=0xDFFF).contains(&val) {
+                                            // Low surrogate
+                                            if let Some(hi) = self.pending_high_surrogate.take() {
+                                                let code_point = 0x10000 + (((hi as u32 - 0xD800) << 10) | (val as u32 - 0xDC00));
+                                                if let Some(ch) = char::from_u32(code_point) {
+                                                    emitted.push(ch);
+                                                } else {
+                                                    emitted.push('\u{FFFD}');
+                                                }
+                                            } else {
+                                                // Low surrogate orfana senza high surrogate precedente
+                                                emitted.push('\u{FFFD}');
+                                            }
+                                        } else {
+                                            // Scalare BMP ordinario
+                                            if let Some(_) = self.pending_high_surrogate.take() {
+                                                emitted.push('\u{FFFD}');
+                                            }
+                                            if let Some(ch) = char::from_u32(val as u32) {
+                                                emitted.push(ch);
+                                            }
+                                        }
                                     }
+                                    self.in_escape = false;
+                                    self.in_unicode = false;
+                                    self.unicode_buffer.clear();
+                                }
+                            } else {
+                                // Carattere non esadecimale: escape unicode non valido
+                                if let Some(_) = self.pending_high_surrogate.take() {
+                                    emitted.push('\u{FFFD}');
                                 }
                                 self.in_escape = false;
                                 self.in_unicode = false;
                                 self.unicode_buffer.clear();
+                                if c == '\\' {
+                                    self.in_escape = true;
+                                } else if c == '"' {
+                                    self.state = JsonParserState::FinishedAnswer;
+                                } else {
+                                    emitted.push(c);
+                                }
                             }
                         } else {
                             match c {
-                                '"' => { emitted.push('"'); self.in_escape = false; }
-                                '\\' => { emitted.push('\\'); self.in_escape = false; }
-                                '/' => { emitted.push('/'); self.in_escape = false; }
-                                'b' => { self.in_escape = false; }
-                                'f' => { self.in_escape = false; }
-                                'n' => { emitted.push('\n'); self.in_escape = false; }
-                                'r' => { emitted.push('\r'); self.in_escape = false; }
-                                't' => { emitted.push('\t'); self.in_escape = false; }
+                                '"' => {
+                                    if let Some(_) = self.pending_high_surrogate.take() { emitted.push('\u{FFFD}'); }
+                                    emitted.push('"');
+                                    self.in_escape = false;
+                                }
+                                '\\' => {
+                                    if let Some(_) = self.pending_high_surrogate.take() { emitted.push('\u{FFFD}'); }
+                                    emitted.push('\\');
+                                    self.in_escape = false;
+                                }
+                                '/' => {
+                                    if let Some(_) = self.pending_high_surrogate.take() { emitted.push('\u{FFFD}'); }
+                                    emitted.push('/');
+                                    self.in_escape = false;
+                                }
+                                'b' => {
+                                    if let Some(_) = self.pending_high_surrogate.take() { emitted.push('\u{FFFD}'); }
+                                    self.in_escape = false;
+                                }
+                                'f' => {
+                                    if let Some(_) = self.pending_high_surrogate.take() { emitted.push('\u{FFFD}'); }
+                                    self.in_escape = false;
+                                }
+                                'n' => {
+                                    if let Some(_) = self.pending_high_surrogate.take() { emitted.push('\u{FFFD}'); }
+                                    emitted.push('\n');
+                                    self.in_escape = false;
+                                }
+                                'r' => {
+                                    if let Some(_) = self.pending_high_surrogate.take() { emitted.push('\u{FFFD}'); }
+                                    emitted.push('\r');
+                                    self.in_escape = false;
+                                }
+                                't' => {
+                                    if let Some(_) = self.pending_high_surrogate.take() { emitted.push('\u{FFFD}'); }
+                                    emitted.push('\t');
+                                    self.in_escape = false;
+                                }
                                 'u' => {
                                     self.in_unicode = true;
                                     self.unicode_buffer.clear();
                                 }
                                 other => {
+                                    if let Some(_) = self.pending_high_surrogate.take() { emitted.push('\u{FFFD}'); }
                                     emitted.push(other);
                                     self.in_escape = false;
                                 }
@@ -2290,13 +2365,23 @@ impl JsonStreamAnswerParser {
                     } else if c == '\\' {
                         self.in_escape = true;
                     } else if c == '"' {
+                        if let Some(_) = self.pending_high_surrogate.take() { emitted.push('\u{FFFD}'); }
                         self.state = JsonParserState::FinishedAnswer;
                     } else {
+                        if let Some(_) = self.pending_high_surrogate.take() { emitted.push('\u{FFFD}'); }
                         emitted.push(c);
                     }
                 }
                 JsonParserState::FinishedAnswer => {}
             }
+        }
+        emitted
+    }
+
+    pub fn flush(&mut self) -> String {
+        let mut emitted = String::new();
+        if let Some(_) = self.pending_high_surrogate.take() {
+            emitted.push('\u{FFFD}');
         }
         emitted
     }
@@ -4546,6 +4631,39 @@ mod tests {
       }
       assert!(extracted_prose.contains("Prima riga\nSeconda riga con \"virgolette\" e Unicode €"));
       assert!(parser.is_finished());
+  }
+
+  #[test]
+  fn test_p6_json_stream_answer_parser_surrogate_pairs_split_1_to_80_bytes() {
+      let cases = [
+          ("literal_emoji", r#"{"answer":"È già città 😀🚀","citation_ids":[]}"#, "È già città 😀🚀"),
+          ("escaped_emoji", r#"{"answer":"\u00c8 gi\u00e0 citt\u00e0 \ud83d\ude00","citation_ids":[]}"#, "È già città 😀"),
+          ("multiple_surrogate_pairs", r#"{"answer":"Emoji varie: \ud83d\ude00 \ud83d\ude80 \ud83c\udf08 fine","citation_ids":[]}"#, "Emoji varie: 😀 🚀 🌈 fine"),
+          ("mixed_escapes_and_surrogates", r#"{"answer":"Test \n \"virgolette\" \u20ac \ud83d\ude00 ok","citation_ids":["S1"]}"#, "Test \n \"virgolette\" € 😀 ok"),
+      ];
+
+      for (name, json, expected) in cases {
+          for size in 1..=80 {
+              let mut d = Utf8ChunkDecoder::new();
+              let mut p = JsonStreamAnswerParser::new();
+              let mut out = String::new();
+              for bytes in json.as_bytes().chunks(size) {
+                  out.push_str(&p.feed(&d.decode(bytes)));
+              }
+              out.push_str(&p.feed(&d.flush()));
+              out.push_str(&p.flush());
+              assert_eq!(
+                  &out, expected,
+                  "Discrepanza nel caso {} con chunk size {}",
+                  name, size
+              );
+              assert!(
+                  p.is_finished(),
+                  "Parser deve risultare completato nel caso {} con chunk size {}",
+                  name, size
+              );
+          }
+      }
   }
 
   #[tokio::test]
