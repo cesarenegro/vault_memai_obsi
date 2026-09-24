@@ -4511,6 +4511,43 @@ mod tests {
   }
 
   #[test]
+  fn test_stream_prose_sanitizer_cesare_real_terminal_bnxt_answer() {
+      let text = "Il progetto BNXT riguarda lo sviluppo di un sistema CRM (Customer Relationship Management) dedicato a un'azienda specializzata nell'abbigliamento tecnico per motociclisti, come BNXT1, un brand italiano noto per prodotti su misura nel segmento rally e off-road";
+      let expected = sanitize_answer_prose(text);
+      let bytes = text.as_bytes();
+
+      // Spezza in frammenti di ogni lunghezza da 1 a 80 byte -> nessun panic
+      for chunk_size in 1..=80 {
+          let mut utf8_decoder = Utf8ChunkDecoder::new();
+          let mut sanitizer = StreamProseSanitizer::new();
+
+          let mut offset = 0;
+          while offset < bytes.len() {
+              let end = std::cmp::min(offset + chunk_size, bytes.len());
+              let byte_chunk = &bytes[offset..end];
+              let decoded_chunk = utf8_decoder.decode(byte_chunk);
+              if !decoded_chunk.is_empty() {
+                  let _delta = sanitizer.feed(&decoded_chunk);
+              }
+              offset = end;
+          }
+
+          let remaining = utf8_decoder.flush();
+          if !remaining.is_empty() {
+              let _delta = sanitizer.feed(&remaining);
+          }
+          let _flush = sanitizer.flush();
+
+          assert_eq!(
+              sanitizer.get_accumulated(),
+              expected,
+              "Failed for chunk_size={} on Cesare's real terminal answer",
+              chunk_size
+          );
+      }
+  }
+
+  #[test]
   fn test_consecutive_calls_second_rejected_while_first_active() {
       let state = Arc::new(AiState::default());
       let temp_dir = tempfile::tempdir().unwrap();

@@ -96,14 +96,6 @@ warning: field `vault_path` is never read
    = note: `EmbeddingsCacheEntry` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
 
 warning: `limen-vault` (lib) generated 12 warnings (run `cargo fix --lib -p limen-vault` to apply 5 suggestions)
-warning: unused import: `ffi::CString`
-  --> src\snapshots.rs:12:5
-   |
-12 |     ffi::CString,
-   |     ^^^^^^^^^^^^
-   |
-   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
-
 warning: variable does not need to be mutable
     --> src\ai.rs:4194:12
      |
@@ -169,9 +161,16 @@ warning: field `exact_bonus` is never read
     |
     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
-warning: `limen-vault` (bin "limen-vault" test) generated 1 warning (run `cargo fix --bin "limen-vault" -p limen-vault --tests` to apply 1 suggestion)
 warning: `limen-vault` (lib test) generated 15 warnings (9 duplicates) (run `cargo fix --lib -p limen-vault --tests` to apply 6 suggestions)
 warning: `limen-vault` (bin "diagnose_fase1" test) generated 2 warnings (run `cargo fix --bin "diagnose_fase1" -p limen-vault --tests` to apply 1 suggestion)
+warning: unused import: `ffi::CString`
+  --> src\snapshots.rs:12:5
+   |
+12 |     ffi::CString,
+   |     ^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
 warning: fields `title` and `base_score` are never read
   --> src\bin\measure_punto_e.rs:20:5
    |
@@ -194,11 +193,12 @@ warning: field `query_id` is never read
 37 |     query_id: String,
    |     ^^^^^^^^
 
+warning: `limen-vault` (bin "limen-vault" test) generated 1 warning (run `cargo fix --bin "limen-vault" -p limen-vault --tests` to apply 1 suggestion)
 warning: `limen-vault` (bin "measure_punto_e" test) generated 2 warnings
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.11s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.75s
      Running unittests src\lib.rs (target\debug\deps\limen_vault-b7ab620e0196d8b2.exe)
 
-running 157 tests
+running 158 tests
 test ai::index_policy_test::forged_approval_is_rejected ... ok
 test ai::model_tests::models_are_validated_and_deduplicated ... ok
 test ai::tests::approved_policy_and_context_hash ... ok
@@ -237,6 +237,7 @@ test ai::tests::test_sanitize_answer_prose_removes_citation_brackets ... ok
 test ai::tests::test_selected_model_persistence_in_app_data_dir ... ok
 test ai::tests::test_source_integrity_ntfs_vs_non_ntfs ... ok
 test ai::tests::test_stream_prose_sanitizer_accented_letters_and_emoji ... ok
+test ai::tests::test_stream_prose_sanitizer_cesare_real_terminal_bnxt_answer ... ok
 test ai::tests::test_stream_prose_sanitizer_split_bold_asterisks ... ok
 test ai::tests::test_stream_prose_sanitizer_split_citations ... ok
 test ai::tests::test_streaming_network_error_treated_as_interrupted_with_reason ... ok
@@ -357,7 +358,7 @@ test vault::tests::manifest_is_consumed_without_reopening ... ok
 test vault::tests::raw_sources_foreign_yaml_frontmatter_allows_vault_opening ... ok
 test vault::tests::shared_frontmatter_fixtures ... ok
 
-test result: ok. 157 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 35.78s
+test result: ok. 158 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.11s
 
      Running unittests src\bin\a04_real_local.rs (target\debug\deps\a04_real_local-20417175db04e0a5.exe)
 
@@ -441,7 +442,7 @@ test vault::tests::manifest_is_consumed_without_reopening ... ok
 test vault::tests::raw_sources_foreign_yaml_frontmatter_allows_vault_opening ... ok
 test vault::tests::shared_frontmatter_fixtures ... ok
 
-test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.17s
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.09s
 
      Running unittests src\bin\measure_punto_e.rs (target\debug\deps\measure_punto_e-2ca8dfc639e1f24b.exe)
 

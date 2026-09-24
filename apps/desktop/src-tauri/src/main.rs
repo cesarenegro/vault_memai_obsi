@@ -512,17 +512,6 @@ async fn ai_preview(
     };
     state.preview_with_port(PathBuf::from(vault_path), options, port).await
 }
-struct ActiveGuard {
-    state: std::sync::Arc<limen_vault::ai::AiState>,
-    ticket: String,
-}
-
-impl Drop for ActiveGuard {
-    fn drop(&mut self) {
-        self.state.finish(&self.ticket);
-    }
-}
-
 #[tauri::command]
 async fn ai_ask(
     ticket: String,
@@ -531,24 +520,18 @@ async fn ai_ask(
 ) -> Result<serde_json::Value, String> {
     let state = state.inner().clone();
     let (pending, cancel) = state.begin(&ticket)?;
-    let _guard = ActiveGuard {
-        state: state.clone(),
-        ticket: ticket.clone(),
-    };
     let key = tauri::async_runtime::spawn_blocking(limen_vault::keychain::load)
         .await
         .map_err(|_| "Keychain worker failed".to_string())
         .and_then(|r| r)
         .and_then(|k| k.ok_or("Configure API key in Settings".into()));
-    match key {
+    let result = match key {
         Ok(key) => limen_vault::ai::ask(pending, key, cancel, ui_elapsed_ms).await,
-        Err(e) => {
-            limen_vault::ai::log_keychain_error(&pending, &e, ui_elapsed_ms);
-            Err(e)
-        }
-    }
+        Err(e) => Err(e),
+    };
+    state.finish(&ticket);
+    result
 }
-
 #[tauri::command]
 async fn ai_ask_stream(
     window: tauri::Window,
@@ -558,60 +541,17 @@ async fn ai_ask_stream(
 ) -> Result<serde_json::Value, String> {
     let state = state.inner().clone();
     let (pending, cancel) = state.begin(&ticket)?;
-    let _guard = ActiveGuard {
-        state: state.clone(),
-        ticket: ticket.clone(),
-    };
     let key = tauri::async_runtime::spawn_blocking(limen_vault::keychain::load)
         .await
         .map_err(|_| "Keychain worker failed".to_string())
         .and_then(|r| r)
         .and_then(|k| k.ok_or("Configure API key in Settings".into()));
-
-    let key = match key {
-        Ok(k) => k,
-        Err(e) => {
-            limen_vault::ai::log_keychain_error(&pending, &e, ui_elapsed_ms);
-            return Err(e);
-        }
+    let result = match key {
+        Ok(key) => limen_vault::ai::ask_stream(Some(window), ticket.clone(), pending, key, cancel, ui_elapsed_ms).await,
+        Err(e) => Err(e),
     };
-
-    let win_clone = window.clone();
-    let ticket_clone = ticket.clone();
-    let handle = tokio::spawn(async move {
-        limen_vault::ai::ask_stream(Some(win_clone), ticket_clone, pending, key, cancel, ui_elapsed_ms).await
-    });
-
-    match handle.await {
-        Ok(stream_res) => stream_res,
-        Err(join_err) => {
-            let panic_msg = if join_err.is_panic() {
-                "Panic durante l'esecuzione dello streaming in ai_ask_stream"
-            } else {
-                "Task di streaming interrotto inaspettatamente"
-            };
-            limen_vault::ai::log_internal_error(&ticket, panic_msg);
-            let user_msg = "Errore interno durante la generazione della risposta, riprova".to_string();
-            use tauri::Emitter;
-            let _ = window.emit("limen://ai-stream-end", limen_vault::ai::AiStreamEndPayload {
-                ticket: ticket.clone(),
-                answer: user_msg.clone(),
-                citations: vec![],
-                cited_indices: vec![],
-                status: "error".into(),
-                incomplete: true,
-                incomplete_reason: Some(user_msg.clone()),
-                warning: None,
-                error: Some(user_msg.clone()),
-                cancelled: true,
-                tokens_used: None,
-                tokens_prompt: None,
-                tokens_completion: None,
-                tokens_reasoning: None,
-            });
-            Err(user_msg)
-        }
-    }
+    state.finish(&ticket);
+    result
 }
 #[tauri::command]
 fn ai_cancel(ticket:String,state:tauri::State<'_,std::sync::Arc<limen_vault::ai::AiState>>){state.cancel(&ticket);}
