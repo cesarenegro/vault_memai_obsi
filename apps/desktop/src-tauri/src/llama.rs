@@ -3283,6 +3283,49 @@ mod tests {
         let _ = child.kill();
         let _ = child.wait();
     }
+
+    #[test]
+    fn test_fase5i_n4_start_when_already_healthy_does_not_deadlock_and_returns_status() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let stop_flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let stop_clone = stop_flag.clone();
+
+        let server_thread = std::thread::spawn(move || {
+            listener.set_nonblocking(true).unwrap();
+            while !stop_clone.load(Ordering::SeqCst) {
+                if let Ok((mut s, _)) = listener.accept() {
+                    let mut buf = [0u8; 1024];
+                    let _ = s.read(&mut buf);
+                    let _ = s.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 15\r\n\r\n{\"status\":\"ok\"}");
+                }
+                std::thread::sleep(Duration::from_millis(5));
+            }
+        });
+
+        let state = LlamaServerState::default();
+        {
+            let mut s = state.0.lock().unwrap();
+            s.port = port;
+        }
+
+        // Chiamata a start_with_timeout: deve attraversare il ramo already_healthy (step 2)
+        // e chiamare self.status() SENZA bloccarsi in deadlock sulla mutex
+        let t0 = Instant::now();
+        let res = state.start_with_timeout(Duration::from_secs(5));
+        let elapsed = t0.elapsed();
+
+        assert!(res.is_ok(), "L'avvio con servizio già sano deve riuscire: {:?}", res);
+        assert!(elapsed < Duration::from_secs(2), "Non deve esserci deadlock né attesa timeout (impiegati {:?})", elapsed);
+
+        let rep = res.unwrap();
+        assert!(rep.healthy, "Il report restituito deve indicare servizio sano");
+        assert_eq!(rep.port, port, "La porta restituita deve coincidere");
+        assert!(!rep.starting, "starting deve essere false");
+
+        stop_flag.store(true, Ordering::SeqCst);
+        let _ = server_thread.join();
+    }
 }
 
 
