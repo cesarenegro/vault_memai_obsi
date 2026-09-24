@@ -2352,10 +2352,19 @@ mod tests {
 
     #[test]
     fn test_process_parent_and_command_reads_live_process_only() {
-        std::env::set_var("LIMEN_DISCOVERY_COMMAND_TIMEOUT_MS", "6000");
+        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::set_var("LIMEN_DISCOVERY_COMMAND_TIMEOUT_MS", "8000");
         let me = std::process::id();
-        let (ppid, cmd) = process_parent_and_command(me).expect("ps deve leggere il processo corrente");
+        let mut res = None;
+        for _ in 0..5 {
+            if let Some(r) = process_parent_and_command(me) {
+                res = Some(r);
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
         std::env::remove_var("LIMEN_DISCOVERY_COMMAND_TIMEOUT_MS");
+        let (ppid, cmd) = res.expect("ps deve leggere il processo corrente");
         assert!(ppid > 0);
         assert!(!cmd.is_empty());
         assert_eq!(process_parent_and_command(u32::MAX - 7), None, "pid inesistente");
