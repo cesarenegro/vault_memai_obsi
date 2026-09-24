@@ -72,6 +72,18 @@ pub const DEFAULT_EMBEDDINGS_MODEL: &str = "text-embedding-3-small";
 pub const DEFAULT_EMBEDDINGS_DIMENSIONS: usize = 1536;
 pub const DEFAULT_EMBEDDINGS_ENDPOINT: &str = "https://api.openai.com/v1/embeddings";
 
+/// Timeout per l'indicizzazione batch dei passaggi (300 s):
+/// Lotti da 16 passaggi completi di 512 token possono richiedere tempo consistente su CPU o PC/Mac senza accelerazione hardware (fino a 1-2 s per passaggio).
+/// 300 s garantiscono che l'indicizzazione batch non venga interrotta prematuramente durante il sync massivo.
+pub const BATCH_EMBEDDINGS_TIMEOUT: Duration = Duration::from_secs(300);
+
+/// Timeout per il calcolo del vettore della singola domanda utente (10 s):
+/// Per una singola query utente (< 2000 caratteri), l'inferenza del modello locale bge-m3 richiede tipicamente tra 50 ms e 500 ms.
+/// Un limite rigido di 10 s previene il blocco della fase di preparazione di "Chiedi" (che altrimenti attenderebbe fino a 300 s
+/// in caso di server locale sovraccarico, bloccato o non responsivo), consentendo il ripiego immediato e trasparente sulla
+/// ricerca per parole chiave e la registrazione nel log delle tempistiche.
+pub const QUERY_EMBEDDINGS_TIMEOUT: Duration = Duration::from_secs(10);
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbeddingsProviderReport {
@@ -484,6 +496,19 @@ pub async fn fetch_openai_embeddings_with_endpoint(
     model: &str,
     texts: &[String],
 ) -> Result<Vec<Vec<f32>>, String> {
+    fetch_openai_embeddings_with_endpoint_and_timeout(endpoint, api_key, model, texts, None).await
+}
+
+/// Fetch embeddings with configurable timeout override.
+/// In assenza di override esplicito, usa BATCH_EMBEDDINGS_TIMEOUT (300 s) su loopback per lotti batch,
+/// oppure 60 s per endpoint remoti.
+pub async fn fetch_openai_embeddings_with_endpoint_and_timeout(
+    endpoint: &str,
+    api_key: &str,
+    model: &str,
+    texts: &[String],
+    timeout_override: Option<Duration>,
+) -> Result<Vec<Vec<f32>>, String> {
     if texts.is_empty() {
         return Ok(Vec::new());
     }
@@ -495,12 +520,13 @@ pub async fn fetch_openai_embeddings_with_endpoint(
         return Err("OpenAI API key non configurata".into());
     }
 
-    // Loopback: il server locale calcola i vettori sul Mac (misurato il 20/09/2026 su M2: 0,65 s/passaggio
-    // senza GPU, 0,09 s con Metal). Con 60 s un lotto veniva annullato a meta' calcolo: nel log di
-    // llama-server "cancel task" arrivava esattamente 60 s dopo la richiesta e l'utente vedeva
-    // "error sending request for url". 300 s coprono un lotto di 16 passaggi con ampio margine anche su
-    // un Mac lento; l'API remota resta a 60 s.
-    let request_timeout = if is_loopback { Duration::from_secs(300) } else { Duration::from_secs(60) };
+    let request_timeout = timeout_override.unwrap_or_else(|| {
+        if is_loopback {
+            BATCH_EMBEDDINGS_TIMEOUT
+        } else {
+            Duration::from_secs(60)
+        }
+    });
     let mut client_builder = reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(10))
         .timeout(request_timeout);
@@ -526,7 +552,13 @@ pub async fn fetch_openai_embeddings_with_endpoint(
     let resp = req
         .send()
         .await
-        .map_err(|e| format!("Richiesta embeddings fallita verso '{}': {}", endpoint, e))?;
+        .map_err(|e| {
+            if e.is_timeout() {
+                format!("Richiesta embeddings verso '{}' scaduta per timeout: {}", endpoint, e)
+            } else {
+                format!("Richiesta embeddings fallita verso '{}': {}", endpoint, e)
+            }
+        })?;
 
     if !resp.status().is_success() {
         let status = resp.status().as_u16();
@@ -988,6 +1020,7 @@ pub struct SearchPhaseTimings {
     pub t_words_ms: u64,
     pub t_sem_ms: u64,
     pub t_fuse_ms: u64,
+    pub embed_error: Option<String>,
 }
 
 pub async fn hybrid_search_vault_with_port_filtered<F>(
@@ -1101,33 +1134,54 @@ where
             let port = u.port().unwrap_or(0);
             if port == 0 || !crate::llama::check_health(port) {
                 degraded = true;
+                timings.embed_error = Some("Endpoint loopback non responsivo al check /health".to_string());
                 None
             } else {
-                match fetch_openai_embeddings_with_endpoint(&endpoint, key_str, &cache.model, &[term.to_string()]).await {
+                match fetch_openai_embeddings_with_endpoint_and_timeout(
+                    &endpoint,
+                    key_str,
+                    &cache.model,
+                    &[term.to_string()],
+                    Some(QUERY_EMBEDDINGS_TIMEOUT),
+                )
+                .await
+                {
                     Ok(mut vecs) => vecs.pop(),
-                    Err(_) => {
+                    Err(e) => {
                         degraded = true;
+                        timings.embed_error = Some(e);
                         None
                     }
                 }
             }
         } else {
             degraded = true;
+            timings.embed_error = Some("URL endpoint non valido".to_string());
             None
         }
     } else {
         match effective_key.as_deref() {
             Some(key) if !key.is_empty() => {
-                match fetch_openai_embeddings_with_endpoint(&endpoint, key, &cache.model, &[term.to_string()]).await {
+                match fetch_openai_embeddings_with_endpoint_and_timeout(
+                    &endpoint,
+                    key,
+                    &cache.model,
+                    &[term.to_string()],
+                    Some(QUERY_EMBEDDINGS_TIMEOUT),
+                )
+                .await
+                {
                     Ok(mut vecs) => vecs.pop(),
-                    Err(_) => {
+                    Err(e) => {
                         degraded = true;
+                        timings.embed_error = Some(e);
                         None
                     }
                 }
             }
             _ => {
                 degraded = true;
+                timings.embed_error = Some("Chiave API remota assente".to_string());
                 None
             }
         }
@@ -1175,12 +1229,30 @@ pub async fn compute_query_vector_for_prompt(
             if port == 0 || !crate::llama::check_health(port) {
                 return None;
             }
-            fetch_openai_embeddings_with_endpoint(&endpoint, key_str, &cache.model, &[term.to_string()]).await.ok()?.pop()
+            fetch_openai_embeddings_with_endpoint_and_timeout(
+                &endpoint,
+                key_str,
+                &cache.model,
+                &[term.to_string()],
+                Some(QUERY_EMBEDDINGS_TIMEOUT),
+            )
+            .await
+            .ok()?
+            .pop()
         } else {
             None
         }
     } else if let Some(key) = effective_key.as_deref().filter(|k| !k.is_empty()) {
-        fetch_openai_embeddings_with_endpoint(&endpoint, key, &cache.model, &[term.to_string()]).await.ok()?.pop()
+        fetch_openai_embeddings_with_endpoint_and_timeout(
+            &endpoint,
+            key,
+            &cache.model,
+            &[term.to_string()],
+            Some(QUERY_EMBEDDINGS_TIMEOUT),
+        )
+        .await
+        .ok()?
+        .pop()
     } else {
         None
     }
@@ -1248,6 +1320,7 @@ where
                 t_words_ms,
                 t_sem_ms: 0,
                 t_fuse_ms: 0,
+                embed_error: None,
             };
             return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), timings));
         }
@@ -1261,6 +1334,7 @@ where
             t_words_ms,
             t_sem_ms: 0,
             t_fuse_ms: 0,
+            embed_error: None,
         };
         return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), timings));
     }
@@ -1275,6 +1349,7 @@ where
                 t_words_ms,
                 t_sem_ms: 0,
                 t_fuse_ms: 0,
+                embed_error: None,
             };
             return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), timings));
         }
@@ -1290,6 +1365,7 @@ where
                 t_words_ms,
                 t_sem_ms: 0,
                 t_fuse_ms: 0,
+                embed_error: None,
             };
             return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), timings));
         }
@@ -1306,6 +1382,7 @@ where
                 t_words_ms,
                 t_sem_ms: 0,
                 t_fuse_ms: 0,
+                embed_error: None,
             };
             return Ok((lexical_results.into_iter().skip(offset).take(limit).collect(), timings));
         }
@@ -1539,6 +1616,7 @@ where
         t_words_ms,
         t_sem_ms,
         t_fuse_ms,
+        embed_error: None,
     };
 
     Ok((results, timings))
@@ -2287,5 +2365,139 @@ mod tests {
         let c3 = load_embeddings_cache(path).unwrap();
         assert_eq!(c3.entries.len(), 2, "La ricerca dopo il ricalcolo della cache deve usare i vettori nuovi");
         assert!(!std::sync::Arc::ptr_eq(&c1, &c3), "Il ricalcolo aggiorna l'istanza Arc!");
+    }
+
+    #[tokio::test]
+    async fn test_p4_query_vector_timeout_and_fallback() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        assert_eq!(BATCH_EMBEDDINGS_TIMEOUT, Duration::from_secs(300));
+        assert_eq!(QUERY_EMBEDDINGS_TIMEOUT, Duration::from_secs(10));
+
+        let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind mock listener");
+        let mock_port = listener.local_addr().unwrap().port();
+        let running_flag = Arc::new(AtomicBool::new(true));
+        let flag_clone = running_flag.clone();
+
+        let server_thread = std::thread::spawn(move || {
+            listener.set_nonblocking(true).unwrap();
+            while flag_clone.load(Ordering::SeqCst) {
+                if let Ok((mut stream, _)) = listener.accept() {
+                    let mut req_buf = [0u8; 1024];
+                    let n = stream.read(&mut req_buf).unwrap_or(0);
+                    let req_str = String::from_utf8_lossy(&req_buf[..n]);
+
+                    if req_str.contains("/health") {
+                        let resp = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 15\r\n\r\n{\"status\":\"ok\"}";
+                        let _ = stream.write_all(resp.as_bytes());
+                    } else if req_str.contains("/v1/embeddings") {
+                        // Simula elaborazione lenta che supera il timeout breve (50 ms)
+                        std::thread::sleep(Duration::from_millis(250));
+                        let floats_1024 = vec!["0.1"; 1024].join(",");
+                        let json_body = format!("{{\"data\":[{{\"embedding\":[{}]}}]}}", floats_1024);
+                        let resp = format!(
+                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+                            json_body.len(),
+                            json_body
+                        );
+                        let _ = stream.write_all(resp.as_bytes());
+                    } else {
+                        let resp = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
+                        let _ = stream.write_all(resp.as_bytes());
+                    }
+                } else {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+            }
+        });
+
+        let endpoint = format!("http://127.0.0.1:{}/v1/embeddings", mock_port);
+
+        // 1. Verifica che con timeout breve (50 ms) la richiesta fallisca per timeout
+        let res = fetch_openai_embeddings_with_endpoint_and_timeout(
+            &endpoint,
+            "",
+            "bge-m3",
+            &["query test".to_string()],
+            Some(Duration::from_millis(50)),
+        )
+        .await;
+
+        assert!(res.is_err(), "La richiesta deve andare in timeout");
+        let err_msg = res.unwrap_err().to_lowercase();
+        assert!(
+            err_msg.contains("timed out") || err_msg.contains("timeout"),
+            "Il messaggio di errore deve indicare timeout: {}",
+            err_msg
+        );
+
+        // 2. Crea vault temporaneo con catalog e cache e verifica fallback trasparente
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path();
+        std::fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        std::fs::create_dir_all(path.join("01_CLIENTS")).unwrap();
+        std::fs::write(path.join("01_CLIENTS/doc.md"), "# Alpha Document\nContenuto di prova per ricerca parole.").unwrap();
+
+        let mut cat = crate::catalog::sync_catalog_from_vault(path).unwrap();
+        let doc_id = crate::catalog::make_document_id("01_CLIENTS/doc.md");
+        let doc = cat.documents.get_mut(&doc_id).unwrap();
+        doc.extraction_status = crate::catalog::ExtractionStatus::Ready;
+        doc.passages.push(DocumentPassage {
+            passage_id: format!("{}_p0", doc_id),
+            locator: "P1".into(),
+            text: "Contenuto di prova per ricerca parole.".into(),
+            char_count: 38,
+            sha256: "dummy".into(),
+        });
+        crate::catalog::save_catalog(path, &mut cat).unwrap();
+        crate::search::index_vault_search(path).unwrap();
+
+        let mut cache = EmbeddingsCache::default();
+        cache.model = "bge-m3".to_string();
+        cache.dimensions = 1024;
+        cache.entries.insert(format!("{}_p0", doc_id), PassageEmbeddingEntry {
+            passage_id: format!("{}_p0", doc_id),
+            document_id: doc_id.clone(),
+            relative_path: "01_CLIENTS/doc.md".into(),
+            locator: "P1".into(),
+            sha256: "dummy".into(),
+            embedded_text_sha256: Some("sha".into()),
+            model: "bge-m3".into(),
+            dimensions: 1024,
+            vector: vec![0.1; 1024],
+            updated_at: now_iso(),
+        });
+        save_embeddings_cache(path, &mut cache).unwrap();
+        let _ = set_embeddings_provider(path, "local", mock_port);
+
+        let query = SearchQuery {
+            term: Some("Alpha Document".into()),
+            category: None,
+            client: None,
+            project: None,
+            tags: None,
+            status: None,
+            limit: Some(10),
+            offset: None,
+        };
+
+        let (items, _, _, _) = hybrid_search_vault_with_port_filtered_timed::<fn(&search::SearchDocumentRecord) -> bool>(
+            path,
+            query,
+            None,
+            true,
+            Some(mock_port),
+            None,
+        )
+        .await
+        .unwrap();
+
+        assert!(!items.is_empty(), "I risultati lessicali devono essere comunque restituiti");
+
+        // Cleanup
+        running_flag.store(false, Ordering::SeqCst);
+        let _ = server_thread.join();
     }
 }

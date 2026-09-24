@@ -1241,6 +1241,16 @@ pub async fn select_with_port_detailed(
     let search_fallback_reason = if !has_semantic {
         if active_port.is_none() || active_port == Some(0) {
             Some("Servizio locale non in ascolto o non configurato (porta assente)".to_string())
+        } else if let Some(ref embed_err) = search_timings.embed_error {
+            let lower_err = embed_err.to_lowercase();
+            if lower_err.contains("timed out") || lower_err.contains("timeout") {
+                Some(format!(
+                    "Timeout calcolo vettore domanda ({}s): ripiego su parole",
+                    crate::embeddings::QUERY_EMBEDDINGS_TIMEOUT.as_secs()
+                ))
+            } else {
+                Some(format!("Ripiego su ricerca per parole: {}", embed_err))
+            }
         } else if degraded {
             Some("Ripiego su ricerca per parole: endpoint bge-m3 non responsivo o cache non presente".to_string())
         } else {
