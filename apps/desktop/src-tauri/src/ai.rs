@@ -54,7 +54,7 @@ pub struct PreviewTimings {
     pub t_passage_extract_ms: u64,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Pending {
     pub path: PathBuf,
     pub options: Options,
@@ -236,8 +236,12 @@ pub fn log_ask_timing_detailed(entry: &AskTimingLogEntry) {
         .unwrap_or_else(|| "non misurato".into());
     let status_str = if entry.status == "incomplete" {
         format!("INCOMPLETA ({})", entry.incomplete_reason.as_deref().unwrap_or("max_output_tokens"))
+    } else if entry.status == "error" || entry.status.starts_with("errore") {
+        format!("ERRORE ({})", entry.incomplete_reason.as_deref().unwrap_or("errore"))
+    } else if entry.status == "annullata" || entry.status.starts_with("annullata") {
+        format!("ANNULLATA ({})", entry.incomplete_reason.as_deref().unwrap_or("annullata"))
     } else {
-        "completata".to_string()
+        entry.status.clone()
     };
 
     let mut breakdown_parts = Vec::new();
@@ -441,8 +445,100 @@ pub fn log_ask_timing(
     });
 }
 
+pub fn log_begin_rejected(ticket_rejected: &str, active_ticket: &str, active_elapsed_ms: u64) {
+    let log_path = get_ask_timing_log_path();
+    if let Some(parent) = log_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let now = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let line = format!(
+        "[{}] RIFIUTATA DA BEGIN: ticket_rifiutato=\"{}\", ticket_attivo=\"{}\", attivo_da_ms={}\n",
+        now, ticket_rejected, active_ticket, active_elapsed_ms
+    );
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
+        use std::io::Write;
+        let _ = f.write_all(line.as_bytes());
+    }
+}
+
+pub fn log_internal_error(ticket: &str, error_msg: &str) {
+    let log_path = get_ask_timing_log_path();
+    if let Some(parent) = log_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let now = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let line = format!(
+        "[{}] ERRORE INTERNO: ticket=\"{}\", errore=\"{}\"\n",
+        now, ticket, error_msg
+    );
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
+        use std::io::Write;
+        let _ = f.write_all(line.as_bytes());
+    }
+}
+
+pub fn log_keychain_error(p: &Pending, error_msg: &str, ui_elapsed_ms: Option<u64>) {
+    let t_handoff_ms = p.created_at.elapsed().as_millis() as u64;
+    let audit_sources: Vec<SourceAuditEntry> = p.sources
+        .iter()
+        .enumerate()
+        .map(|(idx, s)| SourceAuditEntry {
+            id: format!("S{}", idx + 1),
+            relative_path: s.relative_path.clone(),
+            bytes: s.content.len(),
+            locator: s.locator.clone(),
+            cited: false,
+        })
+        .collect();
+    log_ask_timing_detailed(&AskTimingLogEntry {
+        timestamp: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        model: p.options.model.clone(),
+        status: "errore (keychain)".to_string(),
+        incomplete_reason: Some(error_msg.to_string()),
+        tokens_used: None,
+        tokens_prompt: None,
+        tokens_completion: None,
+        tokens_reasoning: None,
+        t_first_chunk_ms: None,
+        t_ui_total_ms: ui_elapsed_ms,
+        t_backend_total_ms: p.preview_timings.t_preview_total_ms + t_handoff_ms,
+        preview: PreviewTimingBreakdown {
+            total_ms: p.preview_timings.t_preview_total_ms,
+            index_cache_ms: p.preview_timings.t_index_cache_ms,
+            embed_ms: p.preview_timings.t_embed_ms,
+            search_ms: p.preview_timings.t_search_ms,
+            search_words_ms: p.preview_timings.t_search_words_ms,
+            search_sem_ms: p.preview_timings.t_search_sem_ms,
+            search_fuse_ms: p.preview_timings.t_search_fuse_ms,
+            search_admit_ms: p.preview_timings.t_search_admit_ms,
+            doc_read_ms: p.preview_timings.t_doc_read_ms,
+            passage_extract_ms: p.preview_timings.t_passage_extract_ms,
+        },
+        t_handoff_ms,
+        ask: AskTimingBreakdown {
+            total_ms: 0,
+            verify_pre_ms: 0,
+            payload_ms: 0,
+            openai_ms: 0,
+            t_first_chunk_ms: None,
+            verify_post_ms: 0,
+            parse_ms: 0,
+        },
+        sources: audit_sources,
+    });
+}
+
+#[derive(Clone)]
+pub struct ActiveEntry {
+    pub cancel: Arc<AtomicBool>,
+    pub started_at: Instant,
+}
+
 #[derive(Default)]
-pub struct AiState {pub pending:Mutex<BTreeMap<String,Pending>>,pub active:Mutex<BTreeMap<String,Arc<AtomicBool>>>}
+pub struct AiState {
+    pub pending: Mutex<BTreeMap<String, Pending>>,
+    pub active: Mutex<BTreeMap<String, ActiveEntry>>,
+}
 pub fn random_token()->Result<String,String>{let mut b=[0u8;32];getrandom::fill(&mut b).map_err(|_|"Random generator unavailable")?;Ok(b.iter().map(|b|format!("{b:02x}")).collect())}
 pub fn eligible(path:&str,category:&str,status:Option<&str>,drafts:bool)->bool{
  let parts:Vec<_>=path.split('/').collect();
@@ -1167,14 +1263,18 @@ impl AiState {
             p.remove(ticket);
         }
         if let Ok(a) = self.active.lock() {
-            if let Some(flag) = a.get(ticket) {
-                flag.store(true, Ordering::SeqCst);
+            if let Some(entry) = a.get(ticket) {
+                entry.cancel.store(true, Ordering::SeqCst);
             }
         }
     }
     pub fn begin(&self, ticket: &str) -> Result<(Pending, Arc<AtomicBool>), String> {
         let mut active = self.active.lock().map_err(|_| "AI unavailable")?;
         if !active.is_empty() {
+            if let Some((active_ticket, entry)) = active.iter().next() {
+                let active_elapsed_ms = entry.started_at.elapsed().as_millis() as u64;
+                log_begin_rejected(ticket, active_ticket, active_elapsed_ms);
+            }
             return Err("An AI request is already running".into());
         }
         let p = self
@@ -1187,7 +1287,10 @@ impl AiState {
             return Err("Preview expired or no eligible sources".into());
         }
         let flag = Arc::new(AtomicBool::new(false));
-        active.insert(ticket.into(), flag.clone());
+        active.insert(ticket.into(), ActiveEntry {
+            cancel: flag.clone(),
+            started_at: Instant::now(),
+        });
         Ok((p, flag))
     }
     pub fn finish(&self, ticket: &str) {
@@ -1704,15 +1807,23 @@ impl StreamProseSanitizer {
     }
 
     /// Determina la lunghezza del suffisso ambiguo da trattenere nel buffer scorrevole.
+    /// Garantisce sempre che qualsiasi slicing avvenga su confini di caratteri UTF-8 validi (previene panic su lettere accentate ed emoji).
     pub fn ambiguous_suffix_len(s: &str) -> usize {
-        let bytes = s.as_bytes();
-        let len = bytes.len();
+        let len = s.len();
         if len == 0 {
             return 0;
         }
 
-        // 1. Prefisso di citazione aperto: es. `[` senza `]` o `(` senza `)` (finestra fino a 30 caratteri)
-        let check_window = len.saturating_sub(30);
+        // Helper per arretrare al confine di carattere UTF-8 valido più vicino (mai panic)
+        let safe_boundary = |mut idx: usize| -> usize {
+            while idx > 0 && !s.is_char_boundary(idx) {
+                idx -= 1;
+            }
+            idx
+        };
+
+        // 1. Prefisso di citazione aperto: es. `[` senza `]` o `(` senza `)` (finestra fino a 30 byte/caratteri)
+        let check_window = safe_boundary(len.saturating_sub(30));
         if let Some(pos) = s[check_window..].rfind(|c| c == '[' || c == '(') {
             let abs_pos = check_window + pos;
             let candidate_slice = &s[abs_pos..];
@@ -1728,8 +1839,8 @@ impl StreamProseSanitizer {
             }
         }
 
-        // 2. Grassetto markdown `**` aperto (conteggio dispari nella finestra di 60 caratteri)
-        let star_window = len.saturating_sub(60);
+        // 2. Grassetto markdown `**` aperto (conteggio dispari nella finestra di 60 byte/caratteri)
+        let star_window = safe_boundary(len.saturating_sub(60));
         let star_slice = &s[star_window..];
         let dstar_count = star_slice.matches("**").count();
         if dstar_count % 2 != 0 {
@@ -2007,21 +2118,86 @@ pub async fn ask_stream(
         p.options.model.clone()
     };
 
+    let log_stream_failure = |status_name: &str, reason_str: &str, t_vpre_ms: u64, t_pay_ms: u64, t_op_ms: u64, t_vp_ms: u64, t_p_ms: u64, first_chunk: Option<u64>| {
+        let t_ask_total_ms = t_ask_start.elapsed().as_millis() as u64;
+        let t_backend_total_ms = p.preview_timings.t_preview_total_ms + t_handoff_ms + t_ask_total_ms;
+        let t_ui_total_ms = ui_elapsed_ms.map(|prev_ms| prev_ms + t_ask_total_ms);
+        let audit_sources: Vec<SourceAuditEntry> = p.sources
+            .iter()
+            .enumerate()
+            .map(|(idx, s)| SourceAuditEntry {
+                id: format!("S{}", idx + 1),
+                relative_path: s.relative_path.clone(),
+                bytes: s.content.len(),
+                locator: s.locator.clone(),
+                cited: false,
+            })
+            .collect();
+
+        log_ask_timing_detailed(&AskTimingLogEntry {
+            timestamp: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+            model: effective_model.clone(),
+            status: status_name.to_string(),
+            incomplete_reason: Some(reason_str.to_string()),
+            tokens_used: None,
+            tokens_prompt: None,
+            tokens_completion: None,
+            tokens_reasoning: None,
+            t_first_chunk_ms: first_chunk,
+            t_ui_total_ms,
+            t_backend_total_ms,
+            preview: PreviewTimingBreakdown {
+                total_ms: p.preview_timings.t_preview_total_ms,
+                index_cache_ms: p.preview_timings.t_index_cache_ms,
+                embed_ms: p.preview_timings.t_embed_ms,
+                search_ms: p.preview_timings.t_search_ms,
+                search_words_ms: p.preview_timings.t_search_words_ms,
+                search_sem_ms: p.preview_timings.t_search_sem_ms,
+                search_fuse_ms: p.preview_timings.t_search_fuse_ms,
+                search_admit_ms: p.preview_timings.t_search_admit_ms,
+                doc_read_ms: p.preview_timings.t_doc_read_ms,
+                passage_extract_ms: p.preview_timings.t_passage_extract_ms,
+            },
+            t_handoff_ms,
+            ask: AskTimingBreakdown {
+                total_ms: t_ask_total_ms,
+                verify_pre_ms: t_vpre_ms,
+                payload_ms: t_pay_ms,
+                openai_ms: t_op_ms,
+                t_first_chunk_ms: first_chunk,
+                verify_post_ms: t_vp_ms,
+                parse_ms: t_p_ms,
+            },
+            sources: audit_sources,
+        });
+    };
+
     // 1. Verifica impronte pre-chiamata
     let t_vpre_start = Instant::now();
     let high_prec = is_high_precision_fs(&p.path);
+    let mut verify_pre_err = None;
     for s in &p.sources {
         if let Err(e) = verify_source_integrity_with_fs_override(&p.path, s, high_prec, p.options.include_drafts) {
-            if e.starts_with("Source changed") {
-                return Err("Source changed since preview".into());
-            }
-            return Err(e);
+            let err_msg = if e.starts_with("Source changed") {
+                "Source changed since preview".to_string()
+            } else {
+                e
+            };
+            verify_pre_err = Some(err_msg);
+            break;
         }
     }
     let t_verify_pre_ms = t_vpre_start.elapsed().as_millis() as u64;
 
+    if let Some(err_msg) = verify_pre_err {
+        log_stream_failure("errore (verify_pre)", &err_msg, t_verify_pre_ms, 0, 0, 0, 0, None);
+        return Err(err_msg);
+    }
+
     if cancel.load(Ordering::SeqCst) {
-        return Err("Request cancelled".into());
+        let err_msg = "Richiesta annullata dall'utente.".to_string();
+        log_stream_failure("annullata", &err_msg, t_verify_pre_ms, 0, 0, 0, 0, None);
+        return Err(err_msg);
     }
 
     // 2. Costruzione payload con streaming abilitato e modello tassativo
@@ -2052,7 +2228,24 @@ pub async fn ask_stream(
     let mut response = match response_res {
         Ok(r) => {
             if !r.status().is_success() {
-                let err_msg = format!("OpenAI HTTP {}", r.status().as_u16());
+                let status_code = r.status().as_u16();
+                let body_text = r.text().await.unwrap_or_default();
+                let error_detail = if let Ok(err_json) = serde_json::from_str::<Value>(&body_text) {
+                    err_json.get("error")
+                        .and_then(|e| e.get("message"))
+                        .and_then(|m| m.as_str())
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| body_text.clone())
+                } else {
+                    body_text.clone()
+                };
+                let err_msg = if error_detail.trim().is_empty() {
+                    format!("OpenAI HTTP {}", status_code)
+                } else {
+                    format!("OpenAI HTTP {}: {}", status_code, error_detail.trim())
+                };
+                let t_openai_ms = t_openai_start.elapsed().as_millis() as u64;
+                log_stream_failure("errore (openai_http)", &err_msg, t_verify_pre_ms, t_payload_ms, t_openai_ms, 0, 0, None);
                 if let Some(ref w) = window {
                     let _ = w.emit("limen://ai-stream-end", AiStreamEndPayload {
                         ticket: ticket.clone(),
@@ -2075,8 +2268,10 @@ pub async fn ask_stream(
             }
             r
         }
-        Err(_) => {
-            let err_msg = "OpenAI unavailable or request timed out".to_string();
+        Err(e) => {
+            let err_msg = format!("OpenAI network error or timeout: {e}");
+            let t_openai_ms = t_openai_start.elapsed().as_millis() as u64;
+            log_stream_failure("errore (rete)", &err_msg, t_verify_pre_ms, t_payload_ms, t_openai_ms, 0, 0, None);
             if let Some(ref w) = window {
                 let _ = w.emit("limen://ai-stream-end", AiStreamEndPayload {
                     ticket: ticket.clone(),
@@ -2272,6 +2467,7 @@ pub async fn ask_stream(
         if let Some(ref w) = window {
             let _ = w.emit("limen://ai-stream-end", end_payload.clone());
         }
+        log_stream_failure("errore (verify_post)", &error_msg, t_verify_pre_ms, t_payload_ms, t_openai_ms, t_verify_post_ms, 0, t_first_chunk_ms);
         return Err(error_msg);
     }
 
@@ -2447,7 +2643,32 @@ pub async fn ask_stream(
     };
 
     let t_parse_start = Instant::now();
-    let parsed = parse_response(response_to_parse, &p.sources)?;
+    let parsed = match parse_response(response_to_parse, &p.sources) {
+        Ok(v) => v,
+        Err(e) => {
+            let t_parse_ms = t_parse_start.elapsed().as_millis() as u64;
+            log_stream_failure("errore (parse_response)", &e, t_verify_pre_ms, t_payload_ms, t_openai_ms, t_verify_post_ms, t_parse_ms, t_first_chunk_ms);
+            if let Some(ref w) = window {
+                let _ = w.emit("limen://ai-stream-end", AiStreamEndPayload {
+                    ticket: ticket.clone(),
+                    answer: String::new(),
+                    citations: vec![],
+                    cited_indices: vec![],
+                    status: "error".into(),
+                    incomplete: true,
+                    incomplete_reason: Some(e.clone()),
+                    warning: None,
+                    error: Some(e.clone()),
+                    cancelled: false,
+                    tokens_used: None,
+                    tokens_prompt: None,
+                    tokens_completion: None,
+                    tokens_reasoning: None,
+                });
+            }
+            return Err(e);
+        }
+    };
     let t_parse_ms = t_parse_start.elapsed().as_millis() as u64;
 
     let cited_set: std::collections::HashSet<usize> = parsed["citedIndices"]
@@ -4242,6 +4463,183 @@ mod tests {
       assert_eq!(payload.cited_indices.len(), 0);
       assert_eq!(payload.status, "incomplete");
       assert_eq!(payload.cancelled, true);
+  }
+
+  #[test]
+  fn test_stream_prose_sanitizer_accented_letters_and_emoji() {
+      let texts = [
+          "Il progetto BNXT è focalizzato sulla creazione di un sistema CRM specializzato per l'industria dell'abbigliamento moto. L'obiettivo primario è la tracciabilità delle forniture, la gestione delle taglie e delle varianti colore, nonché l'integrazione con la contabilità aziendale già esistente. Perché la qualità è prioritaria, le normative europee sono applicate scrupolosamente a tutti i capi d'abbigliamento prodotti e distribuiti.",
+          "Progetto LIMEN 🚀: tracciabilità e qualità garantite! ✅ Notifiche attive 🔔 e analisi completata con successo 💯. È davvero un ottimo risultato 🎉.",
+          "Così, già, più, né, può, là, qui, quassù, laggiù, viceré, caffè, virtù, felicità!",
+      ];
+
+      for text in &texts {
+          let expected = sanitize_answer_prose(text);
+          let bytes = text.as_bytes();
+
+          // Spezza in frammenti di rete di ogni lunghezza da 1 a 80 byte
+          for chunk_size in 1..=80 {
+              let mut utf8_decoder = Utf8ChunkDecoder::new();
+              let mut sanitizer = StreamProseSanitizer::new();
+
+              let mut offset = 0;
+              while offset < bytes.len() {
+                  let end = std::cmp::min(offset + chunk_size, bytes.len());
+                  let byte_chunk = &bytes[offset..end];
+                  let decoded_chunk = utf8_decoder.decode(byte_chunk);
+                  if !decoded_chunk.is_empty() {
+                      let _delta = sanitizer.feed(&decoded_chunk);
+                  }
+                  offset = end;
+              }
+
+              let remaining = utf8_decoder.flush();
+              if !remaining.is_empty() {
+                  let _delta = sanitizer.feed(&remaining);
+              }
+              let _flush = sanitizer.flush();
+
+              assert_eq!(
+                  sanitizer.get_accumulated(),
+                  expected,
+                  "Failed for chunk_size={} on text='{}'",
+                  chunk_size,
+                  text
+              );
+          }
+      }
+  }
+
+  #[test]
+  fn test_consecutive_calls_second_rejected_while_first_active() {
+      let state = Arc::new(AiState::default());
+      let temp_dir = tempfile::tempdir().unwrap();
+      let log_file = temp_dir.path().join("ask_timing.log");
+      std::env::set_var("LIMEN_ASK_TIMING_LOG", &log_file);
+
+      // Inserisci un ticket finto in pending
+      {
+          let mut p = state.pending.lock().unwrap();
+          let pending_obj = Pending {
+              created_at: Instant::now(),
+              path: temp_dir.path().to_path_buf(),
+              options: Options {
+                  prompt: "test".into(),
+                  model: "gpt-4o".into(),
+                  include_drafts: false,
+                  source_ids: vec![],
+                  category: None,
+                  client: None,
+                  project: None,
+                  tags: None,
+              },
+              sources: vec![Source {
+                  document_id: "doc1".into(),
+                  relative_path: "note.md".into(),
+                  title: "Note".into(),
+                  category: "test".into(),
+                  status: None,
+                  sha256: "hash".into(),
+                  content: "dummy".into(),
+                  locator: None,
+                  passage_id: None,
+                  revision: None,
+                  mtime_ms: None,
+                  file_size: None,
+                  passage_hashes: vec![],
+              }],
+              preview_timings: PreviewTimings::default(),
+          };
+          p.insert("ticket-1".into(), pending_obj.clone());
+          p.insert("ticket-2".into(), pending_obj.clone());
+          p.insert("ticket-3".into(), pending_obj);
+      }
+
+      // Prima chiamata: begin riesce
+      let begin1 = state.begin("ticket-1");
+      assert!(begin1.is_ok(), "First begin must succeed");
+
+      // Seconda chiamata: rifiutata perché ticket-1 è attivo
+      let begin2 = state.begin("ticket-2");
+      assert!(begin2.is_err(), "Second begin must fail while first is active");
+      let err2 = begin2.unwrap_err();
+      assert_eq!(err2, "An AI request is already running");
+
+      // Verifica che il rifiuto sia stato registrato nel log con i dettagli
+      let log_content = std::fs::read_to_string(&log_file).unwrap_or_default();
+      assert!(log_content.contains("RIFIUTATA DA BEGIN: ticket_rifiutato=\"ticket-2\""));
+      assert!(log_content.contains("ticket_attivo=\"ticket-1\""));
+
+      // Fine prima chiamata
+      state.finish("ticket-1");
+
+      // Terza chiamata: ora deve riuscire
+      let begin3 = state.begin("ticket-3");
+      assert!(begin3.is_ok(), "Third begin must succeed after first finished");
+      state.finish("ticket-3");
+
+      std::env::remove_var("LIMEN_ASK_TIMING_LOG");
+  }
+
+  #[test]
+  fn test_active_guard_releases_ticket_on_panic() {
+      let state = Arc::new(AiState::default());
+      let temp_dir = tempfile::tempdir().unwrap();
+      {
+          let mut p = state.pending.lock().unwrap();
+          let pending_obj = Pending {
+              created_at: Instant::now(),
+              path: temp_dir.path().to_path_buf(),
+              options: Options {
+                  prompt: "test".into(),
+                  model: "gpt-4o".into(),
+                  include_drafts: false,
+                  source_ids: vec![],
+                  category: None,
+                  client: None,
+                  project: None,
+                  tags: None,
+              },
+              sources: vec![Source {
+                  document_id: "doc1".into(),
+                  relative_path: "note.md".into(),
+                  title: "Note".into(),
+                  category: "test".into(),
+                  status: None,
+                  sha256: "hash".into(),
+                  content: "dummy".into(),
+                  locator: None,
+                  passage_id: None,
+                  revision: None,
+                  mtime_ms: None,
+                  file_size: None,
+                  passage_hashes: vec![],
+              }],
+              preview_timings: PreviewTimings::default(),
+          };
+          p.insert("ticket-panic".into(), pending_obj);
+      }
+
+      let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+          let (_pending, _cancel) = state.begin("ticket-panic").unwrap();
+          struct TestGuard {
+              state: Arc<AiState>,
+              ticket: String,
+          }
+          impl Drop for TestGuard {
+              fn drop(&mut self) {
+                  self.state.finish(&self.ticket);
+              }
+          }
+          let _guard = TestGuard {
+              state: state.clone(),
+              ticket: "ticket-panic".into(),
+          };
+          panic!("Simulated worker panic!");
+      }));
+
+      // Dopo il panic, la mappa active deve essere vuota e non restare bloccata
+      assert!(state.active.lock().unwrap().is_empty(), "Active map must be empty after guard drop on panic");
   }
 }
 #[cfg(test)]

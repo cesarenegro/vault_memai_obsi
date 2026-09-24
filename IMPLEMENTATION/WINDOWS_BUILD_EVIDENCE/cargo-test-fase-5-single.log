@@ -96,32 +96,18 @@ warning: field `vault_path` is never read
    = note: `EmbeddingsCacheEntry` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
 
 warning: `limen-vault` (lib) generated 12 warnings (run `cargo fix --lib -p limen-vault` to apply 5 suggestions)
-warning: fields `title` and `base_score` are never read
-  --> src\bin\measure_punto_e.rs:20:5
+warning: unused import: `ffi::CString`
+  --> src\snapshots.rs:12:5
    |
-17 | struct ScoredCandidate {
-   |        --------------- fields in this struct
-...
-20 |     title: String,
-   |     ^^^^^
-21 |     base_score: f64,
-   |     ^^^^^^^^^^
+12 |     ffi::CString,
+   |     ^^^^^^^^^^^^
    |
-   = note: `ScoredCandidate` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
-   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
-
-warning: field `query_id` is never read
-  --> src\bin\measure_punto_e.rs:37:5
-   |
-36 | struct QueryEvalContext {
-   |        ---------------- field in this struct
-37 |     query_id: String,
-   |     ^^^^^^^^
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
 
 warning: variable does not need to be mutable
-    --> src\ai.rs:3973:12
+    --> src\ai.rs:4194:12
      |
-3973 |       let (mut pending, cancel) = state.begin(&p_preview.ticket).unwrap();
+4194 |       let (mut pending, cancel) = state.begin(&p_preview.ticket).unwrap();
      |            ----^^^^^^^
      |            |
      |            help: remove this `mut`
@@ -129,9 +115,9 @@ warning: variable does not need to be mutable
      = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
 
 warning: unused variable: `cancel`
-    --> src\ai.rs:3973:25
+    --> src\ai.rs:4194:25
      |
-3973 |       let (mut pending, cancel) = state.begin(&p_preview.ticket).unwrap();
+4194 |       let (mut pending, cancel) = state.begin(&p_preview.ticket).unwrap();
      |                         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_cancel`
      |
      = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
@@ -164,8 +150,6 @@ warning: unused variable: `doc_id`
 2056 |         let doc_id = make_document_id("20_RAW_SOURCES/doc.md");
      |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_doc_id`
 
-warning: `limen-vault` (bin "measure_punto_e" test) generated 2 warnings
-warning: `limen-vault` (lib test) generated 15 warnings (9 duplicates) (run `cargo fix --lib -p limen-vault --tests` to apply 6 suggestions)
 warning: unused variable: `t0`
   --> src\bin\diagnose_fase1.rs:46:9
    |
@@ -185,20 +169,36 @@ warning: field `exact_bonus` is never read
     |
     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
-warning: unused import: `ffi::CString`
-  --> src\snapshots.rs:12:5
-   |
-12 |     ffi::CString,
-   |     ^^^^^^^^^^^^
-   |
-   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
-
-warning: `limen-vault` (bin "diagnose_fase1" test) generated 2 warnings (run `cargo fix --bin "diagnose_fase1" -p limen-vault --tests` to apply 1 suggestion)
 warning: `limen-vault` (bin "limen-vault" test) generated 1 warning (run `cargo fix --bin "limen-vault" -p limen-vault --tests` to apply 1 suggestion)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.31s
+warning: `limen-vault` (lib test) generated 15 warnings (9 duplicates) (run `cargo fix --lib -p limen-vault --tests` to apply 6 suggestions)
+warning: `limen-vault` (bin "diagnose_fase1" test) generated 2 warnings (run `cargo fix --bin "diagnose_fase1" -p limen-vault --tests` to apply 1 suggestion)
+warning: fields `title` and `base_score` are never read
+  --> src\bin\measure_punto_e.rs:20:5
+   |
+17 | struct ScoredCandidate {
+   |        --------------- fields in this struct
+...
+20 |     title: String,
+   |     ^^^^^
+21 |     base_score: f64,
+   |     ^^^^^^^^^^
+   |
+   = note: `ScoredCandidate` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `query_id` is never read
+  --> src\bin\measure_punto_e.rs:37:5
+   |
+36 | struct QueryEvalContext {
+   |        ---------------- field in this struct
+37 |     query_id: String,
+   |     ^^^^^^^^
+
+warning: `limen-vault` (bin "measure_punto_e" test) generated 2 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.11s
      Running unittests src\lib.rs (target\debug\deps\limen_vault-b7ab620e0196d8b2.exe)
 
-running 154 tests
+running 157 tests
 test ai::index_policy_test::forged_approval_is_rejected ... ok
 test ai::model_tests::models_are_validated_and_deduplicated ... ok
 test ai::tests::approved_policy_and_context_hash ... ok
@@ -206,7 +206,9 @@ test ai::tests::binary_raw_source_extracted_text_is_read_in_ai ... ok
 test ai::tests::citation_ids_and_incomplete_rejected ... ok
 test ai::tests::preview_bounds_and_untrusted_data_role ... ok
 test ai::tests::source_stale_symlink_and_preview_cancel ... ok
+test ai::tests::test_active_guard_releases_ticket_on_panic ... ok
 test ai::tests::test_citation_locators_and_tamper_detection ... ok
+test ai::tests::test_consecutive_calls_second_rejected_while_first_active ... ok
 test ai::tests::test_consecutive_read_indexed_document_and_read_source_zero_disk_reads ... ok
 test ai::tests::test_corrections_a_b_c_d_schema_short_ids_warning_and_system_instructions ... ok
 test ai::tests::test_diagnosis_passage_id_and_relative_path_citations_resolved ... ok
@@ -234,6 +236,7 @@ test ai::tests::test_sanitize_answer_prose_removes_asterisks ... ok
 test ai::tests::test_sanitize_answer_prose_removes_citation_brackets ... ok
 test ai::tests::test_selected_model_persistence_in_app_data_dir ... ok
 test ai::tests::test_source_integrity_ntfs_vs_non_ntfs ... ok
+test ai::tests::test_stream_prose_sanitizer_accented_letters_and_emoji ... ok
 test ai::tests::test_stream_prose_sanitizer_split_bold_asterisks ... ok
 test ai::tests::test_stream_prose_sanitizer_split_citations ... ok
 test ai::tests::test_streaming_network_error_treated_as_interrupted_with_reason ... ok
@@ -354,7 +357,7 @@ test vault::tests::manifest_is_consumed_without_reopening ... ok
 test vault::tests::raw_sources_foreign_yaml_frontmatter_allows_vault_opening ... ok
 test vault::tests::shared_frontmatter_fixtures ... ok
 
-test result: ok. 154 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.25s
+test result: ok. 157 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 35.78s
 
      Running unittests src\bin\a04_real_local.rs (target\debug\deps\a04_real_local-20417175db04e0a5.exe)
 
@@ -438,7 +441,7 @@ test vault::tests::manifest_is_consumed_without_reopening ... ok
 test vault::tests::raw_sources_foreign_yaml_frontmatter_allows_vault_opening ... ok
 test vault::tests::shared_frontmatter_fixtures ... ok
 
-test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.37s
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.17s
 
      Running unittests src\bin\measure_punto_e.rs (target\debug\deps\measure_punto_e-2ca8dfc639e1f24b.exe)
 

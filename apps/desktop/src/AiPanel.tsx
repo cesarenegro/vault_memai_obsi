@@ -76,6 +76,8 @@ export function AiPanel({
   const seq = useRef(0);
   const unlistenChunkRef = useRef<UnlistenFn | null>(null);
   const unlistenEndRef = useRef<UnlistenFn | null>(null);
+  const isRunningRef = useRef(false);
+  const isBusy = !!loadingStep || isStreaming;
 
   // Carica i modelli disponibili e il modello selezionato memorizzato (default: gpt-4o)
   useEffect(() => {
@@ -129,7 +131,7 @@ export function AiPanel({
       setConsentGranted(true);
       setError(null);
       // Automatically trigger answer request if prompt is not empty
-      if (prompt.trim()) {
+      if (!isBusy && prompt.trim()) {
         void executeAsk(prompt.trim());
       }
     } catch (e) {
@@ -139,7 +141,8 @@ export function AiPanel({
   }
 
   async function executeAsk(queryText: string) {
-    if (!queryText || loadingStep || isStreaming) return;
+    if (!queryText || isRunningRef.current || loadingStep || isStreaming) return;
+    isRunningRef.current = true;
     const currentModel = model || 'gpt-4o';
 
     const currentSeq = ++seq.current;
@@ -165,6 +168,7 @@ export function AiPanel({
     setConsentGranted(hasConsent);
 
     if (!hasConsent) {
+      isRunningRef.current = false;
       return; // Inline consent banner will be shown
     }
 
@@ -266,11 +270,18 @@ export function AiPanel({
         });
       } else if (errStr.includes('Consenso')) {
         setConsentGranted(false);
+      } else if (errStr.includes('An AI request is already running') || errStr.includes('già una domanda in corso')) {
+        setError("C'è già una domanda in corso: attendi la risposta o annullala.");
+        setTechError(null);
+      } else if (errStr.includes('Errore interno durante la generazione della risposta')) {
+        setError('Errore interno durante la generazione della risposta, riprova.');
+        setTechError(null);
       } else {
         setError('Impossibile completare la risposta. Verifica la connessione o la chiave API.');
         setTechError(errStr);
       }
     } finally {
+      isRunningRef.current = false;
       if (currentSeq === seq.current) {
         setLoadingStep(null);
         setIsStreaming(false);
@@ -349,7 +360,7 @@ export function AiPanel({
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  if (prompt.trim() && model) executeAsk(prompt.trim());
+                  if (!isBusy && prompt.trim() && model) void executeAsk(prompt.trim());
                 }
               }}
               style={{
@@ -368,11 +379,11 @@ export function AiPanel({
                 right: 10,
                 bottom: 14,
                 padding: '8px 16px',
-                opacity: (!model || !prompt.trim() || !!loadingStep) ? 0.6 : 1,
+                opacity: (!model || !prompt.trim() || isBusy) ? 0.6 : 1,
               }}
-              disabled={!!loadingStep || !prompt.trim() || !model}
-              onClick={() => prompt.trim() && model && executeAsk(prompt.trim())}
-              title={!model ? "Seleziona un modello per abilitare l'invio" : undefined}
+              disabled={isBusy || !prompt.trim() || !model}
+              onClick={() => !isBusy && prompt.trim() && model && void executeAsk(prompt.trim())}
+              title={!model ? "Seleziona un modello per abilitare l'invio" : isBusy ? "Generazione in corso..." : undefined}
             >
               Chiedi
             </button>
@@ -601,9 +612,33 @@ export function AiPanel({
       {/* Box di generazione progressiva in streaming */}
       {isStreaming && (
         <div className="limen-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#2563eb', fontSize: 13, fontWeight: 600 }}>
-            <Sparkles size={16} className="animate-spin" />
-            <span>Generazione in streaming con OpenAI ({model || 'gpt-4o'})…</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, color: '#2563eb', fontSize: 13, fontWeight: 600 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Sparkles size={16} className="animate-spin" />
+              <span>Generazione in streaming con OpenAI ({model || 'gpt-4o'})…</span>
+            </div>
+            {previewData?.ticket && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (previewData?.ticket) {
+                    void aiIpc.cancel(previewData.ticket);
+                  }
+                }}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  border: '1px solid #fca5a5',
+                  backgroundColor: '#fef2f2',
+                  color: '#dc2626',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Annulla domanda
+              </button>
+            )}
           </div>
           <div style={{ fontSize: 15, lineHeight: 1.7, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
             {streamingText || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Elaborazione in corso e attesa token…</span>}

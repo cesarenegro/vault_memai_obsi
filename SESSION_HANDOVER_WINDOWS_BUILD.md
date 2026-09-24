@@ -279,18 +279,47 @@ Conformemente all'analisi e alle correzioni vincolanti richieste per `ask_stream
 
 ---
 
-## 2. Stato Attuale e Consegna FASE 5b
+### FASE 5c — Risoluzione Bloccante: Panic su Lettere Accentate e Rilascio Garantito Richieste
 
-- **STATO ATTUALE**: **FASE 5b COMPLETATA E VERIFICATA CON SUCCESSO — PRONTA PER LA CONVALIDA DAL VIVO DI CESARE E DELL'AUDITOR**.
+Conformemente all'analisi e alle correzioni vincolanti richieste:
+
+1. **Risoluzione Panic su Lettere Accentate ed Emoji (`StreamProseSanitizer`)**:
+   - Causa: `ambiguous_suffix_len` ([ai.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/ai.rs)) calcolava le finestre di 30 e 60 byte con `len.saturating_sub(30)` e `len.saturating_sub(60)` e le usava per tagliare la stringa `s[check_window..]`. Quando una lettera accentata a due byte (`à`, `è`, `ù`) cadeva sull'indice esatto (es. byte 349 dentro `à` 348..350), il runtime tokio andava in panic: `start byte index 349 is not a char boundary; it is inside 'à'`.
+   - Correzione: implementata la closure `safe_boundary` che arretra al confine valido più vicino con `while idx > 0 && !s.is_char_boundary(idx) { idx -= 1; }`.
+   - Unit test superato: `test_stream_prose_sanitizer_accented_letters_and_emoji` con testi complessi in italiano e caratteri emoji spezzati in frammenti di tutte le dimensioni da 1 a 80 byte.
+
+2. **Un Panic Non Blocca Più l'App (`ActiveGuard` RAII e `tokio::spawn`)**:
+   - Causa del blocco visto da Cesare: il panic verificatosi su `à` impediva il completamento di `ai_ask_stream` e la chiamata a `state.finish(&ticket)`. Il ticket rimaneva congelato per sempre in `state.active`, facendo rifiutare qualunque domanda successiva con `"An AI request is already running"`.
+   - Implementata la guardia RAII `ActiveGuard`: garantisce l'invocazione di `self.state.finish(&self.ticket)` nel suo `Drop`, indipendentemente da ritorni normali, errori o panic.
+   - Invocazione protetta con `tokio::spawn(async move { ask_stream(...) }).await`: qualunque eventuale panic viene intercettato da Tokio senza far crashare il thread né l'app, registrato in `ask_timing.log` come errore interno, ed emesso verso la finestra UI con il messaggio chiaro: `"Errore interno durante la generazione della risposta, riprova"`.
+   - Unit test superato: `test_active_guard_releases_ticket_on_panic`.
+
+3. **Registro di Ogni Esito in `ask_timing.log`**:
+   - Tracciamento completo di ogni esito: completata, incompleta, annullata, errore (con codice HTTP e messaggio di dettaglio estratto da OpenAI), errore interno (panic/abort) e rifiutata da begin (con ticket rifiutato, ticket attivo e millisecondi trascorsi dal ticket attivo).
+   - Nessun testo di domande, risposte o passaggi registrato nel file.
+   - Unit test superato: `test_consecutive_calls_second_rejected_while_first_active`.
+
+4. **Messaggio "Già in corso" e Blocco Doppia Esecuzione (`AiPanel.tsx`)**:
+   - Introdotti `isRunningRef = useRef(false)` e `isBusy = !!loadingStep || isStreaming || isRunningRef.current`.
+   - Controllo sincrono all'avvio di `executeAsk`: blocco immediato di doppi clic, effetti duplicati e pressione ripetuta di Invio.
+   - Pulsante "Chiedi" e tasto Invio disabilitati durante l'intera generazione in streaming.
+   - Intercettazione di `"An AI request is already running"` con messaggio amichevole: `"C'è già una domanda in corso: attendi la risposta o annullala."` (senza messaggi tecnici su rete o chiavi API).
+   - Aggiunto pulsante esplicito "Annulla domanda" nell'intestazione del box di streaming.
+
+---
+
+## 2. Stato Attuale e Consegna FASE 5c
+
+- **STATO ATTUALE**: **FASE 5c COMPLETATA E VERIFICATA CON SUCCESSO — PRONTA PER IL COLLAUDO DI CESARE**.
 - **Modello configurato come default**: **`gpt-4o`**.
-- **Test suite**: **172 passati (154 lib + 18 bin); 0 falliti** (sia in parallelo sia con `--test-threads=1`).
+- **Test suite**: **175 passati (157 lib + 18 bin); 0 falliti** (sia in parallelo sia con `--test-threads=1`).
 - **Verifica TypeScript frontend**: **0 errori** (`npx tsc --noEmit`).
 - **ZERO chiamate OpenAI** effettuate dall'assistente.
 - **ZERO processi terminati** senza autorizzazione (`llama-server.exe` PID 39740 e `limen-vault.exe` PID 25352 attivi e intatti).
 - **Log di test**:
-  - Parallelo: [cargo-test-fase-5-parallel.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-5-parallel.log) (172/172 ok).
-  - Sequenziale: [cargo-test-fase-5-single.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-5-single.log) (172/172 ok).
-- **Patch di consegna**: [fase-5b.patch](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5b.patch).
+  - Parallelo: [cargo-test-fase-5-parallel.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-5-parallel.log) (175/175 ok).
+  - Sequenziale: [cargo-test-fase-5-single.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-5-single.log) (175/175 ok).
+- **Patch di consegna**: [fase-5c.patch](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5c.patch).
 
 ---
 
@@ -299,10 +328,7 @@ Conformemente all'analisi e alle correzioni vincolanti richieste per `ask_stream
 - **Comando vincolante**:
   `cd "E:\Projects\vault_memai_obsi"; npx pnpm --filter @limen-vault/desktop tauri dev --release`
   *(preserva la cache di compilazione evitando ri-compilazioni complete al riavvio di Cesare; NON usare `cargo build --release`)*.
-- **Istanza in esecuzione per la prova**:
-  - **Commit di riferimento**: `efa0cefab5da83e8de3b3418a92285438c63fb36` (2026-09-24 07:37:39 UTC+8).
-  - **Eseguibile avviato**: `E:\Projects\vault_memai_obsi\apps\desktop\src-tauri\target\release\limen-vault.exe` (PID 2476).
-  - **Ora di avvio**: `2026-09-24 07:52:20 UTC+8`.
+
 
 
 
