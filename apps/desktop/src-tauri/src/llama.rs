@@ -55,6 +55,8 @@ struct RunningState {
     auto_start_failure_reason: Option<String>,
     starting: bool,
     start_owner: Option<u64>,
+    pub non_owner_wait_count: u32,
+    pub spawn_count: u32,
 }
 
 #[derive(Clone, Default)]
@@ -1267,6 +1269,14 @@ impl LlamaServerState {
         s.last_error = None;
     }
 
+    pub fn non_owner_wait_count(&self) -> u32 {
+        self.0.lock().unwrap_or_else(|e| e.into_inner()).non_owner_wait_count
+    }
+
+    pub fn spawn_count(&self) -> u32 {
+        self.0.lock().unwrap_or_else(|e| e.into_inner()).spawn_count
+    }
+
     pub fn get_binary_path(&self) -> Option<PathBuf> {
         let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
         if s.binary_path.is_some() {
@@ -1608,6 +1618,7 @@ impl LlamaServerState {
                     caller_token.unwrap()
                 } else {
                     // Un altro thread possiede l'avvio: attendiamo il suo completamento
+                    s.non_owner_wait_count += 1;
                     drop(s);
                     let deadline = t_start + timeout;
                     while Instant::now() < deadline {
@@ -1629,15 +1640,21 @@ impl LlamaServerState {
                             break;
                         }
                     }
-                    let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                    let (is_still_starting, port_to_check) = {
+                        let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                        (s.starting, s.port)
+                    };
+                    if is_still_starting {
+                        return Err(format!("Timeout attesa avvio del servizio in corso ({:.1}s).", timeout.as_secs_f32()));
+                    }
+                    if port_to_check > 0 && check_health(port_to_check) {
+                        return Ok(self.status());
+                    }
+                    let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
                     if s.starting {
                         return Err(format!("Timeout attesa avvio del servizio in corso ({:.1}s).", timeout.as_secs_f32()));
                     }
-                    if s.port > 0 && check_health(s.port) {
-                        return Ok(self.status());
-                    }
                     let tok = next_start_token();
-                    let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
                     s.starting = true;
                     s.start_owner = Some(tok);
                     tok
@@ -1798,6 +1815,7 @@ impl LlamaServerState {
             s.binary_path = Some(binary.clone());
             s.starting = true;
             s.start_owner = Some(active_token);
+            s.spawn_count += 1;
         }
 
         let port = free_port;
@@ -3169,7 +3187,14 @@ mod tests {
         assert_eq!(rep_manual.port, rep_final.port, "Deve essere stata usata la stessa porta senza secondo processo");
         assert_eq!(rep_manual.pid, rep_final.pid, "Deve essere presente lo stesso PID senza processi duplicati");
 
+        // Dimostrazione passaggio dal ramo non proprietario e processo unico
+        assert_eq!(state.non_owner_wait_count(), 1, "Il chiamante deve passare dal ramo non-proprietario");
+        assert_eq!(state.spawn_count(), 1, "Deve essere eseguito esattamente uno spawn di processo");
+        let pid = rep_final.pid.expect("PID presente");
+        assert!(is_process_alive(pid), "Il processo mock deve essere vivo al termine dell'avvio");
+
         let _ = state.stop();
+        assert!(!is_process_alive(pid), "Il processo mock deve essere terminato dopo stop()");
     }
 
     #[test]
@@ -3363,6 +3388,97 @@ mod tests {
         stop_flag.store(true, Ordering::SeqCst);
         let _ = server_thread.join();
     }
+
+    #[test]
+    fn test_fase5i_bis_d1_stop_during_wait_unblocks_waiter_and_status_responds() {
+        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mock_exe = compile_test_mock_server(temp_dir.path());
+
+        let state = LlamaServerState::default();
+        let tok1 = next_start_token();
+        {
+            let mut s = state.0.lock().unwrap();
+            s.starting = true;
+            s.start_owner = Some(tok1);
+        }
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        let state_clone = state.clone();
+        let mock_exe_clone = mock_exe.clone();
+        std::thread::spawn(move || {
+            let res = state_clone.start_with_custom_binary(&mock_exe_clone, Duration::from_millis(600));
+            let _ = tx.send(res);
+        });
+
+        std::thread::sleep(Duration::from_millis(150));
+        assert!(state.non_owner_wait_count() >= 1, "Il chiamante deve entrare nel ramo non-proprietario");
+
+        let _ = state.stop();
+
+        let wait_res = rx.recv_timeout(Duration::from_secs(3));
+        std::env::remove_var("LIMEN_TEST_DISABLE_ADOPTION");
+        assert!(wait_res.is_ok(), "Il chiamante in attesa deve sbloccarsi tempestivamente dopo stop()");
+
+        let (tx_status, rx_status) = std::sync::mpsc::channel();
+        let state_status = state.clone();
+        std::thread::spawn(move || {
+            let st = state_status.status();
+            let _ = tx_status.send(st);
+        });
+        let status_res = rx_status.recv_timeout(Duration::from_secs(1));
+        assert!(status_res.is_ok(), "status() deve rispondere immediatamente senza blocco mutex");
+        let _ = state.stop();
+    }
+
+    #[test]
+    fn test_fase5i_bis_d1_owner_panic_resets_guard_and_waiter_unblocks() {
+        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mock_exe = compile_test_mock_server(temp_dir.path());
+
+        let state = LlamaServerState::default();
+        let (tx_panic, rx_panic) = std::sync::mpsc::channel();
+        let state_owner = state.clone();
+
+        std::thread::spawn(move || {
+            let tok = next_start_token();
+            {
+                let mut s = state_owner.0.lock().unwrap();
+                s.starting = true;
+                s.start_owner = Some(tok);
+            }
+            let _guard = StartingGuard(state_owner.clone(), Some(tok));
+            let _ = tx_panic.send(());
+            std::thread::sleep(Duration::from_millis(100));
+            panic!("Simulated owner panic during startup");
+        });
+
+        rx_panic.recv_timeout(Duration::from_secs(2)).expect("Owner thread init");
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        let state_clone = state.clone();
+        let mock_exe_clone = mock_exe.clone();
+        std::thread::spawn(move || {
+            let res = state_clone.start_with_custom_binary(&mock_exe_clone, Duration::from_millis(600));
+            let _ = tx.send(res);
+        });
+
+        let wait_res = rx.recv_timeout(Duration::from_secs(3));
+        std::env::remove_var("LIMEN_TEST_DISABLE_ADOPTION");
+        assert!(wait_res.is_ok(), "Il chiamante in attesa deve sbloccarsi tempestivamente dopo il panic del proprietario");
+
+        let (tx_status, rx_status) = std::sync::mpsc::channel();
+        let state_status = state.clone();
+        std::thread::spawn(move || {
+            let st = state_status.status();
+            let _ = tx_status.send(st);
+        });
+        let status_res = rx_status.recv_timeout(Duration::from_secs(1));
+        assert!(status_res.is_ok(), "status() deve rispondere immediatamente dopo il panic del proprietario");
+        let _ = state.stop();
+    }
+
 }
-
-
