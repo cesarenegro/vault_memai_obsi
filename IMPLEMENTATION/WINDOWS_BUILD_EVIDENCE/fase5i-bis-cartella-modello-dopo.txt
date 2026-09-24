@@ -1,0 +1,29 @@
+=== ELENCO FILE CARTELLA MODELLI E TIMING LOG ===
+
+--- File in C:\Users\user\LIMEN Vault\models ---
+C:\Users\user\LIMEN Vault\models\bge-m3-Q8_0.gguf | size=634553760 | mtime=2026-09-23T04:44:32.428500
+C:\Users\user\LIMEN Vault\models\bge-m3-Q8_0.gguf.sha256.json | size=277 | mtime=2026-09-23T13:56:00.793673
+C:\Users\user\LIMEN Vault\models\llama-server.log | size=0 | mtime=2026-09-24T17:46:59.621233
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T090904Z_3588.log | size=10651 | mtime=2026-09-24T17:09:08.348114
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T090908Z_25356.log | size=0 | mtime=2026-09-24T17:09:08.877905
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T090910Z_32616.log | size=0 | mtime=2026-09-24T17:09:10.324305
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T090924Z_43504.log | size=11246 | mtime=2026-09-24T17:09:31.546023
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T090929Z_43780.log | size=0 | mtime=2026-09-24T17:09:29.007878
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T090930Z_41872.log | size=11246 | mtime=2026-09-24T17:09:34.546436
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T090935Z_39940.log | size=11057 | mtime=2026-09-24T17:09:38.678699
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T090939Z_16316.log | size=0 | mtime=2026-09-24T17:09:39.418903
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T090939Z_40552.log | size=0 | mtime=2026-09-24T17:09:39.970691
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T091013Z_11168.log | size=11246 | mtime=2026-09-24T17:10:16.989867
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T091015Z_19424.log | size=0 | mtime=2026-09-24T17:10:15.611510
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T091017Z_26572.log | size=11245 | mtime=2026-09-24T17:10:21.016803
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T091022Z_41292.log | size=10651 | mtime=2026-09-24T17:10:25.341076
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T091025Z_22004.log | size=0 | mtime=2026-09-24T17:10:25.859175
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T091026Z_33864.log | size=0 | mtime=2026-09-24T17:10:26.749838
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T094554Z_2772.log | size=5651 | mtime=2026-09-24T17:45:57.842853
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T094558Z_28060.log | size=1268 | mtime=2026-09-24T17:45:58.735237
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T094659Z_8152.log | size=0 | mtime=2026-09-24T17:46:59.620232
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T094700Z_13196.log | size=0 | mtime=2026-09-24T17:47:00.297422
+C:\Users\user\LIMEN Vault\models\logs\llama-server_20260924T094741Z_1064.log | size=0 | mtime=2026-09-24T17:47:41.657386
+
+--- Timing log: C:\Users\user\.limen-vault\local_model_timing.log ---
+C:\Users\user\.limen-vault\local_model_timing.log | size=34565 | mtime=2026-09-24T15:48:06.806439

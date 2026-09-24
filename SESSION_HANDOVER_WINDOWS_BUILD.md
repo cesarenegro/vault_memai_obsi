@@ -388,3 +388,34 @@ Il fallimento registrato alle 13:53:21 (`BACKGROUND_START_FAILED` dopo 26.361 ms
   - ase5i-check-commit-n1.log a ase5i-check-commit-n6.log (tutti 0 errori).
 - **Patch Cumulativa**:
   - IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5i.patch generata con git diff 6b04271 57071f8.
+
+---
+
+## 5. FASE 5i-bis — Risoluzione Correzioni D1–D5 e Isolamento Assoluto File Modello
+
+- **Data / Ora:** 2026-09-24 18:15 (UTC+8)
+- **Stato:** **COMPLETATA, ISOLATA E VERIFICATA CON SUCCESSO — PRONTA PER LA CONSEGNA**.
+- **Ultimo Commit di Codice:** `d8ddd86` (fix D4).
+- **Patch Cumulativa FASE 5i-bis:** `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5i-bis.patch` (`git diff 66d9bf2 d8ddd86`).
+- **Rapporto di Consegna:** `IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5i-bis-rapporto.md`.
+
+### Punti Risolti (D1–D5):
+1. **D1 (Deadlock Ramo Non Proprietario)**: Rimossa la ritenzione del lock mutex durante il polling di attesa e risolte le doppie acquisizioni in `start_internal_with_token_and_binary`. Aggiunti unit test `test_fase5i_bis_d1_stop_during_wait_unblocks_waiter_and_status_responds` e `test_fase5i_bis_d1_owner_panic_resets_guard_and_waiter_unblocks`. Commit: `8de998b`.
+2. **D2 (Rilascio Mutex in `get_binary_path` e Funzione Condivisa `log_panel_open_status`)**: Lock rilasciato prima di invocare `get_process_exe_path(pid)`. Creata la funzione pubblica di libreria `log_panel_open_status` richiamata sia dal comando Tauri in `main.rs` che dal test N3 in `llama.rs`. Unit test `test_fase5i_bis_d2_get_binary_path_releases_mutex_before_process_resolution` eseguito con successo in 0.00s. Commit: `b4ab068`.
+3. **D3 (Isolamento Assoluto File Modello e Registri)**:
+   - Identificata causa delle 21 scritture: troncamento a 0 byte dovuto a `fs::File::create` in `llama.rs:1818` su `llama-server.log` reale e avvio del vero `llama-server.exe` dal test C06 (`trigger_background_start` a riga 1351) e dai test fase 5f/5g.
+   - Implementato isolamento di default in `get_models_dir()` in `#[cfg(test)]` su directory temporanea sicura (`limen_test_models_isolated_default`), con supporto variabile d'ambiente `LIMEN_MODELS_DIR`.
+   - Introdotto campo `test_binary` in `LlamaServerState` e disabilitato l'avvio del vero llama-server in background nei test unitari (`trigger_background_start_with_binary`).
+   - Rafforzato test N5 (`test_fase5i_n5_20_existing_logs_remains_20_after_startup`): esegue un vero avvio con server mock e 20 log preesistenti, verificando che dopo la rotazione rimangano esattamente 20 log nella cartella.
+   - Irrobustito test C06 (`test_fase5i_n1_adopted_service_dies_next_query_fallbacks_and_restarts`): punto 3 isolato con mock server, punto 4 con asserzione completa sul valore di ritorno di `get_or_adopt_or_start_service_with_timeout`.
+   - Snapshot prima vs dopo (`fase5i-bis-cartella-modello-prima.txt` e `fase5i-bis-cartella-modello-dopo.txt`): **100% IDENTICI BYTE PER BYTE**. Nessun file modificato in `C:\Users\user\LIMEN Vault\models` né in `C:\Users\user\.limen-vault\local_model_timing.log`. Commit: `3662f4a`.
+4. **D4 (Ripristino `pid_opt` in Stato In Avvio)**: Ripristinata l'estrazione del `service_pid` (processo figlio o adottato) in `get_or_adopt_or_start_service_with_timeout` (riga 1648), con documentazione della distinzione rispetto ad `app_pid`. Unit test `test_fase5i_bis_d4_starting_state_reports_service_pid_when_available`. Commit: `d8ddd86`.
+5. **D5 & N7 (Rapporto Pulito e Call-Tree `save_catalog`)**: Generato `fase-5i-bis-rapporto.md` privo di caratteri di controllo corrotti. Chiarito che `save_catalog` viene chiamato non solo all'apertura del vault, ma anche da scheduler periodico, importazione file, comando esplicito di elaborazione e run_internal. Documentate le 8 patch del repository.
+
+### Verifiche di Bisezione e Test Suite:
+- `fase5i-bis-check-d1.log` (commit `8de998b`, 0 errori)
+- `fase5i-bis-check-d2.log` (commit `b4ab068`, 0 errori)
+- `fase5i-bis-check-d3.log` (commit `3662f4a`, 0 errori)
+- `fase5i-bis-check-d4.log` (commit `d8ddd86`, 0 errori)
+- `fase5i-bis-test-parallelo.log`: **189 lib + 18 main = 207 passed, 0 failed**.
+- `fase5i-bis-test-seriale.log`: **189 lib + 18 main = 207 passed, 0 failed**.

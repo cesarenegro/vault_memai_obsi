@@ -1,0 +1,651 @@
+diff --git a/apps/desktop/src-tauri/src/llama.rs b/apps/desktop/src-tauri/src/llama.rs
+index 8c7031e..3cfd580 100644
+--- a/apps/desktop/src-tauri/src/llama.rs
++++ b/apps/desktop/src-tauri/src/llama.rs
+@@ -49,12 +49,15 @@ struct RunningState {
+     owned_pid: Option<u32>,
+     model_path: PathBuf,
+     binary_path: Option<PathBuf>,
++    test_binary: Option<PathBuf>,
+     last_error: Option<String>,
+     crash_count: u32,
+     auto_start_failed: bool,
+     auto_start_failure_reason: Option<String>,
+     starting: bool,
+     start_owner: Option<u64>,
++    pub non_owner_wait_count: u32,
++    pub spawn_count: u32,
+ }
+ 
+ #[derive(Clone, Default)]
+@@ -149,6 +152,28 @@ pub fn log_local_model_timing(event: &str, elapsed_ms: u64, details: &str) {
+     log_local_model_timing_meta(event, elapsed_ms, None, None, None, details);
+ }
+ 
++pub fn log_panel_open_status(
++    llama_state: &LlamaServerState,
++    elapsed_ms: u64,
++    rep: &LocalModelReport,
++) {
++    let s_rep = llama_state.status();
++    let (srv_bin, srv_pid, srv_port) = if s_rep.running || s_rep.healthy {
++        let bin = llama_state.get_binary_path();
++        (bin, s_rep.pid, if s_rep.port > 0 { Some(s_rep.port) } else { None })
++    } else {
++        (None, None, None)
++    };
++    log_local_model_timing_meta(
++        "PANEL_OPEN_STATUS",
++        elapsed_ms,
++        srv_bin.as_deref(),
++        srv_pid,
++        srv_port,
++        &format!("installed={}, sha256_ok={}", rep.installed, rep.sha256_ok),
++    );
++}
++
+ pub fn rotate_llama_server_logs(logs_dir: &Path, max_files: usize) {
+     if let Ok(entries) = fs::read_dir(logs_dir) {
+         let mut files: Vec<PathBuf> = entries
+@@ -175,18 +200,34 @@ pub fn rotate_llama_server_logs(logs_dir: &Path, max_files: usize) {
+ }
+ 
+ pub fn get_models_dir() -> Result<PathBuf, String> {
+-    let base = std::env::var("HOME")
+-        .or_else(|_| std::env::var("USERPROFILE"))
+-        .or_else(|_| std::env::var("APPDATA"))
+-        .map_err(|e| e.to_string())?;
+-    #[cfg(target_os = "macos")]
+-    let dir = Path::new(&base).join("Library/Application Support/LIMEN Vault/models");
+-    #[cfg(not(target_os = "macos"))]
+-    let dir = Path::new(&base).join("LIMEN Vault/models");
+-    if !dir.exists() {
+-        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+-    }
+-    Ok(dir)
++    if let Ok(override_dir) = std::env::var("LIMEN_MODELS_DIR") {
++        if !override_dir.trim().is_empty() {
++            let p = PathBuf::from(override_dir);
++            let _ = fs::create_dir_all(&p);
++            return Ok(p);
++        }
++    }
++    #[cfg(test)]
++    {
++        let dir = std::env::temp_dir().join("limen_test_models_isolated_default");
++        let _ = fs::create_dir_all(&dir);
++        return Ok(dir);
++    }
++    #[allow(unreachable_code)]
++    {
++        let base = std::env::var("HOME")
++            .or_else(|_| std::env::var("USERPROFILE"))
++            .or_else(|_| std::env::var("APPDATA"))
++            .map_err(|e| e.to_string())?;
++        #[cfg(target_os = "macos")]
++        let dir = Path::new(&base).join("Library/Application Support/LIMEN Vault/models");
++        #[cfg(not(target_os = "macos"))]
++        let dir = Path::new(&base).join("LIMEN Vault/models");
++        if !dir.exists() {
++            fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
++        }
++        Ok(dir)
++    }
+ }
+ 
+ pub fn get_target_model_path() -> Result<PathBuf, String> {
+@@ -1267,12 +1308,25 @@ impl LlamaServerState {
+         s.last_error = None;
+     }
+ 
++    pub fn non_owner_wait_count(&self) -> u32 {
++        self.0.lock().unwrap_or_else(|e| e.into_inner()).non_owner_wait_count
++    }
++
++    pub fn spawn_count(&self) -> u32 {
++        self.0.lock().unwrap_or_else(|e| e.into_inner()).spawn_count
++    }
++
+     pub fn get_binary_path(&self) -> Option<PathBuf> {
+-        let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+-        if s.binary_path.is_some() {
+-            return s.binary_path.clone();
++        let (cached, pid_opt) = {
++            let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
++            let cached = s.binary_path.clone();
++            let pid_opt = s.child.as_ref().map(|c| c.id()).or(s.adopted_pid);
++            (cached, pid_opt)
++        };
++        if cached.is_some() {
++            return cached;
+         }
+-        if let Some(pid) = s.child.as_ref().map(|c| c.id()).or(s.adopted_pid) {
++        if let Some(pid) = pid_opt {
+             return get_process_exe_path(pid);
+         }
+         None
+@@ -1311,8 +1365,18 @@ impl LlamaServerState {
+         }
+     }
+ 
++    pub fn set_test_binary(&self, bin: PathBuf) {
++        let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
++        s.test_binary = Some(bin);
++    }
++
++    pub fn get_test_binary(&self) -> Option<PathBuf> {
++        let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
++        s.test_binary.clone()
++    }
++
+     pub fn trigger_background_start(&self) -> bool {
+-        self.trigger_background_start_with_binary(None)
++        self.trigger_background_start_with_binary(self.get_test_binary())
+     }
+ 
+     pub fn trigger_background_start_with_binary(&self, custom_binary: Option<PathBuf>) -> bool {
+@@ -1371,6 +1435,12 @@ impl LlamaServerState {
+ 
+             // 2. Altrimenti avvia il proprio servizio mantenendo l'attesa di /health a 25 s
+             // Passiamo il token di proprietà: start_internal riconosce che siamo noi i proprietari dell'avvio!
++            #[cfg(test)]
++            if custom_binary.is_none() && std::env::var("LIMEN_TEST_ALLOW_REAL_START").is_err() {
++                // In test, non avviare il vero llama-server con il modello reale a meno che non sia esplicitamente consentito
++                bg_guard.1 = None;
++                return;
++            }
+             bg_guard.1 = None;
+             let detected_bin = custom_binary.clone().or_else(detect_llama_server_binary);
+             match state.start_internal_with_token_and_binary(Duration::from_secs(25), Some(token), custom_binary.as_deref()) {
+@@ -1497,11 +1567,11 @@ impl LlamaServerState {
+ 
+         // 4. Se il servizio non è già in avvio, avvia in background (senza bloccare la sessione)
+         if !is_already_starting {
+-            let model_rep = local_model_status();
+-            if !model_rep.installed || !model_rep.sha256_ok {
++            let has_test_bin = self.get_test_binary().is_some();
++            if !has_test_bin && detect_llama_server_binary().is_none() {
+                 let mut guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                 guard.auto_start_failed = true;
+-                let err = "Modello locale bge-m3 non installato o non integro".to_string();
++                let err = "Binario llama-server non trovato".to_string();
+                 guard.auto_start_failure_reason = Some(err.clone());
+                 return (
+                     None,
+@@ -1511,20 +1581,39 @@ impl LlamaServerState {
+                     Some(format!("{}: ripiego sulla ricerca per parole.", err)),
+                 );
+             }
+-            if detect_llama_server_binary().is_none() {
++
++            #[cfg(test)]
++            if !has_test_bin {
++                // In modalità test senza binario mock esplicito, simula il passaggio in stato "in avvio"
++                // senza accedere ai file reali del modello né avviare il vero llama-server
+                 let mut guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+-                guard.auto_start_failed = true;
+-                let err = "Binario llama-server non trovato".to_string();
+-                guard.auto_start_failure_reason = Some(err.clone());
++                guard.starting = true;
+                 return (
+                     None,
+                     None,
+                     false,
+-                    "fallito".to_string(),
+-                    Some(format!("{}: ripiego sulla ricerca per parole.", err)),
++                    "in avvio".to_string(),
++                    Some("Servizio locale in avvio: ripiego temporaneo sulla ricerca per parole per questa domanda.".to_string()),
+                 );
+             }
+ 
++            if !has_test_bin {
++                let model_rep = local_model_status();
++                if !model_rep.installed || !model_rep.sha256_ok {
++                    let mut guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
++                    guard.auto_start_failed = true;
++                    let err = "Modello locale bge-m3 non installato o non integro".to_string();
++                    guard.auto_start_failure_reason = Some(err.clone());
++                    return (
++                        None,
++                        None,
++                        false,
++                        "fallito".to_string(),
++                        Some(format!("{}: ripiego sulla ricerca per parole.", err)),
++                    );
++                }
++            }
++
+             self.trigger_background_start();
+         }
+ 
+@@ -1555,9 +1644,17 @@ impl LlamaServerState {
+         // 6. Timeout di preparazione della domanda scaduto (Regola 2):
+         // NON chiude il servizio in avvio! L'avvio prosegue in background.
+         // Questa domanda ripiega sulla ricerca per parole con motivo visibile.
++        // Distinzione architetturale (D4): il PID qui estratto identifica il PROCESSO DI SERVIZIO
++        // (processo figlio locale o servizio esterno adottato), da non confondere con il PID dell'applicazione
++        // chiamante (app_pid). Restituire Some(pid) se noto consente a log_preview_timing_detailed
++        // di registrare service_pid corretto nel file di diagnostica anche durante la fase transitoria "in avvio".
++        let pid_opt = {
++            let guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
++            guard.child.as_ref().map(|c| c.id()).or(guard.owned_pid).or(guard.adopted_pid)
++        };
+         (
+             None,
+-            None,
++            pid_opt,
+             false,
+             "in avvio".to_string(),
+             Some("Servizio locale in avvio: ripiego temporaneo sulla ricerca per parole per questa domanda.".to_string()),
+@@ -1608,6 +1705,7 @@ impl LlamaServerState {
+                     caller_token.unwrap()
+                 } else {
+                     // Un altro thread possiede l'avvio: attendiamo il suo completamento
++                    s.non_owner_wait_count += 1;
+                     drop(s);
+                     let deadline = t_start + timeout;
+                     while Instant::now() < deadline {
+@@ -1629,15 +1727,21 @@ impl LlamaServerState {
+                             break;
+                         }
+                     }
+-                    let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+-                    if s.starting {
++                    let (is_still_starting, port_to_check) = {
++                        let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
++                        (s.starting, s.port)
++                    };
++                    if is_still_starting {
+                         return Err(format!("Timeout attesa avvio del servizio in corso ({:.1}s).", timeout.as_secs_f32()));
+                     }
+-                    if s.port > 0 && check_health(s.port) {
++                    if port_to_check > 0 && check_health(port_to_check) {
+                         return Ok(self.status());
+                     }
+-                    let tok = next_start_token();
+                     let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
++                    if s.starting {
++                        return Err(format!("Timeout attesa avvio del servizio in corso ({:.1}s).", timeout.as_secs_f32()));
++                    }
++                    let tok = next_start_token();
+                     s.starting = true;
+                     s.start_owner = Some(tok);
+                     tok
+@@ -1652,20 +1756,7 @@ impl LlamaServerState {
+ 
+         let mut starting_guard = StartingGuard(self.clone(), Some(active_token));
+ 
+-        // 1. Verify model is installed
+-        let model_rep = local_model_status();
+-        if !model_rep.installed || !model_rep.sha256_ok {
+-            let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+-            s.starting = false;
+-            s.start_owner = None;
+-            s.auto_start_failed = true;
+-            let err = "Modello locale bge-m3-Q8_0.gguf non installato o non integro. Esegui il download dalle impostazioni.".to_string();
+-            s.auto_start_failure_reason = Some(err.clone());
+-            return Err(err);
+-        }
+-        let model_path = PathBuf::from(model_rep.path);
+-
+-        // 2. Check if already healthy (verifica di rete eseguita FUORI dal mutex)
++        // 1. Check if already healthy (verifica di rete eseguita FUORI dal mutex)
+         let already_port = {
+             let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+             s.port
+@@ -1679,6 +1770,23 @@ impl LlamaServerState {
+             return Ok(self.status());
+         }
+ 
++        // 2. Verify model is installed
++        let model_path = if custom_binary.is_some() {
++            get_models_dir().unwrap_or_else(|_| std::env::temp_dir()).join("mock_model.gguf")
++        } else {
++            let model_rep = local_model_status();
++            if !model_rep.installed || !model_rep.sha256_ok {
++                let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
++                s.starting = false;
++                s.start_owner = None;
++                s.auto_start_failed = true;
++                let err = "Modello locale bge-m3-Q8_0.gguf non installato o non integro. Esegui il download dalle impostazioni.".to_string();
++                s.auto_start_failure_reason = Some(err.clone());
++                return Err(err);
++            }
++            PathBuf::from(model_rep.path)
++        };
++
+         // 2b. Un server orfano di un'istanza precedente (app uccisa) va terminato prima di avviarne un altro
+         let _ = reap_orphan_server();
+ 
+@@ -1798,6 +1906,7 @@ impl LlamaServerState {
+             s.binary_path = Some(binary.clone());
+             s.starting = true;
+             s.start_owner = Some(active_token);
++            s.spawn_count += 1;
+         }
+ 
+         let port = free_port;
+@@ -2876,8 +2985,10 @@ mod tests {
+ 
+     #[test]
+     fn test_fase5i_n5_20_existing_logs_remains_20_after_startup() {
++        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+         let tmp = tempfile::tempdir().unwrap();
+-        let logs_dir = tmp.path().join("logs");
++        let models_dir = tmp.path().join("models");
++        let logs_dir = models_dir.join("logs");
+         fs::create_dir_all(&logs_dir).unwrap();
+ 
+         // 1. Crea esattamente 20 file di log simulati preesistenti
+@@ -2889,12 +3000,21 @@ mod tests {
+         let initial_count = fs::read_dir(&logs_dir).unwrap().filter_map(|e| e.ok()).count();
+         assert_eq!(initial_count, 20, "Devono esserci esattamente 20 file iniziali");
+ 
+-        // 2. Simula la rotazione prima dell'avvio e la creazione del nuovo file di log
+-        rotate_llama_server_logs(&logs_dir, 19);
+-        let new_run_file = logs_dir.join("llama-server_20260924T210000Z_99999.log");
+-        fs::write(&new_run_file, b"new run log").unwrap();
++        // 2. Imposta l'isolamento della cartella modelli verso la cartella temporanea
++        std::env::set_var("LIMEN_MODELS_DIR", &models_dir);
++        let mock_exe = compile_test_mock_server(tmp.path());
++
++        // 3. Esegui un vero avvio con il server mock
++        let state = LlamaServerState::default();
++        let res = state.start_with_custom_binary(&mock_exe, Duration::from_millis(1500));
++        std::env::remove_var("LIMEN_MODELS_DIR");
++
++        assert!(res.is_ok(), "L'avvio con server mock deve avere successo");
+ 
+-        // 3. Verifica che il conteggio finale sia ESATTAMENTE 20 (e non 21)
++        // Attendi brevemente la scrittura del file di log per-avvio
++        std::thread::sleep(Duration::from_millis(100));
++
++        // 4. Verifica che il conteggio finale sia ESATTAMENTE 20 (e non 21)
+         let final_files: Vec<_> = fs::read_dir(&logs_dir)
+             .unwrap()
+             .filter_map(|e| e.ok())
+@@ -2903,15 +3023,15 @@ mod tests {
+         assert_eq!(
+             final_files.len(),
+             20,
+-            "Dopo l'avvio con 20 file preesistenti devono rimanere esattamente 20 file, ottenuti {}: {:?}",
++            "Dopo l'avvio reale con 20 file preesistenti devono rimanere esattamente 20 file, ottenuti {}: {:?}",
+             final_files.len(),
+             final_files
+         );
+ 
+         // Il file più vecchio (01) deve essere stato rimosso per fare spazio al nuovo
+-        assert!(!logs_dir.join("llama-server_20260924T010000Z_10001.log").exists());
+-        // Il nuovo file (21) deve essere presente
+-        assert!(logs_dir.join("llama-server_20260924T210000Z_99999.log").exists());
++        assert!(!logs_dir.join("llama-server_20260924T010000Z_10001.log").exists(), "Il file più vecchio deve essere rimosso dalla rotazione");
++
++        let _ = state.stop();
+     }
+ 
+     #[test]
+@@ -3169,7 +3289,14 @@ mod tests {
+         assert_eq!(rep_manual.port, rep_final.port, "Deve essere stata usata la stessa porta senza secondo processo");
+         assert_eq!(rep_manual.pid, rep_final.pid, "Deve essere presente lo stesso PID senza processi duplicati");
+ 
++        // Dimostrazione passaggio dal ramo non proprietario e processo unico
++        assert_eq!(state.non_owner_wait_count(), 1, "Il chiamante deve passare dal ramo non-proprietario");
++        assert_eq!(state.spawn_count(), 1, "Deve essere eseguito esattamente uno spawn di processo");
++        let pid = rep_final.pid.expect("PID presente");
++        assert!(is_process_alive(pid), "Il processo mock deve essere vivo al termine dell'avvio");
++
+         let _ = state.stop();
++        assert!(!is_process_alive(pid), "Il processo mock deve essere terminato dopo stop()");
+     }
+ 
+     #[test]
+@@ -3200,6 +3327,8 @@ mod tests {
+         });
+ 
+         let state = LlamaServerState::default();
++        // Disabilita avvio del vero modello configurando il mock server come binario di test
++        state.set_test_binary(mock_exe.clone());
+         state.adopt_service(port1, Some(11111));
+         assert!(state.status().healthy, "Il servizio adottato deve essere sano inizialmente");
+ 
+@@ -3209,16 +3338,15 @@ mod tests {
+         std::thread::sleep(Duration::from_millis(50));
+ 
+         // 3. La domanda successiva rileva che il servizio è morto e ripiega senza blocco
++        // Avvia automaticamente il mock server in background senza chiamare il vero modello
+         let (_port_q1, _pid_q1, is_ready_q1, status_q1, reason_q1) =
+             state.get_or_adopt_or_start_service_with_timeout(Duration::from_millis(50));
+         assert!(!is_ready_q1, "La domanda deve ripiegare perché il servizio adottato è morto");
+         assert_eq!(status_q1, "in avvio", "Lo stato deve essere passato in avvio");
+         assert!(reason_q1.is_some(), "Deve esserci un motivo visibile di ripiego");
+ 
+-        // 4. Nuovo avvio automatico del servizio proprio tramite trigger_background_start_with_binary
++        // 4. Attendi che il mock avviato in background al punto 3 diventi sano
+         std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
+-        state.trigger_background_start_with_binary(Some(mock_exe));
+-
+         let t0 = Instant::now();
+         let mut recovered = false;
+         while t0.elapsed() < Duration::from_secs(10) {
+@@ -3230,12 +3358,14 @@ mod tests {
+             std::thread::sleep(Duration::from_millis(100));
+         }
+ 
+-        assert!(recovered, "Un nuovo avvio automatico deve riuscire dopo la chiusura del servizio adottato");
+-        let (port_q2, _pid_q2, is_ready_q2, status_q2, _reason_q2) = state.get_or_adopt_or_start_service();
++        assert!(recovered, "Un nuovo avvio automatico del mock deve riuscire dopo la chiusura del servizio adottato");
++        let (port_q2, pid_q2, is_ready_q2, status_q2, reason_q2) = state.get_or_adopt_or_start_service_with_timeout(Duration::from_secs(5));
+         std::env::remove_var("LIMEN_TEST_DISABLE_ADOPTION");
+         assert!(is_ready_q2, "La domanda successiva al recupero deve trovare il servizio pronto");
+         assert_eq!(status_q2, "pronto");
+         assert!(port_q2.is_some());
++        assert!(pid_q2.is_some());
++        assert!(reason_q2.is_none());
+ 
+         let _ = state.stop();
+     }
+@@ -3291,21 +3421,14 @@ mod tests {
+             bin_str
+         );
+ 
+-        // 2. Simula log di PANEL_OPEN_STATUS con il servizio adottato attivo
+-        let s_rep = state.status();
+-        let (srv_bin, srv_pid, srv_port) = if s_rep.running || s_rep.healthy {
+-            (state.get_binary_path(), s_rep.pid, if s_rep.port > 0 { Some(s_rep.port) } else { None })
+-        } else {
+-            (None, None, None)
++        // 2. Simula log di PANEL_OPEN_STATUS con il servizio adottato attivo usando log_panel_open_status
++        let dummy_rep = LocalModelReport {
++            installed: true,
++            sha256_ok: true,
++            path: other_dir.path().join("model.gguf").to_string_lossy().to_string(),
++            bytes: 12345,
+         };
+-        log_local_model_timing_meta(
+-            "PANEL_OPEN_STATUS",
+-            123,
+-            srv_bin.as_deref(),
+-            srv_pid,
+-            srv_port,
+-            "installed=true, sha256_ok=true",
+-        );
++        log_panel_open_status(&state, 123, &dummy_rep);
+ 
+         let content = fs::read_to_string(&log_path).expect("Lettura local_model_timing.log");
+ 
+@@ -3363,6 +3486,147 @@ mod tests {
+         stop_flag.store(true, Ordering::SeqCst);
+         let _ = server_thread.join();
+     }
+-}
+ 
++    #[test]
++    fn test_fase5i_bis_d1_stop_during_wait_unblocks_waiter_and_status_responds() {
++        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
++        std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
++        let temp_dir = tempfile::tempdir().unwrap();
++        let mock_exe = compile_test_mock_server(temp_dir.path());
++
++        let state = LlamaServerState::default();
++        let tok1 = next_start_token();
++        {
++            let mut s = state.0.lock().unwrap();
++            s.starting = true;
++            s.start_owner = Some(tok1);
++        }
++
++        let (tx, rx) = std::sync::mpsc::channel();
++        let state_clone = state.clone();
++        let mock_exe_clone = mock_exe.clone();
++        std::thread::spawn(move || {
++            let res = state_clone.start_with_custom_binary(&mock_exe_clone, Duration::from_millis(600));
++            let _ = tx.send(res);
++        });
++
++        std::thread::sleep(Duration::from_millis(150));
++        assert!(state.non_owner_wait_count() >= 1, "Il chiamante deve entrare nel ramo non-proprietario");
++
++        let _ = state.stop();
++
++        let wait_res = rx.recv_timeout(Duration::from_secs(3));
++        std::env::remove_var("LIMEN_TEST_DISABLE_ADOPTION");
++        assert!(wait_res.is_ok(), "Il chiamante in attesa deve sbloccarsi tempestivamente dopo stop()");
++
++        let (tx_status, rx_status) = std::sync::mpsc::channel();
++        let state_status = state.clone();
++        std::thread::spawn(move || {
++            let st = state_status.status();
++            let _ = tx_status.send(st);
++        });
++        let status_res = rx_status.recv_timeout(Duration::from_secs(1));
++        assert!(status_res.is_ok(), "status() deve rispondere immediatamente senza blocco mutex");
++        let _ = state.stop();
++    }
++
++    #[test]
++    fn test_fase5i_bis_d1_owner_panic_resets_guard_and_waiter_unblocks() {
++        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
++        std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
++        let temp_dir = tempfile::tempdir().unwrap();
++        let mock_exe = compile_test_mock_server(temp_dir.path());
++
++        let state = LlamaServerState::default();
++        let (tx_panic, rx_panic) = std::sync::mpsc::channel();
++        let state_owner = state.clone();
++
++        std::thread::spawn(move || {
++            let tok = next_start_token();
++            {
++                let mut s = state_owner.0.lock().unwrap();
++                s.starting = true;
++                s.start_owner = Some(tok);
++            }
++            let _guard = StartingGuard(state_owner.clone(), Some(tok));
++            let _ = tx_panic.send(());
++            std::thread::sleep(Duration::from_millis(100));
++            panic!("Simulated owner panic during startup");
++        });
++
++        rx_panic.recv_timeout(Duration::from_secs(2)).expect("Owner thread init");
++
++        let (tx, rx) = std::sync::mpsc::channel();
++        let state_clone = state.clone();
++        let mock_exe_clone = mock_exe.clone();
++        std::thread::spawn(move || {
++            let res = state_clone.start_with_custom_binary(&mock_exe_clone, Duration::from_millis(600));
++            let _ = tx.send(res);
++        });
++
++        let wait_res = rx.recv_timeout(Duration::from_secs(3));
++        std::env::remove_var("LIMEN_TEST_DISABLE_ADOPTION");
++        assert!(wait_res.is_ok(), "Il chiamante in attesa deve sbloccarsi tempestivamente dopo il panic del proprietario");
++
++        let (tx_status, rx_status) = std::sync::mpsc::channel();
++        let state_status = state.clone();
++        std::thread::spawn(move || {
++            let st = state_status.status();
++            let _ = tx_status.send(st);
++        });
++        let status_res = rx_status.recv_timeout(Duration::from_secs(1));
++        assert!(status_res.is_ok(), "status() deve rispondere immediatamente dopo il panic del proprietario");
++        let _ = state.stop();
++    }
++
++    #[test]
++    fn test_fase5i_bis_d2_get_binary_path_releases_mutex_before_process_resolution() {
++        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
++        let state = LlamaServerState::default();
++        let my_pid = std::process::id();
++        {
++            let mut s = state.0.lock().unwrap();
++            s.adopted_pid = Some(my_pid);
++            s.binary_path = None; // assicura che non sia in cache per forzare get_process_exe_path
++            s.port = 0; // evita check_health di rete per misurare solo la latenza mutex
++        }
++
++        let state_clone = state.clone();
++        let handle = std::thread::spawn(move || {
++            state_clone.get_binary_path()
++        });
++
++        let t0 = Instant::now();
++        let mut status_count = 0;
++        for _ in 0..10 {
++            let st = state.status();
++            assert_eq!(st.pid, Some(my_pid));
++            status_count += 1;
++        }
++        let elapsed = t0.elapsed();
++        let bin_res = handle.join().expect("Background thread succeeded");
++        assert!(bin_res.is_some(), "Binary path must be found for current process");
++        assert_eq!(status_count, 10);
++        assert!(elapsed < Duration::from_millis(500), "status() non deve essere bloccato da get_binary_path: {:?}", elapsed);
++    }
++    #[test]
++    fn test_fase5i_bis_d4_starting_state_reports_service_pid_when_available() {
++        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
++        let state = LlamaServerState::default();
++        let expected_service_pid = 54321;
++        {
++            let mut s = state.0.lock().unwrap();
++            s.starting = true;
++            s.owned_pid = Some(expected_service_pid);
++            s.port = 0; // non pronto
++        }
+ 
++        let (port, pid, is_ready, status, reason) =
++            state.get_or_adopt_or_start_service_with_timeout(Duration::from_millis(50));
++        assert!(!is_ready);
++        assert_eq!(status, "in avvio");
++        assert_eq!(port, None);
++        assert_eq!(pid, Some(expected_service_pid), "Il PID del processo di servizio deve essere riportato anche in stato in avvio");
++        assert!(reason.is_some());
++    }
++}
+diff --git a/apps/desktop/src-tauri/src/main.rs b/apps/desktop/src-tauri/src/main.rs
+index d984e09..60cc69c 100644
+--- a/apps/desktop/src-tauri/src/main.rs
++++ b/apps/desktop/src-tauri/src/main.rs
+@@ -828,21 +828,7 @@ async fn local_model_status(
+         .await
+         .map_err(|e| e.to_string())?;
+     let elapsed = t0.elapsed().as_millis() as u64;
+-    let s_rep = llama_state.status();
+-    let (srv_bin, srv_pid, srv_port) = if s_rep.running || s_rep.healthy {
+-        let bin = llama_state.get_binary_path();
+-        (bin, s_rep.pid, if s_rep.port > 0 { Some(s_rep.port) } else { None })
+-    } else {
+-        (None, None, None)
+-    };
+-    limen_vault::llama::log_local_model_timing_meta(
+-        "PANEL_OPEN_STATUS",
+-        elapsed,
+-        srv_bin.as_deref(),
+-        srv_pid,
+-        srv_port,
+-        &format!("installed={}, sha256_ok={}", rep.installed, rep.sha256_ok),
+-    );
++    limen_vault::llama::log_panel_open_status(&llama_state, elapsed, &rep);
+     Ok(rep)
+ }
+ 
