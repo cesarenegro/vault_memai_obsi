@@ -50,6 +50,8 @@ pub struct Preview {
 #[serde(rename_all = "camelCase")]
 pub struct PreviewTimings {
     pub t_preview_total_ms: u64,
+    #[serde(default)]
+    pub t_service_prep_ms: u64,
     pub t_index_cache_ms: u64,
     pub t_embed_ms: u64,
     pub t_search_ms: u64,
@@ -267,6 +269,8 @@ pub fn is_local_provider_configured() -> bool {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PreviewTimingBreakdown {
     pub total_ms: u64,
+    #[serde(default)]
+    pub service_prep_ms: u64,
     pub index_cache_ms: u64,
     pub embed_ms: u64,
     pub search_ms: u64,
@@ -538,6 +542,7 @@ pub fn log_preview_timing_detailed(
          Domanda: \"{}\"\n\
          Porta locale: {} | PID: {} | Stato servizio: {} | Ricerca semantica: {} | Esito: {}\n\
          Fasi preparazione (totale {} ms):\n\
+           ├─ Preparazione/attesa servizio (t_service_prep_ms): {} ms\n\
            ├─ Indice & cache (t_index_cache_ms): {} ms\n\
            ├─ Vettore semantico domanda (t_embed_ms): {} ms\n\
            ├─ Ricerca parole (t_search_words_ms): {} ms\n\
@@ -557,6 +562,7 @@ pub fn log_preview_timing_detailed(
         if semantic_used { "UTILIZZATA" } else { "NON UTILIZZATA" },
         esito_str,
         timings.t_preview_total_ms,
+        timings.t_service_prep_ms,
         timings.t_index_cache_ms,
         timings.t_embed_ms,
         timings.t_search_words_ms,
@@ -611,6 +617,7 @@ pub fn log_ask_timing(
         t_backend_total_ms: t_total_ms,
         preview: PreviewTimingBreakdown {
             total_ms: t_index_cache_ms + t_search_ms + t_embed_ms,
+            service_prep_ms: 0,
             index_cache_ms: t_index_cache_ms,
             embed_ms: t_embed_ms,
             search_ms: t_search_ms,
@@ -698,6 +705,7 @@ pub fn log_keychain_error(p: &Pending, error_msg: &str, ui_elapsed_ms: Option<u6
         t_backend_total_ms: p.preview_timings.t_preview_total_ms + t_handoff_ms,
         preview: PreviewTimingBreakdown {
             total_ms: p.preview_timings.t_preview_total_ms,
+            service_prep_ms: p.preview_timings.t_service_prep_ms,
             index_cache_ms: p.preview_timings.t_index_cache_ms,
             embed_ms: p.preview_timings.t_embed_ms,
             search_ms: p.preview_timings.t_search_ms,
@@ -1441,6 +1449,7 @@ pub async fn select_with_port_detailed(
 
     let preview_timings = PreviewTimings {
         t_preview_total_ms: t_prev_start.elapsed().as_millis() as u64,
+        t_service_prep_ms: 0,
         t_index_cache_ms: search_timings.t_index_cache_ms,
         t_embed_ms: search_timings.t_embed_ms,
         t_search_ms: search_timings.t_search_ms,
@@ -1457,11 +1466,11 @@ pub async fn select_with_port_detailed(
 
 impl AiState {
     pub async fn preview(&self, path: PathBuf, o: Options) -> Result<Preview, String> {
-        self.preview_with_service_info(path, o, None, None, false, None, None).await
+        self.preview_with_service_info(path, o, None, None, false, None, None, None, 0).await
     }
 
     pub async fn preview_with_port(&self, path: PathBuf, o: Options, active_port: Option<u16>) -> Result<Preview, String> {
-        self.preview_with_service_info(path, o, active_port, None, active_port.is_some(), None, None).await
+        self.preview_with_service_info(path, o, active_port, None, active_port.is_some(), None, None, None, 0).await
     }
 
     pub async fn preview_with_service_info(
@@ -1473,21 +1482,35 @@ impl AiState {
         initial_semantic_used: bool,
         service_status: Option<String>,
         initial_fallback_reason: Option<String>,
+        t_entry: Option<Instant>,
+        t_service_prep_ms: u64,
     ) -> Result<Preview, String> {
-        let (sources, timings, search_semantic_used, search_fallback_reason) =
+        let (sources, mut timings, search_semantic_used, search_fallback_reason) =
             select_with_port_detailed(&path, &o, active_port).await?;
+        if let Some(entry) = t_entry {
+            timings.t_preview_total_ms = entry.elapsed().as_millis() as u64;
+            timings.t_service_prep_ms = t_service_prep_ms;
+        }
         let bytes = serde_json::to_vec(&sources).map_err(|_| "Invalid sources")?.len();
         let ticket = random_token()?;
 
         let semantic_used = initial_semantic_used && search_semantic_used;
         let semantic_fallback_reason = if !semantic_used {
-            search_fallback_reason.or(initial_fallback_reason).or_else(|| {
-                if active_port.is_none() {
-                    Some("Servizio locale non attivo: ripiego sulla ricerca per parole".to_string())
-                } else {
-                    Some("Nessuna corrispondenza semantica o errore vettore: ripiego sulla ricerca per parole".to_string())
-                }
-            })
+            if let Some(ref init_reason) = initial_fallback_reason {
+                Some(init_reason.clone())
+            } else if service_status.as_deref() == Some("fallito") {
+                Some("Avvio automatico del servizio locale fallito: ripiego sulla ricerca per parole. Per riprovare, premi AVVIA SERVIZIO LOCALE.".to_string())
+            } else if service_status.as_deref() == Some("in avvio") {
+                Some("Servizio locale in avvio: ripiego temporaneo sulla ricerca per parole per questa domanda.".to_string())
+            } else {
+                search_fallback_reason.or_else(|| {
+                    if active_port.is_none() {
+                        Some("Servizio locale non attivo: ripiego sulla ricerca per parole".to_string())
+                    } else {
+                        Some("Nessuna corrispondenza semantica o errore vettore: ripiego sulla ricerca per parole".to_string())
+                    }
+                })
+            }
         } else {
             None
         };
@@ -2106,6 +2129,7 @@ pub async fn ask(
         t_backend_total_ms,
         preview: PreviewTimingBreakdown {
             total_ms: p.preview_timings.t_preview_total_ms,
+            service_prep_ms: p.preview_timings.t_service_prep_ms,
             index_cache_ms: p.preview_timings.t_index_cache_ms,
             embed_ms: p.preview_timings.t_embed_ms,
             search_ms: p.preview_timings.t_search_ms,
@@ -2583,6 +2607,7 @@ pub async fn ask_stream(
             t_backend_total_ms,
             preview: PreviewTimingBreakdown {
                 total_ms: p.preview_timings.t_preview_total_ms,
+                service_prep_ms: p.preview_timings.t_service_prep_ms,
                 index_cache_ms: p.preview_timings.t_index_cache_ms,
                 embed_ms: p.preview_timings.t_embed_ms,
                 search_ms: p.preview_timings.t_search_ms,
@@ -2977,6 +3002,7 @@ pub async fn ask_stream(
             t_backend_total_ms,
             preview: PreviewTimingBreakdown {
                 total_ms: p.preview_timings.t_preview_total_ms,
+                service_prep_ms: p.preview_timings.t_service_prep_ms,
                 index_cache_ms: p.preview_timings.t_index_cache_ms,
                 embed_ms: p.preview_timings.t_embed_ms,
                 search_ms: p.preview_timings.t_search_ms,
@@ -3067,6 +3093,7 @@ pub async fn ask_stream(
                 t_backend_total_ms,
                 preview: PreviewTimingBreakdown {
                     total_ms: p.preview_timings.t_preview_total_ms,
+                    service_prep_ms: p.preview_timings.t_service_prep_ms,
                     index_cache_ms: p.preview_timings.t_index_cache_ms,
                     embed_ms: p.preview_timings.t_embed_ms,
                     search_ms: p.preview_timings.t_search_ms,
@@ -3173,6 +3200,7 @@ pub async fn ask_stream(
         t_backend_total_ms,
         preview: PreviewTimingBreakdown {
             total_ms: p.preview_timings.t_preview_total_ms,
+            service_prep_ms: p.preview_timings.t_service_prep_ms,
             index_cache_ms: p.preview_timings.t_index_cache_ms,
             embed_ms: p.preview_timings.t_embed_ms,
             search_ms: p.preview_timings.t_search_ms,
@@ -4046,6 +4074,7 @@ mod tests {
           t_backend_total_ms: 4890,
           preview: PreviewTimingBreakdown {
               total_ms: 120,
+              service_prep_ms: 0,
               index_cache_ms: 15,
               embed_ms: 45,
               search_ms: 30,
@@ -4128,6 +4157,7 @@ mod tests {
 
       let timings = PreviewTimings {
           t_preview_total_ms: 100,
+          t_service_prep_ms: 0,
           t_index_cache_ms: 10,
           t_embed_ms: 20,
           t_search_ms: 30,
@@ -5254,6 +5284,98 @@ mod tests {
       let next_begin = state.begin("ticket-following");
       assert!(next_begin.is_ok(), "Subsequent request must succeed after ticket release");
       state.finish("ticket-following");
+  }
+
+  #[tokio::test]
+  async fn test_fase5h_preview_fallback_reason_preserves_service_failure_over_generic_port_missing() {
+      let state = AiState::default();
+      let tmp = fixture();
+      let options = Options {
+          prompt: "test query".to_string(),
+          model: "gpt-4o".to_string(),
+          include_drafts: false,
+          source_ids: vec![],
+          category: None,
+          client: None,
+          project: None,
+          tags: None,
+      };
+
+      // Scenario 1: service_status "fallito" con fallback_reason esplicito dal sottosistema llama
+      let preview = state.preview_with_service_info(
+          tmp.path().to_path_buf(),
+          options.clone(),
+          None, // port assente
+          None,
+          false,
+          Some("fallito".to_string()),
+          Some("Avvio automatico del servizio locale fallito (Timeout 25s): ripiego sulla ricerca per parole.".to_string()),
+          None,
+          0,
+      ).await.unwrap();
+
+      let reason = preview.semantic_fallback_reason.unwrap();
+      assert!(!reason.contains("porta assente"), "Non deve mostrare la generica 'porta assente'");
+      assert!(reason.contains("Avvio automatico del servizio locale fallito"), "Deve riportare il motivo reale: {}", reason);
+
+      // Scenario 2: service_status "in avvio" senza fallback_reason
+      let preview2 = state.preview_with_service_info(
+          tmp.path().to_path_buf(),
+          options.clone(),
+          None,
+          None,
+          false,
+          Some("in avvio".to_string()),
+          None,
+          None,
+          0,
+      ).await.unwrap();
+
+      let reason2 = preview2.semantic_fallback_reason.unwrap();
+      assert!(!reason2.contains("porta assente"));
+      assert!(reason2.contains("in avvio"), "Deve indicare che il servizio è in avvio: {}", reason2);
+  }
+
+  #[tokio::test]
+  async fn test_fase5h_preview_timing_measures_full_preparation_including_service_wait() {
+      let state = AiState::default();
+      let tmp = fixture();
+      let options = Options {
+          prompt: "test query".to_string(),
+          model: "gpt-4o".to_string(),
+          include_drafts: false,
+          source_ids: vec![],
+          category: None,
+          client: None,
+          project: None,
+          tags: None,
+      };
+
+      // Simula ingresso di ai_preview avvenuto 1200ms prima e attesa servizio di 1150ms
+      let t_entry = Instant::now() - Duration::from_millis(1200);
+      let simulated_service_prep_ms = 1150u64;
+
+      let preview = state.preview_with_service_info(
+          tmp.path().to_path_buf(),
+          options,
+          None,
+          None,
+          false,
+          Some("fallito".to_string()),
+          Some("Attesa servizio terminata".to_string()),
+          Some(t_entry),
+          simulated_service_prep_ms,
+      ).await.unwrap();
+
+      let pending = state.pending.lock().unwrap();
+      let pending_entry = pending.get(&preview.ticket).expect("pending entry must exist");
+      assert_eq!(pending_entry.preview_timings.t_service_prep_ms, simulated_service_prep_ms);
+      assert!(
+          pending_entry.preview_timings.t_preview_total_ms >= simulated_service_prep_ms,
+          "Il tempo totale di preparazione nel registro deve comprendere l'attesa del servizio (effettivo: {} ms, attesa servizio: {} ms)",
+          pending_entry.preview_timings.t_preview_total_ms,
+          simulated_service_prep_ms
+      );
   }
 }
 #[cfg(test)]

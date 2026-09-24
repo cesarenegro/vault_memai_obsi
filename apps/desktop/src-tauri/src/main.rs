@@ -513,6 +513,7 @@ async fn ai_preview(
     state: tauri::State<'_, std::sync::Arc<limen_vault::ai::AiState>>,
     llama_state: tauri::State<'_, limen_vault::llama::LlamaServerState>,
 ) -> Result<limen_vault::ai::Preview, String> {
+    let t_entry = std::time::Instant::now();
     let state = state.inner().clone();
     let llama = llama_state.inner().clone();
     let prep_timeout = limen_vault::llama::service_preparation_timeout();
@@ -541,6 +542,7 @@ async fn ai_preview(
             (None, None, false, "in avvio".to_string(), Some(reason))
         }
     };
+    let t_service_prep_ms = t_entry.elapsed().as_millis() as u64;
 
     state
         .preview_with_service_info(
@@ -551,6 +553,8 @@ async fn ai_preview(
             is_ready,
             Some(service_status),
             fallback_reason,
+            Some(t_entry),
+            t_service_prep_ms,
         )
         .await
 }
