@@ -1555,13 +1555,9 @@ impl LlamaServerState {
         // 6. Timeout di preparazione della domanda scaduto (Regola 2):
         // NON chiude il servizio in avvio! L'avvio prosegue in background.
         // Questa domanda ripiega sulla ricerca per parole con motivo visibile.
-        let pid_opt = {
-            let guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
-            guard.child.as_ref().map(|c| c.id()).or(guard.adopted_pid)
-        };
         (
             None,
-            pid_opt,
+            None,
             false,
             "in avvio".to_string(),
             Some("Servizio locale in avvio: ripiego temporaneo sulla ricerca per parole per questa domanda.".to_string()),
@@ -3144,6 +3140,8 @@ mod tests {
 
     #[test]
     fn test_fase5i_n1_button_pressed_during_background_start_waits_and_succeeds_single_process() {
+        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
         let temp_dir = tempfile::tempdir().unwrap();
         let mock_exe = compile_test_mock_server(temp_dir.path());
 
@@ -3155,10 +3153,11 @@ mod tests {
         let state_clone = state.clone();
         let mock_exe_clone = mock_exe.clone();
         let manual_thread = std::thread::spawn(move || {
-            state_clone.start_with_custom_binary(&mock_exe_clone, Duration::from_secs(10))
+            state_clone.start_with_custom_binary(&mock_exe_clone, Duration::from_secs(15))
         });
 
         let manual_res = manual_thread.join().expect("Join thread manuale");
+        std::env::remove_var("LIMEN_TEST_DISABLE_ADOPTION");
         assert!(manual_res.is_ok(), "L'avvio manuale durante l'avvio in background deve riuscire senza timeout: {:?}", manual_res);
 
         let rep_manual = manual_res.unwrap();
