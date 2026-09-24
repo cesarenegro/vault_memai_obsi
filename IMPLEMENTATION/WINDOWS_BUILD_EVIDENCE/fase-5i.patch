@@ -1,0 +1,1501 @@
+diff --git a/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5i-rapporto.md b/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5i-rapporto.md
+new file mode 100644
+index 0000000..e4003ea
+--- /dev/null
++++ b/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5i-rapporto.md
+@@ -0,0 +1,127 @@
++# Rapporto di Risoluzione Difetti FASE 5i (N1–N7)
++
++**Data:** 2026-09-24  
++**Branch:** `windows-build`  
++**Base Commit:** `6b04271`  
++
++---
++
++## 1. Rettifica Ufficiale Rapporto FASE 5h: Causa Evento 13:53:21
++
++Nel rapporto precedente della FASE 5h, il fallimento registrato alle 13:53:21 (`BACKGROUND_START_FAILED` dopo 26.361 ms) era stato erroneamente attribuito a un presunto "secondo avvio contemporaneo" che avrebbe conteso le risorse.
++
++**Rettifica e Causa Reale:**
++L'auditor indipendente Codex e l'analisi del codice hanno accertato che la spiegazione era errata.
++La causa reale era il **difetto bloccante N1**:
++All'apertura dell'applicazione, `trigger_background_start` impostava `s.starting = true` all'interno della mutex, e subito dopo avviava un thread in background che invocava `start_internal(Duration::from_secs(25))`.
++Nel commit `6b04271`, `start_internal` leggeva `s.starting == true` interpretandolo come un "altro avvio già in corso da parte di un processo o thread concorrente", e si metteva in attesa passiva che tale flag tornasse `false`.
++Essendo il thread stesso l'esecutore deputato all'avvio, si generava un **auto-deadlock**: il thread attendeva sé stesso fino allo scadere del timeout massimo (25 secondi), fallendo con `BACKGROUND_START_FAILED` senza aver mai generato alcun processo o aperto alcuna porta.
++
++---
++
++## 2. Risoluzione Dettagliata dei Punti N1–N6
++
++### N1 — Token di Proprietà dell'Avvio (Start Owner Token)
++- **Implementazione**:
++  - Aggiunto `start_owner: Option<u64>` a `RunningState` e un generatore atomico `START_TOKEN_GEN` (`next_start_token()`).
++  - `trigger_background_start_with_binary` assegna un token univoco all'avvio e lo passa al thread.
++  - In `start_internal_with_token_and_binary`, se `s.starting` è `true`, si verifica se il chiamante possiede lo stesso token (`caller_token == s.start_owner`):
++    - Se è il **proprietario**, procede immediatamente con la verifica del modello, l'allocazione della porta e lo spawn del processo.
++    - Se è un **chiamante concorrente** (es. click manuale dell'utente su "AVVIA SERVIZIO LOCALE" mentre l'avvio in background è in corso), attende il completamento dell'avvio già in corso e adotta il risultato senza creare un processo duplicato.
++  - La guardia RAII `StartingGuard` garantisce che il flag `starting` e `start_owner` vengano resettati anche a fronte di errori o panic.
++  - Se un servizio esterno adottato termina inaspettatamente, la domanda successiva azzera la registrazione stantia e un nuovo avvio automatico del servizio proprio ha successo (C06).
++- **Test Unitari Obbligatori**:
++  - `test_fase5i_n1_app_startup_auto_starts_single_process`: avvio automatico all'apertura senza servizi attivi produce un solo processo sano.
++  - `test_fase5i_n1_button_pressed_during_background_start_waits_and_succeeds_single_process`: pulsante premuto durante l'avvio in background attende e ha successo con un unico processo.
++  - `test_fase5i_n1_adopted_service_dies_next_query_fallbacks_and_restarts`: se il servizio esterno muore, la query ripiega e un nuovo avvio automatico ha successo.
++
++### N2 — Esposizione dello Stato "In Avvio" in UI e Disattivazione Pulsante
++- **Backend**:
++  - `LocalServerReport` include `pub starting: bool` (`#[serde(default)]`).
++  - `LlamaServerState::status()` legge `s.starting` ed espone `starting: is_starting`.
++  - Unit test `test_fase5i_n2_status_exposes_starting_state` verifica l'esposizione fedele del flag.
++- **Frontend**:
++  - `ai-ipc.ts`: aggiornata l'interfaccia `LocalServerReport` con `starting?: boolean;`.
++  - `SemanticEngineSettings.tsx`:
++    - Calcolato `const isStarting = startingServer || Boolean(serverReport?.starting);`.
++    - Badge di stato: mostra `IN AVVIO…` con sfondo ambrato `#fef3c7` e testo `#92400e`.
++    - Pulsante `AVVIA SERVIZIO LOCALE`: disabilitato (`disabled={... || isStarting}`) con testo `AVVIO IN CORSO…`.
++    - Polling automatico: aggiunto `useEffect` che effettua `refreshAll()` ogni 1.000 ms finché `serverReport?.starting` è `true`, aggiornando la vista non appena il servizio diventa pronto.
++
++### N3 — Registrazione Percorso Eseguibile Reale Adottato e PANEL_OPEN_STATUS
++- **Implementazione**:
++  - Risolta la causa in `log_local_model_timing_meta`: in precedenza, quando non era specificato un percorso binario esplicito, la funzione ripiegava su `detect_llama_server_binary()`, registrando erroneamente il percorso della propria installazione locale anche per processi adottati.
++  - Ora, se è presente un PID di servizio (adottato o proprio), il percorso viene ricavato direttamente dal processo reale tramite `get_process_exe_path(pid)`. Solo in assenza sia di PID che di porta viene utilizzato il rilevamento locale.
++  - `adopt_service` memorizza il percorso binario reale del processo adottato in `s.binary_path`.
++  - Aggiunto `LlamaServerState::get_binary_path(&self) -> Option<PathBuf>`.
++  - In `main.rs`, il comando `local_model_status` (invocato all'apertura del pannello impostazioni) interroga `llama_state.status()`, estraendo `pid`, `port` e `binary_path` e passandoli a `log_local_model_timing_meta("PANEL_OPEN_STATUS", ...)`.
++- **Test Unitario Obbligatorio**:
++  - `test_fase5i_n3_adopted_service_from_other_folder_logs_real_exe_and_panel_open_status`: compila ed esegue un processo in una cartella temporanea esterna differente (`external_llama_server.exe`), lo adotta e verifica che `local_model_timing.log` contenga per `PANEL_OPEN_STATUS` il percorso reale dell'eseguibile esterno, il PID e la porta corretti.
++
++### N4 — Rilascio del Guard Mutex prima della Chiamata a status()
++- **Implementazione**:
++  - In `start_internal_with_token_and_binary` (al controllo di servizio già attivo e sano `already_port > 0 && check_health(already_port)`), il mutex guard `s` viene rilasciato (tramite blocco `{ let mut s = ...; }`) prima di invocare `self.status()`.
++  - Essendo `std::sync::Mutex` non rientrante, il rilascio previene ogni possibile deadlock.
++- **Test Unitario Obbligatorio**:
++  - `test_fase5i_n4_start_when_already_healthy_does_not_deadlock_and_returns_status`: attraversa specificamente il ramo di servizio già sano su una porta attiva, verificando che `start_with_timeout` ritorni immediatamente senza deadlock.
++
++### N5 — Rispetto Rigoroso del Limite di 20 File di Log
++- **Implementazione**:
++  - In `start_internal_with_token_and_binary`, la rotazione `rotate_llama_server_logs(&logs_dir, 19)` viene eseguita prima di creare il nuovo file di log della sessione.
++  - Con 20 file preesistenti, la cartella viene ridotta a 19, e con la successiva creazione del file per-run si ottengono esattamente **20 file totali** (risolvendo il difetto per cui se ne ottenevano 21).
++- **Test Unitario Obbligatorio**:
++  - `test_fase5i_n5_20_existing_logs_remains_20_after_startup`: crea esattamente 20 file di log, simula la rotazione e la creazione del nuovo file, e asserisce che al termine siano presenti esattamente 20 file, con eliminazione del file più vecchio e presenza del file nuovo.
++
++### N6 — Fixture invalid_embeddings nel Repository e Compilazione Obbligatoria
++- **Implementazione**:
++  - Copiato il sorgente del fixture diagnostico direttamente nel repository:  
++    [`apps/desktop/src-tauri/tests/fixtures/invalid_embeddings.rs`](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/tests/fixtures/invalid_embeddings.rs).
++  - In `test_fase5h_codex_fixture_acceptance`:
++    - Rimosso qualunque percorso assoluto esterno al repository e rimosso il `return` silenzioso: se il sorgente manca o la compilazione fallisce, il test va in `panic!` e **FALLISCE tassativamente**.
++    - La compilazione avviene tramite `rustc` in una cartella temporanea isolata.
++    - Il binario risultante viene passato direttamente come parametro esplicito tramite `state.start_with_custom_binary(&fixture_exe, prep_timeout)` senza impostare alcuna variabile d'ambiente globale `LLAMA_SERVER_PATH`.
++    - Il test acquisisce inoltre `ENV_TEST_LOCK` a garanzia di completa serializzazione e isolamento.
++
++---
++
++## 3. Indagine N7: Tracciamento Riscrittura Catalogo del Vault
++
++### Evidenza Segnalata dal Collaudo
++Nel collaudo di Cesare del 24/09/2026, il file `E:\VAULT WIN TEST DEV\00_SYSTEM\VAULT_CATALOG.json` è risultato riscritto alle ore 15:42:59 UTC+8 senza operazioni manuali da parte dell'utente.
++
++### Tracciamento Catena Chiamate (File e Righe Esatte)
++La catena causale che ha provocato la riscrittura è la seguente:
++
++1. **Apertura del Vault (Frontend)**:
++   - File: [`apps/desktop/src/App.tsx`](file:///E:/Projects/vault_memai_obsi/apps/desktop/src/App.tsx), riga 461.
++   - Quando l'utente apre un vault esistente (`handleOpenExistingVault`), al termine dell'apertura viene invocata la funzione:
++     `await refreshCatalog(res.status.path, ticket);`
++2. **Richiesta di Sincronizzazione Catalogo (IPC)**:
++   - File: [`apps/desktop/src/App.tsx`](file:///E:/Projects/vault_memai_obsi/apps/desktop/src/App.tsx), riga 232.
++   - La funzione `refreshCatalog` invoca:
++     `const summary = await ipc.syncCatalog(target);`
++   - File: [`apps/desktop/src/vault-ipc.ts`](file:///E:/Projects/vault_memai_obsi/apps/desktop/src/vault-ipc.ts), riga 305:
++     `syncCatalog: (path: string) => run(async () => invoke<CatalogSummary>('catalog_sync', { vaultPath: path }))`
++3. **Comando Backend Tauri**:
++   - File: [`apps/desktop/src-tauri/src/main.rs`](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/main.rs), righe 634–640.
++   - Il comando `catalog_sync` esegue in un task bloccante:
++     `limen_vault::catalog::sync_catalog_from_vault(Path::new(&vault_path))?;`
++4. **Sincronizzazione e Scrittura Incondizionata su Disco**:
++   - File: [`apps/desktop/src-tauri/src/catalog.rs`](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/catalog.rs), riga 875.
++   - La funzione `sync_catalog_from_vault` esegue la scansione delle cartelle del vault e, **incondizionatamente** (anche quando nessun file in `20_RAW_SOURCES` è stato aggiunto o modificato), invoca:
++     `save_catalog(vault_path, &mut catalog)?;`
++5. **Scrittura Atomica del File**:
++   - File: [`apps/desktop/src-tauri/src/catalog.rs`](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/catalog.rs), righe 294–307.
++   - `save_catalog` incrementa la revisione (`catalog.catalog_revision += 1`), imposta `catalog.updated_at` al timestamp corrente e riscrive `00_SYSTEM/VAULT_CATALOG.json` tramite file temporaneo atomico `.catalog-<token>.tmp`.
++
++### Verifica sull'Impatto delle Domande (AI Ask / AI Preview)
++È stato condotto un audit sistematico su tutte le chiamate effettuate durante la formulazione di domande:
++- `ai_preview` ([main.rs:515](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/main.rs#L515) $\rightarrow$ [ai.rs:1476](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/ai.rs#L1476))
++- `ai_ask` / `ai_ask_stream` ([main.rs:562](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/main.rs#L562))
++- `select_lexical_sources` / `select_semantic_sources` ([search.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/search.rs) e [embeddings.rs](file:///E:/Projects/vault_memai_obsi/apps/desktop/src-tauri/src/embeddings.rs))
++
++**Esito Categorico**:
++Né `ai_preview` né `ai_ask` né `ai_ask_stream` toccano o riscrivono in alcun modo `00_SYSTEM/VAULT_CATALOG.json`. Tali funzioni accedono al catalogo esclusivamente in modalità di sola lettura tramite `load_catalog_arc` con cache in memoria.
++La riscrittura delle 15:42:59 è stata causata **esclusivamente dall'apertura del vault** e dalla chiamata automatica a `catalog_sync` eseguita da `App.tsx`.
++
++Come da vincolo ("Non modificare il comportamento prima di averlo documentato"), il comportamento è stato accuratamente documentato senza alterare il flusso di sincronizzazione del catalogo.
+diff --git a/SESSION_HANDOVER_WINDOWS_BUILD.md b/SESSION_HANDOVER_WINDOWS_BUILD.md
+index 0401e97..40c4e44 100644
+--- a/SESSION_HANDOVER_WINDOWS_BUILD.md
++++ b/SESSION_HANDOVER_WINDOWS_BUILD.md
+@@ -348,3 +348,32 @@ Conformemente all'analisi e alle correzioni vincolanti richieste:
+ 
+ - **Comando per l'avvio da parte di Cesare**:
+   `cd "E:\Projects\vault_memai_obsi"; npx pnpm --filter @limen-vault/desktop tauri dev --release`
++
++---
++
++## 4. FASE 5i — Risoluzione Difetti Collaudo Codex (N1–N7)
++
++### Rettifica Ufficiale FASE 5h: Causa Errore 13:53:21
++Il fallimento registrato alle 13:53:21 (`BACKGROUND_START_FAILED` dopo 26.361 ms) è stato rettificato: non era dovuto a un "secondo avvio contemporaneo", bensì al **difetto bloccante N1** in cui `trigger_background_start` impostava `starting = true` e poi invocava `start_internal`, che leggeva `starting == true` come un altro avvio in corso e attendeva sé stesso fino a timeout.
++
++### Sintesi Correzioni N1–N6
++- **N1 (Bloccante — Token di Proprietà dell'Avvio)**: Introdotti `start_owner: Option<u64>` e generatore atomico `next_start_token()`. Il proprietario dell'avvio procede senza attendere, mentre i chiamanti concorrenti attendono l'esito dello stesso avvio senza creare processi duplicati. Test superati: avvio pulito da zero, click manuale durante avvio in background, e ripiego con nuovo avvio automatico se il processo adottato muore.
++- **N2 (Esposizione Stato "In Avvio")**: Aggiunto `starting: bool` a `LocalServerReport` e `LlamaServerState::status()`. In `SemanticEngineSettings.tsx`, durante l'avvio in background il badge mostra `IN AVVIO…` e il pulsante `AVVIA SERVIZIO LOCALE` è disabilitato con polling automatico di aggiornamento.
++- **N3 (Percorso Reale Servizio Adottato e PANEL_OPEN_STATUS)**: `log_local_model_timing_meta` risolve il percorso reale dell'eseguibile esterno tramite `get_process_exe_path(pid)` e non ripiega sul percorso locale dell'installazione se è presente un PID esterno. In `main.rs`, `local_model_status` legge lo stato e riporta PID e porta del servizio quando esiste.
++- **N4 (Rilascio Mutex Guard)**: Rilasciato il lock della mutex prima di chiamare `self.status()` nel ramo di servizio già sano (`already_healthy`), prevenendo deadlock su mutex non rientrante.
++- **N5 (Limite Rigoroso 20 File di Log)**: Eseguita la rotazione a 19 file prima della creazione del nuovo file di log per-run (`rotate_llama_server_logs(&logs_dir, 19)`), garantendo che dopo l'avvio con 20 file preesistenti ne rimangano esattamente 20.
++- **N6 (Fixture invalid_embeddings nel Repository)**: Sorgente copiato in `apps/desktop/src-tauri/tests/fixtures/invalid_embeddings.rs`, compilato tramite `rustc` in cartella temporanea; fallimento obbligatorio con panic se manca o non compila. Percorso passato direttamente come parametro a `start_with_custom_binary` senza `LLAMA_SERVER_PATH` globale.
++
++### Indagine N7 — Tracciamento Riscrittura Catalogo `VAULT_CATALOG.json`
++- **Catena Chiamate Accertata**:
++  - `apps/desktop/src/App.tsx:461`: `handleOpenExistingVault` invoca `refreshCatalog`.
++  - `apps/desktop/src/App.tsx:232`: `refreshCatalog` invoca `ipc.syncCatalog`.
++  - `apps/desktop/src/vault-ipc.ts:305`: `syncCatalog` invoca il comando Tauri `catalog_sync`.
++  - `apps/desktop/src-tauri/src/main.rs:637`: `catalog_sync` invoca `sync_catalog_from_vault`.
++  - `apps/desktop/src-tauri/src/catalog.rs:875`: `sync_catalog_from_vault` invoca incondizionatamente `save_catalog`.
++  - `apps/desktop/src-tauri/src/catalog.rs:294-307`: `save_catalog` incrementa la revisione e riscrive `00_SYSTEM/VAULT_CATALOG.json`.
++- **Esito Audit sulle Domande**:
++  - Le domande semplici (`ai_preview`, `ai_ask`, `ai_ask_stream`) **NON riscrivono MAI** `VAULT_CATALOG.json`. Accedono esclusivamente in lettura tramite `load_catalog_arc` in cache.
++  - La riscrittura delle 15:42:59 è avvenuta esclusivamente durante l'apertura del vault.
++  - Come da vincolo, il comportamento è stato documentato senza alterare il codice prima della delibera di Cesare.
++
+diff --git a/apps/desktop/src-tauri/src/llama.rs b/apps/desktop/src-tauri/src/llama.rs
+index e05e984..8c7031e 100644
+--- a/apps/desktop/src-tauri/src/llama.rs
++++ b/apps/desktop/src-tauri/src/llama.rs
+@@ -37,6 +37,8 @@ pub struct LocalServerReport {
+     pub model: String,
+     pub healthy: bool,
+     pub last_error: Option<String>,
++    #[serde(default)]
++    pub starting: bool,
+ }
+ 
+ #[derive(Default)]
+@@ -52,6 +54,7 @@ struct RunningState {
+     auto_start_failed: bool,
+     auto_start_failure_reason: Option<String>,
+     starting: bool,
++    start_owner: Option<u64>,
+ }
+ 
+ #[derive(Clone, Default)]
+@@ -60,6 +63,11 @@ pub struct LlamaServerState(Arc<Mutex<RunningState>>);
+ use std::sync::atomic::{AtomicU64, Ordering};
+ 
+ pub static MODEL_SHA256_COMPUTE_COUNT: AtomicU64 = AtomicU64::new(0);
++pub static START_TOKEN_GEN: AtomicU64 = AtomicU64::new(1);
++
++pub fn next_start_token() -> u64 {
++    START_TOKEN_GEN.fetch_add(1, Ordering::SeqCst)
++}
+ 
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+ pub struct ModelVerificationCache {
+@@ -116,7 +124,14 @@ pub fn log_local_model_timing_meta(
+ 
+     let s_bin = service_binary
+         .map(|p| p.to_string_lossy().to_string())
+-        .or_else(|| detect_llama_server_binary().map(|p| p.to_string_lossy().to_string()))
++        .or_else(|| service_pid.and_then(get_process_exe_path).map(|p| p.to_string_lossy().to_string()))
++        .or_else(|| {
++            if service_pid.is_none() && service_port.is_none() {
++                detect_llama_server_binary().map(|p| p.to_string_lossy().to_string())
++            } else {
++                None
++            }
++        })
+         .unwrap_or_else(|| "non_rilevato".to_string());
+     let s_pid = service_pid.map(|p| p.to_string()).unwrap_or_else(|| "none".to_string());
+     let s_port = service_port.map(|p| p.to_string()).unwrap_or_else(|| "none".to_string());
+@@ -548,6 +563,56 @@ where
+     })
+ }
+ 
++#[cfg(windows)]
++pub fn get_process_exe_path(pid: u32) -> Option<PathBuf> {
++    use windows_sys::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION};
++    use windows_sys::Win32::Foundation::CloseHandle;
++    unsafe {
++        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
++        if handle != 0 as _ {
++            let mut buf = [0u16; 1024];
++            let mut size = buf.len() as u32;
++            let success = QueryFullProcessImageNameW(handle, 0, buf.as_mut_ptr(), &mut size);
++            CloseHandle(handle);
++            if success != 0 && size > 0 {
++                use std::os::windows::ffi::OsStringExt;
++                let os_str = std::ffi::OsString::from_wide(&buf[..size as usize]);
++                let p = PathBuf::from(os_str);
++                if p.is_file() {
++                    return Some(p);
++                }
++            }
++        }
++    }
++
++    // Fallback con PowerShell
++    use std::os::windows::process::CommandExt;
++    const CREATE_NO_WINDOW: u32 = 0x08000000;
++    let mut cmd = std::process::Command::new("powershell");
++    cmd.args(["-NoProfile", "-Command", &format!("(Get-Process -Id {} -ErrorAction SilentlyContinue).Path", pid)])
++        .creation_flags(CREATE_NO_WINDOW);
++    if let Some(out) = run_command_with_timeout(cmd, Duration::from_secs(2)) {
++        let path_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
++        if !path_str.is_empty() {
++            let p = PathBuf::from(path_str);
++            if p.is_file() {
++                return Some(p);
++            }
++        }
++    }
++    None
++}
++
++#[cfg(unix)]
++pub fn get_process_exe_path(pid: u32) -> Option<PathBuf> {
++    if let Ok(p) = fs::read_link(format!("/proc/{}/exe", pid)) {
++        if p.is_file() {
++            return Some(p);
++        }
++    }
++    None
++}
++
+ pub fn detect_llama_server_binary() -> Option<PathBuf> {
+     if let Ok(p) = std::env::var("LLAMA_SERVER_PATH") {
+         let pb = PathBuf::from(p);
+@@ -1134,13 +1199,16 @@ pub fn verify_dimensions(port: u16) -> Result<(), String> {
+     Ok(())
+ }
+ 
+-pub struct StartingGuard(pub LlamaServerState, pub bool);
++pub struct StartingGuard(pub LlamaServerState, pub Option<u64>);
+ 
+ impl Drop for StartingGuard {
+     fn drop(&mut self) {
+-        if self.1 {
++        if let Some(token) = self.1 {
+             let mut s = self.0.0.lock().unwrap_or_else(|e| e.into_inner());
+-            s.starting = false;
++            if s.start_owner == Some(token) {
++                s.starting = false;
++                s.start_owner = None;
++            }
+         }
+     }
+ }
+@@ -1153,7 +1221,7 @@ impl LlamaServerState {
+ 
+     pub fn status(&self) -> LocalServerReport {
+         // Estrae lo stato rilasciando IMMEDIATAMENTE il mutex: non tiene il lock durante check_health di rete
+-        let (port, has_child, pid, last_error) = {
++        let (port, has_child, pid, last_error, is_starting) = {
+             let mut s = match self.0.lock() {
+                 Ok(guard) => guard,
+                 Err(poisoned) => poisoned.into_inner(),
+@@ -1167,7 +1235,7 @@ impl LlamaServerState {
+             }
+ 
+             let pid = s.child.as_ref().map(|c| c.id()).or(s.adopted_pid);
+-            (s.port, s.child.is_some(), pid, s.last_error.clone())
++            (s.port, s.child.is_some(), pid, s.last_error.clone(), s.starting)
+         };
+ 
+         // check_health viene eseguito FUORI DAL MUTEX
+@@ -1181,20 +1249,35 @@ impl LlamaServerState {
+             model: "bge-m3-Q8_0.gguf".to_string(),
+             healthy,
+             last_error,
++            starting: is_starting,
+         }
+     }
+ 
+     pub fn adopt_service(&self, port: u16, pid: Option<u32>) {
++        let real_exe = pid.and_then(get_process_exe_path);
+         let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+         s.port = port;
+         s.adopted_pid = pid;
+         s.owned_pid = None;
++        s.binary_path = real_exe;
+         s.starting = false;
++        s.start_owner = None;
+         s.auto_start_failed = false;
+         s.auto_start_failure_reason = None;
+         s.last_error = None;
+     }
+ 
++    pub fn get_binary_path(&self) -> Option<PathBuf> {
++        let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
++        if s.binary_path.is_some() {
++            return s.binary_path.clone();
++        }
++        if let Some(pid) = s.child.as_ref().map(|c| c.id()).or(s.adopted_pid) {
++            return get_process_exe_path(pid);
++        }
++        None
++    }
++
+     pub fn reset_auto_start_failure(&self) {
+         let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+         s.auto_start_failed = false;
+@@ -1229,6 +1312,10 @@ impl LlamaServerState {
+     }
+ 
+     pub fn trigger_background_start(&self) -> bool {
++        self.trigger_background_start_with_binary(None)
++    }
++
++    pub fn trigger_background_start_with_binary(&self, custom_binary: Option<PathBuf>) -> bool {
+         let (already_port, already_starting, already_failed) = {
+             let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+             (s.port, s.starting, s.auto_start_failed)
+@@ -1241,18 +1328,20 @@ impl LlamaServerState {
+             return false;
+         }
+ 
++        let token = next_start_token();
+         {
+             let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+             if s.starting || s.auto_start_failed {
+                 return false;
+             }
+             s.starting = true;
++            s.start_owner = Some(token);
+             s.last_error = None;
+         }
+ 
+         let state = self.clone();
+         std::thread::spawn(move || {
+-            let mut bg_guard = StartingGuard(state.clone(), true);
++            let mut bg_guard = StartingGuard(state.clone(), Some(token));
+             let t0 = Instant::now();
+             log_local_model_timing_meta(
+                 "BACKGROUND_START_BEGIN",
+@@ -1266,12 +1355,13 @@ impl LlamaServerState {
+             // 1. Prima controlla se c'è un servizio esterno attivo bge-m3
+             if let Ok((port, pid)) = find_active_bge_m3_service_with_pid() {
+                 state.adopt_service(port, pid);
+-                bg_guard.1 = false; // Disarma la guardia, adopt_service azzera starting
++                bg_guard.1 = None; // Disarma la guardia, adopt_service azzera starting e start_owner
+                 let elapsed = t0.elapsed().as_millis() as u64;
++                let real_exe = pid.and_then(get_process_exe_path);
+                 log_local_model_timing_meta(
+                     "BACKGROUND_ADOPT_SUCCESS",
+                     elapsed,
+-                    None,
++                    real_exe.as_deref(),
+                     pid,
+                     Some(port),
+                     &format!("port={}, pid={:?}", port, pid),
+@@ -1280,15 +1370,16 @@ impl LlamaServerState {
+             }
+ 
+             // 2. Altrimenti avvia il proprio servizio mantenendo l'attesa di /health a 25 s
+-            // Disarma bg_guard perché start_internal gestisce il proprio StartingGuard
+-            bg_guard.1 = false;
+-            match state.start_internal(Duration::from_secs(25)) {
++            // Passiamo il token di proprietà: start_internal riconosce che siamo noi i proprietari dell'avvio!
++            bg_guard.1 = None;
++            let detected_bin = custom_binary.clone().or_else(detect_llama_server_binary);
++            match state.start_internal_with_token_and_binary(Duration::from_secs(25), Some(token), custom_binary.as_deref()) {
+                 Ok(rep) if rep.healthy => {
+                     let elapsed = t0.elapsed().as_millis() as u64;
+                     log_local_model_timing_meta(
+                         "BACKGROUND_START_SUCCESS",
+                         elapsed,
+-                        detect_llama_server_binary().as_deref(),
++                        detected_bin.as_deref(),
+                         rep.pid,
+                         Some(rep.port),
+                         &format!("port={}, pid={:?}", rep.port, rep.pid),
+@@ -1297,13 +1388,14 @@ impl LlamaServerState {
+                 Ok(rep) => {
+                     let mut s = state.0.lock().unwrap_or_else(|e| e.into_inner());
+                     s.starting = false;
++                    s.start_owner = None;
+                     s.auto_start_failed = true;
+                     s.auto_start_failure_reason = rep.last_error.clone();
+                     let elapsed = t0.elapsed().as_millis() as u64;
+                     log_local_model_timing_meta(
+                         "BACKGROUND_START_FAILED",
+                         elapsed,
+-                        detect_llama_server_binary().as_deref(),
++                        detected_bin.as_deref(),
+                         rep.pid,
+                         Some(rep.port),
+                         &format!("non pronto su porta {}: {:?}", rep.port, rep.last_error),
+@@ -1312,6 +1404,7 @@ impl LlamaServerState {
+                 Err(err) => {
+                     let mut s = state.0.lock().unwrap_or_else(|e| e.into_inner());
+                     s.starting = false;
++                    s.start_owner = None;
+                     s.auto_start_failed = true;
+                     s.auto_start_failure_reason = Some(err.clone());
+                     let elapsed = t0.elapsed().as_millis() as u64;
+@@ -1362,6 +1455,15 @@ impl LlamaServerState {
+             return (Some(s.port), s.pid, true, state_str.to_string(), None);
+         }
+ 
++        // Se avevamo registrato un servizio adottato ma ora non risponde più, azzeriamo l'adozione stantia (C06)
++        {
++            let mut guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
++            if guard.adopted_pid.is_some() && (!s.healthy || s.port == 0) {
++                guard.adopted_pid = None;
++                guard.port = 0;
++            }
++        }
++
+         // 2. Controllo se l'avvio è già fallito per un guasto vero nella sessione (Regola 3)
+         let (auto_start_failed, prev_reason, is_already_starting) = {
+             let guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+@@ -1380,6 +1482,15 @@ impl LlamaServerState {
+             let discover_res = find_active_bge_m3_service_with_pid();
+             if let Ok((port, pid)) = discover_res {
+                 self.adopt_service(port, pid);
++                let real_exe = pid.and_then(get_process_exe_path);
++                log_local_model_timing_meta(
++                    "EXTERNAL_SERVICE_ADOPTED",
++                    t_start.elapsed().as_millis() as u64,
++                    real_exe.as_deref(),
++                    pid,
++                    Some(port),
++                    &format!("port={}, pid={:?}", port, pid),
++                );
+                 return (Some(port), pid, true, "esterno adottato".to_string(), None);
+             }
+         }
+@@ -1444,14 +1555,9 @@ impl LlamaServerState {
+         // 6. Timeout di preparazione della domanda scaduto (Regola 2):
+         // NON chiude il servizio in avvio! L'avvio prosegue in background.
+         // Questa domanda ripiega sulla ricerca per parole con motivo visibile.
+-        let (port_opt, pid_opt) = {
+-            let guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+-            let pid = guard.child.as_ref().map(|c| c.id()).or(guard.adopted_pid);
+-            (if guard.port > 0 { Some(guard.port) } else { None }, pid)
+-        };
+         (
+-            port_opt,
+-            pid_opt,
++            None,
++            None,
+             false,
+             "in avvio".to_string(),
+             Some("Servizio locale in avvio: ripiego temporaneo sulla ricerca per parole per questa domanda.".to_string()),
+@@ -1460,54 +1566,98 @@ impl LlamaServerState {
+ 
+     pub fn start(&self) -> Result<LocalServerReport, String> {
+         self.reset_auto_start_failure();
+-        self.start_internal(Duration::from_secs(25))
++        self.start_internal_with_token_and_binary(Duration::from_secs(25), None, None)
+     }
+ 
+     pub fn start_with_timeout(&self, timeout: Duration) -> Result<LocalServerReport, String> {
+-        self.start_internal(timeout)
++        self.start_internal_with_token_and_binary(timeout, None, None)
++    }
++
++    pub fn start_with_custom_binary(&self, binary: &Path, timeout: Duration) -> Result<LocalServerReport, String> {
++        self.start_internal_with_token_and_binary(timeout, None, Some(binary))
+     }
+ 
+     pub fn start_internal(&self, timeout: Duration) -> Result<LocalServerReport, String> {
++        self.start_internal_with_token_and_binary(timeout, None, None)
++    }
++
++    pub fn start_internal_with_token(
++        &self,
++        timeout: Duration,
++        caller_token: Option<u64>,
++    ) -> Result<LocalServerReport, String> {
++        self.start_internal_with_token_and_binary(timeout, caller_token, None)
++    }
++
++    pub fn start_internal_with_token_and_binary(
++        &self,
++        timeout: Duration,
++        caller_token: Option<u64>,
++        custom_binary: Option<&Path>,
++    ) -> Result<LocalServerReport, String> {
+         let t_start = Instant::now();
+ 
+-        // 0. Controllo concorrenza: se un avvio è già in corso in un altro thread, NON avviare
+-        // un secondo processo (Item 5). Attendi invece il completamento dell'avvio già attivo.
+-        let already_starting = {
+-            let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+-            s.starting
+-        };
+-        if already_starting {
+-            let deadline = t_start + timeout;
+-            while Instant::now() < deadline {
+-                std::thread::sleep(Duration::from_millis(100));
+-                let (port, starting, failed, fail_reason) = {
++        // 0. Controllo concorrenza e proprietà dell'avvio (N1):
++        // Se un avvio è già in corso e caller_token NON corrisponde al proprietario attivo,
++        // NON avviare un secondo processo: attendi invece il completamento dell'avvio già attivo.
++        let active_token = {
++            let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
++            if s.starting {
++                if caller_token.is_some() && s.start_owner == caller_token {
++                    // Questo chiamante è il proprietario dell'avvio: procede direttamente!
++                    caller_token.unwrap()
++                } else {
++                    // Un altro thread possiede l'avvio: attendiamo il suo completamento
++                    drop(s);
++                    let deadline = t_start + timeout;
++                    while Instant::now() < deadline {
++                        std::thread::sleep(Duration::from_millis(50));
++                        let (port, starting, failed, fail_reason) = {
++                            let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
++                            (s.port, s.starting, s.auto_start_failed, s.auto_start_failure_reason.clone())
++                        };
++                        if port > 0 && check_health(port) {
++                            return Ok(self.status());
++                        }
++                        if !starting {
++                            if port > 0 && check_health(port) {
++                                return Ok(self.status());
++                            }
++                            if failed {
++                                return Err(fail_reason.unwrap_or_else(|| "Avvio del servizio locale fallito".to_string()));
++                            }
++                            break;
++                        }
++                    }
+                     let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+-                    (s.port, s.starting, s.auto_start_failed, s.auto_start_failure_reason.clone())
+-                };
+-                if port > 0 && check_health(port) {
+-                    return Ok(self.status());
+-                }
+-                if !starting {
+-                    if port > 0 && check_health(port) {
+-                        return Ok(self.status());
++                    if s.starting {
++                        return Err(format!("Timeout attesa avvio del servizio in corso ({:.1}s).", timeout.as_secs_f32()));
+                     }
+-                    if failed {
+-                        return Err(fail_reason.unwrap_or_else(|| "Avvio del servizio locale fallito".to_string()));
++                    if s.port > 0 && check_health(s.port) {
++                        return Ok(self.status());
+                     }
+-                    break;
++                    let tok = next_start_token();
++                    let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
++                    s.starting = true;
++                    s.start_owner = Some(tok);
++                    tok
+                 }
++            } else {
++                let tok = caller_token.unwrap_or_else(next_start_token);
++                s.starting = true;
++                s.start_owner = Some(tok);
++                tok
+             }
+-            let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+-            if s.starting {
+-                return Err(format!("Timeout attesa avvio del servizio in corso ({:.1}s).", timeout.as_secs_f32()));
+-            }
+-        }
++        };
++
++        let mut starting_guard = StartingGuard(self.clone(), Some(active_token));
+ 
+         // 1. Verify model is installed
+         let model_rep = local_model_status();
+         if !model_rep.installed || !model_rep.sha256_ok {
+             let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+             s.starting = false;
++            s.start_owner = None;
+             s.auto_start_failed = true;
+             let err = "Modello locale bge-m3-Q8_0.gguf non installato o non integro. Esegui il download dalle impostazioni.".to_string();
+             s.auto_start_failure_reason = Some(err.clone());
+@@ -1521,8 +1671,11 @@ impl LlamaServerState {
+             s.port
+         };
+         if already_port > 0 && check_health(already_port) {
+-            let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+-            s.starting = false;
++            {
++                let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
++                s.starting = false;
++                s.start_owner = None;
++            }
+             return Ok(self.status());
+         }
+ 
+@@ -1530,11 +1683,12 @@ impl LlamaServerState {
+         let _ = reap_orphan_server();
+ 
+         // 3. Find standalone or system binary
+-        let binary = match detect_llama_server_binary() {
++        let binary = match custom_binary.map(PathBuf::from).or_else(detect_llama_server_binary) {
+             Some(b) => b,
+             None => {
+                 let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                 s.starting = false;
++                s.start_owner = None;
+                 s.auto_start_failed = true;
+                 let err = "Binario llama-server non disponibile nel pacchetto o nel sistema.".to_string();
+                 s.auto_start_failure_reason = Some(err.clone());
+@@ -1542,20 +1696,13 @@ impl LlamaServerState {
+             }
+         };
+ 
+-        // Acquisizione flag starting con guardia RAII (garantisce azzeramento anche su panic/errore)
+-        {
+-            let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+-            s.starting = true;
+-            s.last_error = None;
+-        }
+-        let mut starting_guard = StartingGuard(self.clone(), true);
+-
+         // 4. Choose free port
+         let free_port = match find_free_port() {
+             Ok(p) => p,
+             Err(e) => {
+                 let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                 s.starting = false;
++                s.start_owner = None;
+                 s.auto_start_failed = true;
+                 s.auto_start_failure_reason = Some(e.clone());
+                 return Err(e);
+@@ -1598,6 +1745,7 @@ impl LlamaServerState {
+             Err(e) => {
+                 let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+                 s.starting = false;
++                s.start_owner = None;
+                 s.auto_start_failed = true;
+                 let err = format!("Impossibile avviare il processo llama-server: {}", e);
+                 s.auto_start_failure_reason = Some(err.clone());
+@@ -1612,7 +1760,8 @@ impl LlamaServerState {
+         if let Some(parent) = model_path.parent() {
+             let logs_dir = parent.join("logs");
+             let _ = fs::create_dir_all(&logs_dir);
+-            rotate_llama_server_logs(&logs_dir, 20);
++            // Limita a 19 prima della creazione per garantire max 20 file totali dopo l'avvio (N5)
++            rotate_llama_server_logs(&logs_dir, 19);
+ 
+             let utc_now = chrono::Utc::now().format("%Y%m%dT%H%M%SZ").to_string();
+             let per_run_log_path = logs_dir.join(format!("llama-server_{}_{}.log", utc_now, child_pid));
+@@ -1648,6 +1797,7 @@ impl LlamaServerState {
+             s.model_path = model_path.clone();
+             s.binary_path = Some(binary.clone());
+             s.starting = true;
++            s.start_owner = Some(active_token);
+         }
+ 
+         let port = free_port;
+@@ -1669,6 +1819,7 @@ impl LlamaServerState {
+                 if let Ok(Some(code)) = c.try_wait() {
+                     guard.child = None;
+                     guard.starting = false;
++                    guard.start_owner = None;
+                     guard.auto_start_failed = true;
+                     let tail = log_path
+                         .as_ref()
+@@ -1702,6 +1853,7 @@ impl LlamaServerState {
+             self.stop()?;
+             let mut guard = self.0.lock().map_err(|e| e.to_string())?;
+             guard.starting = false;
++            guard.start_owner = None;
+             guard.auto_start_failed = true;
+             let err = format!("Timeout: llama-server non ha risposto sull'endpoint /health entro {:.1}s.", timeout.as_secs_f32());
+             guard.auto_start_failure_reason = Some(err.clone());
+@@ -1723,6 +1875,7 @@ impl LlamaServerState {
+             let _ = self.stop();
+             let mut guard = self.0.lock().map_err(|e| e.to_string())?;
+             guard.starting = false;
++            guard.start_owner = None;
+             guard.auto_start_failed = true;
+             let err = format!("Controllo dimensioni vettore fallito: {}", e);
+             guard.auto_start_failure_reason = Some(err.clone());
+@@ -1739,10 +1892,11 @@ impl LlamaServerState {
+             return Err(err);
+         }
+ 
+-        starting_guard.1 = false; // Disarma StartingGuard: avvio completato con successo
++        starting_guard.1 = None; // Disarma StartingGuard: avvio completato con successo
+         {
+             let mut guard = self.0.lock().map_err(|e| e.to_string())?;
+             guard.starting = false;
++            guard.start_owner = None;
+             guard.auto_start_failed = false;
+             guard.auto_start_failure_reason = None;
+         }
+@@ -1797,6 +1951,7 @@ impl LlamaServerState {
+             s.adopted_pid = None;
+             s.last_error = None;
+             s.starting = false;
++            s.start_owner = None;
+             let owned = s.child.as_ref().map(|c| c.id()).or(s.owned_pid);
+             s.owned_pid = None;
+             (s.child.take(), owned)
+@@ -1857,6 +2012,8 @@ impl Drop for LlamaServerState {
+ mod tests {
+     use super::*;
+ 
++    static ENV_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
++
+     #[test]
+     fn test_model_expected_constants() {
+         assert_eq!(EXPECTED_MODEL_SIZE_BYTES, 634_553_760);
+@@ -2213,6 +2370,7 @@ mod tests {
+ 
+     #[test]
+     fn test_p2_registered_service_adoption_and_fallback() {
++        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+         use std::io::{Read, Write};
+         use std::net::TcpListener;
+         use std::sync::atomic::{AtomicBool, Ordering};
+@@ -2374,6 +2532,7 @@ mod tests {
+ 
+     #[test]
+     fn test_fase5f_discovery_external_command_hang_terminates_within_timeout_with_fallback() {
++        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+         std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
+         let state = LlamaServerState::default();
+         let timeout = Duration::from_millis(50);
+@@ -2494,6 +2653,7 @@ mod tests {
+ 
+     #[test]
+     fn test_fase5g_missing_binary_sets_auto_start_failed_until_button_reset() {
++        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+         std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
+         let state = LlamaServerState::default();
+         // Imposta una variabile che fa fallire la scoperta del binario
+@@ -2525,6 +2685,7 @@ mod tests {
+ 
+     #[test]
+     fn test_fase5g_on_app_startup_starts_service_in_background_without_question() {
++        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+         let temp_dir = tempfile::tempdir().unwrap();
+         let timing_log = temp_dir.path().join("local_model_timing.log");
+         std::env::set_var("LIMEN_LOCAL_MODEL_TIMING_LOG", &timing_log);
+@@ -2554,6 +2715,7 @@ mod tests {
+ 
+     #[test]
+     fn test_fase5h_adoption_of_existing_instance_service_without_second_process() {
++        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+         let mock_port = listener.local_addr().unwrap().port();
+         let stop_flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
+@@ -2609,6 +2771,7 @@ mod tests {
+         {
+             let mut s = state.0.lock().unwrap();
+             s.starting = true;
++            s.start_owner = Some(888);
+         }
+ 
+         // Chiamata concorrente a start_internal con timeout breve: non deve avviare alcun processo,
+@@ -2627,7 +2790,32 @@ mod tests {
+         );
+ 
+         // Reset
+-        state.0.lock().unwrap().starting = false;
++        let mut s = state.0.lock().unwrap();
++        s.starting = false;
++        s.start_owner = None;
++    }
++
++    #[test]
++    fn test_fase5i_n2_status_exposes_starting_state() {
++        let state = LlamaServerState::default();
++        let rep_init = state.status();
++        assert!(!rep_init.starting, "Inizialmente starting deve essere false");
++
++        {
++            let mut s = state.0.lock().unwrap();
++            s.starting = true;
++        }
++
++        let rep_starting = state.status();
++        assert!(rep_starting.starting, "Durante l'avvio, status().starting deve essere true");
++        assert!(!rep_starting.running, "Senza processo né salute, running deve essere false");
++
++        {
++            let mut s = state.0.lock().unwrap();
++            s.starting = false;
++        }
++        let rep_ended = state.status();
++        assert!(!rep_ended.starting, "Dopo la fine dell'avvio, status().starting deve tornare false");
+     }
+ 
+     #[test]
+@@ -2636,12 +2824,13 @@ mod tests {
+         {
+             let mut s = state.0.lock().unwrap();
+             s.starting = true;
++            s.start_owner = Some(777);
+         }
+         assert!(state.is_starting());
+ 
+         let state_clone = state.clone();
+         let handle = std::thread::spawn(move || {
+-            let _guard = StartingGuard(state_clone, true);
++            let _guard = StartingGuard(state_clone, Some(777));
+             panic!("Simulated thread panic during startup");
+         });
+ 
+@@ -2685,6 +2874,46 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn test_fase5i_n5_20_existing_logs_remains_20_after_startup() {
++        let tmp = tempfile::tempdir().unwrap();
++        let logs_dir = tmp.path().join("logs");
++        fs::create_dir_all(&logs_dir).unwrap();
++
++        // 1. Crea esattamente 20 file di log simulati preesistenti
++        for i in 1..=20 {
++            let filename = format!("llama-server_20260924T{:02}0000Z_1000{}.log", i, i);
++            fs::write(logs_dir.join(filename), b"preexisting log").unwrap();
++        }
++
++        let initial_count = fs::read_dir(&logs_dir).unwrap().filter_map(|e| e.ok()).count();
++        assert_eq!(initial_count, 20, "Devono esserci esattamente 20 file iniziali");
++
++        // 2. Simula la rotazione prima dell'avvio e la creazione del nuovo file di log
++        rotate_llama_server_logs(&logs_dir, 19);
++        let new_run_file = logs_dir.join("llama-server_20260924T210000Z_99999.log");
++        fs::write(&new_run_file, b"new run log").unwrap();
++
++        // 3. Verifica che il conteggio finale sia ESATTAMENTE 20 (e non 21)
++        let final_files: Vec<_> = fs::read_dir(&logs_dir)
++            .unwrap()
++            .filter_map(|e| e.ok())
++            .map(|e| e.file_name().to_string_lossy().to_string())
++            .collect();
++        assert_eq!(
++            final_files.len(),
++            20,
++            "Dopo l'avvio con 20 file preesistenti devono rimanere esattamente 20 file, ottenuti {}: {:?}",
++            final_files.len(),
++            final_files
++        );
++
++        // Il file più vecchio (01) deve essere stato rimosso per fare spazio al nuovo
++        assert!(!logs_dir.join("llama-server_20260924T010000Z_10001.log").exists());
++        // Il nuovo file (21) deve essere presente
++        assert!(logs_dir.join("llama-server_20260924T210000Z_99999.log").exists());
++    }
++
+     #[test]
+     fn test_fase5h_local_model_timing_log_includes_app_and_service_metadata() {
+         let tmp = tempfile::tempdir().unwrap();
+@@ -2712,29 +2941,29 @@ mod tests {
+ 
+     #[test]
+     fn test_fase5h_codex_fixture_acceptance() {
++        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+         // 1. Usa cartella target separata (NON target/release/llama-server.exe)
+         let separate_target = tempfile::tempdir().unwrap();
+-        let fixture_exe = separate_target.path().join(if cfg!(windows) { "llama-server.exe" } else { "llama-server" });
+-
+-        let source_fixture = PathBuf::from("E:\\Projects\\vault_memai_obsi\\IMPLEMENTATION\\AUDIT_OPENAI\\evidenze\\session_1215\\invalid_embeddings.exe");
+-        if !source_fixture.is_file() {
+-            let source_rs = PathBuf::from("E:\\Projects\\vault_memai_obsi\\IMPLEMENTATION\\AUDIT_OPENAI\\evidenze\\session_1215\\invalid_embeddings.rs");
+-            if source_rs.is_file() {
+-                let status = std::process::Command::new("rustc")
+-                    .arg(&source_rs)
+-                    .arg("-o")
+-                    .arg(&fixture_exe)
+-                    .status();
+-                assert!(status.map(|s| s.success()).unwrap_or(false), "Compilazione del fixture fallita");
+-            } else {
+-                return;
+-            }
+-        } else {
+-            std::fs::copy(&source_fixture, &fixture_exe).expect("Copia del fixture nel target separato");
+-        }
+-
+-        // Imposta LLAMA_SERVER_PATH verso la cartella separata
+-        std::env::set_var("LLAMA_SERVER_PATH", &fixture_exe);
++        let fixture_exe = separate_target.path().join(if cfg!(windows) { "invalid_embeddings.exe" } else { "invalid_embeddings" });
++
++        // N6: Fixture nel repository (tests/fixtures/invalid_embeddings.rs), compilazione obbligatoria in cartella temporanea
++        let source_candidates = [
++            PathBuf::from("tests/fixtures/invalid_embeddings.rs"),
++            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/invalid_embeddings.rs"),
++        ];
++        let source_rs = source_candidates
++            .iter()
++            .find(|p| p.is_file())
++            .unwrap_or_else(|| panic!("Sorgente fixture tests/fixtures/invalid_embeddings.rs NON trovato nel repository!"));
++
++        let status = std::process::Command::new("rustc")
++            .arg(source_rs)
++            .arg("-o")
++            .arg(&fixture_exe)
++            .status()
++            .expect("Esecuzione rustc per compilazione invalid_embeddings.rs");
++        assert!(status.success(), "Compilazione del fixture invalid_embeddings.rs fallita con stato {:?}", status);
++        assert!(fixture_exe.is_file(), "L'eseguibile compilato del fixture deve esistere: {}", fixture_exe.display());
+ 
+         // Verifica che target/release/llama-server.exe NON sia toccato
+         let release_target = PathBuf::from("apps/desktop/src-tauri/target/release/llama-server.exe");
+@@ -2743,15 +2972,12 @@ mod tests {
+         let state = LlamaServerState::default();
+         let start_time = Instant::now();
+ 
+-        // Esegui l'avvio del fixture con il timeout dichiarato (5 secondi)
++        // Esegui l'avvio passando il percorso del fixture come parametro esplicito (senza variabile d'ambiente globale)
+         let prep_timeout = Duration::from_secs(5);
+-        let start_res = state.start_with_timeout(prep_timeout);
++        let start_res = state.start_with_custom_binary(&fixture_exe, prep_timeout);
+ 
+         let elapsed = start_time.elapsed();
+ 
+-        // Pulizia immediata della variabile d'ambiente
+-        std::env::remove_var("LLAMA_SERVER_PATH");
+-
+         // Asserzioni fondamentali della prova di accettazione:
+         // A) Deve terminare entro il tempo massimo dichiarato (senza bloccarsi)
+         assert!(
+@@ -2855,4 +3081,288 @@ mod tests {
+             assert!(!release_target.exists(), "Il fixture NON deve essere lasciato in target/release/llama-server.exe");
+         }
+     }
++
++    fn compile_test_mock_server(dest_dir: &Path) -> PathBuf {
++        let out_exe = dest_dir.join(if cfg!(windows) { "valid_mock_server.exe" } else { "valid_mock_server" });
++        if out_exe.is_file() {
++            return out_exe;
++        }
++        let src = PathBuf::from("tests/fixtures/valid_mock_server.rs");
++        let abs_src = if src.is_file() {
++            src
++        } else {
++            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/valid_mock_server.rs")
++        };
++        assert!(abs_src.is_file(), "Sorgente valid_mock_server.rs non trovato in {}", abs_src.display());
++        let status = std::process::Command::new("rustc")
++            .arg(&abs_src)
++            .arg("-o")
++            .arg(&out_exe)
++            .status()
++            .expect("Esecuzione rustc per compilazione valid_mock_server");
++        assert!(status.success(), "Compilazione valid_mock_server.rs fallita con stato: {:?}", status);
++        out_exe
++    }
++
++    #[test]
++    fn test_fase5i_n1_app_startup_auto_starts_single_process() {
++        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
++        std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
++        let temp_dir = tempfile::tempdir().unwrap();
++        let mock_exe = compile_test_mock_server(temp_dir.path());
++
++        let state = LlamaServerState::default();
++        let started = state.trigger_background_start_with_binary(Some(mock_exe));
++        assert!(started, "trigger_background_start deve restituire true");
++
++        // Attende che l'avvio e la verifica si completino (starting torna false)
++        let t0 = Instant::now();
++        let mut ready = false;
++        while t0.elapsed() < Duration::from_secs(10) {
++            let rep = state.status();
++            if rep.healthy && rep.port > 0 && !state.is_starting() {
++                ready = true;
++                break;
++            }
++            std::thread::sleep(Duration::from_millis(50));
++        }
++
++        std::env::remove_var("LIMEN_TEST_DISABLE_ADOPTION");
++        assert!(ready, "Il servizio deve risultare sano e pronto dopo l'avvio automatico");
++        let rep = state.status();
++        assert!(rep.running, "Il servizio deve essere running");
++        assert!(rep.port > 0, "La porta del servizio deve essere valida");
++        assert!(rep.pid.is_some(), "Il PID del processo deve essere presente");
++        assert!(!state.is_starting(), "starting deve essere false al termine dell'avvio");
++
++        let _ = state.stop();
++    }
++
++    #[test]
++    fn test_fase5i_n1_button_pressed_during_background_start_waits_and_succeeds_single_process() {
++        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
++        std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
++        let temp_dir = tempfile::tempdir().unwrap();
++        let mock_exe = compile_test_mock_server(temp_dir.path());
++
++        let state = LlamaServerState::default();
++        let started = state.trigger_background_start_with_binary(Some(mock_exe.clone()));
++        assert!(started);
++
++        // Subito dopo, mentre l'avvio è in corso, un altro thread (simulazione click pulsante AVVIA) chiama start_with_custom_binary
++        let state_clone = state.clone();
++        let mock_exe_clone = mock_exe.clone();
++        let manual_thread = std::thread::spawn(move || {
++            state_clone.start_with_custom_binary(&mock_exe_clone, Duration::from_secs(15))
++        });
++
++        let manual_res = manual_thread.join().expect("Join thread manuale");
++        std::env::remove_var("LIMEN_TEST_DISABLE_ADOPTION");
++        assert!(manual_res.is_ok(), "L'avvio manuale durante l'avvio in background deve riuscire senza timeout: {:?}", manual_res);
++
++        let rep_manual = manual_res.unwrap();
++        assert!(rep_manual.healthy);
++        assert!(rep_manual.port > 0);
++
++        let rep_final = state.status();
++        assert!(rep_final.healthy);
++        assert_eq!(rep_manual.port, rep_final.port, "Deve essere stata usata la stessa porta senza secondo processo");
++        assert_eq!(rep_manual.pid, rep_final.pid, "Deve essere presente lo stesso PID senza processi duplicati");
++
++        let _ = state.stop();
++    }
++
++    #[test]
++    fn test_fase5i_n1_adopted_service_dies_next_query_fallbacks_and_restarts() {
++        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
++        let temp_dir = tempfile::tempdir().unwrap();
++        let mock_exe = compile_test_mock_server(temp_dir.path());
++
++        // 1. Avvia un mock server esterno temporaneo
++        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
++        let port1 = listener.local_addr().unwrap().port();
++        let stop_ext = Arc::new(std::sync::atomic::AtomicBool::new(false));
++        let stop_ext_clone = stop_ext.clone();
++
++        let ext_thread = std::thread::spawn(move || {
++            listener.set_nonblocking(true).unwrap();
++            while !stop_ext_clone.load(Ordering::SeqCst) {
++                if let Ok((mut s, _)) = listener.accept() {
++                    let mut buf = [0u8; 1024];
++                    let n = s.read(&mut buf).unwrap_or(0);
++                    let req = String::from_utf8_lossy(&buf[..n]);
++                    if req.contains("GET /health") {
++                        let _ = s.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 15\r\n\r\n{\"status\":\"ok\"}");
++                    }
++                }
++                std::thread::sleep(Duration::from_millis(5));
++            }
++        });
++
++        let state = LlamaServerState::default();
++        state.adopt_service(port1, Some(11111));
++        assert!(state.status().healthy, "Il servizio adottato deve essere sano inizialmente");
++
++        // 2. Il servizio esterno muore (simula chiusura esterna)
++        stop_ext.store(true, Ordering::SeqCst);
++        let _ = ext_thread.join();
++        std::thread::sleep(Duration::from_millis(50));
++
++        // 3. La domanda successiva rileva che il servizio è morto e ripiega senza blocco
++        let (_port_q1, _pid_q1, is_ready_q1, status_q1, reason_q1) =
++            state.get_or_adopt_or_start_service_with_timeout(Duration::from_millis(50));
++        assert!(!is_ready_q1, "La domanda deve ripiegare perché il servizio adottato è morto");
++        assert_eq!(status_q1, "in avvio", "Lo stato deve essere passato in avvio");
++        assert!(reason_q1.is_some(), "Deve esserci un motivo visibile di ripiego");
++
++        // 4. Nuovo avvio automatico del servizio proprio tramite trigger_background_start_with_binary
++        std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
++        state.trigger_background_start_with_binary(Some(mock_exe));
++
++        let t0 = Instant::now();
++        let mut recovered = false;
++        while t0.elapsed() < Duration::from_secs(10) {
++            let s = state.status();
++            if s.healthy && s.port > 0 {
++                recovered = true;
++                break;
++            }
++            std::thread::sleep(Duration::from_millis(100));
++        }
++
++        assert!(recovered, "Un nuovo avvio automatico deve riuscire dopo la chiusura del servizio adottato");
++        let (port_q2, _pid_q2, is_ready_q2, status_q2, _reason_q2) = state.get_or_adopt_or_start_service();
++        std::env::remove_var("LIMEN_TEST_DISABLE_ADOPTION");
++        assert!(is_ready_q2, "La domanda successiva al recupero deve trovare il servizio pronto");
++        assert_eq!(status_q2, "pronto");
++        assert!(port_q2.is_some());
++
++        let _ = state.stop();
++    }
++
++    #[test]
++    fn test_fase5i_n3_adopted_service_from_other_folder_logs_real_exe_and_panel_open_status() {
++        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
++        let other_dir = tempfile::tempdir().unwrap();
++        let other_exe = other_dir.path().join(if cfg!(windows) { "external_llama_server.exe" } else { "external_llama_server" });
++        let base_mock = compile_test_mock_server(other_dir.path());
++        if base_mock != other_exe {
++            fs::copy(&base_mock, &other_exe).expect("Copia mock in altra cartella");
++        }
++        assert!(other_exe.is_file());
++
++        let free_port = find_free_port().expect("Trova porta libera");
++        let mut child = Command::new(&other_exe)
++            .args(["--port", &free_port.to_string()])
++            .stdin(Stdio::null())
++            .stdout(Stdio::null())
++            .stderr(Stdio::null())
++            .spawn()
++            .expect("Avvio processo esterno in altra cartella");
++
++        let child_pid = child.id();
++
++        // Attendi che il server esterno sia attivo e risponda
++        let t0 = Instant::now();
++        let mut up = false;
++        while t0.elapsed() < Duration::from_secs(5) {
++            if check_health(free_port) {
++                up = true;
++                break;
++            }
++            std::thread::sleep(Duration::from_millis(50));
++        }
++        assert!(up, "Il processo esterno deve diventare sano");
++
++        let log_dir = tempfile::tempdir().unwrap();
++        let log_path = log_dir.path().join("local_model_timing.log");
++        std::env::set_var("LIMEN_LOCAL_MODEL_TIMING_LOG", &log_path);
++
++        let state = LlamaServerState::default();
++        state.adopt_service(free_port, Some(child_pid));
++
++        // 1. Verifica che state.get_binary_path() restituisca il percorso reale dell'eseguibile esterno
++        let bin_path = state.get_binary_path();
++        assert!(bin_path.is_some(), "Il percorso del binario adottato deve essere rilevato");
++        let bin_str = bin_path.unwrap().to_string_lossy().to_lowercase();
++        assert!(
++            bin_str.contains("external_llama_server"),
++            "Il percorso deve corrispondere all'eseguibile reale nella cartella esterna, ottenuto: {}",
++            bin_str
++        );
++
++        // 2. Simula log di PANEL_OPEN_STATUS con il servizio adottato attivo
++        let s_rep = state.status();
++        let (srv_bin, srv_pid, srv_port) = if s_rep.running || s_rep.healthy {
++            (state.get_binary_path(), s_rep.pid, if s_rep.port > 0 { Some(s_rep.port) } else { None })
++        } else {
++            (None, None, None)
++        };
++        log_local_model_timing_meta(
++            "PANEL_OPEN_STATUS",
++            123,
++            srv_bin.as_deref(),
++            srv_pid,
++            srv_port,
++            "installed=true, sha256_ok=true",
++        );
++
++        let content = fs::read_to_string(&log_path).expect("Lettura local_model_timing.log");
++
++        assert!(content.contains("event=PANEL_OPEN_STATUS"), "Log deve contenere PANEL_OPEN_STATUS: {}", content);
++        assert!(content.contains(&format!("service_pid={}", child_pid)), "PANEL_OPEN_STATUS deve riportare il PID del servizio: {}", content);
++        assert!(content.contains(&format!("service_port={}", free_port)), "PANEL_OPEN_STATUS deve riportare la porta del servizio: {}", content);
++        assert!(content.contains("service_exe=") && content.to_lowercase().contains("external_llama_server"), "service_exe deve contenere il percorso reale dell'eseguibile adottato: {}", content);
++
++        std::env::remove_var("LIMEN_LOCAL_MODEL_TIMING_LOG");
++
++        // Pulizia: terminazione del processo di test avviato da questo test
++        let _ = child.kill();
++        let _ = child.wait();
++    }
++
++    #[test]
++    fn test_fase5i_n4_start_when_already_healthy_does_not_deadlock_and_returns_status() {
++        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
++        let port = listener.local_addr().unwrap().port();
++        let stop_flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
++        let stop_clone = stop_flag.clone();
++
++        let server_thread = std::thread::spawn(move || {
++            listener.set_nonblocking(true).unwrap();
++            while !stop_clone.load(Ordering::SeqCst) {
++                if let Ok((mut s, _)) = listener.accept() {
++                    let mut buf = [0u8; 1024];
++                    let _ = s.read(&mut buf);
++                    let _ = s.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 15\r\n\r\n{\"status\":\"ok\"}");
++                }
++                std::thread::sleep(Duration::from_millis(5));
++            }
++        });
++
++        let state = LlamaServerState::default();
++        {
++            let mut s = state.0.lock().unwrap();
++            s.port = port;
++        }
++
++        // Chiamata a start_with_timeout: deve attraversare il ramo already_healthy (step 2)
++        // e chiamare self.status() SENZA bloccarsi in deadlock sulla mutex
++        let t0 = Instant::now();
++        let res = state.start_with_timeout(Duration::from_secs(5));
++        let elapsed = t0.elapsed();
++
++        assert!(res.is_ok(), "L'avvio con servizio già sano deve riuscire: {:?}", res);
++        assert!(elapsed < Duration::from_secs(2), "Non deve esserci deadlock né attesa timeout (impiegati {:?})", elapsed);
++
++        let rep = res.unwrap();
++        assert!(rep.healthy, "Il report restituito deve indicare servizio sano");
++        assert_eq!(rep.port, port, "La porta restituita deve coincidere");
++        assert!(!rep.starting, "starting deve essere false");
++
++        stop_flag.store(true, Ordering::SeqCst);
++        let _ = server_thread.join();
++    }
+ }
++
++
+diff --git a/apps/desktop/src-tauri/src/main.rs b/apps/desktop/src-tauri/src/main.rs
+index b311d68..d984e09 100644
+--- a/apps/desktop/src-tauri/src/main.rs
++++ b/apps/desktop/src-tauri/src/main.rs
+@@ -820,15 +820,27 @@ async fn embeddings_set_provider(
+ }
+ 
+ #[tauri::command]
+-async fn local_model_status() -> Result<limen_vault::llama::LocalModelReport, String> {
++async fn local_model_status(
++    llama_state: tauri::State<'_, limen_vault::llama::LlamaServerState>,
++) -> Result<limen_vault::llama::LocalModelReport, String> {
+     let t0 = std::time::Instant::now();
+     let rep = tauri::async_runtime::spawn_blocking(limen_vault::llama::local_model_status)
+         .await
+         .map_err(|e| e.to_string())?;
+     let elapsed = t0.elapsed().as_millis() as u64;
+-    limen_vault::llama::log_local_model_timing(
++    let s_rep = llama_state.status();
++    let (srv_bin, srv_pid, srv_port) = if s_rep.running || s_rep.healthy {
++        let bin = llama_state.get_binary_path();
++        (bin, s_rep.pid, if s_rep.port > 0 { Some(s_rep.port) } else { None })
++    } else {
++        (None, None, None)
++    };
++    limen_vault::llama::log_local_model_timing_meta(
+         "PANEL_OPEN_STATUS",
+         elapsed,
++        srv_bin.as_deref(),
++        srv_pid,
++        srv_port,
+         &format!("installed={}, sha256_ok={}", rep.installed, rep.sha256_ok),
+     );
+     Ok(rep)
+diff --git a/apps/desktop/src-tauri/tests/fixtures/invalid_embeddings.rs b/apps/desktop/src-tauri/tests/fixtures/invalid_embeddings.rs
+new file mode 100644
+index 0000000..d79fe9d
+--- /dev/null
++++ b/apps/desktop/src-tauri/tests/fixtures/invalid_embeddings.rs
+@@ -0,0 +1,35 @@
++// Lightweight mock server producing 3-dimensional embeddings instead of 1024-dimensional
++// Used for acceptance testing bounded failure on invalid model dimensions
++use std::{io::{Read, Write}, net::TcpListener, time::{Duration, Instant}};
++
++fn main() {
++    let args: Vec<String> = std::env::args().collect();
++    let pos = args.iter().position(|a| a == "--port").expect("port argument");
++    let port: u16 = args[pos + 1].parse().unwrap();
++    let listener = TcpListener::bind(("127.0.0.1", port)).unwrap();
++    listener.set_nonblocking(true).unwrap();
++    let start = Instant::now();
++
++    while start.elapsed() < Duration::from_secs(1800) {
++        if let Ok((mut s, _)) = listener.accept() {
++            let _ = s.set_nonblocking(false);
++            let _ = s.set_read_timeout(Some(Duration::from_secs(1)));
++            let mut buf = [0u8; 8192];
++            let n = s.read(&mut buf).unwrap_or(0);
++            let req = String::from_utf8_lossy(&buf[..n]);
++            let body = if req.starts_with("GET /health") {
++                "{\"status\":\"ok\"}".to_string()
++            } else {
++                "{\"data\":[{\"embedding\":[0.1,0.2,0.3]}]}".to_string()
++            };
++            let response = format!(
++                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
++                body.len(),
++                body
++            );
++            let _ = s.write_all(response.as_bytes());
++        } else {
++            std::thread::sleep(Duration::from_millis(5));
++        }
++    }
++}
+diff --git a/apps/desktop/src-tauri/tests/fixtures/valid_mock_server.rs b/apps/desktop/src-tauri/tests/fixtures/valid_mock_server.rs
+new file mode 100644
+index 0000000..b888f1b
+--- /dev/null
++++ b/apps/desktop/src-tauri/tests/fixtures/valid_mock_server.rs
+@@ -0,0 +1,45 @@
++// Lightweight mock server for unit testing llama-server lifecycle
++// Responds to GET /health with 200 {"status":"ok"}
++// Responds to POST /v1/embeddings with 200 {"data":[{"embedding":[...1024 floats...]}]}
++use std::{io::{Read, Write}, net::TcpListener, time::{Duration, Instant}};
++
++fn main() {
++    let args: Vec<String> = std::env::args().collect();
++    let pos = args.iter().position(|a| a == "--port").expect("port argument");
++    let port: u16 = args[pos + 1].parse().unwrap();
++    let listener = TcpListener::bind(("127.0.0.1", port)).unwrap();
++    listener.set_nonblocking(true).unwrap();
++    let start = Instant::now();
++
++    // Construct valid 1024-dimension float embedding JSON body
++    let mut emb = String::with_capacity(7 * 1024);
++    emb.push_str("[0.01");
++    for _ in 1..1024 {
++        emb.push_str(",0.01");
++    }
++    emb.push(']');
++    let emb_body = format!("{{\"data\":[{{\"embedding\":{}}}]}}", emb);
++
++    while start.elapsed() < Duration::from_secs(1800) {
++        if let Ok((mut s, _)) = listener.accept() {
++            let _ = s.set_nonblocking(false);
++            let _ = s.set_read_timeout(Some(Duration::from_secs(2)));
++            let mut buf = [0u8; 8192];
++            let n = s.read(&mut buf).unwrap_or(0);
++            let req = String::from_utf8_lossy(&buf[..n]);
++            let body = if req.starts_with("GET /health") {
++                "{\"status\":\"ok\"}".to_string()
++            } else {
++                emb_body.clone()
++            };
++            let response = format!(
++                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
++                body.len(),
++                body
++            );
++            let _ = s.write_all(response.as_bytes());
++        } else {
++            std::thread::sleep(Duration::from_millis(5));
++        }
++    }
++}
+diff --git a/apps/desktop/src/SemanticEngineSettings.tsx b/apps/desktop/src/SemanticEngineSettings.tsx
+index 53e47ca..52ca085 100644
+--- a/apps/desktop/src/SemanticEngineSettings.tsx
++++ b/apps/desktop/src/SemanticEngineSettings.tsx
+@@ -49,6 +49,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
+   const [downloadProgress, setDownloadProgress] = useState<LocalModelProgress | null>(null);
+ 
+   const [startingServer, setStartingServer] = useState(false);
++  const isStarting = startingServer || Boolean(serverReport?.starting);
+   const [stoppingServer, setStoppingServer] = useState(false);
+   const [pickingModelFile, setPickingModelFile] = useState(false);
+   const [verifyingIntegrity, setVerifyingIntegrity] = useState(false);
+@@ -157,6 +158,14 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
+     };
+   }, [vaultPath]);
+ 
++  useEffect(() => {
++    if (!serverReport?.starting) return;
++    const interval = setInterval(() => {
++      void refreshAll();
++    }, 1000);
++    return () => clearInterval(interval);
++  }, [serverReport?.starting]);
++
+   const handleSelectProvider = async (provider: 'openai' | 'local') => {
+     if (loading || downloading || reindexing) return;
+     setOptimisticProvider(provider);
+@@ -238,7 +247,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
+   };
+ 
+   const handleStartServer = async () => {
+-    if (startingServer || loading) return;
++    if (isStarting || loading) return;
+     setError(null);
+     setSuccessMessage(null);
+     setStartingServer(true);
+@@ -557,7 +566,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
+               padding: '2px 8px',
+               borderRadius: 4,
+               backgroundColor:
+-                startingServer
++                isStarting
+                   ? '#fef3c7'
+                   : serverReport?.running && serverReport.healthy
+                   ? '#dcfce7'
+@@ -565,7 +574,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
+                   ? '#fee2e2'
+                   : '#f1f5f9',
+               color:
+-                startingServer
++                isStarting
+                   ? '#92400e'
+                   : serverReport?.running && serverReport.healthy
+                   ? '#166534'
+@@ -574,7 +583,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
+                   : '#64748b',
+             }}
+           >
+-            {startingServer
++            {isStarting
+               ? 'IN AVVIO…'
+               : serverReport?.running && serverReport.healthy
+               ? `ATTIVO (PORTA ${serverReport.port})`
+@@ -585,7 +594,11 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
+         </div>
+ 
+         <div style={{ fontSize: 12, color: '#475569', marginBottom: 12 }}>
+-          {serverReport?.running && serverReport.healthy ? (
++          {isStarting ? (
++            <div style={{ color: '#92400e' }}>
++              Avvio del servizio locale in corso in background. Controllo di salute in attesa...
++            </div>
++          ) : serverReport?.running && serverReport.healthy ? (
+             <div>
+               Il servizio è in ascolto su loopback <code>http://127.0.0.1:{serverReport.port}</code> con modello{' '}
+               <strong>{serverReport.model}</strong>. Controllo di salute <code>/health</code> superato.
+@@ -610,9 +623,9 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
+                 color: '#b91c1c',
+                 border: '1px solid #fecaca',
+                 backgroundColor: stoppingServer ? '#fee2e2' : '#f8fafc',
+-                cursor: loading || startingServer || stoppingServer ? 'not-allowed' : 'pointer',
++                cursor: loading || isStarting || stoppingServer ? 'not-allowed' : 'pointer',
+               }}
+-              disabled={loading || startingServer || stoppingServer}
++              disabled={loading || isStarting || stoppingServer}
+               onClick={handleStopServer}
+             >
+               {stoppingServer ? 'ARRESTO IN CORSO…' : 'ARRESTA SERVIZIO LOCALE'}
+@@ -621,15 +634,15 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
+             <button
+               style={{
+                 ...buttonSecondary,
+-                backgroundColor: startingServer ? '#fef3c7' : '#f8fafc',
+-                color: startingServer ? '#92400e' : '#1e293b',
+-                borderColor: startingServer ? '#f59e0b' : '#cbd5e1',
+-                cursor: loading || startingServer || stoppingServer || !modelReport?.installed ? 'not-allowed' : 'pointer',
++                backgroundColor: isStarting ? '#fef3c7' : '#f8fafc',
++                color: isStarting ? '#92400e' : '#1e293b',
++                borderColor: isStarting ? '#f59e0b' : '#cbd5e1',
++                cursor: loading || isStarting || stoppingServer || !modelReport?.installed ? 'not-allowed' : 'pointer',
+               }}
+-              disabled={loading || startingServer || stoppingServer || !modelReport?.installed}
++              disabled={loading || isStarting || stoppingServer || !modelReport?.installed}
+               onClick={handleStartServer}
+             >
+-              {startingServer ? 'AVVIO IN CORSO…' : 'AVVIA SERVIZIO LOCALE'}
++              {isStarting ? 'AVVIO IN CORSO…' : 'AVVIA SERVIZIO LOCALE'}
+             </button>
+           )}
+           <button
+diff --git a/apps/desktop/src/ai-ipc.ts b/apps/desktop/src/ai-ipc.ts
+index a8d1d25..348f1db 100644
+--- a/apps/desktop/src/ai-ipc.ts
++++ b/apps/desktop/src/ai-ipc.ts
+@@ -77,6 +77,7 @@ export interface LocalServerReport {
+   model: string;
+   healthy: boolean;
+   lastError: string | null;
++  starting?: boolean;
+ }
+ 
+ export interface LocalModelProgress {
