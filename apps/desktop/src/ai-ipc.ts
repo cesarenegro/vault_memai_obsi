@@ -77,6 +77,7 @@ export interface LocalServerReport {
   model: string;
   healthy: boolean;
   lastError: string | null;
+  starting?: boolean;
 }
 
 export interface LocalModelProgress {

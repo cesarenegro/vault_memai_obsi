@@ -37,6 +37,8 @@ pub struct LocalServerReport {
     pub model: String,
     pub healthy: bool,
     pub last_error: Option<String>,
+    #[serde(default)]
+    pub starting: bool,
 }
 
 #[derive(Default)]
@@ -1212,7 +1214,7 @@ impl LlamaServerState {
 
     pub fn status(&self) -> LocalServerReport {
         // Estrae lo stato rilasciando IMMEDIATAMENTE il mutex: non tiene il lock durante check_health di rete
-        let (port, has_child, pid, last_error) = {
+        let (port, has_child, pid, last_error, is_starting) = {
             let mut s = match self.0.lock() {
                 Ok(guard) => guard,
                 Err(poisoned) => poisoned.into_inner(),
@@ -1226,7 +1228,7 @@ impl LlamaServerState {
             }
 
             let pid = s.child.as_ref().map(|c| c.id()).or(s.adopted_pid);
-            (s.port, s.child.is_some(), pid, s.last_error.clone())
+            (s.port, s.child.is_some(), pid, s.last_error.clone(), s.starting)
         };
 
         // check_health viene eseguito FUORI DAL MUTEX
@@ -1240,6 +1242,7 @@ impl LlamaServerState {
             model: "bge-m3-Q8_0.gguf".to_string(),
             healthy,
             last_error,
+            starting: is_starting,
         }
     }
 
@@ -2764,6 +2767,29 @@ mod tests {
         let mut s = state.0.lock().unwrap();
         s.starting = false;
         s.start_owner = None;
+    }
+
+    #[test]
+    fn test_fase5i_n2_status_exposes_starting_state() {
+        let state = LlamaServerState::default();
+        let rep_init = state.status();
+        assert!(!rep_init.starting, "Inizialmente starting deve essere false");
+
+        {
+            let mut s = state.0.lock().unwrap();
+            s.starting = true;
+        }
+
+        let rep_starting = state.status();
+        assert!(rep_starting.starting, "Durante l'avvio, status().starting deve essere true");
+        assert!(!rep_starting.running, "Senza processo né salute, running deve essere false");
+
+        {
+            let mut s = state.0.lock().unwrap();
+            s.starting = false;
+        }
+        let rep_ended = state.status();
+        assert!(!rep_ended.starting, "Dopo la fine dell'avvio, status().starting deve tornare false");
     }
 
     #[test]

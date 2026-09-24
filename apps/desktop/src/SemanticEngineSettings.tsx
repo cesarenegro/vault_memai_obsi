@@ -49,6 +49,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
   const [downloadProgress, setDownloadProgress] = useState<LocalModelProgress | null>(null);
 
   const [startingServer, setStartingServer] = useState(false);
+  const isStarting = startingServer || Boolean(serverReport?.starting);
   const [stoppingServer, setStoppingServer] = useState(false);
   const [pickingModelFile, setPickingModelFile] = useState(false);
   const [verifyingIntegrity, setVerifyingIntegrity] = useState(false);
@@ -157,6 +158,14 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
     };
   }, [vaultPath]);
 
+  useEffect(() => {
+    if (!serverReport?.starting) return;
+    const interval = setInterval(() => {
+      void refreshAll();
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [serverReport?.starting]);
+
   const handleSelectProvider = async (provider: 'openai' | 'local') => {
     if (loading || downloading || reindexing) return;
     setOptimisticProvider(provider);
@@ -238,7 +247,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
   };
 
   const handleStartServer = async () => {
-    if (startingServer || loading) return;
+    if (isStarting || loading) return;
     setError(null);
     setSuccessMessage(null);
     setStartingServer(true);
@@ -557,7 +566,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
               padding: '2px 8px',
               borderRadius: 4,
               backgroundColor:
-                startingServer
+                isStarting
                   ? '#fef3c7'
                   : serverReport?.running && serverReport.healthy
                   ? '#dcfce7'
@@ -565,7 +574,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
                   ? '#fee2e2'
                   : '#f1f5f9',
               color:
-                startingServer
+                isStarting
                   ? '#92400e'
                   : serverReport?.running && serverReport.healthy
                   ? '#166534'
@@ -574,7 +583,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
                   : '#64748b',
             }}
           >
-            {startingServer
+            {isStarting
               ? 'IN AVVIO…'
               : serverReport?.running && serverReport.healthy
               ? `ATTIVO (PORTA ${serverReport.port})`
@@ -585,7 +594,11 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
         </div>
 
         <div style={{ fontSize: 12, color: '#475569', marginBottom: 12 }}>
-          {serverReport?.running && serverReport.healthy ? (
+          {isStarting ? (
+            <div style={{ color: '#92400e' }}>
+              Avvio del servizio locale in corso in background. Controllo di salute in attesa...
+            </div>
+          ) : serverReport?.running && serverReport.healthy ? (
             <div>
               Il servizio è in ascolto su loopback <code>http://127.0.0.1:{serverReport.port}</code> con modello{' '}
               <strong>{serverReport.model}</strong>. Controllo di salute <code>/health</code> superato.
@@ -610,9 +623,9 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
                 color: '#b91c1c',
                 border: '1px solid #fecaca',
                 backgroundColor: stoppingServer ? '#fee2e2' : '#f8fafc',
-                cursor: loading || startingServer || stoppingServer ? 'not-allowed' : 'pointer',
+                cursor: loading || isStarting || stoppingServer ? 'not-allowed' : 'pointer',
               }}
-              disabled={loading || startingServer || stoppingServer}
+              disabled={loading || isStarting || stoppingServer}
               onClick={handleStopServer}
             >
               {stoppingServer ? 'ARRESTO IN CORSO…' : 'ARRESTA SERVIZIO LOCALE'}
@@ -621,15 +634,15 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
             <button
               style={{
                 ...buttonSecondary,
-                backgroundColor: startingServer ? '#fef3c7' : '#f8fafc',
-                color: startingServer ? '#92400e' : '#1e293b',
-                borderColor: startingServer ? '#f59e0b' : '#cbd5e1',
-                cursor: loading || startingServer || stoppingServer || !modelReport?.installed ? 'not-allowed' : 'pointer',
+                backgroundColor: isStarting ? '#fef3c7' : '#f8fafc',
+                color: isStarting ? '#92400e' : '#1e293b',
+                borderColor: isStarting ? '#f59e0b' : '#cbd5e1',
+                cursor: loading || isStarting || stoppingServer || !modelReport?.installed ? 'not-allowed' : 'pointer',
               }}
-              disabled={loading || startingServer || stoppingServer || !modelReport?.installed}
+              disabled={loading || isStarting || stoppingServer || !modelReport?.installed}
               onClick={handleStartServer}
             >
-              {startingServer ? 'AVVIO IN CORSO…' : 'AVVIA SERVIZIO LOCALE'}
+              {isStarting ? 'AVVIO IN CORSO…' : 'AVVIA SERVIZIO LOCALE'}
             </button>
           )}
           <button
