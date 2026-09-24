@@ -12,6 +12,8 @@ import { SourceDetailsModal, type TechnicalDetails } from './SourceDetailsModal'
 import { historyIpc, type HistoryEntry, type HistoryEntryHeader } from './history-ipc';
 import { formatLocalDate } from './AiHistoryDrawer';
 import { cleanTitle } from './source-utils';
+import icLimenVault from './assets/ic-limenvault.png';
+import limenWordmark from './assets/limenvault-logo.png';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createLatestRequest } from './latest-request';
 import { invoke } from '@tauri-apps/api/core';
@@ -814,29 +816,48 @@ export default function App() {
         {/* TOP: LOGO + CARICA DOCUMENTI + MENU NAVIGAZIONE (SEMPRE FERMO) */}
         <div style={{ flexShrink: 0 }}>
           {/* LOGO */}
-          <div style={{ padding: '4px 12px 16px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
+          <div style={{ padding: '4px 8px 16px 8px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <img
+              src={icLimenVault}
+              alt="Limen Logo"
               style={{
-                width: 24,
-                height: 24,
+                width: 28,
+                height: 28,
                 borderRadius: 6,
-                backgroundColor: '#0f172a',
-                color: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 700,
-                fontSize: 12,
+                objectFit: 'cover',
+                flexShrink: 0,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
               }}
-            >
-              L
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--limen-text-primary)' }}>
-                {vaultLoaded && vaultName ? vaultName : 'Nessun Vault'}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                <img
+                  src={limenWordmark}
+                  alt="Limen"
+                  style={{
+                    height: 16,
+                    width: 'auto',
+                    objectFit: 'contain',
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--limen-text-primary)' }}>
+                  Vault V5
+                </span>
               </div>
-              <div style={{ fontSize: 10, color: 'var(--limen-text-muted)', fontWeight: 500 }}>
-                LIMEN Vault V5 {isTauriEnv ? '(app nativa)' : '(anteprima browser)'}
+              <div
+                style={{
+                  fontSize: 10,
+                  color: 'var(--limen-text-muted)',
+                  fontWeight: 500,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  marginTop: 2,
+                }}
+                title={vaultLoaded && vaultName ? vaultName : 'Nessun Vault'}
+              >
+                {vaultLoaded && vaultName ? vaultName : 'Nessun Vault'}
               </div>
             </div>
           </div>
