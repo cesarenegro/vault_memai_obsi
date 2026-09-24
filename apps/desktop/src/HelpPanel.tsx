@@ -219,7 +219,7 @@ export function HelpPanel({
 
             <h4>Passo 1 — Apri o crea il Vault</h4>
             <ol>
-              <li>Avvia <strong>LIMEN Vault v3</strong> {terms.onDeviceTerm}.</li>
+              <li>Avvia <strong>LIMEN Vault V5</strong> {terms.onDeviceTerm}.</li>
               <li>Nella schermata di benvenuto, seleziona il percorso della cartella locale.</li>
               <li>Premi <strong>APRI VAULT ESISTENTE</strong> se possiedi già un Vault LIMEN, oppure <strong>CREA NUOVO VAULT</strong> se la cartella è vuota.</li>
             </ol>
@@ -258,7 +258,7 @@ export function HelpPanel({
           <div>
             <h3>Architettura del RAG Locale integrato</h3>
             <p>
-              LIMEN Vault v3 integra un motore di intelligenza semantica locale basato su <strong>llama-server</strong> e il modello <strong>BAAI/bge-m3</strong> quantizzato a 8 bit (<code>bge-m3-Q8_0.gguf</code>, 1024 dimensioni).
+              LIMEN Vault V5 integra un motore di intelligenza semantica locale basato su <strong>llama-server</strong> e il modello <strong>BAAI/bge-m3</strong> quantizzato a 8 bit (<code>bge-m3-Q8_0.gguf</code>, 1024 dimensioni).
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, margin: '16px 0' }}>
@@ -753,11 +753,11 @@ Richiede soluzioni di packaging compostabile.`}
             >
               Documentazione Ufficiale
             </span>
-            <span style={{ fontSize: 12, color: '#94a3b8' }}>v3 · RAG Locale bge-m3 & Ricerca Ibrida BM25</span>
+            <span style={{ fontSize: 12, color: '#94a3b8' }}>V5 · RAG Locale bge-m3 & Ricerca Ibrida BM25</span>
           </div>
 
           <h2 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 8px 0', letterSpacing: '-0.02em' }}>
-            Guida & Manuale Utente LIMEN Vault v3
+            Guida & Manuale Utente LIMEN Vault V5
           </h2>
           <p style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.6, margin: '0 0 20px 0' }}>
             Tutte le procedure operative, la configurazione del RAG locale a rete zero, la ricerca ibrida BM25, i workflow di lavoro e le soluzioni ai problemi tecnici.

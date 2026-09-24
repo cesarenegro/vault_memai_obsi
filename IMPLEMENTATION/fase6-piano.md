@@ -1,15 +1,15 @@
 # FASE 6 — Piano di Implementazione & Task List
 
 ## Obiettivo
-Correggere i difetti residui B, F, H e applicare le modifiche all'interfaccia decise da Cesare, garantendo la compatibilità sia per Windows che per macOS, aggiornando la versione a 0.4.0 e mantenendo l'intera suite di test verde al 100%.
+Correggere i difetti residui B, F, H e applicare le modifiche all'interfaccia decise da Cesare, garantendo la compatibilità sia per Windows che per macOS, aggiornando la versione a LIMEN Vault V5 (0.5.0) e mantenendo l'intera suite di test verde al 100%.
 
 ---
 
 ## Task List Dettagliata
 
-- [x] **Fase 1: Configurazione globale tema colore Lime e Versione 0.4.0**
+- [x] **Fase 1: Configurazione globale tema colore Lime e Versione V5 (0.5.0)**
   - [x] 1.1 Definire `--limen-lime: #77F117;` e `--limen-lime-30: rgba(119, 241, 23, 0.30);` in `apps/desktop/src/index.css` (o foglio stile globale), con regola di testo scuro `#0f172a` su sfondo verde.
-  - [x] 1.2 Aggiornare la versione da 0.3.0 a 0.4.0 in `apps/desktop/package.json` e `apps/desktop/src-tauri/Cargo.toml` (e verificare `tauri.conf.json`).
+  - [x] 1.2 Aggiornare la versione a LIMEN Vault V5 (0.5.0) in `apps/desktop/package.json`, `apps/desktop/src-tauri/Cargo.toml`, `tauri.conf.json`, `index.html`, `App.tsx` e `HelpPanel.tsx`.
 
 - [x] **Fase 2: Backend Rust — Comando conteggio note per categoria (Punto 12 & 15)**
   - [x] 2.1 Implementare in `apps/desktop/src-tauri/src/knowledge.rs` la funzione `count_notes_by_category` che conta i file `.md` per ogni cartella di `FOLDERS` senza leggerne il contenuto.
