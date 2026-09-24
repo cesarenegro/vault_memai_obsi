@@ -378,7 +378,7 @@ fn main() {
             index_vault_search,
             search_vault,
             get_search_index_status,
-            ai_list_models,ai_get_selected_model,ai_save_selected_model,search_read_document,ai_key_status,ai_save_key,ai_delete_key,ai_get_consent,ai_set_consent,ai_preview,ai_ask,ai_ask_stream,ai_cancel,ai_read_source,mcp_start,mcp_stop,mcp_status,
+            vault_id_get_or_create,ai_history_list,ai_history_get,ai_history_delete,ai_history_clear,ai_history_verify_sources,ai_list_models,ai_get_selected_model,ai_save_selected_model,search_read_document,ai_key_status,ai_save_key,ai_delete_key,ai_get_consent,ai_set_consent,ai_preview,ai_ask,ai_ask_stream,ai_cancel,ai_read_source,mcp_start,mcp_stop,mcp_status,
             catalog_sync,catalog_list_documents,catalog_process_extractions,catalog_get_document,catalog_get_by_path,catalog_verify_document_passage,catalog_read_verified_text,catalog_read_text,catalog_read_passage,catalog_open_original,catalog_reveal_in_finder,catalog_get_summary,
             embeddings_get_status,embeddings_sync_vault,search_vault_hybrid,
             embeddings_get_provider,embeddings_set_provider,
@@ -461,6 +461,54 @@ mod tests {
 
         let _ = fs::remove_dir_all(&tmp);
     }
+}
+
+
+#[tauri::command]
+async fn vault_id_get_or_create(vault_path: String) -> Result<limen_vault::history::VaultIdInfo, String> {
+    tauri::async_runtime::spawn_blocking(move || limen_vault::history::get_or_create_vault_id(Path::new(&vault_path)))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn ai_history_list(vault_path: String) -> Result<Vec<limen_vault::history::HistoryEntryHeader>, String> {
+    tauri::async_runtime::spawn_blocking(move || limen_vault::history::list_history_entries(Path::new(&vault_path)))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn ai_history_get(vault_path: String, entry_id: String) -> Result<limen_vault::history::HistoryEntry, String> {
+    tauri::async_runtime::spawn_blocking(move || limen_vault::history::get_history_entry(Path::new(&vault_path), &entry_id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn ai_history_delete(vault_path: String, entry_id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || limen_vault::history::delete_history_entry(Path::new(&vault_path), &entry_id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn ai_history_clear(vault_path: String) -> Result<usize, String> {
+    tauri::async_runtime::spawn_blocking(move || limen_vault::history::clear_vault_history(Path::new(&vault_path)))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn ai_history_verify_sources(
+    vault_path: String,
+    sources: Vec<limen_vault::history::HistorySourceRef>,
+) -> Result<Vec<limen_vault::history::VerifiedSourceResult>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        limen_vault::history::verify_history_sources(Path::new(&vault_path), &sources)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]

@@ -2107,8 +2107,9 @@ pub async fn ask(
     let t_backend_total_ms = p.preview_timings.t_preview_total_ms + t_handoff_ms + t_ask_total_ms;
     let t_ui_total_ms = ui_elapsed_ms.map(|prev_ms| prev_ms + t_ask_total_ms);
 
-    let model_str = parsed["model"].as_str().unwrap_or(p.options.model.as_str());
-    let status_str = parsed["status"].as_str().unwrap_or("completed");
+    let model_str = parsed["model"].as_str().unwrap_or(p.options.model.as_str()).to_string();
+    let status_str = parsed["status"].as_str().unwrap_or("completed").to_string();
+    let answer_str = parsed["answer"].as_str().unwrap_or_default().to_string();
     let incomplete_reason = parsed["incompleteReason"].as_str().map(|s| s.to_string());
     let tokens_used = parsed["tokensUsed"].as_u64();
     let tokens_prompt = parsed["tokensPrompt"].as_u64();
@@ -2161,6 +2162,18 @@ pub async fn ask(
     if let Some(ref r) = p.semantic_fallback_reason {
         parsed["semanticFallbackReason"] = serde_json::json!(r);
     }
+
+    // C6: Salvataggio nello storico dopo verify_post riuscito e validazione citazioni
+    crate::history::record_ai_completion(
+        &p.path,
+        &p.options.prompt,
+        &p.options.model,
+        &model_str,
+        &answer_str,
+        &status_str,
+        t_ui_total_ms.unwrap_or(t_ask_total_ms),
+        &p.sources,
+    );
 
     Ok(parsed)
 }
@@ -3246,6 +3259,19 @@ pub async fn ask_stream(
         semantic_used: p.semantic_used,
         semantic_fallback_reason: p.semantic_fallback_reason.clone(),
     };
+
+    // C6: Salvataggio nello storico dopo verify_post riuscito e validazione citazioni
+    let final_ans = parsed["answer"].as_str().unwrap_or(sanitizer.get_accumulated()).to_string();
+    crate::history::record_ai_completion(
+        &p.path,
+        &p.options.prompt,
+        &effective_model,
+        model_str,
+        &final_ans,
+        status_str,
+        t_ui_total_ms.unwrap_or(t_ask_total_ms),
+        &p.sources,
+    );
 
     if let Some(ref w) = window {
         let _ = w.emit("limen://ai-stream-end", end_payload);

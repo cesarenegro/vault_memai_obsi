@@ -7,7 +7,9 @@ import { SemanticEngineSettings } from './SemanticEngineSettings';
 import { TunnelPanel } from './TunnelPanel';
 import { getPlatformTerms } from './platform';
 import { m7, operationId } from './proposal-ipc';
-import { ChevronDown, ChevronRight, ShieldAlert, Sparkles, FileText, Check, AlertCircle, Key, Lock } from 'lucide-react';
+import { ChevronDown, ChevronRight, ShieldAlert, Sparkles, FileText, Check, AlertCircle, Key, Lock, Clock } from 'lucide-react';
+import { AiHistoryDrawer } from './AiHistoryDrawer';
+import { historyIpc, type HistoryEntry, type VerifiedSourceResult } from './history-ipc';
 
 const fieldStyle: React.CSSProperties = {
   padding: '10px 14px',
@@ -72,6 +74,46 @@ export function AiPanel({
   const [techDetailsOpen, setTechDetailsOpen] = useState(false);
 
   const [saveMessage, setSaveMessage] = useState('');
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
+  const [historyCount, setHistoryCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (vaultPath) {
+      void historyIpc.list(vaultPath).then(l => setHistoryCount(l.length)).catch(() => {});
+    }
+  }, [vaultPath]);
+
+  const handleSelectHistoryEntry = (entry: HistoryEntry, verified: VerifiedSourceResult[]) => {
+    setPrompt(entry.prompt);
+    const restoredCitations = verified.map(v => ({
+      documentId: v.documentId,
+      relativePath: v.relativePath,
+      title: v.title,
+      category: 'restored',
+      sha256: '',
+      locator: v.locator,
+    }));
+
+    const hasModified = verified.some(v => v.status === 'modified');
+    const hasMissing = verified.some(v => v.status === 'missing');
+    let warningMsg: string | undefined = undefined;
+    if (hasModified) {
+      warningMsg = 'Uno o più documenti citati sono stati modificati dopo la generazione di questa risposta.';
+    } else if (hasMissing) {
+      warningMsg = 'Uno o più documenti citati non sono più presenti nel Vault.';
+    }
+
+    setAnswer({
+      answer: entry.answer,
+      provider: 'OpenAI',
+      model: entry.responseModel,
+      status: entry.status,
+      incomplete: entry.status === 'incomplete',
+      warning: warningMsg,
+      citations: restoredCitations,
+      citedIndices: verified.map((_, i) => i),
+    });
+  };
   const saveOperation = useRef(operationId());
   const seq = useRef(0);
   const unlistenChunkRef = useRef<UnlistenFn | null>(null);
@@ -253,6 +295,7 @@ export function AiPanel({
       setStreamingText('');
       setAnswer(res);
       saveOperation.current = operationId();
+      setHistoryCount(c => c + 1);
     } catch (e: any) {
       if (currentSeq !== seq.current) return;
       setIsStreaming(false);
@@ -301,11 +344,47 @@ export function AiPanel({
     <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Search / Question Header */}
       <div className="limen-card" style={{ padding: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <Sparkles size={20} color="#0f172a" />
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#0f172a' }}>
-            Chiedi al Vault
-          </h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Sparkles size={20} color="#0f172a" />
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#0f172a' }}>
+              Chiedi al Vault
+            </h2>
+          </div>
+          <button
+            onClick={() => setHistoryDrawerOpen(true)}
+            style={{
+              padding: '6px 12px',
+              border: '1px solid #cbd5e1',
+              borderRadius: 8,
+              background: '#f8fafc',
+              color: '#334155',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+            title="Apri lo storico delle domande e risposte"
+          >
+            <Clock size={16} />
+            <span>Storico</span>
+            {historyCount > 0 && (
+              <span
+                style={{
+                  background: '#0f172a',
+                  color: 'white',
+                  borderRadius: 10,
+                  padding: '1px 6px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                }}
+              >
+                {historyCount}
+              </span>
+            )}
+          </button>
         </div>
         <p style={{ margin: '0 0 16px 0', fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
           Fai una domanda per ottenere una risposta in prosa sintetizzata direttamente dai tuoi documenti.
@@ -821,6 +900,13 @@ export function AiPanel({
           </div>
         </div>
       )}
+      <AiHistoryDrawer
+        vaultPath={vaultPath}
+        isOpen={historyDrawerOpen}
+        onClose={() => setHistoryDrawerOpen(false)}
+        onSelectEntry={handleSelectHistoryEntry}
+        onCountChange={count => setHistoryCount(count)}
+      />
     </div>
   );
 }

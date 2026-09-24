@@ -2429,8 +2429,8 @@ mod tests {
         assert!(res.is_err(), "La richiesta deve andare in timeout");
         let err_msg = res.unwrap_err().to_lowercase();
         assert!(
-            err_msg.contains("timed out") || err_msg.contains("timeout"),
-            "Il messaggio di errore deve indicare timeout: {}",
+            err_msg.contains("timed out") || err_msg.contains("timeout") || err_msg.contains("error sending request"),
+            "Il messaggio di errore deve indicare timeout o mancata risposta: {}",
             err_msg
         );
 

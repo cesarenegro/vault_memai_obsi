@@ -142,12 +142,45 @@ pub(crate) fn names(d: &Dir) -> Result<Vec<String>, String> {
     result.sort();
     Ok(result)
 }
-fn excluded(rel: &str) -> bool {
+pub const RECONSTRUCTIBLE_SYSTEM_FILES: &[&str] = &[
+    "00_SYSTEM/VAULT_CATALOG.json",
+    "00_SYSTEM/VAULT_CATALOG.bak.json",
+    "00_SYSTEM/SEARCH_INDEX.json",
+    "00_SYSTEM/EMBEDDINGS_CACHE.json",
+    "00_SYSTEM/.m7-lock",
+];
+
+pub const STATE_SYSTEM_FILES: &[&str] = &[
+    "00_SYSTEM/VAULT_ID.json",
+    "00_SYSTEM/OPENAI_CONSENT.json",
+    "00_SYSTEM/SYNC_PROFILE.json",
+    "00_SYSTEM/AUTO_KNOWLEDGE.json",
+    "00_SYSTEM/AUTO_KNOWLEDGE_CONFIG.json",
+    "00_SYSTEM/M7_STATE.json",
+    "00_SYSTEM/M7_PENDING.json",
+    "00_SYSTEM/COMPILER_INDEX.json",
+];
+
+fn is_technical_exclusion(rel: &str) -> bool {
     rel == "00_SYSTEM/SNAPSHOTS"
         || rel.starts_with("00_SYSTEM/SNAPSHOTS/")
         || rel
             .split('/')
             .any(|n| [".git", "node_modules", ".DS_Store", ".gitkeep", ".obsidian"].contains(&n))
+}
+
+pub fn is_excluded_from_integrity(rel: &str) -> bool {
+    if is_technical_exclusion(rel) {
+        return true;
+    }
+    RECONSTRUCTIBLE_SYSTEM_FILES.contains(&rel) || STATE_SYSTEM_FILES.contains(&rel)
+}
+
+pub fn is_excluded_from_snapshots(rel: &str) -> bool {
+    if is_technical_exclusion(rel) {
+        return true;
+    }
+    RECONSTRUCTIBLE_SYSTEM_FILES.contains(&rel)
 }
 pub(crate) fn write_new(d: &Dir, name: &str, bytes: &[u8]) -> Result<(), String> {
     component(name)?;
@@ -180,8 +213,18 @@ fn walk(
         } else {
             format!("{rel}/{name}")
         };
-        // Exclusions apply only to the live Vault; unexpected files in a snapshot must be detected.
-        if (!snapshot && excluded(&label)) || (snapshot && label == "snapshot_manifest.json") {
+        // Exclusions:
+        // - In snapshot verification: skip only snapshot_manifest.json
+        // - In snapshot creation (dst.is_some()): exclude reconstructible files (state files are copied!)
+        // - In live vault verification: exclude reconstructible files AND state files
+        let skip = if snapshot {
+            label == "snapshot_manifest.json"
+        } else if dst.is_some() {
+            is_excluded_from_snapshots(&label)
+        } else {
+            is_excluded_from_integrity(&label)
+        };
+        if skip {
             continue;
         }
         let meta = d.symlink_metadata(&name).map_err(err)?;
@@ -245,8 +288,8 @@ fn manifest(d: &Dir, snapshot: bool, id: Option<&str>) -> Result<Value, String> 
         {
             return Err("Invalid or duplicate manifest entry".into());
         }
-        if (snapshot && (p == "snapshot_manifest.json" || excluded(p)))
-            || (!snapshot && excluded(p))
+        if (snapshot && (p == "snapshot_manifest.json" || is_excluded_from_snapshots(p)))
+            || (!snapshot && is_excluded_from_integrity(p))
         {
             return Err("Excluded path in manifest".into());
         }
@@ -805,5 +848,52 @@ mod tests {
 
         // Verify restoring to the same active vault folder is refused (no destructive overwrite)
         assert!(restore_snapshot(&p, &snap.id, Some(&p)).is_err());
+    }
+
+    #[test]
+    fn test_vault_integrity_and_snapshot_exclusions() {
+        let (_temp, vault_path) = fixture();
+
+        // Write all reconstructible and state files into 00_SYSTEM
+        let sys_dir = vault_path.join("00_SYSTEM");
+        std::fs::create_dir_all(&sys_dir).unwrap();
+
+        for rel in RECONSTRUCTIBLE_SYSTEM_FILES {
+            let p = vault_path.join(rel);
+            std::fs::write(&p, b"{\"cache\": true}").unwrap();
+        }
+        for rel in STATE_SYSTEM_FILES {
+            let p = vault_path.join(rel);
+            std::fs::write(&p, b"{\"state\": true}").unwrap();
+        }
+
+        // Live vault integrity must be valid despite app system files
+        let rep = verify_manifest_integrity(&vault_path);
+        assert!(rep.is_integrity_valid, "Integrity should be valid with C3 system files: added={:?}, missing={:?}, mod={:?}", rep.added_files, rep.missing_files, rep.modified_files);
+        assert!(rep.added_files.is_empty(), "No added files expected: {:?}", rep.added_files);
+
+        // Create snapshot
+        let snap = create_snapshot(&vault_path, Some("Test C3 snapshot".into())).unwrap();
+        assert_eq!(snap.integrity_status, "valid");
+
+        let snap_dir = Path::new(&snap.snapshot_path);
+        // State files must be copied into snapshot
+        assert!(snap_dir.join("00_SYSTEM/VAULT_ID.json").exists());
+        assert!(snap_dir.join("00_SYSTEM/OPENAI_CONSENT.json").exists());
+        assert!(snap_dir.join("00_SYSTEM/COMPILER_INDEX.json").exists());
+
+        // Reconstructible files must NOT be in snapshot
+        assert!(!snap_dir.join("00_SYSTEM/EMBEDDINGS_CACHE.json").exists());
+        assert!(!snap_dir.join("00_SYSTEM/SEARCH_INDEX.json").exists());
+        assert!(!snap_dir.join("00_SYSTEM/VAULT_CATALOG.json").exists());
+        assert!(!snap_dir.join("00_SYSTEM/.m7-lock").exists());
+
+        // An unexpected temporary file left in 00_SYSTEM must invalidate integrity
+        let tmp_file = sys_dir.join(".catalog-crash-leftover.tmp");
+        std::fs::write(&tmp_file, b"temp").unwrap();
+        let rep_corrupted = verify_manifest_integrity(&vault_path);
+        assert!(!rep_corrupted.is_integrity_valid, "Temporary file should invalidate integrity");
+        assert!(rep_corrupted.added_files.contains(&"00_SYSTEM/.catalog-crash-leftover.tmp".to_string()));
+        let _ = std::fs::remove_file(&tmp_file);
     }
 }
