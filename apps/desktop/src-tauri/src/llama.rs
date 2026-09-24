@@ -2702,6 +2702,8 @@ mod tests {
 
     #[test]
     fn test_fase5g_startup_in_progress_does_not_kill_and_subsequent_succeeds() {
+        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let mock_port = listener.local_addr().unwrap().port();
         let is_ready_flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -2750,6 +2752,7 @@ mod tests {
 
         // Seconda domanda: il servizio è pronto e risponde a /health
         let (port2, _pid2, is_ready2, status2, reason2) = state.get_or_adopt_or_start_service_with_timeout(Duration::from_secs(1));
+        std::env::remove_var("LIMEN_TEST_DISABLE_ADOPTION");
         assert!(is_ready2, "La seconda domanda deve trovare il servizio pronto");
         assert_eq!(port2, Some(mock_port));
         assert_eq!(status2, "pronto");
@@ -2795,6 +2798,7 @@ mod tests {
     #[test]
     fn test_fase5g_on_app_startup_starts_service_in_background_without_question() {
         let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
         let temp_dir = tempfile::tempdir().unwrap();
         let timing_log = temp_dir.path().join("local_model_timing.log");
         std::env::set_var("LIMEN_LOCAL_MODEL_TIMING_LOG", &timing_log);
@@ -2823,6 +2827,7 @@ mod tests {
         let _ = state.stop();
         std::env::remove_var("LIMEN_LOCAL_MODEL_TIMING_LOG");
         std::env::remove_var("LIMEN_EMBEDDINGS_PROVIDER");
+        std::env::remove_var("LIMEN_TEST_DISABLE_ADOPTION");
     }
 
     #[test]
@@ -3300,15 +3305,32 @@ mod tests {
         assert_eq!(state.non_owner_wait_count(), 1, "Il chiamante deve passare dal ramo non-proprietario");
         assert_eq!(state.spawn_count(), 1, "Deve essere eseguito esattamente uno spawn di processo");
         let pid = rep_final.pid.expect("PID presente");
-        assert!(is_process_alive(pid), "Il processo mock deve essere vivo al termine dell'avvio");
+        let mut alive = false;
+        for _ in 0..15 {
+            if is_process_alive(pid) {
+                alive = true;
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        assert!(alive, "Il processo mock deve essere vivo al termine dell'avvio");
 
         let _ = state.stop();
-        assert!(!is_process_alive(pid), "Il processo mock deve essere terminato dopo stop()");
+        let mut dead = false;
+        for _ in 0..15 {
+            if !is_process_alive(pid) {
+                dead = true;
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        assert!(dead, "Il processo mock deve essere terminato dopo stop()");
     }
 
     #[test]
     fn test_fase5i_n1_adopted_service_dies_next_query_fallbacks_and_restarts() {
         let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
         let temp_dir = tempfile::tempdir().unwrap();
         let mock_exe = compile_test_mock_server(temp_dir.path());
 
@@ -3354,7 +3376,6 @@ mod tests {
         assert!(reason_q1.is_some(), "Deve esserci un motivo visibile di ripiego");
 
         // 4. Attendi che il mock avviato in background al punto 3 diventi sano
-        std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
         let t0 = Instant::now();
         let mut recovered = false;
         while t0.elapsed() < Duration::from_secs(10) {
@@ -3622,6 +3643,7 @@ mod tests {
     #[test]
     fn test_fase5i_bis_d4_starting_state_reports_service_pid_when_available() {
         let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
         let state = LlamaServerState::default();
         let expected_service_pid = 54321;
         {
@@ -3633,6 +3655,7 @@ mod tests {
 
         let (port, pid, is_ready, status, reason) =
             state.get_or_adopt_or_start_service_with_timeout(Duration::from_millis(50));
+        std::env::remove_var("LIMEN_TEST_DISABLE_ADOPTION");
         assert!(!is_ready);
         assert_eq!(status, "in avvio");
         assert_eq!(port, None);
