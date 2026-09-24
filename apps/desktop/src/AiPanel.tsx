@@ -514,6 +514,28 @@ export function AiPanel({
 
           {sourcesOpen && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Indicatore trasparente: ricerca semantica vs parole chiave */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  backgroundColor: previewData.semanticUsed ? '#f0fdf4' : '#fffbeb',
+                  border: previewData.semanticUsed ? '1px solid #bbf7d0' : '1px solid #fde68a',
+                  color: previewData.semanticUsed ? '#166534' : '#92400e',
+                }}
+              >
+                <Sparkles size={14} color={previewData.semanticUsed ? '#16a34a' : '#d97706'} style={{ flexShrink: 0 }} />
+                {previewData.semanticUsed ? (
+                  <span><strong>Ricerca semantica attiva:</strong> passaggi selezionati e ordinati con modello locale bge-m3 (1024d)</span>
+                ) : (
+                  <span><strong>Ricerca per parole chiave (ripiego):</strong> {previewData.semanticFallbackReason || 'servizio locale non disponibile'}</span>
+                )}
+              </div>
+
               {previewData.sources.map((s, idx) => {
                 const clean = cleanTitle(s.title, s.relativePath);
                 const isCited = Boolean(answer?.citations && answer.citations.some(c => c.documentId === s.documentId || c.relativePath === s.relativePath));
@@ -602,8 +624,15 @@ export function AiPanel({
 
           {/* Dicitura trasparente: "Basata su N documenti citati tra M consultati" quando la risposta è pronta */}
           {answer && (
-            <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid #e2e8f0', fontSize: 13, fontWeight: 600, color: '#2563eb' }}>
-              Basata su {answer.citations?.length || 0} document{answer.citations?.length === 1 ? 'o citato' : 'i citati'} tra {previewData.sources.length} consultat{previewData.sources.length === 1 ? 'o' : 'i'}
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#2563eb' }}>
+                Basata su {answer.citations?.length || 0} document{answer.citations?.length === 1 ? 'o citato' : 'i citati'} tra {previewData.sources.length} consultat{previewData.sources.length === 1 ? 'o' : 'i'}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 500, color: (answer.semanticUsed ?? previewData.semanticUsed) ? '#166534' : '#92400e' }}>
+                {(answer.semanticUsed ?? previewData.semanticUsed)
+                  ? '✓ Ricerca semantica bge-m3'
+                  : `⚠️ ${answer.semanticFallbackReason || previewData.semanticFallbackReason || 'Ricerca solo per parole'}`}
+              </div>
             </div>
           )}
         </div>
@@ -773,6 +802,14 @@ export function AiPanel({
                 </div>
                 {answer.uiTotalMs && <div><strong>Tempo interfaccia (totale):</strong> {(answer.uiTotalMs / 1000).toFixed(1)} s ({answer.uiTotalMs} ms)</div>}
                 {previewData && <div><strong>Dimensione contesto:</strong> {previewData.contextBytes} byte (passaggi consultati: {previewData.sources.length})</div>}
+                <div>
+                  <strong>Ricerca semantica:</strong>{' '}
+                  {(answer.semanticUsed ?? previewData?.semanticUsed) ? (
+                    <span style={{ color: '#166534', fontWeight: 600 }}>Attiva (bge-m3 1024d)</span>
+                  ) : (
+                    <span style={{ color: '#b45309' }}>Non attiva — {answer.semanticFallbackReason || previewData?.semanticFallbackReason || 'Ripiego su ricerca per parole'}</span>
+                  )}
+                </div>
                 <div><strong>Citazioni grezze:</strong></div>
                 {answer.citations.map((c, i) => (
                   <div key={i} style={{ fontSize: 11, fontFamily: 'monospace', color: '#475569' }}>

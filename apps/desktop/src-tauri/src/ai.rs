@@ -37,7 +37,14 @@ pub const MAX_SOURCES_COUNT: usize = 10;
 
 #[derive(Clone,Serialize)]
 #[serde(rename_all="camelCase")]
-pub struct Preview {pub ticket:String,pub sources:Vec<Source>,pub context_bytes:usize}
+pub struct Preview {
+    pub ticket: String,
+    pub sources: Vec<Source>,
+    pub context_bytes: usize,
+    pub semantic_used: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub semantic_fallback_reason: Option<String>,
+}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,6 +68,10 @@ pub struct Pending {
     pub sources: Vec<Source>,
     pub created_at: Instant,
     pub preview_timings: PreviewTimings,
+    pub port: Option<u16>,
+    pub pid: Option<u32>,
+    pub semantic_used: bool,
+    pub semantic_fallback_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -101,6 +112,14 @@ pub struct AskTimingLogEntry {
     pub ask: AskTimingBreakdown,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sources: Vec<SourceAuditEntry>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub port: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pid: Option<u32>,
+    #[serde(default)]
+    pub semantic_used: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub semantic_fallback_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -111,7 +130,7 @@ pub struct AiStreamChunkPayload {
     pub full_text: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AiStreamEndPayload {
     pub ticket: String,
@@ -128,6 +147,10 @@ pub struct AiStreamEndPayload {
     pub tokens_prompt: Option<u64>,
     pub tokens_completion: Option<u64>,
     pub tokens_reasoning: Option<u64>,
+    #[serde(default)]
+    pub semantic_used: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub semantic_fallback_reason: Option<String>,
 }
 
 /// Percorso del file di impostazioni utente per il modello AI predefinito.
@@ -317,10 +340,23 @@ pub fn log_ask_timing_detailed(entry: &AskTimingLogEntry) {
         + entry.preview.search_fuse_ms
         + entry.preview.search_admit_ms;
 
+    let service_line = format!(
+        "Porta locale: {} | PID: {} | Ricerca semantica: {} | Esito: {}\n",
+        entry.port.map(|p| p.to_string()).unwrap_or_else(|| "nessuna".into()),
+        entry.pid.map(|p| p.to_string()).unwrap_or_else(|| "nessuno".into()),
+        if entry.semantic_used { "UTILIZZATA" } else { "NON UTILIZZATA" },
+        if entry.semantic_used {
+            "OK (semantica attiva)".to_string()
+        } else {
+            format!("RIPIEGO SU PAROLE ({})", entry.semantic_fallback_reason.as_deref().unwrap_or("motivo non specificato"))
+        }
+    );
+
     let formatted_block = format!(
         "================================================================================\n\
          REGISTRO TEMPI RISPOSTA [{}]\n\
          Modello: {} | Stato: {} | Token usati: {}\n\
+         {}\
          Tempo visto da UI (click -> risposta): {}\n\
          Tempo totale Backend: {} ms\n\
            ├─ 1. ANTEPRIMA (Preview): {} ms\n\
@@ -351,6 +387,7 @@ pub fn log_ask_timing_detailed(entry: &AskTimingLogEntry) {
         entry.model,
         status_str,
         tokens_str,
+        service_line,
         ui_str,
         entry.t_backend_total_ms,
         entry.preview.total_ms,
@@ -389,6 +426,81 @@ pub fn log_ask_timing_detailed(entry: &AskTimingLogEntry) {
         entry.ask.verify_pre_ms + entry.ask.payload_ms + entry.ask.openai_ms + entry.ask.verify_post_ms + entry.ask.parse_ms,
         sources_section,
         json_line
+    );
+
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
+        use std::io::Write;
+        let _ = f.write_all(formatted_block.as_bytes());
+    }
+}
+
+pub fn log_preview_timing_detailed(
+    vault_path: &Path,
+    prompt: &str,
+    port: Option<u16>,
+    pid: Option<u32>,
+    semantic_used: bool,
+    fallback_reason: Option<&str>,
+    timings: &PreviewTimings,
+    source_count: usize,
+) {
+    let log_path = get_ask_timing_log_path();
+    if let Some(parent) = log_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let now = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let esito_str = if semantic_used {
+        "OK (ricerca semantica attiva)".to_string()
+    } else {
+        format!("RIPIEGO SU PAROLE ({})", fallback_reason.unwrap_or("motivo non specificato"))
+    };
+
+    let prompt_snippet = prompt.chars().take(80).collect::<String>();
+    let formatted_block = format!(
+        "================================================================================\n\
+         REGISTRO PREPARAZIONE DOMANDA (PREVIEW) [{}]\n\
+         Domanda: \"{}\"\n\
+         Porta locale: {} | PID: {} | Ricerca semantica: {} | Esito: {}\n\
+         Fasi preparazione (totale {} ms):\n\
+           ├─ Indice & cache (t_index_cache_ms): {} ms\n\
+           ├─ Vettore semantico domanda (t_embed_ms): {} ms\n\
+           ├─ Ricerca parole (t_search_words_ms): {} ms\n\
+           ├─ Ricerca semantica (t_search_sem_ms): {} ms\n\
+           ├─ Fusione classifiche (t_search_fuse_ms): {} ms\n\
+           ├─ Filtro ammissibilità (t_search_admit_ms): {} ms\n\
+           ├─ Lettura documenti (t_doc_read_ms): {} ms\n\
+           └─ Estrazione passaggi (t_passage_extract_ms): {} ms\n\
+         Fonti ammissibili trovate: {}\n\
+         JSON: {}\n\
+         ================================================================================\n\n",
+        now,
+        prompt_snippet,
+        port.map(|p| p.to_string()).unwrap_or_else(|| "nessuna".into()),
+        pid.map(|p| p.to_string()).unwrap_or_else(|| "nessuno".into()),
+        if semantic_used { "UTILIZZATA" } else { "NON UTILIZZATA" },
+        esito_str,
+        timings.t_preview_total_ms,
+        timings.t_index_cache_ms,
+        timings.t_embed_ms,
+        timings.t_search_words_ms,
+        timings.t_search_sem_ms,
+        timings.t_search_fuse_ms,
+        timings.t_search_admit_ms,
+        timings.t_doc_read_ms,
+        timings.t_passage_extract_ms,
+        source_count,
+        serde_json::json!({
+            "event": "preview_preparation",
+            "timestamp": now,
+            "vault": vault_path.to_string_lossy(),
+            "port": port,
+            "pid": pid,
+            "semanticUsed": semantic_used,
+            "semanticFallbackReason": fallback_reason,
+            "esito": esito_str,
+            "sourceCount": source_count,
+            "timings": timings,
+        })
     );
 
     if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
@@ -442,6 +554,10 @@ pub fn log_ask_timing(
             parse_ms: 0,
         },
         sources: Vec::new(),
+        port: None,
+        pid: None,
+        semantic_used: false,
+        semantic_fallback_reason: None,
     });
 }
 
@@ -525,6 +641,10 @@ pub fn log_keychain_error(p: &Pending, error_msg: &str, ui_elapsed_ms: Option<u6
             parse_ms: 0,
         },
         sources: audit_sources,
+        port: p.port,
+        pid: p.pid,
+        semantic_used: p.semantic_used,
+        semantic_fallback_reason: p.semantic_fallback_reason.clone(),
     });
 }
 
@@ -1069,6 +1189,15 @@ pub async fn select_with_port_timed(
     o: &Options,
     active_port: Option<u16>,
 ) -> Result<(Vec<Source>, PreviewTimings), String> {
+    let (sources, timings, _, _) = select_with_port_detailed(path, o, active_port).await?;
+    Ok((sources, timings))
+}
+
+pub async fn select_with_port_detailed(
+    path: &Path,
+    o: &Options,
+    active_port: Option<u16>,
+) -> Result<(Vec<Source>, PreviewTimings, bool, Option<String>), String> {
     let t_prev_start = Instant::now();
     if o.prompt.trim().is_empty() || o.prompt.chars().count() > 2000 || o.model.len() > 100 || o.source_ids.len() > 50 {
         return Err("Invalid AI options".into());
@@ -1109,6 +1238,17 @@ pub async fn select_with_port_timed(
     // o nessun candidato con similarità semantica), il metodo c non si applica: nessun filtro,
     // selezione identica a prima su tutti i candidati.
     let has_semantic = !degraded && rows.iter().any(|r| r.semantic_similarity.is_some());
+    let search_fallback_reason = if !has_semantic {
+        if active_port.is_none() || active_port == Some(0) {
+            Some("Servizio locale non in ascolto o non configurato (porta assente)".to_string())
+        } else if degraded {
+            Some("Ripiego su ricerca per parole: endpoint bge-m3 non responsivo o cache non presente".to_string())
+        } else {
+            Some("Nessun passaggio con similarità semantica sufficiente".to_string())
+        }
+    } else {
+        None
+    };
     let search_idx_opt = crate::search::load_index_for_vault(path).ok().flatten();
     let doc_count = search_idx_opt.as_ref().map(|i| i.documents.len()).unwrap_or(0).max(1);
     let query_tokens = crate::search::tokenize_text(&o.prompt);
@@ -1224,18 +1364,56 @@ pub async fn select_with_port_timed(
         t_passage_extract_ms,
     };
 
-    Ok((sources, preview_timings))
+    Ok((sources, preview_timings, has_semantic, search_fallback_reason))
 }
 
 impl AiState {
     pub async fn preview(&self, path: PathBuf, o: Options) -> Result<Preview, String> {
-        self.preview_with_port(path, o, None).await
+        self.preview_with_service_info(path, o, None, None, false, None).await
     }
 
     pub async fn preview_with_port(&self, path: PathBuf, o: Options, active_port: Option<u16>) -> Result<Preview, String> {
-        let (sources, timings) = select_with_port_timed(&path, &o, active_port).await?;
+        self.preview_with_service_info(path, o, active_port, None, active_port.is_some(), None).await
+    }
+
+    pub async fn preview_with_service_info(
+        &self,
+        path: PathBuf,
+        o: Options,
+        active_port: Option<u16>,
+        service_pid: Option<u32>,
+        initial_semantic_used: bool,
+        initial_fallback_reason: Option<String>,
+    ) -> Result<Preview, String> {
+        let (sources, timings, search_semantic_used, search_fallback_reason) =
+            select_with_port_detailed(&path, &o, active_port).await?;
         let bytes = serde_json::to_vec(&sources).map_err(|_| "Invalid sources")?.len();
         let ticket = random_token()?;
+
+        let semantic_used = initial_semantic_used && search_semantic_used;
+        let semantic_fallback_reason = if !semantic_used {
+            search_fallback_reason.or(initial_fallback_reason).or_else(|| {
+                if active_port.is_none() {
+                    Some("Servizio locale non attivo: ripiego sulla ricerca per parole".to_string())
+                } else {
+                    Some("Nessuna corrispondenza semantica o errore vettore: ripiego sulla ricerca per parole".to_string())
+                }
+            })
+        } else {
+            None
+        };
+
+        log_preview_timing_detailed(
+            &path,
+            &o.prompt,
+            active_port,
+            service_pid,
+            semantic_used,
+            semantic_fallback_reason.as_deref(),
+            &timings,
+            sources.len(),
+        );
+
         let mut pending = self.pending.lock().map_err(|_| "AI state unavailable")?;
         pending.retain(|_, p| p.created_at.elapsed() < Duration::from_secs(300));
         if pending.len() >= 8 {
@@ -1249,12 +1427,18 @@ impl AiState {
                 sources: sources.clone(),
                 created_at: Instant::now(),
                 preview_timings: timings,
+                port: active_port,
+                pid: service_pid,
+                semantic_used,
+                semantic_fallback_reason: semantic_fallback_reason.clone(),
             },
         );
         Ok(Preview {
             ticket,
             sources,
             context_bytes: bytes,
+            semantic_used,
+            semantic_fallback_reason,
         })
     }
 
@@ -1786,7 +1970,7 @@ pub async fn ask(
     // 5. Decodifica JSON e analisi della risposta
     let t_parse_start = Instant::now();
     let parsed_json = serde_json::from_slice(&data).map_err(|_| "Invalid provider JSON")?;
-    let parsed = parse_response(parsed_json, &p.sources)?;
+    let mut parsed = parse_response(parsed_json, &p.sources)?;
     let t_parse_ms = t_parse_start.elapsed().as_millis() as u64;
 
     let cited_set: std::collections::HashSet<usize> = parsed["citedIndices"]
@@ -1853,7 +2037,16 @@ pub async fn ask(
             parse_ms: t_parse_ms,
         },
         sources: audit_sources,
+        port: p.port,
+        pid: p.pid,
+        semantic_used: p.semantic_used,
+        semantic_fallback_reason: p.semantic_fallback_reason.clone(),
     });
+
+    parsed["semanticUsed"] = serde_json::json!(p.semantic_used);
+    if let Some(ref r) = p.semantic_fallback_reason {
+        parsed["semanticFallbackReason"] = serde_json::json!(r);
+    }
 
     Ok(parsed)
 }
@@ -2236,6 +2429,10 @@ pub async fn ask_stream(
                 parse_ms: t_p_ms,
             },
             sources: audit_sources,
+            port: p.port,
+            pid: p.pid,
+            semantic_used: p.semantic_used,
+            semantic_fallback_reason: p.semantic_fallback_reason.clone(),
         });
     };
 
@@ -2329,6 +2526,8 @@ pub async fn ask_stream(
                         tokens_prompt: None,
                         tokens_completion: None,
                         tokens_reasoning: None,
+                        semantic_used: p.semantic_used,
+                        semantic_fallback_reason: p.semantic_fallback_reason.clone(),
                     });
                 }
                 return Err(err_msg);
@@ -2355,6 +2554,8 @@ pub async fn ask_stream(
                     tokens_prompt: None,
                     tokens_completion: None,
                     tokens_reasoning: None,
+                    semantic_used: p.semantic_used,
+                    semantic_fallback_reason: p.semantic_fallback_reason.clone(),
                 });
             }
             return Err(err_msg);
@@ -2530,6 +2731,8 @@ pub async fn ask_stream(
             tokens_prompt: None,
             tokens_completion: None,
             tokens_reasoning: None,
+            semantic_used: p.semantic_used,
+            semantic_fallback_reason: p.semantic_fallback_reason.clone(),
         };
         if let Some(ref w) = window {
             let _ = w.emit("limen://ai-stream-end", end_payload.clone());
@@ -2563,6 +2766,8 @@ pub async fn ask_stream(
             tokens_prompt: None,
             tokens_completion: None,
             tokens_reasoning: None,
+            semantic_used: p.semantic_used,
+            semantic_fallback_reason: p.semantic_fallback_reason.clone(),
         };
         if let Some(ref w) = window {
             let _ = w.emit("limen://ai-stream-end", end_payload.clone());
@@ -2618,6 +2823,10 @@ pub async fn ask_stream(
                 parse_ms: 0,
             },
             sources: audit_sources,
+            port: p.port,
+            pid: p.pid,
+            semantic_used: p.semantic_used,
+            semantic_fallback_reason: p.semantic_fallback_reason.clone(),
         });
 
         let res_val = serde_json::to_value(&end_payload).map_err(|_| "Failed to serialize end payload")?;
@@ -2647,6 +2856,8 @@ pub async fn ask_stream(
                 tokens_prompt: None,
                 tokens_completion: None,
                 tokens_reasoning: None,
+                semantic_used: p.semantic_used,
+                semantic_fallback_reason: p.semantic_fallback_reason.clone(),
             };
             if let Some(ref w) = window {
                 let _ = w.emit("limen://ai-stream-end", end_payload.clone());
@@ -2702,6 +2913,10 @@ pub async fn ask_stream(
                     parse_ms: 0,
                 },
                 sources: audit_sources,
+                port: p.port,
+                pid: p.pid,
+                semantic_used: p.semantic_used,
+                semantic_fallback_reason: p.semantic_fallback_reason.clone(),
             });
 
             let res_val = serde_json::to_value(&end_payload).map_err(|_| "Failed to serialize end payload")?;
@@ -2731,6 +2946,8 @@ pub async fn ask_stream(
                     tokens_prompt: None,
                     tokens_completion: None,
                     tokens_reasoning: None,
+                    semantic_used: p.semantic_used,
+                    semantic_fallback_reason: p.semantic_fallback_reason.clone(),
                 });
             }
             return Err(e);
@@ -2802,6 +3019,10 @@ pub async fn ask_stream(
             parse_ms: t_parse_ms,
         },
         sources: audit_sources,
+        port: p.port,
+        pid: p.pid,
+        semantic_used: p.semantic_used,
+        semantic_fallback_reason: p.semantic_fallback_reason.clone(),
     });
 
     let end_payload = AiStreamEndPayload {
@@ -2819,13 +3040,21 @@ pub async fn ask_stream(
         tokens_prompt,
         tokens_completion,
         tokens_reasoning,
+        semantic_used: p.semantic_used,
+        semantic_fallback_reason: p.semantic_fallback_reason.clone(),
     };
 
     if let Some(ref w) = window {
         let _ = w.emit("limen://ai-stream-end", end_payload);
     }
 
-    Ok(parsed)
+    let mut parsed_res = parsed;
+    parsed_res["semanticUsed"] = serde_json::json!(p.semantic_used);
+    if let Some(ref r) = p.semantic_fallback_reason {
+        parsed_res["semanticFallbackReason"] = serde_json::json!(r);
+    }
+
+    Ok(parsed_res)
 }
 
 pub async fn list_models(key: String) -> Result<Vec<String>, String> {
@@ -3113,6 +3342,10 @@ mod tests {
    sources: vec![],
    created_at: Instant::now(),
    preview_timings: PreviewTimings::default(),
+   port: None,
+   pid: None,
+   semantic_used: false,
+   semantic_fallback_reason: None,
   };
   let flag = Arc::new(AtomicBool::new(false));
   let rt = tokio::runtime::Runtime::new().unwrap();
@@ -3674,6 +3907,10 @@ mod tests {
                   cited: false,
               },
           ],
+          port: Some(8080),
+          pid: Some(12345),
+          semantic_used: true,
+          semantic_fallback_reason: None,
       };
 
       log_ask_timing_detailed(&entry);
@@ -3701,6 +3938,54 @@ mod tests {
       assert_eq!(parsed_json["sources"][0]["cited"], true);
       assert_eq!(parsed_json["sources"][1]["id"], "S2");
       assert_eq!(parsed_json["sources"][1]["cited"], false);
+      assert_eq!(parsed_json["port"], 8080);
+      assert_eq!(parsed_json["pid"], 12345);
+      assert_eq!(parsed_json["semanticUsed"], true);
+
+      std::env::remove_var("LIMEN_ASK_TIMING_LOG");
+  }
+
+  #[test]
+  fn test_log_preview_timing_detailed_records_port_pid_and_semantic_info() {
+      let temp_dir = tempfile::tempdir().unwrap();
+      let log_file = temp_dir.path().join("ask_timing_prev.log");
+      std::env::set_var("LIMEN_ASK_TIMING_LOG", &log_file);
+
+      let timings = PreviewTimings {
+          t_preview_total_ms: 100,
+          t_index_cache_ms: 10,
+          t_embed_ms: 20,
+          t_search_ms: 30,
+          t_search_words_ms: 10,
+          t_search_sem_ms: 15,
+          t_search_fuse_ms: 3,
+          t_search_admit_ms: 2,
+          t_doc_read_ms: 15,
+          t_passage_extract_ms: 25,
+      };
+
+      log_preview_timing_detailed(
+          temp_dir.path(),
+          "Domanda di test",
+          Some(8080),
+          Some(44123),
+          true,
+          None,
+          &timings,
+          3,
+      );
+
+      let content = std::fs::read_to_string(&log_file).unwrap();
+      assert!(content.contains("REGISTRO PREPARAZIONE DOMANDA (PREVIEW)"));
+      assert!(content.contains("Porta locale: 8080 | PID: 44123"));
+      assert!(content.contains("Ricerca semantica: UTILIZZATA"));
+
+      let json_line = content.lines().find(|l| l.starts_with("JSON: ")).unwrap();
+      let parsed_json: Value = serde_json::from_str(&json_line[6..]).unwrap();
+      assert_eq!(parsed_json["port"], 8080);
+      assert_eq!(parsed_json["pid"], 44123);
+      assert_eq!(parsed_json["semanticUsed"], true);
+      assert_eq!(parsed_json["sourceCount"], 3);
 
       std::env::remove_var("LIMEN_ASK_TIMING_LOG");
   }
@@ -4292,6 +4577,7 @@ mod tests {
           tokens_prompt: None,
           tokens_completion: None,
           tokens_reasoning: None,
+          ..Default::default()
       };
 
       assert_eq!(payload.answer, expected_error_msg);
@@ -4363,6 +4649,7 @@ mod tests {
           tokens_prompt: None,
           tokens_completion: None,
           tokens_reasoning: None,
+          ..Default::default()
       };
       assert_eq!(payload1.answer, expected_msg1);
       assert_eq!(payload1.citations.len(), 0);
@@ -4428,6 +4715,7 @@ mod tests {
           tokens_prompt: None,
           tokens_completion: None,
           tokens_reasoning: None,
+          ..Default::default()
       };
       assert_eq!(payload2.answer, expected_msg2);
       assert_eq!(payload2.citations.len(), 0);
@@ -4456,6 +4744,7 @@ mod tests {
           tokens_prompt: None,
           tokens_completion: None,
           tokens_reasoning: None,
+          ..Default::default()
       };
 
       // Verifica vincolante FASE 4 / FASE 5: nessun stato inventato
@@ -4489,6 +4778,7 @@ mod tests {
           tokens_prompt: None,
           tokens_completion: None,
           tokens_reasoning: None,
+          ..Default::default()
       };
 
       assert_eq!(payload.status, "incomplete");
@@ -4523,6 +4813,7 @@ mod tests {
           tokens_prompt: None,
           tokens_completion: None,
           tokens_reasoning: None,
+          ..Default::default()
       };
 
       assert_eq!(payload.answer, "La sintesi iniziale dei documenti analizzati fino a questo punto...");
@@ -4653,6 +4944,10 @@ mod tests {
                   passage_hashes: vec![],
               }],
               preview_timings: PreviewTimings::default(),
+              port: None,
+              pid: None,
+              semantic_used: false,
+              semantic_fallback_reason: None,
           };
           p.insert("ticket-1".into(), pending_obj.clone());
           p.insert("ticket-2".into(), pending_obj.clone());
@@ -4720,6 +5015,10 @@ mod tests {
                   passage_hashes: vec![],
               }],
               preview_timings: PreviewTimings::default(),
+              port: None,
+              pid: None,
+              semantic_used: false,
+              semantic_fallback_reason: None,
           };
           p.insert("ticket-panic-test".into(), pending_obj.clone());
           p.insert("ticket-following".into(), pending_obj);

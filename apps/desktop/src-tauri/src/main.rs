@@ -502,15 +502,23 @@ async fn ai_preview(
     llama_state: tauri::State<'_, limen_vault::llama::LlamaServerState>,
 ) -> Result<limen_vault::ai::Preview, String> {
     let state = state.inner().clone();
-    let port = {
-        let s = llama_state.status();
-        if s.healthy && s.port > 0 {
-            Some(s.port)
-        } else {
-            None
-        }
-    };
-    state.preview_with_port(PathBuf::from(vault_path), options, port).await
+    let llama = llama_state.inner().clone();
+    let (port, pid, is_ready, fallback_reason) = tauri::async_runtime::spawn_blocking(move || {
+        llama.get_or_adopt_or_start_service()
+    })
+    .await
+    .map_err(|e| format!("Llama server inspection task failed: {e}"))?;
+
+    state
+        .preview_with_service_info(
+            PathBuf::from(vault_path),
+            options,
+            port,
+            pid,
+            is_ready,
+            fallback_reason,
+        )
+        .await
 }
 #[tauri::command]
 async fn ai_ask(

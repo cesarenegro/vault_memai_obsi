@@ -43,6 +43,7 @@ pub struct LocalServerReport {
 struct RunningState {
     child: Option<Child>,
     port: u16,
+    adopted_pid: Option<u32>,
     model_path: PathBuf,
     binary_path: Option<PathBuf>,
     last_error: Option<String>,
@@ -611,26 +612,29 @@ pub fn find_port_for_pid(pid: u32) -> Option<u16> {
 }
 
 /// Rileva la porta del servizio llama-server attivo verificando modello (bge-m3) e dimensioni (1024).
+/// Rileva la porta e il PID del servizio llama-server attivo verificando modello (bge-m3) e dimensioni (1024).
 /// Cerca nell'ordine:
 /// 1. Variabile d'ambiente LIMEN_LOCAL_PORT
-/// 2. File llama-server.port
+/// 2. File llama-server.port e llama-server.pid
 /// 3. File llama-server.pid (interrogando la porta del PID)
 /// 4. Processi llama-server attivi sul sistema
-pub fn find_active_bge_m3_service() -> Result<u16, String> {
+pub fn find_active_bge_m3_service_with_pid() -> Result<(u16, Option<u32>), String> {
     // 1. Variabile d'ambiente
     if let Ok(env_val) = std::env::var("LIMEN_LOCAL_PORT") {
         if let Ok(env_port) = env_val.trim().parse::<u16>() {
             if check_health(env_port) && verify_dimensions(env_port).is_ok() {
-                return Ok(env_port);
+                let pid = pid_file_path().and_then(|p| read_pid_file(&p));
+                return Ok((env_port, pid));
             }
         }
     }
 
-    // 2. File llama-server.port
+    // 2. File llama-server.port e llama-server.pid
     if let Some(p_path) = port_file_path() {
         if let Some(port) = read_port_file(&p_path) {
             if check_health(port) && verify_dimensions(port).is_ok() {
-                return Ok(port);
+                let pid = pid_file_path().and_then(|p| read_pid_file(&p));
+                return Ok((port, pid));
             }
         }
     }
@@ -640,7 +644,7 @@ pub fn find_active_bge_m3_service() -> Result<u16, String> {
         if let Some(pid) = read_pid_file(&p_path) {
             if let Some(port) = find_port_for_pid(pid) {
                 if check_health(port) && verify_dimensions(port).is_ok() {
-                    return Ok(port);
+                    return Ok((port, Some(pid)));
                 }
             }
         }
@@ -652,16 +656,38 @@ pub fn find_active_bge_m3_service() -> Result<u16, String> {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         let out = std::process::Command::new("powershell")
-            .args(["-NoProfile", "-Command", "Get-Process -Name 'llama-server' -ErrorAction SilentlyContinue | ForEach-Object { $p = $_.Id; Get-NetTCPConnection -OwningProcess $p -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort }"])
+            .args(["-NoProfile", "-Command", "Get-Process -Name 'llama-server' -ErrorAction SilentlyContinue | ForEach-Object { $p = $_.Id; Get-NetTCPConnection -OwningProcess $p -State Listen -ErrorAction SilentlyContinue | ForEach-Object { \"$p:$($_.LocalPort)\" } }"])
             .creation_flags(CREATE_NO_WINDOW)
             .output()
             .ok();
         if let Some(o) = out {
             let text = String::from_utf8_lossy(&o.stdout);
             for line in text.lines() {
-                if let Ok(port) = line.trim().parse::<u16>() {
-                    if check_health(port) && verify_dimensions(port).is_ok() {
-                        return Ok(port);
+                let parts: Vec<&str> = line.trim().split(':').collect();
+                if parts.len() == 2 {
+                    if let (Ok(pid), Ok(port)) = (parts[0].parse::<u32>(), parts[1].parse::<u16>()) {
+                        if check_health(port) && verify_dimensions(port).is_ok() {
+                            return Ok((port, Some(pid)));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    #[cfg(unix)]
+    {
+        let out = std::process::Command::new("pgrep")
+            .arg("llama-server")
+            .output()
+            .ok();
+        if let Some(o) = out {
+            let text = String::from_utf8_lossy(&o.stdout);
+            for line in text.lines() {
+                if let Ok(pid) = line.trim().parse::<u32>() {
+                    if let Some(port) = find_port_for_pid(pid) {
+                        if check_health(port) && verify_dimensions(port).is_ok() {
+                            return Ok((port, Some(pid)));
+                        }
                     }
                 }
             }
@@ -669,6 +695,10 @@ pub fn find_active_bge_m3_service() -> Result<u16, String> {
     }
 
     Err("Nessun servizio locale llama-server con modello bge-m3 (1024d) trovato attivo.".to_string())
+}
+
+pub fn find_active_bge_m3_service() -> Result<u16, String> {
+    find_active_bge_m3_service_with_pid().map(|(port, _)| port)
 }
 
 
@@ -831,17 +861,34 @@ pub fn verify_dimensions(port: u16) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     let response_str = String::from_utf8_lossy(&response_bytes);
 
+    if !response_str.starts_with("HTTP/1.1 200") && !response_str.starts_with("HTTP/1.0 200") {
+        return Err(format!(
+            "Status HTTP non 200 durante la verifica embeddings: {}",
+            response_str.lines().next().unwrap_or("")
+        ));
+    }
+
     let body_part = if let Some(idx) = response_str.find("\r\n\r\n") {
         &response_str[idx + 4..]
     } else {
         &response_str
     };
 
-    let val: serde_json::Value = serde_json::from_str(body_part).map_err(|e| {
+    let json_slice = if let (Some(first_brace), Some(last_brace)) = (body_part.find('{'), body_part.rfind('}')) {
+        if first_brace <= last_brace {
+            &body_part[first_brace..=last_brace]
+        } else {
+            body_part
+        }
+    } else {
+        body_part
+    };
+
+    let val: serde_json::Value = serde_json::from_str(json_slice).map_err(|e| {
         format!(
             "Risposta JSON non valida: {} (corpo: {})",
             e,
-            body_part.chars().take(200).collect::<String>()
+            json_slice.chars().take(200).collect::<String>()
         )
     })?;
 
@@ -929,7 +976,7 @@ impl LlamaServerState {
                 }
             }
 
-            let pid = s.child.as_ref().map(|c| c.id());
+            let pid = s.child.as_ref().map(|c| c.id()).or(s.adopted_pid);
             (s.port, s.child.is_some(), pid, s.last_error.clone())
         };
 
@@ -944,6 +991,49 @@ impl LlamaServerState {
             model: "bge-m3-Q8_0.gguf".to_string(),
             healthy,
             last_error,
+        }
+    }
+
+    pub fn adopt_service(&self, port: u16, pid: Option<u32>) {
+        let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        s.port = port;
+        s.adopted_pid = pid;
+        s.last_error = None;
+    }
+
+    pub fn get_or_adopt_or_start_service(&self) -> (Option<u16>, Option<u32>, bool, Option<String>) {
+        let s = self.status();
+        if s.healthy && s.port > 0 {
+            return (Some(s.port), s.pid, true, None);
+        }
+
+        match find_active_bge_m3_service_with_pid() {
+            Ok((port, pid)) => {
+                self.adopt_service(port, pid);
+                (Some(port), pid, true, None)
+            }
+            Err(discover_err) => {
+                match self.start() {
+                    Ok(rep) if rep.healthy => {
+                        (Some(rep.port), rep.pid, true, None)
+                    }
+                    Ok(rep) => {
+                        let reason = format!(
+                            "Servizio locale avviato ma non pronto (porta {}): ripiego sulla ricerca per parole. {}",
+                            rep.port,
+                            rep.last_error.unwrap_or_default()
+                        );
+                        (None, None, false, Some(reason))
+                    }
+                    Err(start_err) => {
+                        let reason = format!(
+                            "Nessun servizio esterno verificato ({}) e avvio del proprio servizio fallito ({}): ripiego sulla ricerca per parole.",
+                            discover_err, start_err
+                        );
+                        (None, None, false, Some(reason))
+                    }
+                }
+            }
         }
     }
 
@@ -1132,6 +1222,7 @@ impl LlamaServerState {
         let child = {
             let mut s = self.0.lock().map_err(|e| e.to_string())?;
             s.port = 0;
+            s.adopted_pid = None;
             s.last_error = None;
             s.child.take()
         }; // Lock rilasciato IMMEDIATAMENTE: nessuna attesa su processi o I/O sotto lock!
@@ -1543,6 +1634,94 @@ mod tests {
 
         // Cleanup mock server thread
         running_flag.store(false, std::sync::atomic::Ordering::SeqCst);
+        let _ = server_thread.join();
+    }
+
+    #[test]
+    fn test_p2_registered_service_adoption_and_fallback() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind mock listener");
+        let mock_port = listener.local_addr().unwrap().port();
+        let running_flag = Arc::new(AtomicBool::new(true));
+        let flag_clone = running_flag.clone();
+        let return_1024d = Arc::new(AtomicBool::new(true));
+        let dim_clone = return_1024d.clone();
+
+        let server_thread = std::thread::spawn(move || {
+            listener.set_nonblocking(true).unwrap();
+            while flag_clone.load(Ordering::SeqCst) {
+                if let Ok((mut stream, _)) = listener.accept() {
+                    let mut req_buf = [0u8; 1024];
+                    let n = stream.read(&mut req_buf).unwrap_or(0);
+                    let req_str = String::from_utf8_lossy(&req_buf[..n]);
+
+                    if req_str.contains("/health") {
+                        let resp = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 15\r\n\r\n{\"status\":\"ok\"}";
+                        let _ = stream.write_all(resp.as_bytes());
+                    } else if req_str.contains("/v1/embeddings") {
+                        if dim_clone.load(Ordering::SeqCst) {
+                            let floats_1024 = vec!["0.1"; 1024].join(",");
+                            let json_body = format!("{{\"data\":[{{\"embedding\":[{}]}}]}}", floats_1024);
+                            let resp = format!(
+                                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+                                json_body.len(),
+                                json_body
+                            );
+                            let _ = stream.write_all(resp.as_bytes());
+                        } else {
+                            // Ritorna solo 768 dimensioni (modello errato)
+                            let floats_768 = vec!["0.1"; 768].join(",");
+                            let json_body = format!("{{\"data\":[{{\"embedding\":[{}]}}]}}", floats_768);
+                            let resp = format!(
+                                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+                                json_body.len(),
+                                json_body
+                            );
+                            let _ = stream.write_all(resp.as_bytes());
+                        }
+                    } else {
+                        let resp = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
+                        let _ = stream.write_all(resp.as_bytes());
+                    }
+                } else {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+            }
+        });
+
+        // 1. Verifica che con 1024d e porta registrata venga adottato il servizio senza avviare nuovo processo
+        std::env::set_var("LIMEN_LOCAL_PORT", mock_port.to_string());
+        let verified = find_active_bge_m3_service_with_pid();
+        assert!(verified.is_ok(), "find_active_bge_m3_service_with_pid deve rilevare il mock server a 1024d");
+        let (port_found, _) = verified.unwrap();
+        assert_eq!(port_found, mock_port);
+
+        let state = LlamaServerState::default();
+        let (port_opt, _pid_opt, is_ready, fallback_reason) = state.get_or_adopt_or_start_service();
+        assert!(is_ready, "Servizio registrato valido deve risultare pronto");
+        assert_eq!(port_opt, Some(mock_port));
+        assert!(fallback_reason.is_none());
+
+        let rep = state.status();
+        assert!(rep.running);
+        assert!(rep.healthy);
+        assert_eq!(rep.port, mock_port);
+
+        // stop() rilascia l'adozione senza uccidere il mock server esterno
+        let _ = state.stop();
+        assert_eq!(state.status().port, 0);
+
+        // 2. Verifica che se le dimensioni sono errate (768d), non adotti il servizio e segnali il fallback
+        return_1024d.store(false, Ordering::SeqCst);
+        let verified_wrong = find_active_bge_m3_service_with_pid();
+        assert!(verified_wrong.is_err(), "find_active_bge_m3_service_with_pid deve rifiutare 768d");
+
+        // Cleanup
+        std::env::remove_var("LIMEN_LOCAL_PORT");
+        running_flag.store(false, Ordering::SeqCst);
         let _ = server_thread.join();
     }
 }

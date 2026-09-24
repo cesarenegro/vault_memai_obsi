@@ -1,7 +1,13 @@
 import {invoke} from '@tauri-apps/api/core';
 export interface AiOptions {prompt:string;model:string;includeDrafts:boolean;sourceIds:string[];category?:string;client?:string;project?:string;tags?:string[]}
 export interface AiSource {documentId:string;relativePath:string;title:string;category:string;status?:string;sha256:string;content:string;locator?:string;passageId?:string;revision?:number}
-export interface AiPreview {ticket:string;sources:AiSource[];contextBytes:number}
+export interface AiPreview {
+  ticket: string;
+  sources: AiSource[];
+  contextBytes: number;
+  semanticUsed?: boolean;
+  semanticFallbackReason?: string;
+}
 export interface AiAnswer {
   answer: string;
   provider: string;
@@ -17,6 +23,8 @@ export interface AiAnswer {
   tokensCompletion?: number;
   tokensReasoning?: number;
   uiTotalMs?: number;
+  semanticUsed?: boolean;
+  semanticFallbackReason?: string;
 }
 
 export interface AiStreamChunkPayload {
@@ -40,6 +48,8 @@ export interface AiStreamEndPayload {
   tokensPrompt?: number;
   tokensCompletion?: number;
   tokensReasoning?: number;
+  semanticUsed?: boolean;
+  semanticFallbackReason?: string;
 }
 
 export interface EmbeddingsProviderReport {
