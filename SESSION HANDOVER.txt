@@ -1,4 +1,4 @@
-# Documento di Session Handover — LIMEN Vault v3 (Windows Build)
+﻿# Documento di Session Handover — LIMEN Vault v3 (Windows Build)
 
 **Data / Ora:** 2026-09-23 (UTC+8)  
 **Branch Git:** `windows-build`  
@@ -388,3 +388,4 @@ Il fallimento registrato alle 13:53:21 (`BACKGROUND_START_FAILED` dopo 26.361 ms
   - ase5i-check-commit-n1.log a ase5i-check-commit-n6.log (tutti 0 errori).
 - **Patch Cumulativa**:
   - IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5i.patch generata con git diff 6b04271 57071f8.
+

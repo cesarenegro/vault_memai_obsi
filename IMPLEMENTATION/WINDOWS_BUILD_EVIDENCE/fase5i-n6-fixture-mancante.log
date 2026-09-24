@@ -1,0 +1,233 @@
+﻿cargo test test_fase5h_codex_fixture_acceptance
+cargo :     Blocking waiting for file lock on artifact directory
+At line:1 char:90
++ ... ngs.rs.bak; cargo test test_fase5h_codex_fixture_acceptance > "E:\Pro ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Blocking wa...ifact directory:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: unused import: `cap_std::fs::MetadataExt`
+   --> src\search.rs:450:9
+    |
+450 |     use cap_std::fs::MetadataExt;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `ffi::CString`
+  --> src\snapshots.rs:12:5
+   |
+12 |     ffi::CString,
+   |     ^^^^^^^^^^^^
+
+warning: unused imports: `Command`, `Duration`, `Instant`, and `Stdio`
+ --> src\extraction.rs:6:15
+  |
+6 |     process::{Command, Stdio},
+  |               ^^^^^^^  ^^^^^
+7 |     time::{Duration, Instant},
+  |            ^^^^^^^^  ^^^^^^^
+
+warning: unused variable: `lock`
+   --> src\sync.rs:484:17
+    |
+484 |             let lock = sys.open_with(".m7-lock", &lock_opts).map_err(err)?;
+    |                 ^^^^ help: if this is intentional, prefix it with an underscore: `_lock`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> src\extraction.rs:17:13
+   |
+17 |         let mut builder = std::fs::DirBuilder::new();
+   |             ----^^^^^^^
+   |             |
+   |             help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `vault_path` is never read
+   --> src\search.rs:178:5
+    |
+177 | struct SearchIndexCacheEntry {
+    |        --------------------- field in this struct
+178 |     vault_path: std::path::PathBuf,
+    |     ^^^^^^^^^^
+    |
+    = note: `SearchIndexCacheEntry` has a derived impl for the trait `Clone`, but this is intentionally ignored during 
+dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `load` is never used
+   --> src\search.rs:216:4
+    |
+216 | fn load(system: &Dir) -> Result<Option<std::sync::Arc<SearchIndexData>>, String> {
+    |    ^^^^
+
+warning: constant `SERVICE` is never used
+   --> src\tunnel.rs:177:7
+    |
+177 | const SERVICE:&str="dev.arkai.limenvault.tunnel";
+    |       ^^^^^^^
+
+warning: struct `Scratch` is never constructed
+  --> src\extraction.rs:13:8
+   |
+13 | struct Scratch(std::path::PathBuf);
+   |        ^^^^^^^
+
+warning: associated function `new` is never used
+  --> src\extraction.rs:15:8
+   |
+14 | impl Scratch {
+   | ------------ associated function in this implementation
+15 |     fn new() -> Result<Self, String> {
+   |        ^^^
+
+warning: field `vault_path` is never read
+  --> src\catalog.rs:29:5
+   |
+28 | struct CatalogCacheEntry {
+   |        ----------------- field in this struct
+29 |     vault_path: std::path::PathBuf,
+   |     ^^^^^^^^^^
+   |
+   = note: `CatalogCacheEntry` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead 
+code analysis
+
+warning: field `vault_path` is never read
+  --> src\embeddings.rs:31:5
+   |
+30 | struct EmbeddingsCacheEntry {
+   |        -------------------- field in this struct
+31 |     vault_path: PathBuf,
+   |     ^^^^^^^^^^
+   |
+   = note: `EmbeddingsCacheEntry` has a derived impl for the trait `Clone`, but this is intentionally ignored during 
+dead code analysis
+
+warning: `limen-vault` (lib) generated 12 warnings (run `cargo fix --lib -p limen-vault` to apply 5 suggestions)
+warning: unused import: `ffi::CString`
+  --> src\snapshots.rs:12:5
+   |
+12 |     ffi::CString,
+   |     ^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> src\ai.rs:4786:12
+     |
+4786 |       let (mut pending, cancel) = state.begin(&p_preview.ticket).unwrap();
+     |            ----^^^^^^^
+     |            |
+     |            help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `cancel`
+    --> src\ai.rs:4786:25
+     |
+4786 |       let (mut pending, cancel) = state.begin(&p_preview.ticket).unwrap();
+     |                         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_cancel`
+     |
+     = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> src\tunnel.rs:224:13
+    |
+224 |         let mut child = Command::new("cmd")
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `lock`
+   --> src\sync.rs:484:17
+    |
+484 |             let lock = sys.open_with(".m7-lock", &lock_opts).map_err(err)?;
+    |                 ^^^^ help: if this is intentional, prefix it with an underscore: `_lock`
+
+warning: variable does not need to be mutable
+  --> src\extraction.rs:17:13
+   |
+17 |         let mut builder = std::fs::DirBuilder::new();
+   |             ----^^^^^^^
+   |             |
+   |             help: remove this `mut`
+
+warning: unused variable: `doc_id`
+    --> src\catalog.rs:2056:13
+     |
+2056 |         let doc_id = make_document_id("20_RAW_SOURCES/doc.md");
+     |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_doc_id`
+
+warning: `limen-vault` (bin "limen-vault" test) generated 1 warning (run `cargo fix --bin "limen-vault" -p limen-vault 
+--tests` to apply 1 suggestion)
+warning: `limen-vault` (lib test) generated 15 warnings (9 duplicates) (run `cargo fix --lib -p limen-vault --tests` 
+to apply 6 suggestions)
+warning: unused variable: `t0`
+  --> src\bin\diagnose_fase1.rs:46:9
+   |
+46 |     let t0 = std::time::Instant::now();
+   |         ^^ help: if this is intentional, prefix it with an underscore: `_t0`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `exact_bonus` is never read
+   --> src\bin\diagnose_fase1.rs:236:9
+    |
+223 |     struct FusedRecord {
+    |            ----------- field in this struct
+...
+236 |         exact_bonus: f64,
+    |         ^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `title` and `base_score` are never read
+  --> src\bin\measure_punto_e.rs:20:5
+   |
+17 | struct ScoredCandidate {
+   |        --------------- fields in this struct
+...
+20 |     title: String,
+   |     ^^^^^
+21 |     base_score: f64,
+   |     ^^^^^^^^^^
+   |
+   = note: `ScoredCandidate` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored 
+during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `query_id` is never read
+  --> src\bin\measure_punto_e.rs:37:5
+   |
+36 | struct QueryEvalContext {
+   |        ---------------- field in this struct
+37 |     query_id: String,
+   |     ^^^^^^^^
+
+warning: `limen-vault` (bin "diagnose_fase1" test) generated 2 warnings (run `cargo fix --bin "diagnose_fase1" -p 
+limen-vault --tests` to apply 1 suggestion)
+warning: `limen-vault` (bin "measure_punto_e" test) generated 2 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.89s
+     Running unittests src\lib.rs (target\debug\deps\limen_vault-b7ab620e0196d8b2.exe)
+
+running 1 test
+test llama::tests::test_fase5h_codex_fixture_acceptance ... FAILED
+
+failures:
+
+---- llama::tests::test_fase5h_codex_fixture_acceptance stdout ----
+
+thread 'llama::tests::test_fase5h_codex_fixture_acceptance' (36816) panicked at src\llama.rs:2957:32:
+Sorgente fixture tests/fixtures/invalid_embeddings.rs NON trovato nel repository!
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    llama::tests::test_fase5h_codex_fixture_acceptance
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 184 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--lib`

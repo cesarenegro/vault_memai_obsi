@@ -1,0 +1,186 @@
+﻿cargo check
+cargo :     Checking limen-vault v0.3.0 (E:\Projects\vault_memai_obsi\apps\desktop\src-tauri)
+At line:2 char:9
++ $out = (cargo check 2>&1 | Out-String)
++         ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Checking li...ktop\src-tauri):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: unused import: `cap_std::fs::MetadataExt`
+   --> src\search.rs:450:9
+    |
+450 |     use cap_std::fs::MetadataExt;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `ffi::CString`
+  --> src\snapshots.rs:12:5
+   |
+12 |     ffi::CString,
+   |     ^^^^^^^^^^^^
+
+warning: unused imports: `Command`, `Duration`, `Instant`, and `Stdio`
+ --> src\extraction.rs:6:15
+  |
+6 |     process::{Command, Stdio},
+  |               ^^^^^^^  ^^^^^
+7 |     time::{Duration, Instant},
+  |            ^^^^^^^^  ^^^^^^^
+
+warning: unused variable: `lock`
+   --> src\sync.rs:484:17
+    |
+484 |             let lock = sys.open_with(".m7-lock", &lock_opts).map_err(err)?;
+    |                 ^^^^ help: if this is intentional, prefix it with an underscore: `_lock`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> src\extraction.rs:17:13
+   |
+17 |         let mut builder = std::fs::DirBuilder::new();
+   |             ----^^^^^^^
+   |             |
+   |             help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `vault_path` is never read
+   --> src\search.rs:178:5
+    |
+177 | struct SearchIndexCacheEntry {
+    |        --------------------- field in this struct
+178 |     vault_path: std::path::PathBuf,
+    |     ^^^^^^^^^^
+    |
+    = note: `SearchIndexCacheEntry` has a derived impl for the trait `Clone`, but this is intentionally ignored during 
+dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `load` is never used
+   --> src\search.rs:216:4
+    |
+216 | fn load(system: &Dir) -> Result<Option<std::sync::Arc<SearchIndexData>>, String> {
+    |    ^^^^
+
+warning: constant `SERVICE` is never used
+   --> src\tunnel.rs:177:7
+    |
+177 | const SERVICE:&str="dev.arkai.limenvault.tunnel";
+    |       ^^^^^^^
+
+warning: struct `Scratch` is never constructed
+  --> src\extraction.rs:13:8
+   |
+13 | struct Scratch(std::path::PathBuf);
+   |        ^^^^^^^
+
+warning: associated function `new` is never used
+  --> src\extraction.rs:15:8
+   |
+14 | impl Scratch {
+   | ------------ associated function in this implementation
+15 |     fn new() -> Result<Self, String> {
+   |        ^^^
+
+warning: field `vault_path` is never read
+  --> src\catalog.rs:29:5
+   |
+28 | struct CatalogCacheEntry {
+   |        ----------------- field in this struct
+29 |     vault_path: std::path::PathBuf,
+   |     ^^^^^^^^^^
+   |
+   = note: `CatalogCacheEntry` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead 
+code analysis
+
+warning: field `vault_path` is never read
+  --> src\embeddings.rs:31:5
+   |
+30 | struct EmbeddingsCacheEntry {
+   |        -------------------- field in this struct
+31 |     vault_path: PathBuf,
+   |     ^^^^^^^^^^
+   |
+   = note: `EmbeddingsCacheEntry` has a derived impl for the trait `Clone`, but this is intentionally ignored during 
+dead code analysis
+
+warning: `limen-vault` (lib) generated 12 warnings (run `cargo fix --lib -p limen-vault` to apply 5 suggestions)
+warning: fields `title` and `base_score` are never read
+  --> src\bin\measure_punto_e.rs:20:5
+   |
+17 | struct ScoredCandidate {
+   |        --------------- fields in this struct
+...
+20 |     title: String,
+   |     ^^^^^
+21 |     base_score: f64,
+   |     ^^^^^^^^^^
+   |
+   = note: `ScoredCandidate` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored 
+during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `query_id` is never read
+  --> src\bin\measure_punto_e.rs:37:5
+   |
+36 | struct QueryEvalContext {
+   |        ---------------- field in this struct
+37 |     query_id: String,
+   |     ^^^^^^^^
+
+warning: field `q_vec` is never read
+   --> src\bin\c10_tune_dev.rs:142:9
+    |
+140 |     struct QueryRawData {
+    |            ------------ field in this struct
+141 |         q: DevQuery,
+142 |         q_vec: Vec<f32>,
+    |         ^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `snippet` is never read
+   --> src\bin\c10_tune_dev.rs:302:17
+    |
+298 |             struct RawCand {
+    |                    ------- field in this struct
+...
+302 |                 snippet: String,
+    |                 ^^^^^^^
+
+warning: `limen-vault` (bin "measure_punto_e") generated 2 warnings
+warning: unused variable: `t0`
+  --> src\bin\diagnose_fase1.rs:46:9
+   |
+46 |     let t0 = std::time::Instant::now();
+   |         ^^ help: if this is intentional, prefix it with an underscore: `_t0`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `exact_bonus` is never read
+   --> src\bin\diagnose_fase1.rs:236:9
+    |
+223 |     struct FusedRecord {
+    |            ----------- field in this struct
+...
+236 |         exact_bonus: f64,
+    |         ^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `limen-vault` (bin "diagnose_fase1") generated 2 warnings (run `cargo fix --bin "diagnose_fase1" -p 
+limen-vault` to apply 1 suggestion)
+warning: `limen-vault` (bin "c10_tune_dev") generated 2 warnings
+warning: unused import: `ffi::CString`
+  --> src\snapshots.rs:12:5
+   |
+12 |     ffi::CString,
+   |     ^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `limen-vault` (bin "limen-vault") generated 1 warning (run `cargo fix --bin "limen-vault" -p limen-vault` to 
+apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.00s

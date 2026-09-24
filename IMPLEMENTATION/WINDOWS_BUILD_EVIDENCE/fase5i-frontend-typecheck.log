@@ -1,0 +1,5 @@
+﻿npm run typecheck
+
+> @limen-vault/desktop@0.3.0 typecheck
+> tsc --noEmit
+
