@@ -50,6 +50,7 @@ struct RunningState {
     model_path: PathBuf,
     binary_path: Option<PathBuf>,
     test_binary: Option<PathBuf>,
+    test_models_dir: Option<PathBuf>,
     last_error: Option<String>,
     crash_count: u32,
     auto_start_failed: bool,
@@ -200,6 +201,7 @@ pub fn rotate_llama_server_logs(logs_dir: &Path, max_files: usize) {
 }
 
 pub fn get_models_dir() -> Result<PathBuf, String> {
+    #[cfg(test)]
     if let Ok(override_dir) = std::env::var("LIMEN_MODELS_DIR") {
         if !override_dir.trim().is_empty() {
             let p = PathBuf::from(override_dir);
@@ -947,6 +949,7 @@ pub fn find_port_for_pid(pid: u32) -> Option<u16> {
 /// 3. File llama-server.pid (interrogando la porta del PID)
 /// 4. Processi llama-server attivi sul sistema
 pub fn find_active_bge_m3_service_with_pid() -> Result<(u16, Option<u32>), String> {
+    #[cfg(test)]
     if std::env::var("LIMEN_TEST_DISABLE_ADOPTION").is_ok() {
         return Err("Adozione disabilitata per il test".into());
     }
@@ -1375,6 +1378,16 @@ impl LlamaServerState {
         s.test_binary.clone()
     }
 
+    pub fn set_test_models_dir(&self, dir: PathBuf) {
+        let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        s.test_models_dir = Some(dir);
+    }
+
+    pub fn get_test_models_dir(&self) -> Option<PathBuf> {
+        let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        s.test_models_dir.clone()
+    }
+
     pub fn trigger_background_start(&self) -> bool {
         self.trigger_background_start_with_binary(self.get_test_binary())
     }
@@ -1435,12 +1448,6 @@ impl LlamaServerState {
 
             // 2. Altrimenti avvia il proprio servizio mantenendo l'attesa di /health a 25 s
             // Passiamo il token di proprietà: start_internal riconosce che siamo noi i proprietari dell'avvio!
-            #[cfg(test)]
-            if custom_binary.is_none() && std::env::var("LIMEN_TEST_ALLOW_REAL_START").is_err() {
-                // In test, non avviare il vero llama-server con il modello reale a meno che non sia esplicitamente consentito
-                bg_guard.1 = None;
-                return;
-            }
             bg_guard.1 = None;
             let detected_bin = custom_binary.clone().or_else(detect_llama_server_binary);
             match state.start_internal_with_token_and_binary(Duration::from_secs(25), Some(token), custom_binary.as_deref()) {
@@ -1579,21 +1586,6 @@ impl LlamaServerState {
                     false,
                     "fallito".to_string(),
                     Some(format!("{}: ripiego sulla ricerca per parole.", err)),
-                );
-            }
-
-            #[cfg(test)]
-            if !has_test_bin {
-                // In modalità test senza binario mock esplicito, simula il passaggio in stato "in avvio"
-                // senza accedere ai file reali del modello né avviare il vero llama-server
-                let mut guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
-                guard.starting = true;
-                return (
-                    None,
-                    None,
-                    false,
-                    "in avvio".to_string(),
-                    Some("Servizio locale in avvio: ripiego temporaneo sulla ricerca per parole per questa domanda.".to_string()),
                 );
             }
 
@@ -1772,7 +1764,10 @@ impl LlamaServerState {
 
         // 2. Verify model is installed
         let model_path = if custom_binary.is_some() {
-            get_models_dir().unwrap_or_else(|_| std::env::temp_dir()).join("mock_model.gguf")
+            let m_dir = self.get_test_models_dir()
+                .or_else(|| get_models_dir().ok())
+                .unwrap_or_else(std::env::temp_dir);
+            m_dir.join("mock_model.gguf")
         } else {
             let model_rep = local_model_status();
             if !model_rep.installed || !model_rep.sha256_ok {
@@ -2643,16 +2638,20 @@ mod tests {
     fn test_fase5f_discovery_external_command_hang_terminates_within_timeout_with_fallback() {
         let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         std::env::set_var("LIMEN_TEST_DISABLE_ADOPTION", "1");
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mock_exe = compile_test_mock_server(temp_dir.path());
         let state = LlamaServerState::default();
+        state.set_test_binary(mock_exe);
+        state.set_test_models_dir(temp_dir.path().join("models"));
+
         let timeout = Duration::from_millis(50);
         let t0 = Instant::now();
-        let (port, pid, is_ready, status, fallback_reason) = state.get_or_adopt_or_start_service_with_timeout(timeout);
+        let (port, _pid, is_ready, status, fallback_reason) = state.get_or_adopt_or_start_service_with_timeout(timeout);
         let elapsed = t0.elapsed();
         std::env::remove_var("LIMEN_TEST_DISABLE_ADOPTION");
 
         assert!(!is_ready, "Il servizio non deve risultare pronto se il timeout di preparazione spira");
         assert!(port.is_none(), "Nessuna porta deve essere associata");
-        assert!(pid.is_none());
         assert_eq!(status, "in avvio");
         assert!(elapsed < Duration::from_millis(3000), "La preparazione deve terminare entro il tempo massimo dichiarato (impiegati {:?})", elapsed);
 
@@ -2661,6 +2660,7 @@ mod tests {
             reason.contains("ripiego"),
             "Il motivo deve esplicitare il ripiego sulla ricerca per parole: {}", reason
         );
+        let _ = state.stop();
     }
 
     #[test]
@@ -2800,7 +2800,10 @@ mod tests {
         std::env::set_var("LIMEN_LOCAL_MODEL_TIMING_LOG", &timing_log);
         std::env::set_var("LIMEN_EMBEDDINGS_PROVIDER", "local");
 
+        let mock_exe = compile_test_mock_server(temp_dir.path());
         let state = LlamaServerState::default();
+        state.set_test_binary(mock_exe);
+        state.set_test_models_dir(temp_dir.path().join("models"));
         // Simula la chiamata che l'app esegue all'avvio senza domande
         state.trigger_background_start();
 
@@ -3006,6 +3009,7 @@ mod tests {
 
         // 3. Esegui un vero avvio con il server mock
         let state = LlamaServerState::default();
+        state.set_test_models_dir(models_dir.clone());
         let res = state.start_with_custom_binary(&mock_exe, Duration::from_millis(1500));
         std::env::remove_var("LIMEN_MODELS_DIR");
 
@@ -3232,6 +3236,7 @@ mod tests {
         let mock_exe = compile_test_mock_server(temp_dir.path());
 
         let state = LlamaServerState::default();
+        state.set_test_models_dir(temp_dir.path().join("models"));
         let started = state.trigger_background_start_with_binary(Some(mock_exe));
         assert!(started, "trigger_background_start deve restituire true");
 
@@ -3266,6 +3271,7 @@ mod tests {
         let mock_exe = compile_test_mock_server(temp_dir.path());
 
         let state = LlamaServerState::default();
+        state.set_test_models_dir(temp_dir.path().join("models"));
         let started = state.trigger_background_start_with_binary(Some(mock_exe.clone()));
         assert!(started);
 
@@ -3329,6 +3335,7 @@ mod tests {
         let state = LlamaServerState::default();
         // Disabilita avvio del vero modello configurando il mock server come binario di test
         state.set_test_binary(mock_exe.clone());
+        state.set_test_models_dir(temp_dir.path().join("models"));
         state.adopt_service(port1, Some(11111));
         assert!(state.status().healthy, "Il servizio adottato deve essere sano inizialmente");
 
@@ -3495,6 +3502,7 @@ mod tests {
         let mock_exe = compile_test_mock_server(temp_dir.path());
 
         let state = LlamaServerState::default();
+        state.set_test_models_dir(temp_dir.path().join("models"));
         let tok1 = next_start_token();
         {
             let mut s = state.0.lock().unwrap();
@@ -3538,6 +3546,7 @@ mod tests {
         let mock_exe = compile_test_mock_server(temp_dir.path());
 
         let state = LlamaServerState::default();
+        state.set_test_models_dir(temp_dir.path().join("models"));
         let (tx_panic, rx_panic) = std::sync::mpsc::channel();
         let state_owner = state.clone();
 
