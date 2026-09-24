@@ -328,6 +328,10 @@ Conformemente all'analisi e alle correzioni vincolanti richieste:
 - **Comando vincolante**:
   `cd "E:\Projects\vault_memai_obsi"; npx pnpm --filter @limen-vault/desktop tauri dev --release`
   *(preserva la cache di compilazione evitando ri-compilazioni complete al riavvio di Cesare; NON usare `cargo build --release`)*.
+- **Istanza in esecuzione per la prova**:
+  - **Commit di riferimento**: `ef2532ca700c712b4c68d25fd26324702dce0782` (2026-09-24 08:19:16 UTC+8).
+  - **Eseguibile avviato**: `E:\Projects\vault_memai_obsi\apps\desktop\src-tauri\target\release\limen-vault.exe` (PID 5340).
+  - **Ora di avvio**: `2026-09-24 08:20:15 UTC+8`.
 
 
 
