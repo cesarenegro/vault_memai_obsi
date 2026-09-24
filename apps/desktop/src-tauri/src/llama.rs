@@ -1764,7 +1764,8 @@ impl LlamaServerState {
         if let Some(parent) = model_path.parent() {
             let logs_dir = parent.join("logs");
             let _ = fs::create_dir_all(&logs_dir);
-            rotate_llama_server_logs(&logs_dir, 20);
+            // Limita a 19 prima della creazione per garantire max 20 file totali dopo l'avvio (N5)
+            rotate_llama_server_logs(&logs_dir, 19);
 
             let utc_now = chrono::Utc::now().format("%Y%m%dT%H%M%SZ").to_string();
             let per_run_log_path = logs_dir.join(format!("llama-server_{}_{}.log", utc_now, child_pid));
@@ -2875,6 +2876,46 @@ mod tests {
             let filename = format!("llama-server_20260924T{:02}0000Z_1000{}.log", i, i);
             assert!(logs_dir.join(filename).exists(), "I file recenti devono essere conservati");
         }
+    }
+
+    #[test]
+    fn test_fase5i_n5_20_existing_logs_remains_20_after_startup() {
+        let tmp = tempfile::tempdir().unwrap();
+        let logs_dir = tmp.path().join("logs");
+        fs::create_dir_all(&logs_dir).unwrap();
+
+        // 1. Crea esattamente 20 file di log simulati preesistenti
+        for i in 1..=20 {
+            let filename = format!("llama-server_20260924T{:02}0000Z_1000{}.log", i, i);
+            fs::write(logs_dir.join(filename), b"preexisting log").unwrap();
+        }
+
+        let initial_count = fs::read_dir(&logs_dir).unwrap().filter_map(|e| e.ok()).count();
+        assert_eq!(initial_count, 20, "Devono esserci esattamente 20 file iniziali");
+
+        // 2. Simula la rotazione prima dell'avvio e la creazione del nuovo file di log
+        rotate_llama_server_logs(&logs_dir, 19);
+        let new_run_file = logs_dir.join("llama-server_20260924T210000Z_99999.log");
+        fs::write(&new_run_file, b"new run log").unwrap();
+
+        // 3. Verifica che il conteggio finale sia ESATTAMENTE 20 (e non 21)
+        let final_files: Vec<_> = fs::read_dir(&logs_dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .collect();
+        assert_eq!(
+            final_files.len(),
+            20,
+            "Dopo l'avvio con 20 file preesistenti devono rimanere esattamente 20 file, ottenuti {}: {:?}",
+            final_files.len(),
+            final_files
+        );
+
+        // Il file più vecchio (01) deve essere stato rimosso per fare spazio al nuovo
+        assert!(!logs_dir.join("llama-server_20260924T010000Z_10001.log").exists());
+        // Il nuovo file (21) deve essere presente
+        assert!(logs_dir.join("llama-server_20260924T210000Z_99999.log").exists());
     }
 
     #[test]
