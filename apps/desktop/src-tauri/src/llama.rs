@@ -871,6 +871,10 @@ fn stop_child(s: &mut RunningState) {
             libc::kill(-pid, libc::SIGTERM);
             libc::kill(pid, libc::SIGTERM);
         }
+        #[cfg(windows)]
+        {
+            let _ = c.kill(); // Termina esplicitamente SOLO il figlio posseduto dall'app
+        }
         for _ in 0..20 {
             if c.try_wait().ok().flatten().is_some() {
                 break;
@@ -883,7 +887,17 @@ fn stop_child(s: &mut RunningState) {
             libc::kill(-pid, libc::SIGKILL);
             libc::kill(pid, libc::SIGKILL);
         }
-        let _ = c.wait();
+        #[cfg(windows)]
+        {
+            let _ = c.kill();
+        }
+        // Attesa con limite massimo (max 500ms aggiuntivi), MAI c.wait() indefinito
+        for _ in 0..10 {
+            if c.try_wait().ok().flatten().is_some() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
     }
     if let Some(p) = pid_file_path() {
         let _ = fs::remove_file(p);
@@ -901,29 +915,35 @@ impl LlamaServerState {
     }
 
     pub fn status(&self) -> LocalServerReport {
-        let mut s = match self.0.lock() {
-            Ok(guard) => guard,
-            Err(poisoned) => poisoned.into_inner(),
+        // Estrae lo stato rilasciando IMMEDIATAMENTE il mutex: non tiene il lock durante check_health di rete
+        let (port, has_child, pid, last_error) = {
+            let mut s = match self.0.lock() {
+                Ok(guard) => guard,
+                Err(poisoned) => poisoned.into_inner(),
+            };
+
+            if let Some(c) = s.child.as_mut() {
+                if let Ok(Some(exit_status)) = c.try_wait() {
+                    s.child = None;
+                    s.last_error = Some(format!("llama-server terminato con stato: {}", exit_status));
+                }
+            }
+
+            let pid = s.child.as_ref().map(|c| c.id());
+            (s.port, s.child.is_some(), pid, s.last_error.clone())
         };
 
-        if let Some(c) = s.child.as_mut() {
-            if let Ok(Some(exit_status)) = c.try_wait() {
-                s.child = None;
-                s.last_error = Some(format!("llama-server terminato con stato: {}", exit_status));
-            }
-        }
-
-        let running = s.child.is_some() || (s.port > 0 && check_health(s.port));
-        let healthy = s.port > 0 && check_health(s.port);
-        let pid = s.child.as_ref().map(|c| c.id());
+        // check_health viene eseguito FUORI DAL MUTEX
+        let healthy = port > 0 && check_health(port);
+        let running = has_child || healthy;
 
         LocalServerReport {
             running,
-            port: s.port,
+            port,
             pid,
             model: "bge-m3-Q8_0.gguf".to_string(),
             healthy,
-            last_error: s.last_error.clone(),
+            last_error,
         }
     }
 
@@ -936,13 +956,13 @@ impl LlamaServerState {
         }
         let model_path = PathBuf::from(model_rep.path);
 
-        // 2. Check if already healthy
-        {
+        // 2. Check if already healthy (verifica di rete eseguita FUORI dal mutex)
+        let already_port = {
             let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
-            if s.port > 0 && check_health(s.port) {
-                drop(s);
-                return Ok(self.status());
-            }
+            s.port
+        };
+        if already_port > 0 && check_health(already_port) {
+            return Ok(self.status());
         }
 
         // 2b. Un server orfano di un'istanza precedente (app uccisa) va terminato prima di avviarne un altro
@@ -1079,11 +1099,13 @@ impl LlamaServerState {
     }
 
     pub fn ensure_running(&self) -> Result<u16, String> {
-        let s = self.0.lock().map_err(|e| e.to_string())?;
-        if s.port > 0 && check_health(s.port) {
-            return Ok(s.port);
+        let port = {
+            let s = self.0.lock().map_err(|e| e.to_string())?;
+            s.port
+        };
+        if port > 0 && check_health(port) {
+            return Ok(port);
         }
-        drop(s);
 
         // Try restart up to 3 times (Gate A10 compliance)
         for attempt in 1..=3 {
@@ -1107,10 +1129,55 @@ impl LlamaServerState {
     }
 
     pub fn stop(&self) -> Result<LocalServerReport, String> {
-        let mut s = self.0.lock().map_err(|e| e.to_string())?;
-        stop_child(&mut s);
-        s.last_error = None;
-        drop(s);
+        let child = {
+            let mut s = self.0.lock().map_err(|e| e.to_string())?;
+            s.port = 0;
+            s.last_error = None;
+            s.child.take()
+        }; // Lock rilasciato IMMEDIATAMENTE: nessuna attesa su processi o I/O sotto lock!
+
+        if let Some(mut c) = child {
+            #[cfg(unix)]
+            unsafe {
+                let pid = c.id() as i32;
+                libc::kill(-pid, libc::SIGTERM);
+                libc::kill(pid, libc::SIGTERM);
+            }
+            #[cfg(windows)]
+            {
+                let _ = c.kill(); // Termina esplicitamente SOLO il figlio posseduto dall'app
+            }
+            for _ in 0..20 {
+                if c.try_wait().ok().flatten().is_some() {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            #[cfg(unix)]
+            unsafe {
+                let pid = c.id() as i32;
+                libc::kill(-pid, libc::SIGKILL);
+                libc::kill(pid, libc::SIGKILL);
+            }
+            #[cfg(windows)]
+            {
+                let _ = c.kill();
+            }
+            for _ in 0..10 {
+                if c.try_wait().ok().flatten().is_some() {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+        }
+
+        if let Some(p) = pid_file_path() {
+            let _ = fs::remove_file(p);
+        }
+        if let Some(p) = port_file_path() {
+            let _ = fs::remove_file(p);
+        }
+
         Ok(self.status())
     }
 }
@@ -1378,5 +1445,104 @@ mod tests {
     fn test_find_free_port() {
         let port = find_free_port().unwrap();
         assert!(port > 1024);
+    }
+
+    #[test]
+    fn test_p1_server_with_invalid_embeddings_fails_bounded_and_status_available() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+
+        // 1. Avvia un mock HTTP server su 127.0.0.1 (porta libera casuale del sistema)
+        let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind mock listener");
+        let mock_port = listener.local_addr().unwrap().port();
+        let running_flag = Arc::new(std::sync::atomic::AtomicBool::new(true));
+        let flag_clone = running_flag.clone();
+
+        // Server thread che risponde /health = 200 OK, ma /v1/embeddings = risposta JSON non valida
+        let server_thread = std::thread::spawn(move || {
+            let _ = listener.set_nonblocking(true);
+            while flag_clone.load(std::sync::atomic::Ordering::SeqCst) {
+                if let Ok((mut socket, _)) = listener.accept() {
+                    let mut buf = [0u8; 1024];
+                    let mut read_bytes = 0;
+                    while let Ok(n) = socket.read(&mut buf[read_bytes..]) {
+                        if n == 0 { break; }
+                        read_bytes += n;
+                        if buf[..read_bytes].windows(4).any(|w| w == b"\r\n\r\n") {
+                            break;
+                        }
+                    }
+                    let req_str = String::from_utf8_lossy(&buf[..read_bytes]);
+                    if req_str.contains("GET /health") {
+                        let resp = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 15\r\nConnection: close\r\n\r\n{\"status\":\"ok\"}";
+                        let _ = socket.write_all(resp.as_bytes());
+                    } else if req_str.contains("POST /v1/embeddings") {
+                        // Risposta HTTP valida ma payload JSON non contenente il vettore corretto
+                        let resp = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 29\r\nConnection: close\r\n\r\n{\"error\":\"mock_invalid_json\"}";
+                        let _ = socket.write_all(resp.as_bytes());
+                    }
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        });
+
+        // 2. Avvia un mock child process posseduto da LlamaServerState
+        #[cfg(windows)]
+        let mut mock_child = Command::new("cmd")
+            .args(["/c", "ping -n 30 127.0.0.1 > nul"])
+            .spawn()
+            .expect("Failed to spawn mock child process");
+        #[cfg(unix)]
+        let mut mock_child = Command::new("sleep")
+            .arg("30")
+            .spawn()
+            .expect("Failed to spawn mock child process");
+
+        let mock_child_pid = mock_child.id();
+        assert!(mock_child.try_wait().unwrap().is_none(), "Mock child must be alive initially");
+
+        // 3. Inizializza LlamaServerState con il processo figlio posseduto e la porta del mock server
+        let state = Arc::new(LlamaServerState::default());
+        {
+            let mut s = state.0.lock().unwrap();
+            s.port = mock_port;
+            s.child = Some(mock_child);
+        }
+
+        // Verifica che status() sia reattivo e non resti mai bloccato dal mutex (< 500ms)
+        let t0 = Instant::now();
+        let rep_before = state.status();
+        assert!(t0.elapsed() < Duration::from_millis(500), "status() must return without deadlock");
+        assert_eq!(rep_before.port, mock_port);
+        assert!(rep_before.healthy, "/health mock server deve risultare healthy");
+        assert!(rep_before.running);
+
+        // 4. Esegui la verifica dimensioni: deve fallire a causa del payload non valido
+        let verify_res = verify_dimensions(mock_port);
+        assert!(verify_res.is_err(), "verify_dimensions must fail on mock invalid embeddings");
+
+        // 5. Invocazione di stop(): deve terminare il figlio posseduto entro il limite dichiarato (< 3s)
+        let t_stop = Instant::now();
+        let stop_res = state.stop();
+        let stop_duration = t_stop.elapsed();
+        assert!(stop_res.is_ok(), "stop() must succeed");
+        assert!(stop_duration < Duration::from_secs(3), "stop() must terminate within bounded timeout (took {:?})", stop_duration);
+
+        // 6. Verifica che SOLO il figlio posseduto sia stato terminato
+        std::thread::sleep(Duration::from_millis(200));
+        let proc_info = process_parent_and_command(mock_child_pid);
+        assert!(proc_info.is_none(), "Mock child PID {} must be dead after stop()", mock_child_pid);
+
+        // 7. status() deve restare disponibile e non bloccato
+        let t_stat = Instant::now();
+        let rep_after = state.status();
+        assert!(t_stat.elapsed() < Duration::from_millis(200), "status() must return immediately");
+        assert_eq!(rep_after.port, 0);
+        assert!(!rep_after.healthy);
+        assert!(!rep_after.running);
+
+        // Cleanup mock server thread
+        running_flag.store(false, std::sync::atomic::Ordering::SeqCst);
+        let _ = server_thread.join();
     }
 }

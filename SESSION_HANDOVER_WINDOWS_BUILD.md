@@ -317,13 +317,11 @@ Conformemente all'analisi e alle correzioni vincolanti richieste:
   - `test_stream_prose_sanitizer_cesare_real_terminal_bnxt_answer`: testa la risposta reale del terminale di Cesare spezzata in frammenti di rete di ogni dimensione da 1 a 80 byte $\rightarrow$ nessun panic, sanificazione identica e perfetta.
   - Superato anche `test_stream_prose_sanitizer_accented_letters_and_emoji`.
 
-### Difetto 2 — Risolto: Blocco della Preparazione Introdotto da `ef2532c`
-- **Confronto `git diff efa0cef ef2532c`**:
-  - In `ef2532c` erano stati aggiunti in `apps/desktop/src/AiPanel.tsx` `isRunningRef = useRef(false)`, il flag `isBusy = !!loadingStep || isStreaming || isRunningRef.current`, la disabilitazione anticipata del form, e in `apps/desktop/src-tauri/src/main.rs` il wrapping con `ActiveGuard` e `tokio::spawn(async move { ask_stream(...) })`.
-  - Questo causava il blocco della fase di preparazione (l'app restava ferma su `"Selezione passaggi pertinenti dal Vault…"`).
-- **Correzione applicata**:
-  - Ripristinati `apps/desktop/src-tauri/src/main.rs` e `apps/desktop/src/AiPanel.tsx` alla versione perfettamente funzionante di `efa0cef`.
-  - Mantenute in `apps/desktop/src-tauri/src/ai.rs` la correzione del Difetto 1 (`safe_boundary`) e i relativi test.
+### Difetto 2 — Aggiornamento Post-Audit Indipendente (24/09/2026)
+- **Stato del ripristino**:
+  - Ripristino eseguito; causa del blocco da individuare; meccanismo P1 riprodotto in isolamento (attesa senza limite di `stop_child` su Windows sotto mutex dello stato).
+  - L'audit indipendente del 24/09/2026 ha dimostrato che l'attribuzione del blocco storico a `ef2532c` non era provata (le funzioni di preparazione e lifecycle erano identiche).
+  - Il ripristino di `main.rs` ha inoltre rimosso la guardia di rilascio del ticket (`ActiveGuard`), che viene ora reintrodotta formalmente nel punto P5 insieme alla correzione robusta di P1 (`llama.rs`).
 
 ### Verifica Reale di Diagnostica della Preparazione (`diagnose_fase3b2b`)
 - Diagnostica eseguita offline con `cargo run --bin diagnose_fase3b2b` collegandosi alla porta del servizio dell'app (`62991`, modello locale `llama-server` bge-m3, 1024d) — **ZERO chiamate a OpenAI**:
