@@ -244,7 +244,7 @@ export function AiPanel({
     const previousTurns = completedTurns.slice(-3);
     const previousQuestion = completedTurns.length > 0 ? completedTurns[completedTurns.length - 1].question : undefined;
     const parentEntryId = turns.length > 0 ? turns[turns.length - 1].answer.historyEntryId : undefined;
-    const turnIndex = turns.length;
+    const turnIndex = turns.length + 1;
 
     try {
       // Step 1: Preview / Select sources automaticamente
@@ -333,6 +333,9 @@ export function AiPanel({
               setStreamingText('');
               setActivePrompt('');
               setPreviewData(null);
+              if (event.payload.conversationId) {
+                setConversationId(event.payload.conversationId);
+              }
             }
           }
         });
@@ -350,7 +353,7 @@ export function AiPanel({
       setIsStreaming(false);
       setStreamingText('');
       setLoadingStep(null);
-      if (!conversationId && res.conversationId) {
+      if (res.conversationId) {
         setConversationId(res.conversationId);
       }
       setTurns(prev => [
@@ -562,7 +565,7 @@ export function AiPanel({
                     fontWeight: 700,
                   }}
                 >
-                  Turno {tIdx + 1}
+                  Turno {turn.answer.turnIndex ?? (tIdx + 1)}
                 </span>
                 <span style={{ fontSize: 12, color: '#64748b' }}>
                   {turn.answer.model}

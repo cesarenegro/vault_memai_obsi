@@ -277,18 +277,33 @@ export function AiHistoryDrawer({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <span
-                  style={{
-                    background: '#0f172a',
-                    color: '#ffffff',
-                    padding: '2px 8px',
-                    borderRadius: 4,
-                    fontSize: 11,
-                    fontWeight: 600,
-                  }}
-                >
-                  {selectedEntry.responseModel}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span
+                    style={{
+                      background: '#0f172a',
+                      color: '#ffffff',
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Turno {selectedEntry.turnIndex}
+                  </span>
+                  <span
+                    style={{
+                      background: '#f1f5f9',
+                      border: '1px solid #cbd5e1',
+                      color: '#0f172a',
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {selectedEntry.responseModel}
+                  </span>
+                </div>
                 <span style={{ fontSize: 12, color: '#64748b' }}>
                   {formatLocalDate(selectedEntry.createdAtUtc)}
                 </span>
@@ -614,7 +629,7 @@ export function AiHistoryDrawer({
                                     fontWeight: 700,
                                   }}
                                 >
-                                  Turno {entry.turnIndex + 1}
+                                  Turno {entry.turnIndex}
                                 </span>
                                 <span
                                   style={{

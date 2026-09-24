@@ -31,7 +31,7 @@ pub fn record_ai_completion(
     conversation_id: Option<&str>,
     turn_index: Option<usize>,
     parent_entry_id: Option<&str>,
-) -> String {
+) -> (String, String) {
     let history_sources: Vec<HistorySourceRef> = sources
         .iter()
         .enumerate()
@@ -82,10 +82,12 @@ pub fn record_ai_completion(
         "complete"
     };
 
+    let actual_turn = turn_index.unwrap_or(1);
+
     let entry = HistoryEntry {
         id: entry_id.clone(),
-        conversation_id: conv_id,
-        turn_index: turn_index.unwrap_or(1),
+        conversation_id: conv_id.clone(),
+        turn_index: actual_turn,
         parent_entry_id: parent_entry_id.filter(|s| !s.trim().is_empty()).map(|s| s.to_string()),
         created_at_utc: now_utc,
         utc_offset_seconds: utc_offset,
@@ -99,7 +101,7 @@ pub fn record_ai_completion(
         pid: Some(std::process::id()),
     };
     let _ = save_history_entry(vault_path, entry);
-    entry_id
+    (entry_id, conv_id)
 }
 
 #[cfg(test)]
@@ -1003,7 +1005,7 @@ pub mod tests {
         let sources: Vec<crate::ai::Source> = vec![];
 
         // Due registrazioni separate con lo stesso identico prompt senza specificare conversation_id
-        let id1 = record_ai_completion(
+        let (id1, conv1) = record_ai_completion(
             &vault_path,
             prompt,
             "gpt-4o",
@@ -1018,7 +1020,7 @@ pub mod tests {
             None,
         );
 
-        let id2 = record_ai_completion(
+        let (id2, conv2) = record_ai_completion(
             &vault_path,
             prompt,
             "gpt-4o",
@@ -1036,6 +1038,8 @@ pub mod tests {
         let entry1 = get_history_entry(&vault_path, &id1).unwrap();
         let entry2 = get_history_entry(&vault_path, &id2).unwrap();
 
+        assert_eq!(entry1.conversation_id, conv1);
+        assert_eq!(entry2.conversation_id, conv2);
         assert_ne!(
             entry1.conversation_id, entry2.conversation_id,
             "La stessa domanda in conversazioni diverse deve avere conversation_id diversi"
@@ -1089,7 +1093,7 @@ pub mod tests {
         let conv_id = "conv_thread_xyz";
 
         // Turno 1: s1 citata (indice 0), s2 non citata. parent: None
-        let id1 = record_ai_completion(
+        let (id1, c1) = record_ai_completion(
             &vault_path,
             "Domanda 1",
             "gpt-4o",
@@ -1103,9 +1107,10 @@ pub mod tests {
             Some(1),
             None,
         );
+        assert_eq!(c1, conv_id);
 
         // Turno 2: entrambe citate ([0, 1]). parent: id1
-        let id2 = record_ai_completion(
+        let (id2, c2) = record_ai_completion(
             &vault_path,
             "Domanda 2",
             "gpt-4o",
@@ -1119,9 +1124,10 @@ pub mod tests {
             Some(2),
             Some(&id1),
         );
+        assert_eq!(c2, conv_id);
 
         // Turno 3: nessuna citata ([]). parent: id2
-        let id3 = record_ai_completion(
+        let (id3, c3) = record_ai_completion(
             &vault_path,
             "Domanda 3",
             "gpt-4o",
@@ -1135,6 +1141,7 @@ pub mod tests {
             Some(3),
             Some(&id2),
         );
+        assert_eq!(c3, conv_id);
 
         let e1 = get_history_entry(&vault_path, &id1).unwrap();
         let e2 = get_history_entry(&vault_path, &id2).unwrap();

@@ -2,6 +2,16 @@ use crate::search::{self,SearchQuery};
 use serde::{Deserialize,Serialize};
 use serde_json::{json,Value};
 use std::{collections::{BTreeMap,BTreeSet},path::{Path,PathBuf},sync::{atomic::{AtomicBool,Ordering},Arc,Mutex},time::{Duration,Instant}};
+
+#[cfg(test)]
+thread_local! {
+    static TEST_OPENAI_ENDPOINT: std::cell::RefCell<Option<String>> = std::cell::RefCell::new(None);
+}
+
+#[cfg(test)]
+pub fn set_test_openai_endpoint(endpoint: Option<String>) {
+    TEST_OPENAI_ENDPOINT.with(|c| *c.borrow_mut() = endpoint);
+}
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ConversationTurn {
@@ -2082,8 +2092,21 @@ pub async fn ask(
 
     // 2. Costruzione della richiesta HTTP e serializzazione payload
     let t_payload_start = Instant::now();
+    #[cfg(test)]
+    let test_ep = TEST_OPENAI_ENDPOINT.with(|c| c.borrow().clone());
+    #[cfg(test)]
+    let (endpoint, https_only): (&str, bool) = match test_ep.as_deref() {
+        Some(url) => {
+            let is_https = url.starts_with("https://");
+            (url, is_https)
+        }
+        None => ("https://api.openai.com/v1/responses", true),
+    };
+    #[cfg(not(test))]
+    let (endpoint, https_only): (&str, bool) = ("https://api.openai.com/v1/responses", true);
+
     let client = reqwest::Client::builder()
-        .https_only(true)
+        .https_only(https_only)
         .redirect(reqwest::redirect::Policy::none())
         .connect_timeout(Duration::from_secs(10))
         .timeout(Duration::from_secs(30))
@@ -2096,7 +2119,7 @@ pub async fn ask(
     let t_openai_start = Instant::now();
     let work = async {
         let mut response = client
-            .post("https://api.openai.com/v1/responses")
+            .post(endpoint)
             .bearer_auth(key)
             .json(&body)
             .send()
@@ -2229,7 +2252,7 @@ pub async fn ask(
         .unwrap_or_default();
 
     // C6: Salvataggio nello storico dopo verify_post riuscito e validazione citazioni
-    let recorded_id = crate::history::record_ai_completion(
+    let (recorded_id, actual_conv_id) = crate::history::record_ai_completion(
         &p.path,
         &p.options.prompt,
         &p.options.model,
@@ -2244,13 +2267,11 @@ pub async fn ask(
         p.options.parent_entry_id.as_deref(),
     );
 
+    let actual_turn_index = p.options.turn_index.unwrap_or(1);
+
     parsed["historyEntryId"] = serde_json::json!(recorded_id);
-    if let Some(ref cid) = p.options.conversation_id {
-        parsed["conversationId"] = serde_json::json!(cid);
-    }
-    if let Some(t_idx) = p.options.turn_index {
-        parsed["turnIndex"] = serde_json::json!(t_idx);
-    }
+    parsed["conversationId"] = serde_json::json!(actual_conv_id);
+    parsed["turnIndex"] = serde_json::json!(actual_turn_index);
 
     Ok(parsed)
 }
@@ -2764,8 +2785,21 @@ pub async fn ask_stream(
 
     // 3. Invio richiesta HTTP e ascolto stream SSE
     let t_openai_start = Instant::now();
+    #[cfg(test)]
+    let test_ep = TEST_OPENAI_ENDPOINT.with(|c| c.borrow().clone());
+    #[cfg(test)]
+    let (endpoint, https_only): (&str, bool) = match test_ep.as_deref() {
+        Some(url) => {
+            let is_https = url.starts_with("https://");
+            (url, is_https)
+        }
+        None => ("https://api.openai.com/v1/responses", true),
+    };
+    #[cfg(not(test))]
+    let (endpoint, https_only): (&str, bool) = ("https://api.openai.com/v1/responses", true);
+
     let client = reqwest::Client::builder()
-        .https_only(true)
+        .https_only(https_only)
         .redirect(reqwest::redirect::Policy::none())
         .connect_timeout(Duration::from_secs(10))
         .timeout(Duration::from_secs(60))
@@ -2773,7 +2807,7 @@ pub async fn ask_stream(
         .map_err(|_| "HTTP client unavailable")?;
 
     let response_res = client
-        .post("https://api.openai.com/v1/responses")
+        .post(endpoint)
         .bearer_auth(key)
         .json(&body)
         .send()
@@ -3346,7 +3380,7 @@ pub async fn ask_stream(
 
     // C6: Salvataggio nello storico dopo verify_post riuscito e validazione citazioni
     let final_ans = parsed["answer"].as_str().unwrap_or(sanitizer.get_accumulated()).to_string();
-    let recorded_id = crate::history::record_ai_completion(
+    let (recorded_id, actual_conv_id) = crate::history::record_ai_completion(
         &p.path,
         &p.options.prompt,
         &effective_model,
@@ -3361,10 +3395,12 @@ pub async fn ask_stream(
         p.options.parent_entry_id.as_deref(),
     );
 
+    let actual_turn_index = p.options.turn_index.unwrap_or(1);
+
     let mut end_payload = end_payload;
     end_payload.history_entry_id = Some(recorded_id.clone());
-    end_payload.conversation_id = p.options.conversation_id.clone();
-    end_payload.turn_index = p.options.turn_index;
+    end_payload.conversation_id = Some(actual_conv_id.clone());
+    end_payload.turn_index = Some(actual_turn_index);
 
     if let Some(ref w) = window {
         let _ = w.emit("limen://ai-stream-end", end_payload);
@@ -3372,12 +3408,8 @@ pub async fn ask_stream(
 
     let mut parsed_res = parsed;
     parsed_res["historyEntryId"] = serde_json::json!(recorded_id);
-    if let Some(ref cid) = p.options.conversation_id {
-        parsed_res["conversationId"] = serde_json::json!(cid);
-    }
-    if let Some(t_idx) = p.options.turn_index {
-        parsed_res["turnIndex"] = serde_json::json!(t_idx);
-    }
+    parsed_res["conversationId"] = serde_json::json!(actual_conv_id);
+    parsed_res["turnIndex"] = serde_json::json!(actual_turn_index);
     parsed_res["semanticUsed"] = serde_json::json!(p.semantic_used);
     if let Some(ref r) = p.semantic_fallback_reason {
         parsed_res["semanticFallbackReason"] = serde_json::json!(r);
@@ -5647,6 +5679,122 @@ mod tests {
       };
       let search_prompt3 = compute_search_prompt(&o3);
       assert_eq!(search_prompt3, "Domanda singola autonoma");
+  }
+
+  #[tokio::test]
+  async fn test_real_backend_flow_turn1_generates_conv_id_and_turn2_reuses_it() {
+      let t = fixture();
+      let _ = set_openai_consent(t.path(), true);
+
+      let server = std::sync::Arc::new(tiny_http::Server::http("127.0.0.1:0").unwrap());
+      let server_addr = server.server_addr();
+      let server_clone = server.clone();
+      let mock_handle = std::thread::spawn(move || {
+          for _ in 0..2 {
+              if let Ok(rq) = server_clone.recv() {
+                  let response_body = serde_json::json!({
+                      "status": "completed",
+                      "model": "gpt-4o",
+                      "output": [
+                          {
+                              "type": "message",
+                              "content": [
+                                  {
+                                      "type": "output_text",
+                                      "text": serde_json::json!({
+                                          "answer": "Risposta dal backend reale",
+                                          "citation_ids": ["S1"]
+                                      }).to_string()
+                                  }
+                              ]
+                          }
+                      ]
+                  }).to_string();
+                  let resp = tiny_http::Response::from_string(response_body)
+                      .with_status_code(200)
+                      .with_header(tiny_http::Header::from_bytes("Content-Type", "application/json").unwrap());
+                  let _ = rq.respond(resp);
+              }
+          }
+      });
+
+      set_test_openai_endpoint(Some(format!("http://{}/v1/responses", server_addr)));
+
+      let state = AiState::default();
+
+      // Turno 1: Nessun conversation_id fornito dall'interfaccia (percorso reale)
+      let p1 = state.preview(t.path().into(), Options {
+          prompt: "Acme coffee prima domanda".into(),
+          model: "gpt-4o".into(),
+          include_drafts: false,
+          source_ids: vec![],
+          conversation_id: None,
+          turn_index: None,
+          parent_entry_id: None,
+          ..Default::default()
+      }).await.unwrap();
+
+      let (pending1, cancel1) = state.begin(&p1.ticket).unwrap();
+      let res1 = ask(pending1, "mock_key".into(), cancel1, None).await.unwrap();
+      state.finish(&p1.ticket);
+
+      // Verifica obbligatoria Turno 1:
+      // Su codice 9722dec conversationId era assente/nullo nella risposta: deve fallire lì.
+      let conv_id1 = res1.get("conversationId")
+          .and_then(|v| v.as_str())
+          .expect("Il primo turno deve restituire conversationId non vuoto nella risposta")
+          .to_string();
+      assert!(!conv_id1.trim().is_empty(), "conversationId non deve essere vuoto");
+      assert!(conv_id1.starts_with("conv_"), "conversationId deve avere prefisso conv_");
+
+      let entry_id1 = res1.get("historyEntryId")
+          .and_then(|v| v.as_str())
+          .expect("historyEntryId presente")
+          .to_string();
+      assert_eq!(res1["turnIndex"], 1, "Il primo turno deve avere turnIndex = 1");
+
+      // Turno 2: L'interfaccia invia il conversationId ottenuto dalla risposta del turno 1
+      let p2 = state.preview(t.path().into(), Options {
+          prompt: "Acme coffee seconda domanda di seguito".into(),
+          model: "gpt-4o".into(),
+          include_drafts: false,
+          source_ids: vec![],
+          conversation_id: Some(conv_id1.clone()),
+          turn_index: Some(2),
+          parent_entry_id: Some(entry_id1.clone()),
+          previous_question: Some("Acme coffee prima domanda".into()),
+          ..Default::default()
+      }).await.unwrap();
+
+      let (pending2, cancel2) = state.begin(&p2.ticket).unwrap();
+      let res2 = ask(pending2, "mock_key".into(), cancel2, None).await.unwrap();
+      state.finish(&p2.ticket);
+
+      let conv_id2 = res2.get("conversationId")
+          .and_then(|v| v.as_str())
+          .expect("Il secondo turno deve restituire conversationId");
+      assert_eq!(conv_id2, conv_id1.as_str(), "Il secondo turno deve riutilizzare lo stesso conversationId del primo");
+      assert_eq!(res2["turnIndex"], 2, "Il secondo turno deve avere turnIndex 2");
+
+      let entry_id2 = res2.get("historyEntryId")
+          .and_then(|v| v.as_str())
+          .expect("historyEntryId presente al secondo turno")
+          .to_string();
+
+      // Verifica salvataggio su disco nello storico del vault
+      let saved_entry1 = crate::history::get_history_entry(t.path(), &entry_id1).unwrap();
+      let saved_entry2 = crate::history::get_history_entry(t.path(), &entry_id2).unwrap();
+
+      assert_eq!(saved_entry1.conversation_id, conv_id1);
+      assert_eq!(saved_entry1.turn_index, 1);
+      assert_eq!(saved_entry1.parent_entry_id, None);
+
+      assert_eq!(saved_entry2.conversation_id, conv_id1);
+      assert_eq!(saved_entry2.turn_index, 2);
+      assert_eq!(saved_entry2.parent_entry_id, Some(entry_id1));
+
+      let _ = mock_handle.join();
+      set_test_openai_endpoint(None);
   }
 }
 #[cfg(test)]
