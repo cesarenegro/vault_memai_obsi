@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:deps": "pnpm --filter @limen-vault/ui --filter @limen-vault/proposal-engine --filter @limen-vault/vault-core --filter @limen-vault/vault-schema build",
+    "build:deps": "pnpm --filter @limen-vault/ui --filter @limen-vault/proposal-engine --filter @limen-vault/vault-core --filter @limen-vault/vault-schema --filter @limen-vault/knowledge-compiler --filter @limen-vault/search-engine --filter @limen-vault/snapshot-engine --filter @limen-vault/sync-engine --filter @limen-vault/ai-engine build",
     "dev": "pnpm build:deps && vite",
     "build": "pnpm build:deps && tsc && vite build",
     "preview": "vite preview",

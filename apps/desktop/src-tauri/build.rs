@@ -13,6 +13,28 @@ fn main() {
         if should_copy {
             std::fs::copy(&output, dest).expect("Bundle native extractor");
         }
+
+        if let Ok(entries) = std::fs::read_dir("resources/native") {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                if name.ends_with(".so") || name.ends_with(".dylib") {
+                    let sign_status = std::process::Command::new("codesign")
+                        .args(["--force", "--sign", "-"])
+                        .arg(&path)
+                        .status()
+                        .expect("codesign utility execution failed");
+                    assert!(sign_status.success(), "Failed to ad-hoc codesign native library: {}", path.display());
+
+                    let verify_status = std::process::Command::new("codesign")
+                        .arg("--verify")
+                        .arg(&path)
+                        .status()
+                        .expect("codesign verification execution failed");
+                    assert!(verify_status.success(), "Signature verification failed for native library: {}", path.display());
+                }
+            }
+        }
     }
     tauri_build::build()
 }

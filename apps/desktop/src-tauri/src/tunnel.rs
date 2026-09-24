@@ -204,6 +204,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn stop_releases_real_process_and_invalidates_inflight_start() {
+        use std::os::unix::process::CommandExt;
         let state = TunnelState::default();
         let child = Command::new("/bin/sleep").arg("30").process_group(0).spawn().unwrap();
         let pid = child.id();
