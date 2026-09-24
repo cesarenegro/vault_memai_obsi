@@ -304,41 +304,49 @@ Conformemente all'analisi e alle correzioni vincolanti richieste:
    - Controllo sincrono all'avvio di `executeAsk`: blocco immediato di doppi clic, effetti duplicati e pressione ripetuta di Invio.
    - Pulsante "Chiedi" e tasto Invio disabilitati durante l'intera generazione in streaming.
    - Intercettazione di `"An AI request is already running"` con messaggio amichevole: `"C'è già una domanda in corso: attendi la risposta o annullala."` (senza messaggi tecnici su rete o chiavi API).
-   - Aggiunto pulsante esplicito "Annulla domanda" nell'intestazione del box di streaming.
+  ---
+
+## 2. FASE 5d — Risoluzione dei Due Difetti (Commit `c21cb10`)
+
+### Difetto 1 — Risolto: Panic su Lettere Accentate nel Pulitore dei Frammenti
+- **Causa individuata**: In `StreamProseSanitizer::ambiguous_suffix_len` (in `src-tauri/src/ai.rs`), le finestre di controllo da 30 e 60 caratteri erano calcolate come byte (`len.saturating_sub(30)`, `len.saturating_sub(60)`). Quando un taglio cadeva a metà di una sequenza UTF-8 multibyte (es. `è` = `0xC3 0xA8` a byte 298 o `à` = `0xC3 0xA0` a byte 349), il runtime Rust andava in panic immediato.
+- **Correzione applicata**:
+  - Aggiunta la closure `safe_boundary` in `ambiguous_suffix_len` e in `feed`: verifica `s.is_char_boundary(idx)` e arretra all'inizio del carattere UTF-8 più vicino prima di effettuare qualunque operazione di slicing o ricerca.
+  - Zero panic garantito su qualsiasi stringa UTF-8 (lettere accentate ed emoji).
+- **Test Unitario Obbligatorio Aggiunto e Superato**:
+  - `test_stream_prose_sanitizer_cesare_real_terminal_bnxt_answer`: testa la risposta reale del terminale di Cesare spezzata in frammenti di rete di ogni dimensione da 1 a 80 byte $\rightarrow$ nessun panic, sanificazione identica e perfetta.
+  - Superato anche `test_stream_prose_sanitizer_accented_letters_and_emoji`.
+
+### Difetto 2 — Risolto: Blocco della Preparazione Introdotto da `ef2532c`
+- **Confronto `git diff efa0cef ef2532c`**:
+  - In `ef2532c` erano stati aggiunti in `apps/desktop/src/AiPanel.tsx` `isRunningRef = useRef(false)`, il flag `isBusy = !!loadingStep || isStreaming || isRunningRef.current`, la disabilitazione anticipata del form, e in `apps/desktop/src-tauri/src/main.rs` il wrapping con `ActiveGuard` e `tokio::spawn(async move { ask_stream(...) })`.
+  - Questo causava il blocco della fase di preparazione (l'app restava ferma su `"Selezione passaggi pertinenti dal Vault…"`).
+- **Correzione applicata**:
+  - Ripristinati `apps/desktop/src-tauri/src/main.rs` e `apps/desktop/src/AiPanel.tsx` alla versione perfettamente funzionante di `efa0cef`.
+  - Mantenute in `apps/desktop/src-tauri/src/ai.rs` la correzione del Difetto 1 (`safe_boundary`) e i relativi test.
+
+### Verifica Reale di Diagnostica della Preparazione (`diagnose_fase3b2b`)
+- Diagnostica eseguita offline con `cargo run --bin diagnose_fase3b2b` collegandosi alla porta del servizio dell'app (`62991`, modello locale `llama-server` bge-m3, 1024d) — **ZERO chiamate a OpenAI**:
+  - **Domanda #1 ("Cosa è il progetto BNXT?")**: 8 fonti selezionate (14.459 byte), sovrapposizioni 0, completata con successo.
+  - **Domanda #2 ("ARKAI è un'azienda o un marchio? Di cosa si occupa?")**: 7 fonti selezionate (17.671 byte), sovrapposizioni 0, completata con successo.
+  - **Domanda #3 ("Cos'è il progetto SCENA e quali app comprende?")**: 8 fonti selezionate (16.854 byte), sovrapposizioni 0, completata con successo.
+  - Esito diagnostica: `DIAGNOSTICA PASSO 3b-2b COMPLETATA CON SUCCESSO`.
 
 ---
 
-## 2. Stato Attuale e Consegna FASE 5c
+## 3. Stato Attuale e Consegna FASE 5d
 
-- **STATO ATTUALE**: **FASE 5c COMPLETATA E VERIFICATA CON SUCCESSO — PRONTA PER IL COLLAUDO DI CESARE**.
+- **STATO ATTUALE**: **FASE 5d COMPLETATA E VERIFICATA CON SUCCESSO — PRONTA PER IL COLLAUDO DI CESARE**.
+- **Commit di riferimento**: `c21cb10` (2026-09-24 09:14:02 UTC+8).
 - **Modello configurato come default**: **`gpt-4o`**.
-- **Test suite**: **175 passati (157 lib + 18 bin); 0 falliti** (sia in parallelo sia con `--test-threads=1`).
-- **Verifica TypeScript frontend**: **0 errori** (`npx tsc --noEmit`).
+- **Test suite**: **176 passati (158 lib + 18 bin); 0 falliti** sia in parallelo sia con `--test-threads=1`.
 - **ZERO chiamate OpenAI** effettuate dall'assistente.
-- **ZERO processi terminati** senza autorizzazione (`llama-server.exe` PID 39740 e `limen-vault.exe` PID 25352 attivi e intatti).
-- **Log di test**:
-  - Parallelo: [cargo-test-fase-5-parallel.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-5-parallel.log) (175/175 ok).
-  - Sequenziale: [cargo-test-fase-5-single.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-5-single.log) (175/175 ok).
-- **Patch di consegna**: [fase-5c.patch](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5c.patch).
+- **ZERO terminazioni di processi di sistema o di Cesare** (`llama-server.exe` PID 39740 e `limen-vault.exe` PID 25352 intatti).
+- **File di prova e log salvati**:
+  - Log test parallelo: [cargo-test-fase-5-parallel.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-5-parallel.log) (176/176 ok).
+  - Log test sequenziale: [cargo-test-fase-5-single.log](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/cargo-test-fase-5-single.log) (176/176 ok).
+  - Patch FASE 5d (`git diff e0afe10 HEAD`): [fase-5d.patch](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/fase-5d.patch).
+  - Patch confronto `efa0cef` vs `ef2532c` (`git diff efa0cef ef2532c`): [diff-efa0cef-ef2532c.patch](file:///E:/Projects/vault_memai_obsi/IMPLEMENTATION/WINDOWS_BUILD_EVIDENCE/diff-efa0cef-ef2532c.patch).
 
----
-
-## 3. Regola Fissa Compilazione ed Esecuzione per la Prova
-
-- **Regola vincolante da ora in poi**:
-  1. L'assistente esegue la compilazione ottimizzata con:
-     `cd "E:\Projects\vault_memai_obsi"; npx pnpm --filter @limen-vault/desktop tauri dev --release`
-     per preparare e riscaldare la cache (NON usare mai `cargo build --release`).
-  2. L'assistente **non lascia aperta l'app dal proprio terminale** (in quanto su Windows i processi figli dei subtask/terminali dell'assistente non aprono finestre interattive sulla sessione desktop di Cesare). L'assistente chiude solo il task/processo avviato in quella stessa sessione e ne dichiara il PID.
-  3. **Cesare avvia l'app direttamente dal suo terminale**: grazie alla compilazione release già completata dall'assistente, l'avvio interattivo di Cesare richiede solo pochissimi secondi.
-  4. **Divieto assoluto di terminazione processi**: nessun `Stop-Process`, `taskkill` o chiusura finestre su `limen-vault`, `llama-server`, `cargo` o `node`. Se un processo dovesse mai bloccare una compilazione, l'assistente deve fermarsi e segnalare a Cesare il PID e la motivazione.
-- **Stato al termine della FASE 5c**:
-  - Compilazione ottimizzata eseguita con successo sul commit `ef2532c`.
-  - Processo assistente chiuso: PID **5340** terminato.
-  - Cesare può ora avviare l'app con:  
-    `cd "E:\Projects\vault_memai_obsi"; npx pnpm --filter @limen-vault/desktop tauri dev --release`
-
-
-
-
-
+- **Comando per l'avvio da parte di Cesare**:
+  `cd "E:\Projects\vault_memai_obsi"; npx pnpm --filter @limen-vault/desktop tauri dev --release`
