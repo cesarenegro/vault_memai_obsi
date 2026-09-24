@@ -124,7 +124,14 @@ pub fn log_local_model_timing_meta(
 
     let s_bin = service_binary
         .map(|p| p.to_string_lossy().to_string())
-        .or_else(|| detect_llama_server_binary().map(|p| p.to_string_lossy().to_string()))
+        .or_else(|| service_pid.and_then(get_process_exe_path).map(|p| p.to_string_lossy().to_string()))
+        .or_else(|| {
+            if service_pid.is_none() && service_port.is_none() {
+                detect_llama_server_binary().map(|p| p.to_string_lossy().to_string())
+            } else {
+                None
+            }
+        })
         .unwrap_or_else(|| "non_rilevato".to_string());
     let s_pid = service_pid.map(|p| p.to_string()).unwrap_or_else(|| "none".to_string());
     let s_port = service_port.map(|p| p.to_string()).unwrap_or_else(|| "none".to_string());
@@ -1247,15 +1254,28 @@ impl LlamaServerState {
     }
 
     pub fn adopt_service(&self, port: u16, pid: Option<u32>) {
+        let real_exe = pid.and_then(get_process_exe_path);
         let mut s = self.0.lock().unwrap_or_else(|e| e.into_inner());
         s.port = port;
         s.adopted_pid = pid;
         s.owned_pid = None;
+        s.binary_path = real_exe;
         s.starting = false;
         s.start_owner = None;
         s.auto_start_failed = false;
         s.auto_start_failure_reason = None;
         s.last_error = None;
+    }
+
+    pub fn get_binary_path(&self) -> Option<PathBuf> {
+        let s = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        if s.binary_path.is_some() {
+            return s.binary_path.clone();
+        }
+        if let Some(pid) = s.child.as_ref().map(|c| c.id()).or(s.adopted_pid) {
+            return get_process_exe_path(pid);
+        }
+        None
     }
 
     pub fn reset_auto_start_failure(&self) {
@@ -1462,6 +1482,15 @@ impl LlamaServerState {
             let discover_res = find_active_bge_m3_service_with_pid();
             if let Ok((port, pid)) = discover_res {
                 self.adopt_service(port, pid);
+                let real_exe = pid.and_then(get_process_exe_path);
+                log_local_model_timing_meta(
+                    "EXTERNAL_SERVICE_ADOPTED",
+                    t_start.elapsed().as_millis() as u64,
+                    real_exe.as_deref(),
+                    pid,
+                    Some(port),
+                    &format!("port={}, pid={:?}", port, pid),
+                );
                 return (Some(port), pid, true, "esterno adottato".to_string(), None);
             }
         }
@@ -3173,5 +3202,87 @@ mod tests {
 
         let _ = state.stop();
     }
+
+    #[test]
+    fn test_fase5i_n3_adopted_service_from_other_folder_logs_real_exe_and_panel_open_status() {
+        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let other_dir = tempfile::tempdir().unwrap();
+        let other_exe = other_dir.path().join(if cfg!(windows) { "external_llama_server.exe" } else { "external_llama_server" });
+        let base_mock = compile_test_mock_server(other_dir.path());
+        if base_mock != other_exe {
+            fs::copy(&base_mock, &other_exe).expect("Copia mock in altra cartella");
+        }
+        assert!(other_exe.is_file());
+
+        let free_port = find_free_port().expect("Trova porta libera");
+        let mut child = Command::new(&other_exe)
+            .args(["--port", &free_port.to_string()])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("Avvio processo esterno in altra cartella");
+
+        let child_pid = child.id();
+
+        // Attendi che il server esterno sia attivo e risponda
+        let t0 = Instant::now();
+        let mut up = false;
+        while t0.elapsed() < Duration::from_secs(5) {
+            if check_health(free_port) {
+                up = true;
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        assert!(up, "Il processo esterno deve diventare sano");
+
+        let log_dir = tempfile::tempdir().unwrap();
+        let log_path = log_dir.path().join("local_model_timing.log");
+        std::env::set_var("LIMEN_LOCAL_MODEL_TIMING_LOG", &log_path);
+
+        let state = LlamaServerState::default();
+        state.adopt_service(free_port, Some(child_pid));
+
+        // 1. Verifica che state.get_binary_path() restituisca il percorso reale dell'eseguibile esterno
+        let bin_path = state.get_binary_path();
+        assert!(bin_path.is_some(), "Il percorso del binario adottato deve essere rilevato");
+        let bin_str = bin_path.unwrap().to_string_lossy().to_lowercase();
+        assert!(
+            bin_str.contains("external_llama_server"),
+            "Il percorso deve corrispondere all'eseguibile reale nella cartella esterna, ottenuto: {}",
+            bin_str
+        );
+
+        // 2. Simula log di PANEL_OPEN_STATUS con il servizio adottato attivo
+        let s_rep = state.status();
+        let (srv_bin, srv_pid, srv_port) = if s_rep.running || s_rep.healthy {
+            (state.get_binary_path(), s_rep.pid, if s_rep.port > 0 { Some(s_rep.port) } else { None })
+        } else {
+            (None, None, None)
+        };
+        log_local_model_timing_meta(
+            "PANEL_OPEN_STATUS",
+            123,
+            srv_bin.as_deref(),
+            srv_pid,
+            srv_port,
+            "installed=true, sha256_ok=true",
+        );
+
+        let content = fs::read_to_string(&log_path).expect("Lettura local_model_timing.log");
+
+        assert!(content.contains("event=PANEL_OPEN_STATUS"), "Log deve contenere PANEL_OPEN_STATUS: {}", content);
+        assert!(content.contains(&format!("service_pid={}", child_pid)), "PANEL_OPEN_STATUS deve riportare il PID del servizio: {}", content);
+        assert!(content.contains(&format!("service_port={}", free_port)), "PANEL_OPEN_STATUS deve riportare la porta del servizio: {}", content);
+        assert!(content.contains("service_exe=") && content.to_lowercase().contains("external_llama_server"), "service_exe deve contenere il percorso reale dell'eseguibile adottato: {}", content);
+
+        std::env::remove_var("LIMEN_LOCAL_MODEL_TIMING_LOG");
+
+        // Pulizia: terminazione del processo di test avviato da questo test
+        let _ = child.kill();
+        let _ = child.wait();
+    }
 }
+
 
