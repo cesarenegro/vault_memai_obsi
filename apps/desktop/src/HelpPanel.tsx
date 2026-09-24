@@ -279,7 +279,7 @@ export function HelpPanel({
                   <li><strong>Endpoint dinamico:</strong> <code>http://127.0.0.1:&lt;porta_libera&gt;/v1/embeddings</code></li>
                   <li><strong>Nessuna porta cablata:</strong> assegnata a runtime tramite socket OS</li>
                   <li><strong>Controllo Loopback:</strong> qualsiasi richiesta esterna viene respinta</li>
-                  <li><strong>Nessuna API Key:</strong> non serve e non viene interrogata la {terms.keychainTerm}</li>
+                  <li><strong>Nessuna API Key:</strong> non serve e non viene interrogato il {terms.keychainTerm}</li>
                   <li><strong>Processo monitorato:</strong> arresto pulito alla chiusura dell’app</li>
                 </ul>
               </div>
@@ -595,7 +595,7 @@ Richiede soluzioni di packaging compostabile.`}
             <div style={{ padding: 14, backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #cbd5e1', marginBottom: 16 }}>
               <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.7 }}>
                 <li>Apri <strong>Avanzate e Manutenzione → Collegamenti AI & MCP</strong>.</li>
-                <li>Nel riquadro <strong>Motore semantico</strong>, seleziona <strong>Locale (bge-m3, nessun dato esce dal Mac)</strong>.</li>
+                <li>Nel riquadro <strong>Motore semantico</strong>, seleziona <strong>Locale (bge-m3, nessun dato esce {terms.fromDeviceTerm})</strong>.</li>
                 <li>Se il riquadro <em>Modello locale</em> indica <em>Non installato</em>, premi <strong>SCARICA MODELLO (635 MB)</strong> e attendi il completamento con verifica automatica dell’hash SHA-256.</li>
                 <li>Premi <strong>AVVIA SERVIZIO LOCALE</strong>: l’app avvierà <code>llama-server</code> su una porta dinamica libera (es. <code>59667</code>) e mostrerà il badge verde <strong>ATTIVO</strong>.</li>
                 <li>Se il riquadro <em>Cache semantica</em> segnala passaggi mancanti o disallineati, premi <strong>RICALCOLA CACHE</strong> per completare l’indicizzazione vettoriale.</li>

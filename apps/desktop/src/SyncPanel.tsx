@@ -1,4 +1,5 @@
 import {labelIt, MessageIt} from './locale';
+import { getPlatformTerms } from './platform';
 import React, { useState, useEffect } from 'react';
 import {
   syncIpc,
@@ -24,6 +25,7 @@ import {
 } from 'lucide-react';
 
 export function SyncPanel({ vaultPath }: { vaultPath: string }) {
+  const terms = getPlatformTerms();
   const [syncInfo, setSyncInfo] = useState<SyncStatusInfo>({ status: 'OFFLINE' });
   const [selectedOp, setSelectedOp] = useState<TransferOperation>('PUBLISH_APPROVED');
   const [plan, setPlan] = useState<TransferPlanResponse | null>(null);
@@ -157,7 +159,7 @@ export function SyncPanel({ vaultPath }: { vaultPath: string }) {
         </div>
         <p style={{ margin: '0 0 10px 0', fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
           <strong>Il Vault locale è sempre autorevole.</strong> L'indisponibilità del cloud o della rete non impedisce
-          in alcun modo l'apertura, la ricerca, la compilazione o l'editing dei file sul Mac.
+          in alcun modo l'apertura, la ricerca, la compilazione o l'editing dei file {terms.onDeviceTerm}.
         </p>
         <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#64748b' }}>
           <span>Bucket configurato: <code>{bucketName}</code></span>

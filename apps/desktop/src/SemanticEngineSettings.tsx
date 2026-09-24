@@ -7,6 +7,7 @@ import {
   type LocalServerReport,
   type LocalModelProgress,
 } from './ai-ipc';
+import { getPlatformTerms, normalizeVaultPath } from './platform';
 
 const fieldStyle: React.CSSProperties = {
   padding: '8px 12px',
@@ -40,6 +41,7 @@ function formatBytes(bytes: number): string {
 }
 
 export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
+  const terms = getPlatformTerms();
   const [providerReport, setProviderReport] = useState<EmbeddingsProviderReport | null>(null);
   const [modelReport, setModelReport] = useState<LocalModelReport | null>(null);
   const [serverReport, setServerReport] = useState<LocalServerReport | null>(null);
@@ -371,7 +373,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
             <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>OpenAI (in rete)</span>
           </div>
           <span style={{ fontSize: 12, color: '#64748b', marginLeft: 24 }}>
-            Modello <code>text-embedding-3-small</code> (1536 dim). Richiede chiave API configurata nel Gestore credenziali e
+            Modello <code>text-embedding-3-small</code> (1536 dim). Richiede chiave API configurata nel {terms.keychainTerm} e
             connessione internet.
           </span>
         </label>
@@ -444,7 +446,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
         {modelReport?.installed ? (
           <div style={{ fontSize: 12, color: '#475569', display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div>
-              <strong>Percorso:</strong> <code style={{ fontSize: 11 }}>{modelReport.path.replace(/\//g, '\\')}</code>
+              <strong>Percorso:</strong> <code style={{ fontSize: 11 }}>{normalizeVaultPath(modelReport.path)}</code>
             </div>
             <div>
               <strong>Dimensione:</strong> {formatBytes(modelReport.bytes)} (634.553.760 byte)
