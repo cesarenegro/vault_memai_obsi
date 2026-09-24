@@ -348,3 +348,32 @@ Conformemente all'analisi e alle correzioni vincolanti richieste:
 
 - **Comando per l'avvio da parte di Cesare**:
   `cd "E:\Projects\vault_memai_obsi"; npx pnpm --filter @limen-vault/desktop tauri dev --release`
+
+---
+
+## 4. FASE 5i — Risoluzione Difetti Collaudo Codex (N1–N7)
+
+### Rettifica Ufficiale FASE 5h: Causa Errore 13:53:21
+Il fallimento registrato alle 13:53:21 (`BACKGROUND_START_FAILED` dopo 26.361 ms) è stato rettificato: non era dovuto a un "secondo avvio contemporaneo", bensì al **difetto bloccante N1** in cui `trigger_background_start` impostava `starting = true` e poi invocava `start_internal`, che leggeva `starting == true` come un altro avvio in corso e attendeva sé stesso fino a timeout.
+
+### Sintesi Correzioni N1–N6
+- **N1 (Bloccante — Token di Proprietà dell'Avvio)**: Introdotti `start_owner: Option<u64>` e generatore atomico `next_start_token()`. Il proprietario dell'avvio procede senza attendere, mentre i chiamanti concorrenti attendono l'esito dello stesso avvio senza creare processi duplicati. Test superati: avvio pulito da zero, click manuale durante avvio in background, e ripiego con nuovo avvio automatico se il processo adottato muore.
+- **N2 (Esposizione Stato "In Avvio")**: Aggiunto `starting: bool` a `LocalServerReport` e `LlamaServerState::status()`. In `SemanticEngineSettings.tsx`, durante l'avvio in background il badge mostra `IN AVVIO…` e il pulsante `AVVIA SERVIZIO LOCALE` è disabilitato con polling automatico di aggiornamento.
+- **N3 (Percorso Reale Servizio Adottato e PANEL_OPEN_STATUS)**: `log_local_model_timing_meta` risolve il percorso reale dell'eseguibile esterno tramite `get_process_exe_path(pid)` e non ripiega sul percorso locale dell'installazione se è presente un PID esterno. In `main.rs`, `local_model_status` legge lo stato e riporta PID e porta del servizio quando esiste.
+- **N4 (Rilascio Mutex Guard)**: Rilasciato il lock della mutex prima di chiamare `self.status()` nel ramo di servizio già sano (`already_healthy`), prevenendo deadlock su mutex non rientrante.
+- **N5 (Limite Rigoroso 20 File di Log)**: Eseguita la rotazione a 19 file prima della creazione del nuovo file di log per-run (`rotate_llama_server_logs(&logs_dir, 19)`), garantendo che dopo l'avvio con 20 file preesistenti ne rimangano esattamente 20.
+- **N6 (Fixture invalid_embeddings nel Repository)**: Sorgente copiato in `apps/desktop/src-tauri/tests/fixtures/invalid_embeddings.rs`, compilato tramite `rustc` in cartella temporanea; fallimento obbligatorio con panic se manca o non compila. Percorso passato direttamente come parametro a `start_with_custom_binary` senza `LLAMA_SERVER_PATH` globale.
+
+### Indagine N7 — Tracciamento Riscrittura Catalogo `VAULT_CATALOG.json`
+- **Catena Chiamate Accertata**:
+  - `apps/desktop/src/App.tsx:461`: `handleOpenExistingVault` invoca `refreshCatalog`.
+  - `apps/desktop/src/App.tsx:232`: `refreshCatalog` invoca `ipc.syncCatalog`.
+  - `apps/desktop/src/vault-ipc.ts:305`: `syncCatalog` invoca il comando Tauri `catalog_sync`.
+  - `apps/desktop/src-tauri/src/main.rs:637`: `catalog_sync` invoca `sync_catalog_from_vault`.
+  - `apps/desktop/src-tauri/src/catalog.rs:875`: `sync_catalog_from_vault` invoca incondizionatamente `save_catalog`.
+  - `apps/desktop/src-tauri/src/catalog.rs:294-307`: `save_catalog` incrementa la revisione e riscrive `00_SYSTEM/VAULT_CATALOG.json`.
+- **Esito Audit sulle Domande**:
+  - Le domande semplici (`ai_preview`, `ai_ask`, `ai_ask_stream`) **NON riscrivono MAI** `VAULT_CATALOG.json`. Accedono esclusivamente in lettura tramite `load_catalog_arc` in cache.
+  - La riscrittura delle 15:42:59 è avvenuta esclusivamente durante l'apertura del vault.
+  - Come da vincolo, il comportamento è stato documentato senza alterare il codice prima della delibera di Cesare.
+
