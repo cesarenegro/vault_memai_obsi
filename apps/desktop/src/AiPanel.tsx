@@ -125,7 +125,7 @@ export function AiPanel({
   // Gestione trigger nuova conversazione
   useEffect(() => {
     if (newConversationTrigger) {
-      handleNewConversation();
+      resetLocalConversationState();
     }
   }, [newConversationTrigger]);
 
@@ -189,7 +189,7 @@ export function AiPanel({
     }
   }
 
-  function handleNewConversation() {
+  function resetLocalConversationState() {
     if (isBusy && previewData?.ticket) {
       void aiIpc.cancel(previewData.ticket);
     }
@@ -203,7 +203,6 @@ export function AiPanel({
     setStreamingText('');
     setIsStreaming(false);
     setLoadingStep(null);
-    onNewConversation?.();
   }
 
   async function handleSaveDraft(turnIdx: number) {
@@ -544,7 +543,7 @@ export function AiPanel({
           ) : (
             effectiveTurns.length > 0 && (
               <button
-                onClick={handleNewConversation}
+                onClick={onNewConversation}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
