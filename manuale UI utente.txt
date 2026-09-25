@@ -5,6 +5,50 @@ Applicazione desktop per macOS (Apple Silicon, macOS 26.0+) per la gestione, ind
 
 ---
 
+## FILE CREATI O MODIFICATI IN QUESTA SESSIONE (FASE 7 Mac)
+
+1. ISTRUZIONI_TESTER_MAC.md
+   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/IMPLEMENTATION/ISTRUZIONI_TESTER_MAC.md
+   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/IMPLEMENTATION/ISTRUZIONI_TESTER_MAC.md
+   Descrizione: Guida collaudo tester per macOS con testi reali da apps/desktop/src, RAG locale, consenso OpenAI e FASE 6b.
+
+2. manuale UI utente.txt
+   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/manuale UI utente.txt
+   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/manuale%20UI%20utente.txt
+   Descrizione: Manuale operativo completo dell'interfaccia LIMEN Vault V5 con workflow dettagliati e grafici Mermaid.
+
+3. MANUALE UTENTE.MD
+   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/MANUALE UTENTE.MD
+   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/MANUALE%20UTENTE.MD
+   Descrizione: Indice di sintesi e riferimento rapido per Obsidian e Markdown viewer.
+
+4. 03_HELP_SCHERMATE.md
+   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/HELP/03_HELP_SCHERMATE.md
+   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/HELP/03_HELP_SCHERMATE.md
+   Descrizione: Documentazione delle schermate con aggiornamento della sezione Chiedi al Vault alla FASE 6b.
+
+5. 04_WORKFLOW.md
+   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/HELP/04_WORKFLOW.md
+   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/HELP/04_WORKFLOW.md
+   Descrizione: Workflow con sequence diagram W5 allineato al flusso di messaggistica continua con citazione fonti e apertura documento.
+
+6. llama.rs
+   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop/src-tauri/src/llama.rs
+   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/apps/desktop/src-tauri/src/llama.rs
+   Descrizione: Fix rilevamento llama-server in Contents/Resources/native/llama-server nel pacchetto macOS e log in BACKGROUND_START_FAILED.
+
+7. main.rs
+   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop/src-tauri/src/main.rs
+   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/apps/desktop/src-tauri/src/main.rs
+   Descrizione: Hook di registrazione percorso risorse native runtime per il bundle desktop.
+
+8. LIMEN-Vault-V5-0.5.0-arm64.dmg
+   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/.local/limen-v5-release/LIMEN-Vault-V5-0.5.0-arm64.dmg
+   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/.local/limen-v5-release/LIMEN-Vault-V5-0.5.0-arm64.dmg
+   Descrizione: Pacchetto installatore macOS Developer ID notarizzato (51.430.042 byte, SHA-256: 0e46c09d45...).
+
+---
+
 ## INDICE GENERALE
 
 1. Che cos’è LIMEN Vault V5 e principi architetturali
