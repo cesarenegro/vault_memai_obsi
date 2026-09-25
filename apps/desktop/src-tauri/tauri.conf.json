@@ -31,6 +31,8 @@
       "dmg",
       "nsis"
     ],
+    "publisher": "Arkitecna Hong Kong Limited",
+    "copyright": "Copyright © 2026 Arkitecna Hong Kong Limited",
     "resources": {
       "../../../vault-template/": "vault-template/",
       "resources/mcp/": "mcp/",
@@ -47,7 +49,8 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "minimumSystemVersion": "26.3"
+      "minimumSystemVersion": "26.0",
+      "entitlements": "Entitlements.plist"
     }
   }
 }

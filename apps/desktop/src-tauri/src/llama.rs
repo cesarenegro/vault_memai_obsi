@@ -1856,8 +1856,12 @@ impl LlamaServerState {
             "-b", "2048",
         ]);
 
-        if let Some(metal) = binary.parent().map(|d| d.join("libggml-metal.so")).filter(|p| p.is_file()) {
-            cmd.env("GGML_BACKEND_PATH", metal);
+        if let Some(parent) = binary.parent() {
+            cmd.current_dir(parent);
+            let metal = parent.join("libggml-metal.so");
+            if metal.is_file() {
+                cmd.env("GGML_BACKEND_PATH", metal);
+            }
         }
 
         #[cfg(unix)]
