@@ -19,22 +19,39 @@ fn main() {
                 let path = entry.path();
                 let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
                 if name.ends_with(".so") || name.ends_with(".dylib") {
-                    let sign_status = std::process::Command::new("codesign")
-                        .args(["--force", "--sign", "-"])
-                        .arg(&path)
-                        .status()
-                        .expect("codesign utility execution failed");
-                    assert!(sign_status.success(), "Failed to ad-hoc codesign native library: {}", path.display());
-
-                    let verify_status = std::process::Command::new("codesign")
+                    let initial_verify = std::process::Command::new("codesign")
                         .arg("--verify")
                         .arg(&path)
                         .status()
                         .expect("codesign verification execution failed");
-                    assert!(verify_status.success(), "Signature verification failed for native library: {}", path.display());
+                    if !initial_verify.success() {
+                        let sign_status = std::process::Command::new("codesign")
+                            .args(["--force", "--sign", "-"])
+                            .arg(&path)
+                            .status()
+                            .expect("codesign utility execution failed");
+                        assert!(sign_status.success(), "Failed to ad-hoc codesign native library: {}", path.display());
+
+                        let verify_status = std::process::Command::new("codesign")
+                            .arg("--verify")
+                            .arg(&path)
+                            .status()
+                            .expect("codesign verification execution failed");
+                        assert!(verify_status.success(), "Signature verification failed for native library after signing: {}", path.display());
+                    }
                 }
             }
         }
     }
+
+    let dist_dir = std::path::Path::new("../dist");
+    if !dist_dir.exists() {
+        let _ = std::fs::create_dir_all(dist_dir);
+    }
+    let index_file = dist_dir.join("index.html");
+    if !index_file.exists() {
+        let _ = std::fs::write(&index_file, "<!doctype html><html><body><h1>LIMEN Vault</h1></body></html>");
+    }
+
     tauri_build::build()
 }

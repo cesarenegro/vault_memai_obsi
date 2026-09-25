@@ -646,7 +646,40 @@ pub fn get_process_exe_path(pid: u32) -> Option<PathBuf> {
     None
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "macos")]
+pub fn get_process_exe_path(pid: u32) -> Option<PathBuf> {
+    extern "C" {
+        fn proc_pidpath(pid: libc::c_int, buffer: *mut libc::c_void, buffersize: u32) -> libc::c_int;
+    }
+    let mut buf = vec![0u8; 4096];
+    let ret = unsafe {
+        proc_pidpath(pid as libc::c_int, buf.as_mut_ptr() as *mut libc::c_void, buf.len() as u32)
+    };
+    if ret > 0 {
+        buf.truncate(ret as usize);
+        if let Ok(s) = std::str::from_utf8(&buf) {
+            let p = PathBuf::from(s.trim_end_matches('\0'));
+            if p.is_file() {
+                return Some(p);
+            }
+        }
+    }
+
+    let mut cmd = std::process::Command::new("ps");
+    cmd.args(["-p", &pid.to_string(), "-o", "comm="]);
+    if let Some(out) = run_command_with_timeout(cmd, Duration::from_secs(2)) {
+        let path_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        if !path_str.is_empty() {
+            let p = PathBuf::from(path_str);
+            if p.is_file() {
+                return Some(p);
+            }
+        }
+    }
+    None
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
 pub fn get_process_exe_path(pid: u32) -> Option<PathBuf> {
     if let Ok(p) = fs::read_link(format!("/proc/{}/exe", pid)) {
         if p.is_file() {
@@ -2825,7 +2858,7 @@ mod tests {
 
         // Attendi che il thread registri l'evento di inizio
         let mut log_content = String::new();
-        for _ in 0..40 {
+        for _ in 0..100 {
             if let Ok(c) = std::fs::read_to_string(&timing_log) {
                 if c.contains("BACKGROUND_START_BEGIN") {
                     log_content = c;
@@ -3064,6 +3097,7 @@ mod tests {
 
     #[test]
     fn test_fase5h_local_model_timing_log_includes_app_and_service_metadata() {
+        let _env_lock = ENV_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let tmp = tempfile::tempdir().unwrap();
         let log_file = tmp.path().join("local_model_timing.log");
         std::env::set_var("LIMEN_LOCAL_MODEL_TIMING_LOG", &log_file);

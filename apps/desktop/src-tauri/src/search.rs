@@ -15,7 +15,7 @@ use std::{
     },
 };
 use unicode_normalization::UnicodeNormalization;
-const VERSION: u32 = 2;
+const VERSION: u32 = 3;
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 #[derive(Deserialize)]
 struct Spec {
@@ -124,7 +124,7 @@ pub struct SearchIndexData {
     pub documents: BTreeMap<String, SearchDocumentRecord>,
 }
 fn id(p: &str) -> String {
-    format!("doc_{}", compute_sha256(p.as_bytes()))
+    crate::catalog::make_document_id(p)
 }
 fn relative(p: &str) -> Result<(), String> {
     let parts: Vec<_> = p.split('/').collect();
@@ -253,9 +253,10 @@ pub fn load_with_vault_path(system: &Dir, vault_path: Option<&Path>) -> Result<O
 
     increment_search_index_disk_read_count(vault_path);
     let value: Value = serde_json::from_slice(&read(system, "SEARCH_INDEX.json")?).map_err(err)?;
-    if value["version"] == 1 && value["documents"].is_object() {
+    let ver = value["version"].as_u64().unwrap_or(0);
+    if ver < VERSION as u64 && value["documents"].is_object() {
         return Ok(Some(std::sync::Arc::new(SearchIndexData {
-            version: 1,
+            version: ver as u32,
             last_indexed_at: value["last_indexed_at"].as_str().unwrap_or("").into(),
             documents: BTreeMap::new(),
         })));
@@ -1311,6 +1312,76 @@ mod tests {
         let _ = search_vault(path_b, SearchQuery { term: Some("Vault".into()), ..Default::default() }).unwrap();
         let reads_b_after = get_search_index_disk_read_count_for_vault(path_b);
         assert_eq!(reads_b_after, reads_b_before, "Modifica di vault A non deve ricaricare vault B");
+    }
+
+    #[test]
+    fn test_m5_v2_index_with_long_id_ignored_and_rebuilt() {
+        let t = tempfile::tempdir().unwrap();
+        let path = t.path();
+        std::fs::create_dir_all(path.join("00_SYSTEM")).unwrap();
+        std::fs::create_dir_all(path.join("01_CLIENTS")).unwrap();
+
+        let note_rel = "01_CLIENTS/progetto.md";
+        let note_content = "---\ntitle: Progetto Aurora\nstatus: approved\nclient: Acme\n---\n# Dettagli del Progetto Aurora\nTesto fondamentale per la ricerca.";
+        std::fs::write(path.join(note_rel), note_content).unwrap();
+
+        // 1. Write simulated v2 index with long 64-char document ID
+        let long_id = format!("doc_{}", compute_sha256(note_rel.as_bytes()));
+        assert_eq!(long_id.len(), 68);
+        let note_sha = compute_sha256(note_content.as_bytes());
+        let v2_json = serde_json::json!({
+            "version": 2,
+            "last_indexed_at": "2026-09-24T12:00:00.000Z",
+            "documents": {
+                note_rel: {
+                    "id": long_id,
+                    "note_id": None::<String>,
+                    "relative_path": note_rel,
+                    "sha256": note_sha,
+                    "mtime_ms": 1700000000000u64,
+                    "title": "Progetto Aurora",
+                    "category": "client",
+                    "client": "Acme",
+                    "project": null,
+                    "brand": null,
+                    "tags": [],
+                    "status": "approved",
+                    "created_at": null,
+                    "updated_at": "2026-09-24T12:00:00.000Z",
+                    "tokens": ["progetto", "aurora", "dettagli"],
+                    "content_preview": "Dettagli del Progetto Aurora",
+                    "passages": []
+                }
+            }
+        });
+        std::fs::write(path.join("00_SYSTEM/SEARCH_INDEX.json"), serde_json::to_vec(&v2_json).unwrap()).unwrap();
+
+        // 2. Status of v2 index must report "outdated"
+        let st = get_search_index_status(path).unwrap();
+        assert_eq!(st.state, "outdated");
+        assert_eq!(st.version, 2);
+
+        // 3. Sync catalog
+        crate::catalog::sync_catalog(path).unwrap();
+        let expected_catalog_id = crate::catalog::make_document_id(note_rel);
+        assert_eq!(expected_catalog_id.len(), 20);
+
+        // 4. Index vault search: must rebuild index to version 3
+        let rep = index_vault_search(path).unwrap();
+        assert_eq!(rep.state, "ready");
+        assert_eq!(rep.version, 3);
+        assert_eq!(rep.total_indexed, 1);
+
+        // 5. Verify index has version 3 and document ID equals catalog ID
+        let loaded = load_index_for_vault(path).unwrap().unwrap();
+        assert_eq!(loaded.version, 3);
+        let doc_rec = loaded.documents.get(note_rel).expect("Document must exist in rebuilt index");
+        assert_eq!(doc_rec.id, expected_catalog_id);
+
+        // 6. Verify ai::read_source succeeds and finds document in catalog without 'Documento non trovato'
+        let src = crate::ai::read_source(path, &doc_rec.id, &doc_rec.sha256, false).unwrap();
+        assert_eq!(src.document_id, expected_catalog_id);
+        assert!(src.content.contains("Dettagli del Progetto Aurora"));
     }
 }
 

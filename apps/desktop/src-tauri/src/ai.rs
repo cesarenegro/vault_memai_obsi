@@ -1466,6 +1466,7 @@ pub async fn select_with_port_detailed(
             });
 
             if let Some(d_rec) = doc_record {
+                s.document_id = d_rec.document_id.clone();
                 if !d_rec.passages.is_empty() {
                     let (passages_content, composed_locator, passage_hashes) = extract_multi_passages_for_document(
                         d_rec,
@@ -3944,7 +3945,7 @@ mod tests {
 
       search::index_vault_search(t.path()).unwrap();
       let hash = crate::snapshots::compute_sha256(content.as_bytes());
-      let source_doc_id = format!("doc_{}", crate::snapshots::compute_sha256(rel.as_bytes()));
+      let source_doc_id = crate::catalog::make_document_id(rel);
       let source = read_source(t.path(), &source_doc_id, &hash, true).unwrap();
 
       // Il file su disco non è modificato, ma il documento è in stato 'draft' e include_drafts è false:
@@ -5027,7 +5028,7 @@ mod tests {
       fs::write(t1.path().join(rel1), content1).unwrap();
       search::index_vault_search(t1.path()).unwrap();
       let hash1 = crate::snapshots::compute_sha256(content1.as_bytes());
-      let source_doc_id1 = format!("doc_{}", crate::snapshots::compute_sha256(rel1.as_bytes()));
+      let source_doc_id1 = crate::catalog::make_document_id(rel1);
       let source_ineligible = read_source(t1.path(), &source_doc_id1, &hash1, true).unwrap();
 
       // Simuliamo verify_post con drafts=false: deve fallire con "Document access denied"

@@ -1,1 +1,4 @@
 resources/native/limen-extract
+resources/native/*.cstemp
+resources/native/*.so
+resources/native/*.dylib
