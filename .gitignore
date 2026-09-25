@@ -33,6 +33,7 @@ apps/desktop/src-tauri/resources/mcp/cloudflared
 scripts/__pycache__/
 apps/desktop/src-tauri/resources/native/*
 !apps/desktop/src-tauri/resources/native/.gitkeep
+!apps/desktop/src-tauri/resources/native/README-native.md
 tests/scratch/
 USER INSTALL/
 USER INSTALL WINDOWS/
