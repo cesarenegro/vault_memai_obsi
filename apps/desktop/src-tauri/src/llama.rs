@@ -689,7 +689,19 @@ pub fn get_process_exe_path(pid: u32) -> Option<PathBuf> {
     None
 }
 
+static RESOURCE_DIR: std::sync::RwLock<Option<PathBuf>> = std::sync::RwLock::new(None);
+
+pub fn set_resource_dir(path: PathBuf) {
+    if let Ok(mut lock) = RESOURCE_DIR.write() {
+        *lock = Some(path);
+    }
+}
+
 pub fn detect_llama_server_binary() -> Option<PathBuf> {
+    detect_llama_server_binary_from_exe_opt(std::env::current_exe().ok().as_deref())
+}
+
+pub fn detect_llama_server_binary_from_exe_opt(executable_opt: Option<&Path>) -> Option<PathBuf> {
     if let Ok(p) = std::env::var("LLAMA_SERVER_PATH") {
         let pb = PathBuf::from(p);
         if pb.is_file() {
@@ -704,20 +716,57 @@ pub fn detect_llama_server_binary() -> Option<PathBuf> {
         vec!["llama-server"]
     };
 
-    if let Ok(executable) = std::env::current_exe() {
+    // 1. Check globally registered Tauri resource_dir if available
+    if let Ok(guard) = RESOURCE_DIR.read() {
+        if let Some(ref res_dir) = *guard {
+            for name in &names {
+                let candidates = [
+                    res_dir.join("native").join(name),
+                    res_dir.join("resources").join("native").join(name),
+                    res_dir.join("Resources").join("native").join(name),
+                    res_dir.join(name),
+                ];
+                for cand in &candidates {
+                    if cand.is_file() {
+                        return Some(cand.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Search based on executable path
+    if let Some(executable) = executable_opt {
         if let Some(parent) = executable.parent() {
             for name in &names {
-                let candidate = parent.join(name);
-                if candidate.is_file() {
-                    return Some(candidate);
+                let candidates = [
+                    parent.join(name),
+                    parent.join("native").join(name),
+                    parent.join("resources").join("native").join(name),
+                    parent.join("Resources").join("native").join(name),
+                ];
+                for cand in &candidates {
+                    if cand.is_file() {
+                        return Some(cand.clone());
+                    }
                 }
-                let native_candidate = parent.join(format!("native/{}", name));
-                if native_candidate.is_file() {
-                    return Some(native_candidate);
-                }
-                let resources_candidate = parent.join(format!("Resources/native/{}", name));
-                if resources_candidate.is_file() {
-                    return Some(resources_candidate);
+            }
+
+            // macOS bundle structure: executable is in App.app/Contents/MacOS/limen-vault
+            // parent = Contents/MacOS -> parent.parent() = Contents
+            if let Some(contents) = parent.parent() {
+                for name in &names {
+                    let candidates = [
+                        contents.join("Resources").join("native").join(name),
+                        contents.join("resources").join("native").join(name),
+                        contents.join("native").join(name),
+                        contents.join(name),
+                    ];
+                    for cand in &candidates {
+                        if cand.is_file() {
+                            return Some(cand.clone());
+                        }
+                    }
                 }
             }
         }
@@ -1312,7 +1361,14 @@ impl LlamaServerState {
             }
 
             let pid = s.child.as_ref().map(|c| c.id()).or(s.adopted_pid);
-            (s.port, s.child.is_some(), pid, s.last_error.clone(), s.starting)
+            let effective_error = s.last_error.clone().or_else(|| {
+                if s.auto_start_failed {
+                    s.auto_start_failure_reason.clone()
+                } else {
+                    None
+                }
+            });
+            (s.port, s.child.is_some(), pid, effective_error, s.starting)
         };
 
         // check_health viene eseguito FUORI DAL MUTEX
@@ -1501,6 +1557,7 @@ impl LlamaServerState {
                     s.start_owner = None;
                     s.auto_start_failed = true;
                     s.auto_start_failure_reason = rep.last_error.clone();
+                    s.last_error = rep.last_error.clone();
                     let elapsed = t0.elapsed().as_millis() as u64;
                     log_local_model_timing_meta(
                         "BACKGROUND_START_FAILED",
@@ -1517,6 +1574,7 @@ impl LlamaServerState {
                     s.start_owner = None;
                     s.auto_start_failed = true;
                     s.auto_start_failure_reason = Some(err.clone());
+                    s.last_error = Some(err.clone());
                     let elapsed = t0.elapsed().as_millis() as u64;
                     log_local_model_timing_meta(
                         "BACKGROUND_START_FAILED",
@@ -1828,6 +1886,7 @@ impl LlamaServerState {
                 s.auto_start_failed = true;
                 let err = "Binario llama-server non disponibile nel pacchetto o nel sistema.".to_string();
                 s.auto_start_failure_reason = Some(err.clone());
+                s.last_error = Some(err.clone());
                 return Err(err);
             }
         };
@@ -1841,6 +1900,7 @@ impl LlamaServerState {
                 s.start_owner = None;
                 s.auto_start_failed = true;
                 s.auto_start_failure_reason = Some(e.clone());
+                s.last_error = Some(e.clone());
                 return Err(e);
             }
         };
@@ -2380,7 +2440,7 @@ mod tests {
         fs::write(&p, "non-un-pid").unwrap();
         assert_eq!(read_pid_file(&p), None);
 
-        let ours = "/Applications/LIMEN Vault v3.app/Contents/Resources/native/llama-server -m m.gguf --embedding --host 127.0.0.1 --port 1";
+        let ours = "/Applications/LIMEN Vault V5.app/Contents/Resources/native/llama-server -m m.gguf --embedding --host 127.0.0.1 --port 1";
         assert!(is_orphan_llama_server(1, ours), "genitore launchd + nostro server = orfano");
         assert!(!is_orphan_llama_server(4321, ours), "genitore vivo: appartiene a un'istanza attiva, non si tocca");
         assert!(!is_orphan_llama_server(1, "/usr/bin/python3 server.py"), "pid riusato da un altro processo");
@@ -2411,6 +2471,23 @@ mod tests {
     fn test_detect_llama_server_binary() {
         let bin = detect_llama_server_binary();
         assert!(bin.is_some(), "llama-server binary should be detectable");
+    }
+
+    #[test]
+    fn test_detect_llama_server_binary_macos_bundle() {
+        let temp = tempfile::tempdir().unwrap();
+        let app = temp.path().join("App.app");
+        let macos_dir = app.join("Contents/MacOS");
+        let native_dir = app.join("Contents/Resources/native");
+        std::fs::create_dir_all(&macos_dir).unwrap();
+        std::fs::create_dir_all(&native_dir).unwrap();
+        let fake_exe = macos_dir.join("limen-vault");
+        std::fs::write(&fake_exe, b"fake-exe").unwrap();
+        let fake_server = native_dir.join("llama-server");
+        std::fs::write(&fake_server, b"fake-server").unwrap();
+
+        let detected = detect_llama_server_binary_from_exe_opt(Some(&fake_exe));
+        assert_eq!(detected, Some(fake_server));
     }
 
     #[test]

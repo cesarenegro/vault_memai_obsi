@@ -319,6 +319,13 @@ fn main() {
     llama_state.on_app_startup();
 
     tauri::Builder::default()
+        .setup(|app| {
+            use tauri::Manager;
+            if let Ok(res) = app.path().resource_dir() {
+                limen_vault::llama::set_resource_dir(res);
+            }
+            Ok(())
+        })
         .plugin(tauri_plugin_dialog::init())
         .menu(|app| {
             use tauri::menu::{Menu, MenuItemKind};
