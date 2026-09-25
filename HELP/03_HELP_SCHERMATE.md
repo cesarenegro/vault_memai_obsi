@@ -71,16 +71,18 @@ Se la casella *Ricerca Ibrida* è attiva ma il servizio locale `llama-server` no
 - L'app **non si blocca mai e non invia dati all'esterno**: garantisce la risposta tramite l'indice BM25 con normalizzazione sulla lunghezza.
 - Per ripristinare il canale semantico vai in *Avanzate → Collegamenti AI & MCP → Motore semantico* e premi **AVVIA SERVIZIO LOCALE** (l'avviso non ha pulsanti). La ricerca non riavvia il servizio da sola; il ricalcolo della cache invece lo avvia automaticamente se è spento.
 
-### Chiedi al Vault (Generazione con OpenAI)
+### Chiedi al Vault (Chat Continua & Fonti Verificate - FASE 6b)
 
 | Elemento | Funzione |
 | --- | --- |
-| Modello OpenAI | Selettore del modello API (interroga OpenAI tramite la chiave nel Portachiavi) |
-| Area domanda | Massimo 2.000 caratteri |
-| Includi bozze indicizzate | Include nel contesto anche bozze non ancora approvate (le fonti RAW sono escluse) |
-| **ANTEPRIMA FONTI** | Mostra localmente i documenti e i byte esatti che compongono il contesto. Nessun dato esce dal Mac durante l'anteprima |
-| **INVIA A OPENAI LE FONTI MOSTRATE** | Trasmette domanda e sole fonti mostrate a OpenAI via HTTPS con timeout |
-| **SALVA RISPOSTA COME BOZZA** | Salva risposta, fornitore, modello e citazioni in `80_AI_OUTPUTS` per la revisione |
+| **Conversazione continua a turni** | Domande utente allineate a destra con bolla in verde lime (`#77F117` / 60%); risposte assistente allineate a sinistra in riquadri bianchi con bordo |
+| **Casella di scrittura fissa in basso** | Campo per digitare la domanda (fino a 2.000 caratteri), con pulsante **"Chiedi"** ed invio rapido tramite tasto Invio |
+| **Includi bozze e note non approvate** | Casella di spunta in basso: se attiva include anche le bozze di lavoro nell'elaborazione del contesto |
+| **Pulsante "N fonti citate"** | Presente in calce a ogni risposta dell'AI: evidenzia le fonti consultate e apre la sezione Fonti nella barra laterale |
+| **Cassetto laterale "Fonti"** | Mostra l'elenco delle fonti citate per il turno selezionato; pulsante **"Mostra tutte"** per il pop-up modale con i testi completi |
+| **Pulsante "Apri documento"** | Nel pop-up dei dettagli di ogni fonte: apre il file originale nel lettore integrato verificando l'integrità crittografica |
+| **Storico delle conversazioni** | Nella barra laterale: archivia le sessioni di dialogo con data, ora, turni e modello utilizzato |
+| **Pulsante "Nuova conversazione"** | Ripristina il contesto e avvia una sessione pulita |
 
 ---
 

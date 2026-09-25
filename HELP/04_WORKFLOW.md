@@ -114,28 +114,32 @@ flowchart TD
   L --> M[Ricerca: aggiorna indice]
 ```
 
-## W5 — Domanda AI con controllo delle fonti
+## W5 — Chat continua al Vault con citazione delle fonti (FASE 6b)
 
 ```mermaid
 sequenceDiagram
   actor U as Utente
-  participant L as LIMEN (locale)
+  participant L as LIMEN (Interfaccia Chiedi)
+  participant RAG as RAG Locale (bge-m3 + BM25)
   participant K as Portachiavi macOS
   participant AI as OpenAI
-  U->>L: Impostazioni > SALVA CHIAVE
-  L->>K: salva chiave
-  U->>L: Ricerca > AGGIORNA INDICE
-  U->>L: modello + domanda (max 2000) > ANTEPRIMA FONTI
-  L-->>U: elenco fonti (valido 300 s)
-  U->>L: controlla fonti > INVIA A OPENAI LE FONTI MOSTRATE
-  L->>K: legge chiave
-  L->>AI: domanda + fonti mostrate (HTTPS, timeout 30 s)
-  AI-->>L: risposta
-  L-->>U: risposta + citazioni
-  opt conservare
-    U->>L: SALVA RISPOSTA COME BOZZA
-    L->>L: scrive in 80_AI_OUTPUTS
-  end
+  participant DOC as Lettore Documenti
+
+  U->>L: Avanzate > Collegamenti AI & MCP > Consenso attivo + Salva chiave
+  L->>K: Salva chiave crittografata
+  U->>L: Chiedi > Scrive domanda nella barra fissa in basso (max 2000 car.)
+  U->>L: Invio o clic su "Chiedi"
+  L->>RAG: Ricerca passaggi rilevanti (100% offline su Mac)
+  RAG-->>L: Restituisce passaggi contestualizzati
+  L->>K: Legge chiave dal Portachiavi
+  L->>AI: Invia prompt e soli passaggi estratti (HTTPS)
+  AI-->>L: Risposta in streaming (bolla bianca a sinistra)
+  L-->>U: Risposta completata con pulsante "N fonti citate"
+  U->>L: Clic su "N fonti citate"
+  L-->>U: Apre sezione Fonti nella barra laterale
+  U->>L: Clic su una fonte > Pop-up dettagli passaggio
+  U->>DOC: Clic su "Apri documento"
+  DOC-->>U: Apre visualizzatore con testo e SHA-256 verificato
 ```
 
 ## W6 — Da risposta AI a nota approvata

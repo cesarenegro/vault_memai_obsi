@@ -10,7 +10,7 @@ LIMEN Vault è l'applicazione desktop pensata per la gestione e consultazione si
 - **Computer**: Mac con processore Apple Silicon (chip **M1, M2, M3, M4** o successivi).
 - **Sistema Operativo**: **macOS 26.0** o versioni successive.
 - **Connessione Internet**: Necessaria per il primo avvio (download del modello di ricerca) e per la consultazione tramite modello linguistico OpenAI.
-- **Chiave API OpenAI**: Una chiave API personale OpenAI con accesso ai modelli standard (es. `gpt-4o`).
+- **Chiave API OpenAI**: Una chiave API personale OpenAI con accesso ai modelli standard (es. `gpt-4o`, `gpt-4o-mini`).
 
 ---
 
@@ -30,42 +30,60 @@ LIMEN Vault è l'applicazione desktop pensata per la gestione e consultazione si
 - Al primo avvio vedrai la schermata di benvenuto:
   - Clicca su **"APRI VAULT ESISTENTE"** per aprire una tua cartella Obsidian / Markdown esistente;
   - Oppure clicca su **"CREA NUOVO VAULT"** per inizializzare un vault dimostrativo completo con note ed esempi predefiniti.
+- *Nota*: la prima apertura di un vault già esistente può richiedere alcuni secondi in più perché l'indice di ricerca viene ricostruito.
 
 ### B. Scaricamento del Modello di Ricerca Semantica (`bge-m3`)
-1. Apri la scheda **Motore Semantico** (icona ingranaggio/motore nel menu laterale).
-2. Nella sezione *Modello Locale (bge-m3)*, fai clic sul pulsante:  
-   **"SCARICA MODELLO (635 MB)"**.
-3. L'applicazione scaricherà il modello direttamente dai repository ufficiali e ne verificherà l'integrità crittografica (SHA-256).
-4. Al termine del download, il badge mostrerà:  
-   `INTEGRO (SHA-256 VERIFICATO)`.
-5. Fai clic su **"AVVIA SERVIZIO LOCALE"**: lo stato passerà a **`PRONTO`** con l'indicazione della porta e del PID del servizio di inferenza locale.
+1. Nel menu laterale seleziona la scheda **Avanzate** (icona ingranaggio).
+2. Nella barra secondaria orizzontale in alto, clicca su **Collegamenti AI & MCP**.
+3. Nel primo riquadro, **Motore semantico**, trovi la sezione *Modello locale (bge-m3)*:
+   - Se il modello non è ancora presente, lo stato indica **`NON INSTALLATO`**.
+   - Fai clic sul pulsante:  
+     **"SCARICA MODELLO (635 MB)"**.
+   - L'applicazione scaricherà il modello direttamente dai repository ufficiali e ne verificherà l'integrità crittografica SHA-256.
+   - A scaricamento ultimato, lo stato del modello diventa verde:  
+     **`INSTALLATO (SHA-256 OK)`**.
+4. Nel riquadro sottostante, *Servizio locale di calcolo*, puoi verificare lo stato del servizio `llama-server`:
+   - Quando il modello è installato, il servizio locale **parte da solo in background all'apertura dell'applicazione** senza dover eseguire comandi manuali, attestandosi sullo stato:  
+     **`ATTIVO`** (con indicazione della porta locale assegnata, es. *ATTIVO (PORTA 60879)*).
+   - Se necessario, puoi comunque gestirlo manualmente con i pulsanti **"AVVIA SERVIZIO LOCALE"** o **"ARRESTA SERVIZIO LOCALE"**.
 
-### C. Configurazione della Chiave OpenAI
-1. Apri la scheda **Avanzate / Impostazioni**.
-2. Nella sezione relativa ai collegamenti AI, inserisci la tua **Chiave API OpenAI** personale (`sk-...`).
-3. Clicca su **Salva**: la chiave viene archiviata in modo sicuro nel **Portachiavi di macOS** (Keychain), protetta dal sistema operativo. Nessuna chiave viene mai scritta nei documenti o inviata all'esterno.
+### C. Configurazione del Consenso e della Chiave OpenAI
+1. Sempre in **Avanzate → Collegamenti AI & MCP**, scorri fino al riquadro **Generazione risposte e consenso OpenAI** / **Impostazioni OpenAI & Consenso**:
+2. **Attivazione del Consenso (Obbligatorio)**:
+   - Spunta la casella:  
+     **"Consenti l'invio a OpenAI dei passaggi pertinenti per generare le risposte"**  
+   - Lo stato confermerà: *✓ Consenso attivo: l’app può inviare i passaggi dei documenti pertinenti a OpenAI per comporre le risposte.*  
+   - *Importante*: senza questa casella attivata, le domande non partono e la generazione risposte resta bloccata per salvaguardare la tua riservatezza.
+3. **Scelta del Modello Predefinito**:
+   - Nel selettore **Modello OpenAI predefinito**, scegli il modello desiderato (consigliato: `gpt-4o-mini (veloce, consigliato)` oppure `gpt-4o (massima qualità)`).
+4. **Inserimento della Chiave API**:
+   - Nel campo **Chiave API OpenAI (memorizzata nel Portachiavi)** (con segnaposto `sk-proj-...`), incolla la tua chiave API personale OpenAI.
+   - Clicca sul pulsante **"Salva chiave"**: la chiave viene archiviata nel **Portachiavi di macOS** (Keychain), protetta dal sistema operativo con crittografia hardware. Nessuna chiave viene mai salvata in chiaro nei documenti del Vault né trasmessa a server esterni diversi da OpenAI.
 
 ---
 
-## 4. Come Utilizzare l'Interfaccia Chat e le Fonti
+## 4. Come Utilizzare l'Interfaccia Chat e le Fonti (FASE 6b)
 
-### A. Chiedere al Vault
+### A. Conversazione Continua
 1. Seleziona la scheda **Chiedi** nel menu laterale.
-2. In basso, nel campo di input evidenziato in verde lime, digita la tua domanda in italiano (es. *"Quali progetti sono documentati nel vault?"* oppure *"Riassumi i contenuti principali"*).
-3. Premi **Invio** o clicca sul pulsante **"Chiedi"**:
-   - **Visualizzazione Immediata Fonti**: entro 1–2 secondi compaiono sotto la domanda i documenti consultati e ritenuti pertinenti dall'algoritmo di ricerca ibrida locale.
-   - **Streaming in Tempo Reale**: la risposta si compone progressivamente a video, con un cursore pulsante.
-   - **Etichetta Fonti Citate**: a fine generazione compare l'indicazione trasparente:  
-     > **"Basata su N documenti citati tra M consultati"**  
-     I documenti effettivamente utilizzati dal modello vengono evidenziati con il badge verde **`CITATA`**.
+2. L'interfaccia si presenta come una chat a conversazione continua:
+   - Le tue domande compaiono allineate a **destra con sfondo verde lime**;
+   - Le risposte elaborate dall'assistente AI compaiono allineate a **sinistra in riquadri bianchi** con bordo e testo chiaro;
+   - La casella di scrittura è **fissa in basso**, sempre accessibile durante la consultazione.
+3. Digita la tua domanda nella casella in basso e premi **Invio** (oppure clicca sul pulsante **"Chiedi"** a destra nella barra di input).
+4. Puoi proseguire la discussione formulando domande di seguito: il sistema manterrà automaticamente il contesto dei turni precedenti per approfondire i concetti.
+5. Per azzerare il contesto e iniziare un argomento differente, clicca sul pulsante **"Nuova conversazione"** presente nell'intestazione o in calce alla chat.
 
-### B. Consultazione e Ispezione delle Fonti
-- Fai clic su qualunque fonte nell'elenco per aprire il visualizzatore laterale: potrai leggere il testo esatto del passaggio originale da cui l'AI ha tratto l'informazione, garantendo la totale verificabilità delle risposte.
+### B. Consultazione delle Fonti e Apertura dei Documenti
+1. Su ciascuna risposta dell'assistente compare l'indicazione discreta:  
+   **"N fonti citate"** (o *"1 fonte citata"*).
+2. Cliccando su questo pulsante, si apre automaticamente la sezione **Fonti** nella barra laterale destra/sinistra.
+3. Cliccando su una specifica fonte o su **"Mostra tutte"**, si apre il pop-up dei dettagli con il testo completo del passaggio originale estratto dal documento.
+4. Nel pop-up dei dettagli è presente il pulsante **"Apri documento"**: facendovi clic, l'applicazione apre direttamente il documento nel lettore integrato per una consultazione approfondita e verificata del testo originale.
 
-### C. Storico delle Conversazioni e Domande di Seguito
-- Le conversazioni rimangono memorizzate nella barra laterale sinistra dello storico: puoi riaprire qualsiasi chat passata per consultare risposte e fonti.
-- Nella conversazione aperta puoi porre domande di seguito: il sistema manterrà il contesto del dialogo per approfondire gli argomenti trattati.
-- Per avviare una discussione su un nuovo tema indipendente, fai clic sul pulsante **"Nuova conversazione"** in alto.
+### C. Storico delle Conversazioni
+- Nella barra laterale è presente lo **storico delle conversazioni**: tutte le sessioni di dialogo vengono memorizzate con data, ora, modello utilizzato e primo prompt.
+- Puoi riaprire qualunque conversazione precedente in qualsiasi momento per riesaminare risposte, passaggi e fonti consultate.
 
 ---
 
@@ -73,11 +91,12 @@ LIMEN Vault è l'applicazione desktop pensata per la gestione e consultazione si
 
 Il tuo riscontro è fondamentale per la qualità del rilascio finale. Se riscontri errori, comportamenti inattesi o rallentamenti:
 
-1. **Informazioni Utili da Fornire**:
+1. **Canale di Segnalazione**:
+   - Invia un'email a: **`cesare@arkitecna.com`**
+   - Oggetto dell'email: **`LIMEN Vault V5 — segnalazione tester`**
+2. **Informazioni Utili da Includere**:
    - Modello esatto di Mac (es. MacBook Air M2, MacBook Pro M3 Max);
    - Versione di macOS in uso (da *Menu Apple  $\rightarrow$ Informazioni su questo Mac*);
-   - Descrizione breve di cosa stavi facendo prima dell'anomalia;
-   - Testo dell'eventuale messaggio di errore visualizzato a schermo;
-   - Se possibile, uno screenshot della schermata.
-2. **Canale di Segnalazione**:
-   - Invia la tua segnalazione all'indirizzo email o al canale dedicato concordato con il team di sviluppo.
+   - Descrizione chiara dell'azione che stavi compiendo prima dell'anomalia;
+   - Testo esatto dell'eventuale messaggio di errore visualizzato a schermo;
+   - Uno screenshot o breve registrazione dello schermo se l'anomalia è visiva.
