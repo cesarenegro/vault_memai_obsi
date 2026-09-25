@@ -1,3 +1,21 @@
+FASE 8 (MINISTRAL LOCALE) E RILASCIO v6Mini — 25 settembre 2026
+Stato: completato e validato in locale con 4 integrazioni obbligatorie.
+Consegna: commit unico su tag fase8-ministral-fix e DMG firmato e notarizzato LIMEN-Vault-v6Mini.dmg in USER INSTALL/ (escluso da git).
+Punti chiusi:
+1. Modalità Solo Locale isolata al 100% da qualsiasi rete esterna. Richiede motore di ricerca Locale (bge-m3), altrimenti arresto prima della rete. Se bge-m3 non pronto/spento: errore bloccante esplicito.
+2. Risolto blocco di llama-server per pipe buffer pieno tramite file di log dedicato troncato (llama-llm.log) e cattura ultima riga in last_error. 20 domande consecutive completate senza blocchi (20/20, 0 errori, log 20921 byte).
+3. Caricamento in corso: ensure_running() e start() con timeout unico a 90 secondi (MINISTRAL_STARTUP_TIMEOUT_SECS = 90). Tempo reale avvio: ~6s.
+4. Chiamata a llm.ensure_running() isolata in spawn_blocking in ai_ask_stream (main.rs).
+5. Fonti in modalità locale visualizzate come "fonti consultate" con citedIndices vuoto.
+6. Errori server mai presentati come completati: status HTTP != 200, errore stream o 0 token chiudono con status "error" e messaggio del server. Lettura di finish_reason == "length" marcata incomplete con avviso dedicato.
+7. Budget contesto 8192 token con potatura automatica fonti e riserva garantita di 1500 token.
+8. Lettura RAM fisica (get_physical_ram_bytes()) e gestione memoria Mac 8 GB: su Mac < 16 GB adozione di Ministral 3 3B Instruct Q5_K_M (mistralai/Ministral-3-3B-Instruct-2512-GGUF, 2.474.178.720 byte, SHA-256 e23dd88b0e0951d3f5784d6d4092210cda2b006b251f33b226b283a6c9d1f6bb), offload fisso -ngl 99 (27/27 layer), KV cache -ctk q8_0 -ctv q8_0 -np 1 (442 MiB). Misurate 3 domande reali sul vault: TTFT medio 560 ms, velocità 24.9 tok/s.
+9. Test end-to-end con mock HTTP server su 127.0.0.1 con finish_reason length e zero leak API key.
+10. Script scripts/package-v6mini-macos.sh inserito in git.
+11. Documentazione e todo list allineate a FASE 8.
+12. Allineamento coerente di prodotto a "LIMEN Vault v6Mini" 0.6.0.
+13. Generazione DMG unico LIMEN-Vault-v6Mini.dmg in .local/limen-v6mini-release/ e copia in USER INSTALL/ (escluso da git alla riga 38 di .gitignore).
+
 GUIDA UTENTE V5 — 25 settembre 2026
 Stato: completata e verificata in locale; nessuna pubblicazione su Google Drive effettuata.
 Consegna: output/guida_utente/ — PDF e Word A4 orizzontali, 42 pagine; 37 schede con Mermaid, Markdown e sorgenti .mmd.

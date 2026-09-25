@@ -96,6 +96,9 @@ export interface LocalModelReport {
   path: string;
   bytes: number;
   sha256Ok: boolean;
+  modelName?: string;
+  physicalRamBytes?: number;
+  ramWarning?: string | null;
 }
 
 export interface LocalServerReport {
@@ -106,6 +109,8 @@ export interface LocalServerReport {
   lastError: string | null;
   starting?: boolean;
   pid?: number;
+  physicalRamBytes?: number;
+  ramWarning?: string | null;
 }
 
 export interface LocalModelProgress {

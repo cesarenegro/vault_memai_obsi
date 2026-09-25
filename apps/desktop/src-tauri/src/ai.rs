@@ -1347,6 +1347,13 @@ pub async fn select_with_port_detailed(
         return Err("Invalid AI options".into());
     }
 
+    if o.mode.as_deref() == Some("local_only") {
+        let prov = crate::embeddings::get_embeddings_provider(path, 0);
+        if prov.provider != "local" {
+            return Err("La modalità Solo Locale richiede il motore di ricerca Locale. Impostalo in Impostazioni > Motore semantico.".to_string());
+        }
+    }
+
     // Apply eligibility and source_ids filters BEFORE any limit or top-k selection (Gate A06 & R3)
     let include_drafts = o.include_drafts;
     let source_ids = o.source_ids.clone();
@@ -1813,6 +1820,70 @@ Regole fondamentali da seguire con la massima precisione:\n\
     })
 }
 
+pub fn estimate_tokens(text: &str) -> usize {
+    // Stima conservativa dei token (circa 3 caratteri per token in italiano/inglese con UTF-8)
+    (text.chars().count() + 2) / 3
+}
+
+/// Seleziona e riduce le fonti per rispettare il limite di contesto del modello (8192 token),
+/// riservando almeno `reserved_response_tokens` (1500) per la generazione della risposta.
+/// Le fonti meno pertinenti (in fondo alla lista) vengono scartate progressivamente.
+pub fn prune_sources_for_context(
+    o: &Options,
+    sources: &[Source],
+    max_context_tokens: usize,
+    reserved_response_tokens: usize,
+) -> Vec<Source> {
+    let max_prompt_tokens = max_context_tokens.saturating_sub(reserved_response_tokens);
+
+    let system_instruction = "Sei l'assistente di intelligenza aziendale integrato in LIMEN Vault.\n\
+Il tuo compito è rispondere alla domanda dell'utente basandoti ESCLUSIVAMENTE sui documenti forniti.\n\
+Regole fondamentali:\n\
+1. Rispondi in italiano fluido e professionale senza inventare informazioni non presenti nelle fonti.\n\
+2. Sintetizza le informazioni da tutte le fonti pertinenti fornite.\n\
+3. Non inserire asterischi ('*') per formattazione, usa elenchi con trattino ('- ').";
+
+    let mut base_text = String::new();
+    base_text.push_str(system_instruction);
+    base_text.push_str("DOCUMENTI DEL VAULT:\n\n");
+    if !o.previous_turns.is_empty() {
+        base_text.push_str("CONTESTO CONVERSAZIONE PRECEDENTE:\n");
+        let max_3: Vec<&ConversationTurn> = o.previous_turns.iter().rev().take(3).rev().collect();
+        for (i, t) in max_3.iter().enumerate() {
+            base_text.push_str(&format!("Turno {}:\nDomanda: {}\nRisposta: {}\n\n", i + 1, t.question, t.answer));
+        }
+    }
+    base_text.push_str(&format!("DOMANDA DELL'UTENTE:\n{}\n\nRisposta:", o.prompt));
+
+    let base_tokens = estimate_tokens(&base_text);
+    if base_tokens >= max_prompt_tokens {
+        return Vec::new();
+    }
+
+    let mut remaining_budget = max_prompt_tokens - base_tokens;
+    let mut selected_sources = Vec::new();
+
+    for (idx, s) in sources.iter().enumerate() {
+        let s_text = format!(
+            "--- [Fonte {}] {} ({}) ---\n{}\n\n",
+            idx + 1,
+            s.title,
+            s.relative_path,
+            s.content
+        );
+        let s_tokens = estimate_tokens(&s_text);
+        if s_tokens <= remaining_budget {
+            remaining_budget -= s_tokens;
+            selected_sources.push(s.clone());
+        } else {
+            // Scarta questa e le successive fonti meno pertinenti
+            break;
+        }
+    }
+
+    selected_sources
+}
+
 pub fn request_body_chat_completions(o: &Options, sources: &[Source]) -> Value {
     let system_instruction = "Sei l'assistente di intelligenza aziendale integrato in LIMEN Vault.\n\
 Il tuo compito è rispondere alla domanda dell'utente basandoti ESCLUSIVAMENTE sui documenti forniti.\n\
@@ -1821,9 +1892,11 @@ Regole fondamentali:\n\
 2. Sintetizza le informazioni da tutte le fonti pertinenti fornite.\n\
 3. Non inserire asterischi ('*') per formattazione, usa elenchi con trattino ('- ').";
 
+    let active_sources = prune_sources_for_context(o, sources, 8192, 1500);
+
     let mut user_text = String::new();
     user_text.push_str("DOCUMENTI DEL VAULT:\n\n");
-    for (idx, s) in sources.iter().enumerate() {
+    for (idx, s) in active_sources.iter().enumerate() {
         user_text.push_str(&format!(
             "--- [Fonte {}] {} ({}) ---\n{}\n\n",
             idx + 1,
@@ -2736,11 +2809,25 @@ pub async fn ask_stream_with_target(
     let t_handoff_ms = p.created_at.elapsed().as_millis() as u64;
     let t_ask_start = Instant::now();
 
+    if p.options.mode.as_deref() == Some("local_only") {
+        let prov = crate::embeddings::get_embeddings_provider(&p.path, 0);
+        if prov.provider != "local" {
+            return Err("La modalità Solo Locale richiede il motore di ricerca Locale. Impostalo in Impostazioni > Motore semantico.".into());
+        }
+        if local_llm_port.is_none() {
+            return Err("La modalità Solo Locale richiede il modello locale Ministral.".into());
+        }
+    }
+
     if local_llm_port.is_none() && !get_openai_consent(&p.path) {
         return Err("Consenso all'invio dei dati a OpenAI non concesso. Abilitalo nelle Impostazioni.".into());
     }
     let effective_model = if local_llm_port.is_some() {
-        "Ministral 3 8B Instruct (Locale)".to_string()
+        if crate::llama_llm::is_sub_16gb_system() {
+            "Ministral 3 3B Instruct (Locale)".to_string()
+        } else {
+            "Ministral 3 8B Instruct (Locale)".to_string()
+        }
     } else if p.options.model.trim().is_empty() {
         "gpt-4o".to_string()
     } else {
@@ -2863,6 +2950,13 @@ pub async fn ask_stream_with_target(
     };
     let t_payload_ms = t_payload_start.elapsed().as_millis() as u64;
 
+    if p.options.mode.as_deref() == Some("local_only") {
+        let is_loopback = endpoint.starts_with("http://127.0.0.1:") || endpoint.starts_with("http://localhost:");
+        if !is_loopback {
+            return Err("Blocco di sicurezza: in modalità Solo Locale è consentita solo la connessione locale a 127.0.0.1.".into());
+        }
+    }
+
     // 3. Invio richiesta HTTP e ascolto stream SSE
     let t_openai_start = Instant::now();
     let client = reqwest::Client::builder()
@@ -2886,24 +2980,38 @@ pub async fn ask_stream_with_target(
                 let body_text = r.text().await.unwrap_or_default();
                 let error_detail = if let Ok(err_json) = serde_json::from_str::<Value>(&body_text) {
                     err_json.get("error")
-                        .and_then(|e| e.get("message"))
-                        .and_then(|m| m.as_str())
-                        .map(|s| s.to_string())
+                        .and_then(|e| {
+                            if let Some(m) = e.get("message").and_then(|m| m.as_str()) {
+                                Some(m.to_string())
+                            } else if let Some(s) = e.as_str() {
+                                Some(s.to_string())
+                            } else {
+                                None
+                            }
+                        })
                         .unwrap_or_else(|| body_text.clone())
                 } else {
                     body_text.clone()
                 };
-                let err_msg = if error_detail.trim().is_empty() {
-                    format!("OpenAI HTTP {}", status_code)
+                let err_msg = if local_llm_port.is_some() {
+                    if error_detail.trim().is_empty() {
+                        format!("Errore servizio LLM locale HTTP {}", status_code)
+                    } else {
+                        format!("Errore servizio LLM locale HTTP {}: {}", status_code, error_detail.trim())
+                    }
                 } else {
-                    format!("OpenAI HTTP {}: {}", status_code, error_detail.trim())
+                    if error_detail.trim().is_empty() {
+                        format!("OpenAI HTTP {}", status_code)
+                    } else {
+                        format!("OpenAI HTTP {}: {}", status_code, error_detail.trim())
+                    }
                 };
                 let t_openai_ms = t_openai_start.elapsed().as_millis() as u64;
                 log_stream_failure("errore (openai_http)", &err_msg, t_verify_pre_ms, t_payload_ms, t_openai_ms, 0, 0, None);
                 if let Some(ref w) = window {
                     let _ = w.emit("limen://ai-stream-end", AiStreamEndPayload {
                         ticket: ticket.clone(),
-                        answer: String::new(),
+                        answer: err_msg.clone(),
                         citations: vec![],
                         cited_indices: vec![],
                         status: "error".into(),
@@ -2920,6 +3028,19 @@ pub async fn ask_stream_with_target(
                         semantic_fallback_reason: p.semantic_fallback_reason.clone(),
                         ..Default::default()
                     });
+                }
+                if local_llm_port.is_some() {
+                    return Ok(json!({
+                        "status": "error",
+                        "answer": err_msg,
+                        "error": err_msg,
+                        "citations": [],
+                        "citedIndices": [],
+                        "model": effective_model,
+                        "incomplete": true,
+                        "incompleteReason": err_msg,
+                        "warning": err_msg,
+                    }));
                 }
                 return Err(err_msg);
             }
@@ -2960,7 +3081,9 @@ pub async fn ask_stream_with_target(
     let mut t_first_chunk_ms: Option<u64> = None;
     let mut line_buffer = String::new();
     let mut was_interrupted = false;
+    let mut is_length_finish = false;
     let mut network_error: Option<String> = None;
+    let mut server_stream_error: Option<String> = None;
     let mut final_response_val: Option<Value> = None;
 
     loop {
@@ -2997,6 +3120,18 @@ pub async fn ask_stream_with_target(
                         break;
                     }
                     if let Ok(v) = serde_json::from_str::<Value>(data_trimmed) {
+                        if let Some(err_val) = v.get("error") {
+                            let err_str = if let Some(m) = err_val.get("message").and_then(|m| m.as_str()) {
+                                m.to_string()
+                            } else if let Some(s) = err_val.as_str() {
+                                s.to_string()
+                            } else {
+                                err_val.to_string()
+                            };
+                            server_stream_error = Some(err_str);
+                            break;
+                        }
+
                         if t_first_chunk_ms.is_none() {
                             t_first_chunk_ms = Some(t_openai_start.elapsed().as_millis() as u64);
                         }
@@ -3006,6 +3141,16 @@ pub async fn ask_stream_with_target(
                         } else if v.get("type").and_then(|t| t.as_str()) == Some("response.completed") {
                             if let Some(resp) = v.get("response") {
                                 final_response_val = Some(resp.clone());
+                            }
+                        }
+
+                        if let Some(fr) = v.get("choices")
+                            .and_then(|c| c.get(0))
+                            .and_then(|c0| c0.get("finish_reason"))
+                            .and_then(|f| f.as_str())
+                        {
+                            if fr == "length" {
+                                is_length_finish = true;
                             }
                         }
 
@@ -3056,11 +3201,31 @@ pub async fn ask_stream_with_target(
             let data_trimmed = data_payload.trim();
             if data_trimmed != "[DONE]" {
                 if let Ok(v) = serde_json::from_str::<Value>(data_trimmed) {
+                    if let Some(err_val) = v.get("error") {
+                        let err_str = if let Some(m) = err_val.get("message").and_then(|m| m.as_str()) {
+                            m.to_string()
+                        } else if let Some(s) = err_val.as_str() {
+                            s.to_string()
+                        } else {
+                            err_val.to_string()
+                        };
+                        server_stream_error = Some(err_str);
+                    }
+
                     if v.get("status").is_some() && v.get("output").is_some() {
                         final_response_val = Some(v.clone());
                     } else if v.get("type").and_then(|t| t.as_str()) == Some("response.completed") {
                         if let Some(resp) = v.get("response") {
                             final_response_val = Some(resp.clone());
+                        }
+                    }
+                    if let Some(fr) = v.get("choices")
+                        .and_then(|c| c.get(0))
+                        .and_then(|c0| c0.get("finish_reason"))
+                        .and_then(|f| f.as_str())
+                    {
+                        if fr == "length" {
+                            is_length_finish = true;
                         }
                     }
                     let delta_opt = v.get("delta").and_then(|d| d.as_str())
@@ -3253,7 +3418,7 @@ pub async fn ask_stream_with_target(
 
     // 5. Decodifica e validazione risposta finale: nessun stato inventato
     // Se non è arrivato l'evento finale response.completed con il suo status ufficiale,
-    // la risposta va trattata come interrotta per OpenAI, oppure come completata per llama-server locale.
+    // la risposta va trattata come interrotta per OpenAI, oppure come completata/incompleta per llama-server locale.
     let response_to_parse = match final_response_val {
         Some(v) => v,
         None => {
@@ -3268,14 +3433,40 @@ pub async fn ask_stream_with_target(
                         "title": s.title,
                     })
                 }).collect();
-                let cited_indices: Vec<usize> = (0..p.sources.len()).collect();
+                let cited_indices: Vec<usize> = Vec::new();
+
+                let (status_name, final_answer, is_error, error_msg_opt) = if let Some(ref s_err) = server_stream_error {
+                    let msg = format!("Errore del server LLM locale: {}", s_err);
+                    ("error", msg.clone(), true, Some(msg))
+                } else if acc_answer.trim().is_empty() {
+                    let msg = "Il modello locale non ha generato alcuna risposta.".to_string();
+                    ("error", msg.clone(), true, Some(msg))
+                } else if is_length_finish {
+                    ("incomplete", acc_answer, false, None)
+                } else {
+                    ("completed", acc_answer, false, None)
+                };
+
+                let warning_text = if is_error {
+                    error_msg_opt.clone()
+                } else if is_length_finish {
+                    Some("Risposta interrotta per limite di lunghezza".to_string())
+                } else {
+                    None
+                };
+
+                let incomplete_flag = is_error || is_length_finish;
+
                 json!({
-                    "status": "completed",
-                    "answer": acc_answer,
+                    "status": status_name,
+                    "answer": final_answer,
+                    "error": error_msg_opt,
                     "citations": citations,
                     "citedIndices": cited_indices,
-                    "model": "Ministral 3 8B Instruct (Locale)",
-                    "incomplete": false,
+                    "model": effective_model.clone(),
+                    "incomplete": incomplete_flag,
+                    "incompleteReason": warning_text.clone(),
+                    "warning": warning_text,
                 })
             } else {
                 let warning_msg = "La risposta è incompleta: lo streaming si è chiuso senza evento finale response.completed dal provider.".to_string();
@@ -3367,33 +3558,37 @@ pub async fn ask_stream_with_target(
     };
 
     let t_parse_start = Instant::now();
-    let parsed = match parse_response(response_to_parse, &p.sources) {
-        Ok(v) => v,
-        Err(e) => {
-            let t_parse_ms = t_parse_start.elapsed().as_millis() as u64;
-            log_stream_failure("errore (parse_response)", &e, t_verify_pre_ms, t_payload_ms, t_openai_ms, t_verify_post_ms, t_parse_ms, t_first_chunk_ms);
-            if let Some(ref w) = window {
-                let _ = w.emit("limen://ai-stream-end", AiStreamEndPayload {
-                    ticket: ticket.clone(),
-                    answer: String::new(),
-                    citations: vec![],
-                    cited_indices: vec![],
-                    status: "error".into(),
-                    incomplete: true,
-                    incomplete_reason: Some(e.clone()),
-                    warning: None,
-                    error: Some(e.clone()),
-                    cancelled: false,
-                    tokens_used: None,
-                    tokens_prompt: None,
-                    tokens_completion: None,
-                    tokens_reasoning: None,
-                    semantic_used: p.semantic_used,
-                    semantic_fallback_reason: p.semantic_fallback_reason.clone(),
-                    ..Default::default()
-                });
+    let parsed = if local_llm_port.is_some() {
+        response_to_parse
+    } else {
+        match parse_response(response_to_parse, &p.sources) {
+            Ok(v) => v,
+            Err(e) => {
+                let t_parse_ms = t_parse_start.elapsed().as_millis() as u64;
+                log_stream_failure("errore (parse_response)", &e, t_verify_pre_ms, t_payload_ms, t_openai_ms, t_verify_post_ms, t_parse_ms, t_first_chunk_ms);
+                if let Some(ref w) = window {
+                    let _ = w.emit("limen://ai-stream-end", AiStreamEndPayload {
+                        ticket: ticket.clone(),
+                        answer: String::new(),
+                        citations: vec![],
+                        cited_indices: vec![],
+                        status: "error".into(),
+                        incomplete: true,
+                        incomplete_reason: Some(e.clone()),
+                        warning: None,
+                        error: Some(e.clone()),
+                        cancelled: false,
+                        tokens_used: None,
+                        tokens_prompt: None,
+                        tokens_completion: None,
+                        tokens_reasoning: None,
+                        semantic_used: p.semantic_used,
+                        semantic_fallback_reason: p.semantic_fallback_reason.clone(),
+                        ..Default::default()
+                    });
+                }
+                return Err(e);
             }
-            return Err(e);
         }
     };
     let t_parse_ms = t_parse_start.elapsed().as_millis() as u64;
@@ -3475,10 +3670,10 @@ pub async fn ask_stream_with_target(
         citations: parsed["citations"].as_array().cloned().unwrap_or_default(),
         cited_indices: parsed["citedIndices"].as_array().map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|n| n as usize)).collect()).unwrap_or_default(),
         status: status_str.to_string(),
-        incomplete: status_str == "incomplete" || parsed["incomplete"].as_bool().unwrap_or(false),
+        incomplete: status_str == "incomplete" || status_str == "error" || parsed["incomplete"].as_bool().unwrap_or(false),
         incomplete_reason,
         warning: parsed["warning"].as_str().map(|s| s.to_string()),
-        error: None,
+        error: parsed["error"].as_str().map(|s| s.to_string()),
         cancelled: false,
         tokens_used,
         tokens_prompt,
@@ -5056,7 +5251,7 @@ mod tests {
       let t = fixture();
       let state = AiState::default();
       let p_preview = state.preview(t.path().into(), options()).await.unwrap();
-      let (mut pending, cancel) = state.begin(&p_preview.ticket).unwrap();
+      let (pending, _cancel) = state.begin(&p_preview.ticket).unwrap();
 
       // Simuliamo la mutazione del file su disco mentre la generazione era in corso
       let first_source = &pending.sources[0];
@@ -5906,6 +6101,517 @@ mod tests {
 
       let _ = mock_handle.join();
       set_test_openai_endpoint(None);
+  }
+
+  #[tokio::test]
+  async fn test_local_only_mode_requires_local_search_engine_and_zero_network() {
+      let t = fixture();
+      // Configure embeddings engine to "openai"
+      crate::embeddings::set_embeddings_provider(t.path(), "openai", 0).unwrap();
+
+      let o = Options {
+          prompt: "Domanda locale di test".into(),
+          mode: Some("local_only".into()),
+          ..Default::default()
+      };
+
+      // Verification A: select_with_port_detailed must fail BEFORE network calls with exact message
+      let res = select_with_port_detailed(t.path(), &o, None).await;
+      assert!(res.is_err(), "select_with_port_detailed must fail in local_only with non-local provider");
+      let err = res.unwrap_err();
+      assert_eq!(
+          err,
+          "La modalità Solo Locale richiede il motore di ricerca Locale. Impostalo in Impostazioni > Motore semantico."
+      );
+
+      // Verification B: ask_stream_with_target must also fail BEFORE network calls
+      let pending = Pending {
+          created_at: Instant::now(),
+          path: t.path().to_path_buf(),
+          options: o.clone(),
+          sources: vec![],
+          preview_timings: PreviewTimings::default(),
+          port: None,
+          pid: None,
+          semantic_used: false,
+          semantic_fallback_reason: None,
+      };
+      let cancel = Arc::new(AtomicBool::new(false));
+      let res_stream = ask_stream_with_target(
+          None,
+          "test_ticket".into(),
+          pending,
+          "".into(),
+          cancel,
+          None,
+          Some(1234),
+      ).await;
+      assert!(res_stream.is_err());
+      assert_eq!(
+          res_stream.unwrap_err(),
+          "La modalità Solo Locale richiede il motore di ricerca Locale. Impostalo in Impostazioni > Motore semantico."
+      );
+  }
+
+  #[test]
+  fn test_prune_sources_oversized_context() {
+      let o = Options {
+          prompt: "Quali sono le decisioni strategiche per il 2026?".into(),
+          previous_turns: vec![
+              ConversationTurn {
+                  question: "Cosa abbiamo deciso ieri?".into(),
+                  answer: "Abbiamo definito il piano di espansione per il primo semestre.".into(),
+              },
+          ],
+          ..Default::default()
+      };
+
+      // Create 20 sources, each with ~400 tokens (approx 1600 chars each)
+      let mut sources = Vec::new();
+      for i in 1..=20 {
+          sources.push(Source {
+              document_id: format!("doc_{}", i),
+              relative_path: format!("01_CLIENTS/doc_{}.md", i),
+              title: format!("Documento Strategico {}", i),
+              category: "CLIENTS".into(),
+              status: Some("approved".into()),
+              sha256: "fake_hash".into(),
+              content: "Contenuto informativo molto dettagliato con molte parole per testare il pruning dei token nel contesto. ".repeat(20),
+              locator: None,
+              passage_id: None,
+              revision: None,
+              mtime_ms: None,
+              file_size: None,
+              passage_hashes: vec![],
+          });
+      }
+
+      let max_context = 8192;
+      let reserved_response = 1500;
+      let pruned = prune_sources_for_context(&o, &sources, max_context, reserved_response);
+
+      // Sources must have been pruned
+      assert!(pruned.len() < sources.len(), "Oversized sources must be pruned");
+      assert!(!pruned.is_empty(), "Most relevant sources must be kept");
+
+      // Verify that prompt + reserved response fits in 8192 tokens
+      let body = request_body_chat_completions(&o, &sources);
+      let user_content = body["messages"][1]["content"].as_str().unwrap();
+      let prompt_tokens = estimate_tokens(user_content);
+      assert!(
+          prompt_tokens + reserved_response <= max_context,
+          "Prompt tokens ({}) + reserved response ({}) must be <= context ({})",
+          prompt_tokens,
+          reserved_response,
+          max_context
+      );
+
+      // Verify preservation of priority order (first sources kept)
+      for (idx, s) in pruned.iter().enumerate() {
+          assert_eq!(s.document_id, format!("doc_{}", idx + 1));
+      }
+  }
+
+  #[tokio::test]
+  async fn test_local_llm_stream_with_target_and_finish_reason_length() {
+      let t = fixture();
+      let _ = set_openai_consent(t.path(), false);
+
+      crate::embeddings::set_embeddings_provider(t.path(), "local", 0).unwrap();
+
+      let server = std::sync::Arc::new(tiny_http::Server::http("127.0.0.1:0").unwrap());
+      let server_port = server.server_addr().to_ip().unwrap().port();
+      let server_clone = server.clone();
+
+      let mock_handle = std::thread::spawn(move || {
+          if let Ok(rq) = server_clone.recv() {
+              let auth_header = rq.headers().iter().find(|h| h.field.equiv("Authorization"));
+              assert!(auth_header.is_none(), "Local LLM request must NOT send Authorization header");
+
+              let sse_data = "data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Questa è una risposta parziale \"},\"finish_reason\":null}]}\n\n\
+                              data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"interrotta prima della fine.\"},\"finish_reason\":null}]}\n\n\
+                              data: {\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"length\"}]}\n\n\
+                              data: [DONE]\n\n";
+
+              let resp = tiny_http::Response::from_string(sse_data)
+                  .with_status_code(200)
+                  .with_header(tiny_http::Header::from_bytes("Content-Type", "text/event-stream").unwrap());
+              let _ = rq.respond(resp);
+          }
+      });
+
+      let state = AiState::default();
+      let p1 = state.preview(t.path().into(), Options {
+          prompt: "Acme coffee".into(),
+          mode: Some("local_only".into()),
+          ..Default::default()
+      }).await.unwrap();
+
+      let (pending, cancel) = state.begin(&p1.ticket).unwrap();
+      let res = ask_stream_with_target(
+          None,
+          p1.ticket.clone(),
+          pending,
+          "secret_key_should_not_be_sent".into(),
+          cancel,
+          None,
+          Some(server_port),
+      ).await.expect("Stream should succeed");
+      state.finish(&p1.ticket);
+
+      let _ = mock_handle.join();
+
+      assert_eq!(
+          res["answer"].as_str().unwrap(),
+          "Questa è una risposta parziale interrotta prima della fine."
+      );
+      assert_eq!(res["status"].as_str().unwrap(), "incomplete");
+      assert_eq!(res["incomplete"].as_bool().unwrap(), true);
+      assert_eq!(
+          res["incompleteReason"].as_str().unwrap(),
+          "Risposta interrotta per limite di lunghezza"
+      );
+      assert_eq!(
+          res["warning"].as_str().unwrap(),
+          "Risposta interrotta per limite di lunghezza"
+      );
+      let cited = res["citedIndices"].as_array().unwrap();
+      assert!(cited.is_empty(), "citedIndices must be empty for local LLM");
+      let citations = res["citations"].as_array().unwrap();
+      assert_eq!(citations.len(), 1, "Citations should list consulted sources");
+  }
+
+  #[tokio::test]
+  async fn test_local_llm_stream_error_event_returns_status_error() {
+      let t = fixture();
+      let _ = set_openai_consent(t.path(), false);
+      crate::embeddings::set_embeddings_provider(t.path(), "local", 0).unwrap();
+
+      let server = std::sync::Arc::new(tiny_http::Server::http("127.0.0.1:0").unwrap());
+      let server_port = server.server_addr().to_ip().unwrap().port();
+      let server_clone = server.clone();
+
+      let mock_handle = std::thread::spawn(move || {
+          if let Ok(rq) = server_clone.recv() {
+              let sse_data = "data: {\"error\":{\"code\":500,\"message\":\"Compute error: Insufficient Memory\",\"type\":\"server_error\"}}\n\n";
+              let resp = tiny_http::Response::from_string(sse_data)
+                  .with_status_code(200)
+                  .with_header(tiny_http::Header::from_bytes("Content-Type", "text/event-stream").unwrap());
+              let _ = rq.respond(resp);
+          }
+      });
+
+      let state = AiState::default();
+      let p1 = state.preview(t.path().into(), Options {
+          prompt: "Acme coffee".into(),
+          mode: Some("local_only".into()),
+          ..Default::default()
+      }).await.unwrap();
+
+      let (pending, cancel) = state.begin(&p1.ticket).unwrap();
+      let res = ask_stream_with_target(
+          None,
+          p1.ticket.clone(),
+          pending,
+          "".into(),
+          cancel,
+          None,
+          Some(server_port),
+      ).await.expect("Stream should return response Value");
+      state.finish(&p1.ticket);
+
+      let _ = mock_handle.join();
+
+      assert_eq!(res["status"].as_str().unwrap(), "error", "Status must be 'error' on server error event, NEVER 'completed'");
+      assert_eq!(res["incomplete"].as_bool().unwrap(), true);
+      let ans = res["answer"].as_str().unwrap();
+      assert!(ans.contains("Compute error") || ans.contains("Insufficient Memory"), "Answer must contain server error text");
+  }
+
+  #[tokio::test]
+  async fn test_local_llm_stream_empty_tokens_returns_status_error() {
+      let t = fixture();
+      let _ = set_openai_consent(t.path(), false);
+      crate::embeddings::set_embeddings_provider(t.path(), "local", 0).unwrap();
+
+      let server = std::sync::Arc::new(tiny_http::Server::http("127.0.0.1:0").unwrap());
+      let server_port = server.server_addr().to_ip().unwrap().port();
+      let server_clone = server.clone();
+
+      let mock_handle = std::thread::spawn(move || {
+          if let Ok(rq) = server_clone.recv() {
+              // Chiude lo stream senza emettere alcun token di testo
+              let sse_data = "data: {\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n\
+                              data: [DONE]\n\n";
+              let resp = tiny_http::Response::from_string(sse_data)
+                  .with_status_code(200)
+                  .with_header(tiny_http::Header::from_bytes("Content-Type", "text/event-stream").unwrap());
+              let _ = rq.respond(resp);
+          }
+      });
+
+      let state = AiState::default();
+      let p1 = state.preview(t.path().into(), Options {
+          prompt: "Acme coffee".into(),
+          mode: Some("local_only".into()),
+          ..Default::default()
+      }).await.unwrap();
+
+      let (pending, cancel) = state.begin(&p1.ticket).unwrap();
+      let res = ask_stream_with_target(
+          None,
+          p1.ticket.clone(),
+          pending,
+          "".into(),
+          cancel,
+          None,
+          Some(server_port),
+      ).await.expect("Stream should return response Value");
+      state.finish(&p1.ticket);
+
+      let _ = mock_handle.join();
+
+      assert_eq!(res["status"].as_str().unwrap(), "error", "Status must be 'error' when 0 tokens are generated, NEVER 'completed'");
+      assert_eq!(res["incomplete"].as_bool().unwrap(), true);
+      let ans = res["answer"].as_str().unwrap();
+      assert!(ans.contains("non ha generato alcuna risposta") || ans.contains("non ha generato alcun testo"));
+  }
+
+  #[tokio::test]
+  async fn test_twenty_consecutive_local_questions_no_blocks() {
+      let t = fixture();
+      let _ = set_openai_consent(t.path(), false);
+      crate::embeddings::set_embeddings_provider(t.path(), "local", 0).unwrap();
+
+      let server = std::sync::Arc::new(tiny_http::Server::http("127.0.0.1:0").unwrap());
+      let server_port = server.server_addr().to_ip().unwrap().port();
+      let server_clone = server.clone();
+
+      let mock_handle = std::thread::spawn(move || {
+          for q_idx in 1..=20 {
+              if let Ok(rq) = server_clone.recv() {
+                  let sse_data = format!(
+                      "data: {{\"choices\":[{{\"index\":0,\"delta\":{{\"content\":\"Risposta alla domanda {}\"}},\"finish_reason\":null}}]}}\n\n\
+                      data: {{\"choices\":[{{\"index\":0,\"delta\":{{}},\"finish_reason\":\"stop\"}}]}}\n\n\
+                      data: [DONE]\n\n",
+                      q_idx
+                  );
+                  let resp = tiny_http::Response::from_string(sse_data)
+                      .with_status_code(200)
+                      .with_header(tiny_http::Header::from_bytes("Content-Type", "text/event-stream").unwrap());
+                  let _ = rq.respond(resp);
+              }
+          }
+      });
+
+      let state = AiState::default();
+      let mut errors = Vec::new();
+
+      for i in 1..=20 {
+          let prompt = format!("Acme coffee domanda {}", i);
+          let preview_res = state.preview(t.path().into(), Options {
+              prompt,
+              mode: Some("local_only".into()),
+              ..Default::default()
+          }).await;
+
+          match preview_res {
+              Ok(p) => {
+                  let (pending, cancel) = state.begin(&p.ticket).unwrap();
+                  let ask_res = ask_stream_with_target(
+                      None,
+                      p.ticket.clone(),
+                      pending,
+                      "".into(),
+                      cancel,
+                      None,
+                      Some(server_port),
+                  ).await;
+                  state.finish(&p.ticket);
+
+                  match ask_res {
+                      Ok(res) => {
+                          assert_eq!(res["status"].as_str().unwrap(), "completed");
+                          assert_eq!(res["incomplete"].as_bool().unwrap(), false);
+                          let ans = res["answer"].as_str().unwrap();
+                          assert!(ans.contains(&format!("Risposta alla domanda {}", i)));
+                      }
+                      Err(e) => {
+                          errors.push(format!("Domanda {}: errore {}", i, e));
+                      }
+                  }
+              }
+              Err(e) => {
+                  errors.push(format!("Domanda {}: errore preview {}", i, e));
+              }
+          }
+      }
+
+      let _ = mock_handle.join();
+
+      assert!(errors.is_empty(), "Errori durante le 20 domande consecutive: {:?}", errors);
+      println!("PROVA PUNTO 2 SUPERATA: 20 domande consecutive completate in modalità Solo Locale. Errori: 0.");
+  }
+
+  #[tokio::test]
+  #[ignore = "Prova reale 20 domande consecutive Integrazione 1 con llama-server vero"]
+  async fn test_twenty_consecutive_real_local_questions_with_bundled_llama_server() {
+      let real_models_dir = "/Users/cesare/Library/Application Support/LIMEN Vault/models";
+      std::env::set_var("LIMEN_MODELS_DIR", real_models_dir);
+
+      let t = fixture();
+      let _ = set_openai_consent(t.path(), false);
+      crate::embeddings::set_embeddings_provider(t.path(), "local", 0).unwrap();
+
+      let llm_state = crate::llama_llm::LlamaLlmServerState::new();
+      let port = llm_state.ensure_running().expect("Avvio llama-server reale fallito");
+
+      let log_path = std::path::PathBuf::from(real_models_dir).join("llama-llm.log");
+
+      let state = AiState::default();
+      let mut completed = 0;
+      let mut errors = Vec::new();
+
+      println!("INIZIO PROVA INTEGRAZIONE 1: 20 domande reali consecutive in Solo Locale");
+
+      for i in 1..=20 {
+          let prompt = format!("Acme coffee domanda {}", i);
+          let preview_res = state.preview(t.path().into(), Options {
+              prompt,
+              mode: Some("local_only".into()),
+              ..Default::default()
+          }).await;
+
+          match preview_res {
+              Ok(p) => {
+                  let (pending, cancel) = state.begin(&p.ticket).unwrap();
+                  let ask_res = ask_stream_with_target(
+                      None,
+                      p.ticket.clone(),
+                      pending,
+                      "".into(),
+                      cancel,
+                      None,
+                      Some(port),
+                  ).await;
+                  state.finish(&p.ticket);
+
+                  match ask_res {
+                      Ok(res) => {
+                          let status = res["status"].as_str().unwrap_or("unknown");
+                          let ans = res["answer"].as_str().unwrap_or("");
+                          if status == "completed" && !ans.trim().is_empty() {
+                              completed += 1;
+                              println!("Domanda {}/20 completata con successo ({} caratteri)", i, ans.len());
+                          } else {
+                              errors.push(format!("Domanda {}: status={}, risposta vuota o errore: {:?}", i, status, res["error"]));
+                          }
+                      }
+                      Err(e) => {
+                          errors.push(format!("Domanda {}: errore {}", i, e));
+                      }
+                  }
+              }
+              Err(e) => {
+                  errors.push(format!("Domanda {}: errore preview {}", i, e));
+              }
+          }
+      }
+
+      let _ = llm_state.stop();
+
+      let final_log_size = std::fs::metadata(&log_path).map(|m| m.len()).unwrap_or(0);
+
+      println!("ESITO INTEGRAZIONE 1:");
+      println!("- Domande completate: {}/20", completed);
+      println!("- Errori: {}", errors.len());
+      println!("- Dimensione finale file llama-llm.log: {} byte", final_log_size);
+
+      assert_eq!(completed, 20, "Devono essere completate tutte le 20 domande");
+      assert!(errors.is_empty(), "Non ci devono essere errori: {:?}", errors);
+  }
+
+  #[tokio::test]
+  #[ignore = "Misura reale TTFT e token/s su 3 domande reali Integrazione 2e"]
+  async fn test_three_real_vault_questions_ttft_and_speed() {
+      let real_models_dir = "/Users/cesare/Library/Application Support/LIMEN Vault/models";
+      std::env::set_var("LIMEN_MODELS_DIR", real_models_dir);
+
+      let llm_state = crate::llama_llm::LlamaLlmServerState::new();
+      let port = llm_state.ensure_running().expect("Avvio llama-server reale fallito");
+
+      let questions = [
+          "Cos'è LIMEN Vault e quali sono le sue funzionalità principali?",
+          "Come funziona la modalità Solo Locale per la sicurezza dei dati?",
+          "Quali sono i requisiti di memoria per l'esecuzione su Mac con 8 GB di RAM?",
+      ];
+
+      println!("INIZIO MISURAZIONE 3 DOMANDE REALI (INTEGRAZIONE 2e)");
+
+      for (idx, q) in questions.iter().enumerate() {
+          let client = reqwest::Client::new();
+          let payload = serde_json::json!({
+              "model": "Ministral-3-3B-Instruct-2512-Q5_K_M.gguf",
+              "messages": [
+                  {"role": "system", "content": "Sei l'assistente LIMEN Vault. Rispondi in italiano in modo sintetico."},
+                  {"role": "user", "content": q}
+              ],
+              "max_tokens": 500,
+              "stream": true
+          });
+
+          let t_start = std::time::Instant::now();
+          let mut res = client
+              .post(&format!("http://127.0.0.1:{}/v1/chat/completions", port))
+              .json(&payload)
+              .send()
+              .await
+              .expect("Invio richiesta fallito");
+
+          let mut ttft_ms = None;
+          let mut token_chunks = 0usize;
+          let mut full_text = String::new();
+
+          while let Some(chunk) = res.chunk().await.expect("Errore lettura chunk") {
+              let s = String::from_utf8_lossy(&chunk);
+              for line in s.lines() {
+                  if let Some(data) = line.strip_prefix("data: ") {
+                      if data.trim() == "[DONE]" {
+                          continue;
+                      }
+                      if let Ok(v) = serde_json::from_str::<serde_json::Value>(data) {
+                          if let Some(content) = v["choices"][0]["delta"]["content"].as_str() {
+                              if !content.is_empty() {
+                                  if ttft_ms.is_none() {
+                                      ttft_ms = Some(t_start.elapsed().as_millis());
+                                  }
+                                  token_chunks += 1;
+                                  full_text.push_str(content);
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+
+          let total_dur = t_start.elapsed();
+          let ttft = ttft_ms.unwrap_or(0);
+          let gen_dur = total_dur.saturating_sub(std::time::Duration::from_millis(ttft as u64));
+          let tok_per_sec = if gen_dur.as_secs_f64() > 0.0 {
+              token_chunks as f64 / gen_dur.as_secs_f64()
+          } else {
+              0.0
+          };
+
+          println!("DOMANDA {}: \"{}\"", idx + 1, q);
+          println!("- Tempo al primo token (TTFT): {} ms", ttft);
+          println!("- Token generati (chunk): {}", token_chunks);
+          println!("- Durata generazione: {:.2} s", gen_dur.as_secs_f64());
+          println!("- Velocità di generazione: {:.2} token/s", tok_per_sec);
+          println!("- Risposta (anteprima): {}\n", full_text.trim().chars().take(120).collect::<String>());
+      }
+
+      let _ = llm_state.stop();
   }
 }
 #[cfg(test)]

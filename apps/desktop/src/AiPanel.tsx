@@ -7,7 +7,7 @@ import { SemanticEngineSettings } from './SemanticEngineSettings';
 import { TunnelPanel } from './TunnelPanel';
 import { getPlatformTerms } from './platform';
 import { m7, operationId } from './proposal-ipc';
-import { ChevronDown, ChevronRight, ShieldAlert, Sparkles, FileText, Check, AlertCircle, Key, Lock, Clock, PlusCircle } from 'lucide-react';
+import { ChevronDown, ChevronRight, ShieldAlert, Sparkles, FileText, Check, AlertCircle, Key, Lock, Clock, PlusCircle, AlertTriangle } from 'lucide-react';
 import { AiHistoryDrawer } from './AiHistoryDrawer';
 import { historyIpc } from './history-ipc';
 import { cleanTitle, formatSourceCategory, formatLocator, formatSourceLabel } from './source-utils';
@@ -129,6 +129,11 @@ export function AiPanel({
 
   const handleToggleLocalMode = async () => {
     if (!isLocalMode) {
+      const semReport = await aiIpc.embeddingsGetProvider(vaultPath).catch(() => null);
+      if (semReport && semReport.provider !== 'local') {
+        setError("La modalità Solo Locale richiede il motore di ricerca Locale. Impostalo in Impostazioni > Motore semantico.");
+        return;
+      }
       const rep = await aiIpc.localLlmStatus().catch(() => null);
       if (rep) setLocalLlmReport(rep);
       if (!rep?.installed || !rep?.sha256Ok) {
@@ -324,11 +329,20 @@ export function AiPanel({
         isRunningRef.current = false;
         return;
       }
+    } else {
+      const semReport = await aiIpc.embeddingsGetProvider(vaultPath).catch(() => null);
+      if (semReport && semReport.provider !== 'local') {
+        isRunningRef.current = false;
+        setError("La modalità Solo Locale richiede il motore di ricerca Locale. Impostalo in Impostazioni > Motore semantico.");
+        return;
+      }
     }
 
     setLoadingStep('Selezione passaggi pertinenti dal Vault…');
     const t0 = Date.now();
-    const answerModel = isLocalMode ? 'Ministral 3 8B Instruct Q5_K_M' : currentModel;
+    const is3B = localLlmReport?.modelName?.includes('3B') || (localLlmReport?.physicalRamBytes ? localLlmReport.physicalRamBytes < 16 * 1024 * 1024 * 1024 : true);
+    const localModelName = is3B ? 'Ministral 3 3B Instruct Q5_K_M' : 'Ministral 3 8B Instruct Q5_K_M';
+    const answerModel = isLocalMode ? localModelName : currentModel;
     const answerProvider = isLocalMode ? 'Ministral (Locale Mac)' : 'OpenAI';
 
     // Contesto al modello: per ogni domanda di seguito si inviano, oltre alle fonti,
@@ -345,7 +359,7 @@ export function AiPanel({
       // Step 1: Preview / Select sources automaticamente
       const preview = await aiIpc.preview(vaultPath, {
         prompt: queryText,
-        model: isLocalMode ? 'Ministral 3 8B Instruct (Locale)' : currentModel,
+        model: isLocalMode ? (is3B ? 'Ministral 3 3B Instruct (Locale)' : 'Ministral 3 8B Instruct (Locale)') : currentModel,
         mode: isLocalMode ? 'local_only' : 'hybrid',
         includeDrafts: drafts,
         sourceIds: [],
@@ -384,14 +398,14 @@ export function AiPanel({
           if (event.payload.ticket === preview.ticket) {
             setIsStreaming(false);
             setLoadingStep(null);
-            if (event.payload.cancelled && (event.payload.error?.includes('Un documento è cambiato') || event.payload.status === 'error')) {
+            if (event.payload.status === 'error' || (event.payload.cancelled && event.payload.error?.includes('Un documento è cambiato'))) {
               const errAns: AiAnswer = {
-                answer: event.payload.answer || 'Un documento è cambiato durante la generazione: la risposta è stata annullata, riprova',
+                answer: event.payload.error || event.payload.answer || 'Errore durante la generazione locale.',
                 provider: answerProvider,
                 model: answerModel,
                 citations: [],
                 status: 'error',
-                warning: event.payload.answer,
+                warning: event.payload.error || event.payload.answer,
               };
               setTurns(prev => [
                 ...prev,
@@ -863,8 +877,22 @@ export function AiPanel({
                       >
                         <FileText size={12} color={isSelected ? '#ffffff' : '#64748b'} />
                         <span>
-                          {citedCount} font{citedCount === 1 ? 'e citata' : 'i citate'}
-                          {totalConsulted > citedCount ? ` (${totalConsulted} consultate)` : ''}
+                          {turn.answer.provider === 'Ministral (Locale Mac)' || turn.answer.model?.toLowerCase().includes('ministral') ? (
+                            totalConsulted > 0 ? (
+                              <>{totalConsulted} font{totalConsulted === 1 ? 'e consultata' : 'i consultate'}</>
+                            ) : (
+                              '0 fonti consultate'
+                            )
+                          ) : citedCount > 0 ? (
+                            <>
+                              {citedCount} font{citedCount === 1 ? 'e citata' : 'i citate'}
+                              {totalConsulted > citedCount ? ` (${totalConsulted} consultate)` : ''}
+                            </>
+                          ) : totalConsulted > 0 ? (
+                            <>{totalConsulted} font{totalConsulted === 1 ? 'e consultata' : 'i consultate'}</>
+                          ) : (
+                            '0 fonti consultate'
+                          )}
                         </span>
                       </button>
 
@@ -889,7 +917,7 @@ export function AiPanel({
                       )}
                     </div>
 
-                    {turn.answer.provider === 'Ministral (Locale Mac)' || turn.answer.model?.toLowerCase().includes('ministral') ? (
+                    {turn.answer.status !== 'error' && (turn.answer.provider === 'Ministral (Locale Mac)' || turn.answer.model?.toLowerCase().includes('ministral')) ? (
                       <span
                         style={{
                           fontSize: 11,
@@ -905,13 +933,13 @@ export function AiPanel({
                         }}
                       >
                         <Sparkles size={11} color="#0f172a" />
-                        Generato sul Mac · Ministral 3 8B Instruct Q5_K_M (Offline)
+                        Generato sul Mac · {turn.answer.model?.includes('3B') || turn.answer.model?.includes('3b') ? 'Ministral 3 3B Instruct Q5_K_M (Offline)' : 'Ministral 3 8B Instruct Q5_K_M (Offline)'}
                       </span>
-                    ) : (
+                    ) : turn.answer.status !== 'error' ? (
                       <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>
                         OpenAI · {turn.answer.model}
                       </span>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -1157,6 +1185,27 @@ export function AiPanel({
               </button>
             </div>
 
+            {isLocalMode && (localLlmReport?.ramWarning || localLlmServer?.ramWarning || (localLlmReport?.physicalRamBytes && localLlmReport.physicalRamBytes < 17179869184)) && (
+              <div
+                style={{
+                  backgroundColor: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  borderRadius: 8,
+                  padding: '8px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 11,
+                  color: '#92400e',
+                }}
+              >
+                <AlertTriangle size={14} color="#b45309" style={{ flexShrink: 0 }} />
+                <span>
+                  <strong>Avviso memoria:</strong> {localLlmReport?.ramWarning || localLlmServer?.ramWarning || 'Mac con meno di 16 GB di RAM. Il modello locale occupa circa 6 GB e può rallentare il Mac.'}
+                </span>
+              </div>
+            )}
+
             <div style={{ position: 'relative' }}>
               <textarea
                 aria-label="Domanda al Vault"
@@ -1309,6 +1358,28 @@ export function AiPanel({
                 <span>Verifica crittografica SHA-256 automatica</span>
               </div>
             </div>
+
+            {(localLlmReport?.ramWarning || localLlmServer?.ramWarning || (localLlmReport?.physicalRamBytes && localLlmReport.physicalRamBytes < 17179869184)) && (
+              <div
+                style={{
+                  backgroundColor: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  borderRadius: 8,
+                  padding: '10px 14px',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                  fontSize: 12,
+                  color: '#92400e',
+                  lineHeight: 1.4,
+                }}
+              >
+                <AlertTriangle size={18} color="#b45309" style={{ flexShrink: 0, marginTop: 1 }} />
+                <div>
+                  <strong>Avviso memoria Mac:</strong> {localLlmReport?.ramWarning || localLlmServer?.ramWarning || 'Questo Mac dispone di meno di 16 GB di RAM fisica. Il modello Ministral 3 8B occupa circa 6 GB e l\'esecuzione locale potrebbe rallentare il sistema.'}
+                </div>
+              </div>
+            )}
 
             {isLlmDownloading && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

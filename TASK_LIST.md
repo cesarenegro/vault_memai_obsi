@@ -1,5 +1,24 @@
-# TASK LIST — LIMEN Vault: guida utente V5 e stato del progetto
+# TASK LIST — LIMEN Vault: FASE 8 Ministral locale e rilascio v6Mini
 
+## FASE 8 — Correzioni Ministral Locale e Rilascio LIMEN Vault v6Mini 0.6.0 (25 settembre 2026)
+
+Stato: completato e validato in locale con 4 integrazioni obbligatorie.
+Consegna: commit unico su tag `fase8-ministral-fix` e DMG firmato e notarizzato `LIMEN-Vault-v6Mini.dmg` in `USER INSTALL/` ed escluso da git.
+
+- [x] Punto 1 (Bloccante): Modalità Solo Locale isolata al 100% da qualsiasi rete esterna. Se il motore semantico non è Locale ("local"), la ricerca si ferma prima di chiamate di rete con messaggio: "La modalità Solo Locale richiede il motore di ricerca Locale. Impostalo in Impostazioni > Motore semantico.". Se bge-m3 non pronto/spento: errore bloccante esplicito. Controllo implementato in backend Rust (ai.rs, main.rs) e frontend (AiPanel.tsx). Nessuna richiesta verso indirizzi diversi da 127.0.0.1.
+- [x] Punto 2 (Integrazione 1): Risolto blocco di llama-server per pipe buffer pieno reindirizzando stderr su `llama-llm.log`. Eseguita prova obbligatoria di 20 domande consecutive in Solo Locale sul Mac di Cesare con il llama-server incluso nell'app: 20/20 completate, 0 errori, dimensione finale `llama-llm.log` = 20.921 byte.
+- [x] Punto 3 (Integrazione 4): Costante unica `MINISTRAL_STARTUP_TIMEOUT_SECS = 90` applicata sia in `ensure_running()` sia nel loop `/health` di `start()`. Tempo reale di avvio misurato dai timestamp di log: ~6 secondi.
+- [x] Punto 4: Spostata l'attesa di `llm.ensure_running()` in `tauri::async_runtime::spawn_blocking` in `ai_ask_stream` (main.rs) per non bloccare il runtime asincrono.
+- [x] Punto 5: Fonti nel ramo locale non più contrassegnate artificialmente come tutte citate (`citedIndices` vuoto); visualizzazione corretta come "fonti consultate".
+- [x] Punto 6 (Integrazione 3): Gestione rigorosa errori del server locale: status HTTP != 200, evento errore SSE o 0 token chiudono la richiesta categoricamente con `status: "error"` e messaggio del server (mai "completed"). Lettura di `choices[0].finish_reason`: se vale "length", risposta contrassegnata come `incomplete` con avviso: "Risposta interrotta per limite di lunghezza". Test Rust dedicati implementati e superati.
+- [x] Punto 7 (Precisazione 7): Budget contesto 8192 token in `request_body_chat_completions` con potatura automatica fonti (`prune_sources_for_context`) e riserva garantita di almeno 1500 token.
+- [x] Punto 8 & 9 (Integrazione 2): Gestione memoria Mac 8 GB e selezione modello: Ministral 3 8B eccede il working set Metal (5.3 GB) causando OOM; in base alla regola approvata da Cesare, per Mac < 16 GB si adotta Ministral 3 3B Instruct Q5_K_M (mistralai/Ministral-3-3B-Instruct-2512-GGUF, 2.474.178.720 byte, SHA-256 e23dd88b0e0951d3f5784d6d4092210cda2b006b251f33b226b283a6c9d1f6bb), offload fisso `-ngl 99` (27/27 layer), KV cache `-ctk q8_0 -ctv q8_0 -np 1` (442 MiB). Misurate 3 domande reali sul vault: TTFT medio 560 ms, velocità 24.9 tok/s.
+- [x] Punto 10: Script di packaging `scripts/package-v6mini-macos.sh` tracciato nel repository git per piena riproducibilità.
+- [x] Punto 11: Documentazione e tracciamento task (`TASK_LIST.md` e `TODO LIST.TXT`) aggiornati con lo stato della FASE 8 e 4 integrazioni.
+- [x] Punto 12: Allineamento coerente a "LIMEN Vault v6Mini", versione `0.6.0`, identificativo `dev.arkai.limenvault` invariato su `tauri.conf.json`, `package.json`, `Cargo.toml`, codice interfaccia e manualistica.
+- [x] Punto 13 (Precisazione 13): Creazione DMG unico `LIMEN-Vault-v6Mini.dmg` in `.local/limen-v6mini-release/` e copia in `USER INSTALL/LIMEN-Vault-v6Mini.dmg` (escluso da git alla riga 38 di `.gitignore`). Firmato Developer ID, notarizzato Apple e validato con Gatekeeper (spctl e stapler).
+
+---
 
 ## Guida utente V5 A4 orizzontale — 25 settembre 2026
 

@@ -1,6 +1,6 @@
-# Guida per i Tester Esterni — LIMEN Vault V5 (macOS)
+# Guida per i Tester Esterni — LIMEN Vault v6Mini (macOS)
 
-Benvenuto nel programma di collaudo di **LIMEN Vault V5** (versione 0.5.0).  
+Benvenuto nel programma di collaudo di **LIMEN Vault v6Mini** (versione 0.6.0).  
 LIMEN Vault è l'applicazione desktop pensata per la gestione e consultazione sicura della memoria aziendale, integrando ricerca semantica vettoriale locale e generazione avanzata di risposte aumentate dai documenti.
 
 ---
@@ -17,9 +17,9 @@ LIMEN Vault è l'applicazione desktop pensata per la gestione e consultazione si
 ## 2. Installazione dell'Applicazione
 
 1. Fai doppio clic sul file di installazione scaricato:  
-   `LIMEN-Vault-V5-0.5.0-arm64.dmg`.
-2. Nella finestra visualizzata, trascina l'icona di **LIMEN Vault V5** nella cartella **Applicazioni**.
-3. Apri la cartella **Applicazioni** ed esegui **LIMEN Vault V5**:
+   `LIMEN-Vault-v6Mini.dmg`.
+2. Nella finestra visualizzata, trascina l'icona di **LIMEN Vault v6Mini** nella cartella **Applicazioni**.
+3. Apri la cartella **Applicazioni** ed esegui **LIMEN Vault v6Mini**:
    - L'applicazione è ufficialmente **firmata con Developer ID e autenticata da Apple (Notarized)**: si aprirà direttamente al primo avvio senza blocchi di Gatekeeper.
 
 ---
@@ -86,7 +86,7 @@ LIMEN Vault è l'applicazione desktop pensata per la gestione e consultazione si
 - Puoi riaprire qualunque conversazione precedente in qualsiasi momento per riesaminare risposte, passaggi e fonti consultate.
 
 ### D. Modalità 100% Solo Locale con Ministral 3 8B Instruct (FASE 8 — Offline a Rete Zero)
-LIMEN Vault V5 supporta un'innovativa architettura a **doppio binario**:
+LIMEN Vault v6Mini supporta un'innovativa architettura a **doppio binario**:
 1. **Modalità Ibrida (Predefinita)**:
    - Ricerca semantica locale ad alta velocità sul Mac con il modello embedding `bge-m3` (~635 MB).
    - Generazione delle risposte tramite OpenAI (`gpt-4o-mini` o `gpt-4o`). Il modello generativo locale resta scaricato dalla RAM (~350 MB occupati in totale).
@@ -106,7 +106,7 @@ Il tuo riscontro è fondamentale per la qualità del rilascio finale. Se riscont
 
 1. **Canale di Segnalazione**:
    - Invia un'email a: **`cesare@arkitecna.com`**
-   - Oggetto dell'email: **`LIMEN Vault V5 — segnalazione tester`**
+   - Oggetto dell'email: **`LIMEN Vault v6Mini — segnalazione tester`**
 2. **Informazioni Utili da Includere**:
    - Modello esatto di Mac (es. MacBook Air M2, MacBook Pro M3 Max);
    - Versione di macOS in uso (da *Menu Apple  $\rightarrow$ Informazioni su questo Mac*);

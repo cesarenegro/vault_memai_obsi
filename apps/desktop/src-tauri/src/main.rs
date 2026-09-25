@@ -574,6 +574,12 @@ async fn ai_preview(
     state: tauri::State<'_, std::sync::Arc<limen_vault::ai::AiState>>,
     llama_state: tauri::State<'_, limen_vault::llama::LlamaServerState>,
 ) -> Result<limen_vault::ai::Preview, String> {
+    if options.mode.as_deref() == Some("local_only") {
+        let prov = limen_vault::embeddings::get_embeddings_provider(Path::new(&vault_path), 0);
+        if prov.provider != "local" {
+            return Err("La modalità Solo Locale richiede il motore di ricerca Locale. Impostalo in Impostazioni > Motore semantico.".to_string());
+        }
+    }
     let t_entry = std::time::Instant::now();
     let state = state.inner().clone();
     let llama = llama_state.inner().clone();
@@ -652,8 +658,21 @@ async fn ai_ask_stream(
             || pending.options.model.starts_with("local")
             || pending.options.model.to_lowercase().contains("ministral");
 
+        if pending.options.mode.as_deref() == Some("local_only") {
+            let prov = limen_vault::embeddings::get_embeddings_provider(&pending.path, 0);
+            if prov.provider != "local" {
+                return Err("La modalità Solo Locale richiede il motore di ricerca Locale. Impostalo in Impostazioni > Motore semantico.".to_string());
+            }
+        }
+
         let (key, local_port) = if is_local {
-            let port = llm.ensure_running()?;
+            let llm_c = llm.clone();
+            let port = tauri::async_runtime::spawn_blocking(move || {
+                llm_c.ensure_running()
+            })
+            .await
+            .map_err(|e| format!("Task LLM locale fallito: {}", e))?
+            .map_err(|e| e)?;
             ("".to_string(), Some(port))
         } else {
             let k = tauri::async_runtime::spawn_blocking(limen_vault::keychain::load)

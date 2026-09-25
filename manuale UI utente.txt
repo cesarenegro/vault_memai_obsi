@@ -1,5 +1,5 @@
-# LIMEN VAULT V5 — MANUALE DELL’INTERFACCIA UTENTE
-Edizione italiana · 25 settembre 2026 · LIMEN Vault V5 (0.5.0)
+# LIMEN VAULT v6Mini — MANUALE DELL’INTERFACCIA UTENTE
+Edizione italiana · 25 settembre 2026 · LIMEN Vault v6Mini (0.6.0)
 
 Applicazione desktop per macOS (Apple Silicon, macOS 26.0+) per la gestione, indicizzazione semantica locale e consultazione aumentata della memoria aziendale.
 
@@ -51,7 +51,7 @@ Applicazione desktop per macOS (Apple Silicon, macOS 26.0+) per la gestione, ind
 
 ## INDICE GENERALE
 
-1. Che cos’è LIMEN Vault V5 e principi architetturali
+1. Che cos’è LIMEN Vault v6Mini e principi architetturali
 2. Primo avvio: Aprire o creare un Vault
 3. Struttura dell’interfaccia e navigazione
 4. Motore Semantico & RAG 100% Locale (bge-m3)
@@ -64,7 +64,7 @@ Applicazione desktop per macOS (Apple Silicon, macOS 26.0+) per la gestione, ind
 
 ---
 
-## 1. CHE COS’È LIMEN VAULT V5 E PRINCIPI ARCHITETTURALI
+## 1. CHE COS’È LIMEN VAULT v6Mini E PRINCIPI ARCHITETTURALI
 
 Il **Vault** è una cartella locale sul Mac contenente note Markdown, documenti aziendali originali (PDF, Office, scansioni), bozze e indici di sistema crittografici. LIMEN Vault gestisce, indicizza e interroga questa struttura, mantenendo la piena compatibilità con Obsidian per l'editing testuale.
 
@@ -77,11 +77,11 @@ Il **Vault** è una cartella locale sul Mac contenente note Markdown, documenti 
 
 ## 2. PRIMO AVVIO: APRIRE O CREARE UN VAULT
 
-All'avvio di LIMEN Vault V5 compare la schermata di benvenuto:
+All'avvio di LIMEN Vault v6Mini compare la schermata di benvenuto:
 
 ```mermaid
 flowchart TD
-    Start([Avvio LIMEN Vault V5]) --> SelectPath[Seleziona cartella sul Mac]
+    Start([Avvio LIMEN Vault v6Mini]) --> SelectPath[Seleziona cartella sul Mac]
     SelectPath --> Decision{Tipo operazione}
     Decision -->|Cartella esistente| BtnOpen["APRI VAULT ESISTENTE"]
     Decision -->|Cartella vuota / Nuova| BtnCreate["CREA NUOVO VAULT"]
@@ -99,7 +99,7 @@ flowchart TD
 
 ## 3. STRUTTURA DELL’INTERFACCIA E NAVIGAZIONE
 
-L'interfaccia di LIMEN Vault V5 è articolata in due livelli di navigazione:
+L'interfaccia di LIMEN Vault v6Mini è articolata in due livelli di navigazione:
 
 ### A. Menu Laterale Principale (Sinistra):
 - **Chiedi**: Conversazione continua con l'assistente AI e ricerca semantica (icona scintille).
@@ -252,7 +252,7 @@ Permette di revisionare bozze originate dalle risposte dell'assistente prima di 
 
 ```mermaid
 graph TD
-    A[Installazione DMG in Applicazioni] --> B[Avvio LIMEN Vault V5]
+    A[Installazione DMG in Applicazioni] --> B[Avvio LIMEN Vault v6Mini]
     B --> C[Clic su 'APRI VAULT ESISTENTE']
     C --> D[Attesa ricostruzione iniziale indice]
     D --> E[Avanzate → Collegamenti AI & MCP]
