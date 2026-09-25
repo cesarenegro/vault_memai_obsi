@@ -85,6 +85,19 @@ LIMEN Vault è l'applicazione desktop pensata per la gestione e consultazione si
 - Nella barra laterale è presente lo **storico delle conversazioni**: tutte le sessioni di dialogo vengono memorizzate con data, ora, modello utilizzato e primo prompt.
 - Puoi riaprire qualunque conversazione precedente in qualsiasi momento per riesaminare risposte, passaggi e fonti consultate.
 
+### D. Modalità 100% Solo Locale con Ministral 3 8B Instruct (FASE 8 — Offline a Rete Zero)
+LIMEN Vault V5 supporta un'innovativa architettura a **doppio binario**:
+1. **Modalità Ibrida (Predefinita)**:
+   - Ricerca semantica locale ad alta velocità sul Mac con il modello embedding `bge-m3` (~635 MB).
+   - Generazione delle risposte tramite OpenAI (`gpt-4o-mini` o `gpt-4o`). Il modello generativo locale resta scaricato dalla RAM (~350 MB occupati in totale).
+2. **Modalità 100% Solo Locale (Ministral 3 8B Instruct Q5_K_M)**:
+   - Si attiva con un clic sul pulsante **Verde Lime** ("**SOLO LOCALE (Mac)**") posizionato nella testata della chat o sopra la barra di scrittura.
+   - **Zero byte inviati all'esterno, zero chiavi API e funzionamento anche a Wi-Fi disconnesso**.
+   - **Primo utilizzo**: se il modello (~6,06 GB) non è ancora installato, compare una finestra modale con le specifiche del file e il pulsante **"SCARICA MINISTRAL 8B (6,06 GB)"**. Al termine del download da Hugging Face e della verifica crittografica SHA-256, il motore locale è immediatamente operativo.
+   - **Gestione automatica della memoria**: il servizio locale viene avviato su Apple Silicon con accelerazione GPU Metal (~6,2 GB allocati) e viene spento non appena si ritorna alla modalità OpenAI o si esce dall'app, liberando istantaneamente la RAM.
+   - **Badge di garanzia offline**: le risposte composte sul computer riportano in calce il badge:  
+     `Generato sul Mac · Ministral 3 8B Instruct Q5_K_M (Offline)`.
+
 ---
 
 ## 5. Come Segnalare Anomalie o Suggerimenti

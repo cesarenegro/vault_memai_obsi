@@ -317,6 +317,7 @@ fn main() {
     let llama_state = limen_vault::llama::LlamaServerState::default();
     // Avvio in background all'apertura dell'app se il modello locale è installato e il fornitore scelto è Locale
     llama_state.on_app_startup();
+    let llama_llm_state = limen_vault::llama_llm::LlamaLlmServerState::default();
 
     tauri::Builder::default()
         .setup(|app| {
@@ -367,6 +368,7 @@ fn main() {
         .manage(limen_vault::mcp::McpState::default())
         .manage(limen_vault::tunnel::TunnelState::default())
         .manage(llama_state)
+        .manage(llama_llm_state)
         .manage(std::sync::Arc::new(limen_vault::automation::AutomationScheduler::default()))
         .invoke_handler(tauri::generate_handler![automation_status,automation_configure,automation_run,automation_retry,automation_choose_files,automation_import_files,sync_revoke_publication,sync_select_notes,sync_list_releases,sync_get_status,sync_save_config,sync_save_key,sync_disconnect,sync_test_connection,sync_plan_transfer,sync_execute_transfer,sync_cancel_transfer,
             get_default_vault_path,
@@ -393,11 +395,12 @@ fn main() {
             embeddings_get_status,embeddings_sync_vault,search_vault_hybrid,
             embeddings_get_provider,embeddings_set_provider,
             local_model_status,local_model_download,local_model_select_file,local_model_pick_and_install,local_model_verify_integrity,select_vault_folder,
-            local_server_start,local_server_stop,local_server_status,embeddings_cancel_sync
+            local_server_start,local_server_stop,local_server_status,embeddings_cancel_sync,
+            local_llm_status,local_llm_download,local_llm_verify_integrity,local_llm_server_start,local_llm_server_stop,local_llm_server_status
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app,event| { if matches!(event,tauri::RunEvent::ExitRequested{..}|tauri::RunEvent::Exit) {let _=app.state::<limen_vault::tunnel::TunnelState>().stop();let _=app.state::<limen_vault::llama::LlamaServerState>().stop();} });
+        .run(|app,event| { if matches!(event,tauri::RunEvent::ExitRequested{..}|tauri::RunEvent::Exit) {let _=app.state::<limen_vault::tunnel::TunnelState>().stop();let _=app.state::<limen_vault::llama::LlamaServerState>().stop();let _=app.state::<limen_vault::llama_llm::LlamaLlmServerState>().stop();} });
 }
 
 #[cfg(test)]
@@ -638,16 +641,29 @@ async fn ai_ask_stream(
     ticket: String,
     ui_elapsed_ms: Option<u64>,
     state: tauri::State<'_, std::sync::Arc<limen_vault::ai::AiState>>,
+    llm_state: tauri::State<'_, limen_vault::llama_llm::LlamaLlmServerState>,
 ) -> Result<serde_json::Value, String> {
     let state = state.inner().clone();
     let ticket_clone = ticket.clone();
+    let llm = llm_state.inner().clone();
     limen_vault::ai::execute_guarded_ask_stream_worker(state, ticket, move |pending, cancel| async move {
-        let key = tauri::async_runtime::spawn_blocking(limen_vault::keychain::load)
-            .await
-            .map_err(|_| "Keychain worker failed".to_string())
-            .and_then(|r| r)
-            .and_then(|k| k.ok_or("Configure API key in Settings".into()))?;
-        limen_vault::ai::ask_stream(Some(window), ticket_clone, pending, key, cancel, ui_elapsed_ms).await
+        let is_local = pending.options.mode.as_deref() == Some("local_only")
+            || pending.options.mode.as_deref() == Some("local")
+            || pending.options.model.starts_with("local")
+            || pending.options.model.to_lowercase().contains("ministral");
+
+        let (key, local_port) = if is_local {
+            let port = llm.ensure_running()?;
+            ("".to_string(), Some(port))
+        } else {
+            let k = tauri::async_runtime::spawn_blocking(limen_vault::keychain::load)
+                .await
+                .map_err(|_| "Keychain worker failed".to_string())
+                .and_then(|r| r)
+                .and_then(|k| k.ok_or("Configure API key in Settings".into()))?;
+            (k, None)
+        };
+        limen_vault::ai::ask_stream_with_target(Some(window), ticket_clone, pending, key, cancel, ui_elapsed_ms, local_port).await
     }).await
 }
 #[tauri::command]
@@ -1026,6 +1042,68 @@ async fn local_server_status(
 async fn embeddings_cancel_sync() -> Result<(), String> {
     limen_vault::embeddings::cancel_sync();
     Ok(())
+}
+
+#[tauri::command]
+async fn local_llm_status() -> Result<limen_vault::llama_llm::LocalLlmReport, String> {
+    tauri::async_runtime::spawn_blocking(limen_vault::llama_llm::local_llm_status)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn local_llm_download(
+    app: tauri::AppHandle,
+) -> Result<limen_vault::llama_llm::LocalLlmReport, String> {
+    let app_handle = app.clone();
+    limen_vault::llama_llm::download_ministral_with_progress(move |downloaded, total, percent| {
+        use tauri::Emitter;
+        let _ = app_handle.emit(
+            "local_llm_download_progress",
+            serde_json::json!({
+                "downloaded": downloaded,
+                "total": total,
+                "percent": percent,
+            }),
+        );
+    })
+    .await
+}
+
+#[tauri::command]
+async fn local_llm_verify_integrity() -> Result<limen_vault::llama_llm::LocalLlmReport, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        limen_vault::llama_llm::local_llm_status_with_recheck(true)
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn local_llm_server_start(
+    state: tauri::State<'_, limen_vault::llama_llm::LlamaLlmServerState>,
+) -> Result<limen_vault::llama_llm::LocalLlmServerReport, String> {
+    let state = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || state.start())
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn local_llm_server_stop(
+    state: tauri::State<'_, limen_vault::llama_llm::LlamaLlmServerState>,
+) -> Result<limen_vault::llama_llm::LocalLlmServerReport, String> {
+    let state = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || state.stop())
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn local_llm_server_status(
+    state: tauri::State<'_, limen_vault::llama_llm::LlamaLlmServerState>,
+) -> Result<limen_vault::llama_llm::LocalLlmServerReport, String> {
+    Ok(state.status())
 }
 
 #[tauri::command]

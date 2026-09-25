@@ -19,6 +19,7 @@ export interface AiOptions {
   parentEntryId?: string;
   previousTurns?: ConversationTurn[];
   previousQuestion?: string;
+  mode?: 'hybrid' | 'local_only';
 }
 export interface AiSource {documentId:string;relativePath:string;title:string;category:string;status?:string;sha256:string;content:string;locator?:string;passageId?:string;revision?:number;passageHashes?:[string,string][]}
 export interface AiPreview {
@@ -104,6 +105,7 @@ export interface LocalServerReport {
   healthy: boolean;
   lastError: string | null;
   starting?: boolean;
+  pid?: number;
 }
 
 export interface LocalModelProgress {
@@ -135,6 +137,21 @@ let mockServer: LocalServerReport = {
   running: true,
   port: 57471,
   model: 'bge-m3-Q8_0.gguf',
+  healthy: true,
+  lastError: null,
+};
+
+let mockLlmModel: LocalModelReport = {
+  installed: true,
+  path: '/Users/cesare/Library/Application Support/LIMEN Vault/models/Ministral-3-8B-Instruct-2512-Q5_K_M.gguf',
+  bytes: 6059268512,
+  sha256Ok: true,
+};
+
+let mockLlmServer: LocalServerReport = {
+  running: true,
+  port: 58921,
+  model: 'Ministral-3-8B-Instruct-2512-Q5_K_M.gguf',
   healthy: true,
   lastError: null,
 };
@@ -171,6 +188,16 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
       mockServer = { running: false, port: 0, model: 'bge-m3-Q8_0.gguf', healthy: false, lastError: null };
       mockProvider.endpoint = '';
       return mockServer as unknown as T;
+    }
+    if (command === 'local_llm_status' || command === 'local_llm_verify_integrity') return mockLlmModel as unknown as T;
+    if (command === 'local_llm_server_status') return mockLlmServer as unknown as T;
+    if (command === 'local_llm_server_start') {
+      mockLlmServer = { running: true, port: 58921, model: 'Ministral-3-8B-Instruct-2512-Q5_K_M.gguf', healthy: true, lastError: null };
+      return mockLlmServer as unknown as T;
+    }
+    if (command === 'local_llm_server_stop') {
+      mockLlmServer = { running: false, port: 0, model: 'Ministral-3-8B-Instruct-2512-Q5_K_M.gguf', healthy: false, lastError: null };
+      return mockLlmServer as unknown as T;
     }
     if (command === 'embeddings_sync_vault') {
       return { total_passages: 9458, cached_passages: 9458, missing_passages: 0, coverage: 1.0, is_available: true } as unknown as T;
@@ -276,4 +303,12 @@ export const aiIpc = {
   embeddingsCancelSync: () => call<void>('embeddings_cancel_sync'),
   embeddingsSyncVault: (vaultPath: string, apiKey?: string, model?: string) =>
     call<any>('embeddings_sync_vault', { vaultPath, apiKey: apiKey ?? null, model: model ?? null }),
+
+  // Local Generative LLM (Ministral 3 8B Instruct Q5_K_M) IPC methods (FASE 8)
+  localLlmStatus: () => call<LocalModelReport>('local_llm_status'),
+  localLlmDownload: () => call<LocalModelReport>('local_llm_download'),
+  localLlmVerifyIntegrity: () => call<LocalModelReport>('local_llm_verify_integrity'),
+  localLlmServerStart: () => call<LocalServerReport>('local_llm_server_start'),
+  localLlmServerStop: () => call<LocalServerReport>('local_llm_server_stop'),
+  localLlmServerStatus: () => call<LocalServerReport>('local_llm_server_status'),
 };

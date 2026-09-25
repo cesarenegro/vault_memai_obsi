@@ -1,4 +1,20 @@
-# TASK LIST — LIMEN Vault: memoria aziendale automatica, consegna unica per AG
+# TASK LIST — LIMEN Vault: guida utente V5 e stato del progetto
+
+
+## Guida utente V5 A4 orizzontale — 25 settembre 2026
+
+Stato corrente: completato e verificato in locale; non pubblicato su Google Drive. Guida di 42 pagine A4 orizzontali con 37 schede e 37 diagrammi Mermaid. Consegna: PDF, Word modificabile e sorgenti Mermaid in `output/guida_utente/`.
+
+- [x] Letti i cinque file indicati; recuperato il modello CRM originale da Google Drive.
+- [x] Verificati formato, carattere Inter, colori e struttura a schede del riferimento.
+- [x] Riscontrati menu principali e comandi di ricerca nell’app nativa aperta.
+- [x] Completati testi semplici e 37 diagrammi Mermaid, incluse diramazioni per scelte e interruzioni.
+- [x] Generati Word e PDF A4 orizzontali: 42 pagine, Inter incorporato nel PDF, indice verificato; controllo visivo e geometrico senza overlap o testo fuori pagina. Stili, tema, numerazione e geometria del riferimento conservati.
+- [x] File locali pronti; indice `MANUALE UTENTE.MD` e dipendenze aggiornati.
+
+Verifiche e limiti: `output/guida_utente/FONTI_E_VERIFICHE.md`. Il comando di automazione delle vecchie guide non è esposto nella UI corrente e non è presentato come azione disponibile. Configurazione dei client esterni fuori dalle procedure LIMEN; nessuna operazione di pubblicazione o sui dati del Vault eseguita. Nessun residuo per la consegna documentale locale; nessun gate applicativo pregresso chiuso da questa attività.
+
+## Stato applicativo preesistente
 
 Aggiornamento: 19 settembre 2026. **Stato corrente: app/DMG consegnati da AG; accettazione funzionale riaperta dopo audit.** Notarizzazione dell’app consegnata verificata, ma gate A01…A16 ridefiniti nel report e difetti ancora presenti nel checkout. Rapporto: [audit AG](IMPLEMENTATION/2026-09-19_AUDIT_REPORT_AG.md). Le checkbox pregresse non oggetto di questo audit restano dichiarazioni AG, non nuove verifiche indipendenti.
 

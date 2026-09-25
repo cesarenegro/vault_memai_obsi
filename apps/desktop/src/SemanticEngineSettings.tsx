@@ -67,6 +67,15 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
     typeof localStorage !== 'undefined' ? localStorage.getItem('limen_openai_model') || 'gpt-4o-mini' : 'gpt-4o-mini'
   );
 
+  // Modello generativo locale Ministral 3 8B (FASE 8)
+  const [llmModelReport, setLlmModelReport] = useState<LocalModelReport | null>(null);
+  const [llmServerReport, setLlmServerReport] = useState<LocalServerReport | null>(null);
+  const [llmDownloading, setLlmDownloading] = useState<boolean>(false);
+  const [llmDownloadProgress, setLlmDownloadProgress] = useState<LocalModelProgress | null>(null);
+  const [llmStartingServer, setLlmStartingServer] = useState<boolean>(false);
+  const [llmStoppingServer, setLlmStoppingServer] = useState<boolean>(false);
+  const [llmVerifyingIntegrity, setLlmVerifyingIntegrity] = useState<boolean>(false);
+
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -76,17 +85,21 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
     if (!vaultPath) return;
     setRefreshing(true);
     try {
-      const [prov, model, srv, consent] = await Promise.all([
+      const [prov, model, srv, consent, llmModel, llmSrv] = await Promise.all([
         aiIpc.embeddingsGetProvider(vaultPath),
         aiIpc.localModelStatus(),
         aiIpc.localServerStatus(),
         aiIpc.getConsent(vaultPath).catch(() => false),
+        aiIpc.localLlmStatus().catch(() => null),
+        aiIpc.localLlmServerStatus().catch(() => null),
       ]);
       if (isMounted.current) {
         setProviderReport(prov);
         setModelReport(model);
         setServerReport(srv);
         setOpenaiConsent(consent);
+        if (llmModel) setLlmModelReport(llmModel);
+        if (llmSrv) setLlmServerReport(llmSrv);
         setOptimisticProvider(null);
       }
     } catch (err) {
@@ -123,6 +136,7 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
     void refreshAll();
 
     let unlistenDownload: (() => void) | undefined;
+    let unlistenLlmDownload: (() => void) | undefined;
     let unlistenSync: (() => void) | undefined;
 
     void listen<LocalModelProgress>('local_model_download_progress', (e) => {
@@ -134,6 +148,16 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
     }).catch((err) => {
       // Errore visibile: un listener negato dai permessi Tauri lascerebbe l'avanzamento fermo senza spiegazione.
       console.error('[LIMEN] listen non registrato:', err);
+    });
+
+    void listen<LocalModelProgress>('local_llm_download_progress', (e) => {
+      if (isMounted.current) {
+        setLlmDownloadProgress(e.payload);
+      }
+    }).then((unlisten) => {
+      unlistenLlmDownload = unlisten;
+    }).catch((err) => {
+      console.error('[LIMEN] listen local_llm_download_progress non registrato:', err);
     });
 
     void listen<{ percent: number; processed: number; total: number }>('embeddings_sync_progress', (e) => {
@@ -156,9 +180,79 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
     return () => {
       isMounted.current = false;
       if (unlistenDownload) unlistenDownload();
+      if (unlistenLlmDownload) unlistenLlmDownload();
       if (unlistenSync) unlistenSync();
     };
   }, [vaultPath]);
+
+  const handleLlmDownload = async () => {
+    setLlmDownloading(true);
+    setLlmDownloadProgress({ downloaded: 0, total: 6059268512, percent: 0 });
+    setError(null);
+    try {
+      const rep = await aiIpc.localLlmDownload();
+      if (isMounted.current) {
+        setLlmModelReport(rep);
+        setSuccessMessage('Modello Ministral 3 8B scaricato e verificato con successo.');
+      }
+    } catch (err) {
+      if (isMounted.current) setError(`Download di Ministral fallito: ${String(err)}`);
+    } finally {
+      if (isMounted.current) setLlmDownloading(false);
+    }
+  };
+
+  const handleLlmVerifyIntegrity = async () => {
+    setLlmVerifyingIntegrity(true);
+    setError(null);
+    try {
+      const rep = await aiIpc.localLlmVerifyIntegrity();
+      if (isMounted.current) {
+        setLlmModelReport(rep);
+        if (rep.sha256Ok) {
+          setSuccessMessage('Integrità crittografica SHA-256 di Ministral 3 8B verificata con successo.');
+        } else {
+          setError('Checksum SHA-256 non corrispondente per il modello Ministral.');
+        }
+      }
+    } catch (err) {
+      if (isMounted.current) setError(`Verifica integrità fallita: ${String(err)}`);
+    } finally {
+      if (isMounted.current) setLlmVerifyingIntegrity(false);
+    }
+  };
+
+  const handleLlmStartServer = async () => {
+    setLlmStartingServer(true);
+    setError(null);
+    try {
+      const srv = await aiIpc.localLlmServerStart();
+      if (isMounted.current) {
+        setLlmServerReport(srv);
+        setSuccessMessage(`Servizio locale Ministral 3 8B avviato (porta ${srv.port}).`);
+      }
+    } catch (err) {
+      if (isMounted.current) setError(`Avvio servizio Ministral fallito: ${String(err)}`);
+    } finally {
+      if (isMounted.current) setLlmStartingServer(false);
+    }
+  };
+
+  const handleLlmStopServer = async () => {
+    setLlmStoppingServer(true);
+    setError(null);
+    try {
+      const srv = await aiIpc.localLlmServerStop();
+      if (isMounted.current) {
+        setLlmServerReport(srv);
+        setSuccessMessage('Servizio locale Ministral 3 8B arrestato. Memoria Metal liberata.');
+      }
+    } catch (err) {
+      if (isMounted.current) setError(`Arresto servizio Ministral fallito: ${String(err)}`);
+    } finally {
+      if (isMounted.current) setLlmStoppingServer(false);
+    }
+  };
 
   useEffect(() => {
     if (!serverReport?.starting) return;
@@ -824,6 +918,174 @@ export function SemanticEngineSettings({ vaultPath }: { vaultPath: string }) {
             <option value="o3-mini">o3-mini (ragionamento avanzato)</option>
             <option value="o1-mini">o1-mini</option>
           </select>
+        </div>
+      </div>
+
+      {/* SEZIONE 4: MODELLO GENERATIVO LOCALE (MINISTRAL 3 8B INSTRUCT) */}
+      <div
+        className="limen-card"
+        style={{
+          border: '1px solid #cbd5e1',
+          borderRadius: 8,
+          padding: 16,
+          backgroundColor: '#ffffff',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 14,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{
+                display: 'inline-block',
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                backgroundColor: 'var(--limen-lime)',
+                boxShadow: '0 0 8px rgba(119, 241, 23, 0.8)',
+              }}
+            />
+            <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+              Modello Generativo Locale — Ministral 3 8B Instruct (100% Offline)
+            </h4>
+          </div>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 12,
+              fontSize: 11,
+              fontWeight: 700,
+              backgroundColor: llmModelReport?.installed && llmModelReport?.sha256Ok ? '#dcfce7' : '#fee2e2',
+              color: llmModelReport?.installed && llmModelReport?.sha256Ok ? '#166534' : '#991b1b',
+            }}
+          >
+            {llmModelReport?.installed && llmModelReport?.sha256Ok ? 'INSTALLATO (SHA-256 OK)' : 'NON INSTALLATO'}
+          </span>
+        </div>
+
+        <p style={{ margin: 0, fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
+          Consente la generazione di risposte interamente sul Mac a rete zero tramite Mistral AI <strong>Ministral 3 8B Instruct</strong> (quantizzazione ad alta fedeltà <code>Q5_K_M</code>). Nessun byte lascia il computer e nessuna chiave API è richiesta.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, fontSize: 12 }}>
+          <div style={{ padding: 10, backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+            <span style={{ color: '#64748b', display: 'block', marginBottom: 2 }}>File Modello GGUF</span>
+            <span style={{ fontWeight: 600, color: '#0f172a', fontFamily: 'monospace' }}>Ministral-3-8B-Instruct-2512-Q5_K_M.gguf</span>
+          </div>
+          <div style={{ padding: 10, backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+            <span style={{ color: '#64748b', display: 'block', marginBottom: 2 }}>Dimensione su disco</span>
+            <span style={{ fontWeight: 600, color: '#0f172a' }}>
+              {llmModelReport?.installed ? `${formatBytes(llmModelReport.bytes)} (~6,06 GB)` : '~6,06 GB (non presente)'}
+            </span>
+          </div>
+          <div style={{ padding: 10, backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+            <span style={{ color: '#64748b', display: 'block', marginBottom: 2 }}>Stato Servizio LLM</span>
+            <span style={{ fontWeight: 700, color: llmServerReport?.running && llmServerReport?.healthy ? '#16a34a' : llmStartingServer ? '#d97706' : '#64748b' }}>
+              {llmServerReport?.running && llmServerReport?.healthy
+                ? `ATTIVO (Porta: ${llmServerReport.port}${llmServerReport.pid ? `, PID: ${llmServerReport.pid}` : ''})`
+                : llmStartingServer
+                ? 'IN AVVIO...'
+                : 'INATTIVO'}
+            </span>
+          </div>
+          <div style={{ padding: 10, backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+            <span style={{ color: '#64748b', display: 'block', marginBottom: 2 }}>Allocazione Memoria Metal</span>
+            <span style={{ fontWeight: 600, color: '#0f172a' }}>
+              {llmServerReport?.running && llmServerReport?.healthy ? '~6,2 GB (GPU Metal allocata)' : '0 MB (rilasciata)'}
+            </span>
+          </div>
+        </div>
+
+        {/* Download Progress */}
+        {llmDownloading && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 10, backgroundColor: '#f0fdf4', borderRadius: 6, border: '1px solid #bbf7d0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: '#166534' }}>
+              <span>Scaricamento Ministral 8B da Hugging Face in corso…</span>
+              <span>{llmDownloadProgress ? `${llmDownloadProgress.percent.toFixed(1)}%` : '0%'}</span>
+            </div>
+            <div style={{ width: '100%', height: 8, backgroundColor: '#dcfce7', borderRadius: 4, overflow: 'hidden' }}>
+              <div
+                style={{
+                  height: '100%',
+                  width: `${llmDownloadProgress?.percent || 0}%`,
+                  backgroundColor: 'var(--limen-lime)',
+                  transition: 'width 0.25s ease',
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#15803d' }}>
+              <span>Verifica SHA-256 automatica al termine</span>
+              <span>
+                {llmDownloadProgress
+                  ? `${((llmDownloadProgress.downloaded) / (1024 * 1024 * 1024)).toFixed(2)} GB / ${((llmDownloadProgress.total) / (1024 * 1024 * 1024)).toFixed(2)} GB`
+                  : '~6,06 GB'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Pulsanti di azione */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {!llmModelReport?.installed && (
+            <button
+              onClick={handleLlmDownload}
+              disabled={llmDownloading}
+              style={{
+                ...buttonPrimary,
+                backgroundColor: 'var(--limen-lime)',
+                color: '#0f172a',
+                border: '1px solid #52c41a',
+                fontWeight: 700,
+                opacity: llmDownloading ? 0.6 : 1,
+              }}
+            >
+              {llmDownloading ? 'Scaricamento in corso…' : 'Scarica Ministral 3 8B (~6,06 GB)'}
+            </button>
+          )}
+
+          {llmModelReport?.installed && (
+            <button
+              onClick={handleLlmVerifyIntegrity}
+              disabled={llmVerifyingIntegrity}
+              style={{
+                ...buttonSecondary,
+                opacity: llmVerifyingIntegrity ? 0.6 : 1,
+              }}
+            >
+              {llmVerifyingIntegrity ? 'Verifica in corso…' : 'Verifica integrità SHA-256'}
+            </button>
+          )}
+
+          {llmModelReport?.installed && llmModelReport?.sha256Ok && (
+            <>
+              {llmServerReport?.running && llmServerReport?.healthy ? (
+                <button
+                  onClick={handleLlmStopServer}
+                  disabled={llmStoppingServer}
+                  style={{
+                    ...buttonSecondary,
+                    color: '#991b1b',
+                    borderColor: '#fca5a5',
+                    opacity: llmStoppingServer ? 0.6 : 1,
+                  }}
+                >
+                  {llmStoppingServer ? 'Arresto…' : 'Arresta servizio (libera RAM)'}
+                </button>
+              ) : (
+                <button
+                  onClick={handleLlmStartServer}
+                  disabled={llmStartingServer}
+                  style={{
+                    ...buttonPrimary,
+                    opacity: llmStartingServer ? 0.6 : 1,
+                  }}
+                >
+                  {llmStartingServer ? 'Avvio in corso…' : 'Avvia motore locale Ministral'}
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
 

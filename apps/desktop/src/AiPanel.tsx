@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { aiIpc, type AiAnswer, type AiPreview, type AiSource, type AiStreamChunkPayload, type AiStreamEndPayload } from './ai-ipc';
+import { aiIpc, type AiAnswer, type AiPreview, type AiSource, type AiStreamChunkPayload, type AiStreamEndPayload, type LocalModelReport, type LocalServerReport } from './ai-ipc';
 import type { CitationOpenRequest } from './vault-ipc';
 import { labelIt, MessageIt } from './locale';
 import { SemanticEngineSettings } from './SemanticEngineSettings';
@@ -95,6 +95,72 @@ export function AiPanel({
   const [previewData, setPreviewData] = useState<AiPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [techError, setTechError] = useState<string | null>(null);
+
+  // Modalità 100% Solo Locale con Ministral 3 8B Instruct (FASE 8)
+  const [isLocalMode, setIsLocalMode] = useState<boolean>(() => {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem('limen_ai_mode') === 'local_only' : false;
+  });
+  const [localLlmReport, setLocalLlmReport] = useState<LocalModelReport | null>(null);
+  const [localLlmServer, setLocalLlmServer] = useState<LocalServerReport | null>(null);
+  const [showLlmDownloadModal, setShowLlmDownloadModal] = useState<boolean>(false);
+  const [isLlmDownloading, setIsLlmDownloading] = useState<boolean>(false);
+  const [llmDownloadProgress, setLlmDownloadProgress] = useState<{ downloaded: number; total: number; percent: number } | null>(null);
+
+  // Monitoraggio periodico stato modello e server LLM locale Ministral
+  useEffect(() => {
+    let live = true;
+    const checkLlm = () => {
+      aiIpc.localLlmStatus().then(r => { if (live) setLocalLlmReport(r); }).catch(() => {});
+      aiIpc.localLlmServerStatus().then(s => { if (live) setLocalLlmServer(s); }).catch(() => {});
+    };
+    checkLlm();
+    const iv = setInterval(checkLlm, 6000);
+    return () => { live = false; clearInterval(iv); };
+  }, []);
+
+  // Ascolto avanzamento download modello Ministral
+  useEffect(() => {
+    let unlisten: UnlistenFn | null = null;
+    listen<{ downloaded: number; total: number; percent: number }>('local_llm_download_progress', event => {
+      setLlmDownloadProgress(event.payload);
+    }).then(u => { unlisten = u; }).catch(() => {});
+    return () => { if (unlisten) unlisten(); };
+  }, []);
+
+  const handleToggleLocalMode = async () => {
+    if (!isLocalMode) {
+      const rep = await aiIpc.localLlmStatus().catch(() => null);
+      if (rep) setLocalLlmReport(rep);
+      if (!rep?.installed || !rep?.sha256Ok) {
+        setShowLlmDownloadModal(true);
+        return;
+      }
+      setIsLocalMode(true);
+      localStorage.setItem('limen_ai_mode', 'local_only');
+      void aiIpc.localLlmServerStart().catch(() => {});
+    } else {
+      setIsLocalMode(false);
+      localStorage.setItem('limen_ai_mode', 'hybrid');
+      void aiIpc.localLlmServerStop().catch(() => {});
+    }
+  };
+
+  const handleStartLlmDownload = async () => {
+    setIsLlmDownloading(true);
+    setLlmDownloadProgress({ downloaded: 0, total: 6059268512, percent: 0 });
+    try {
+      const rep = await aiIpc.localLlmDownload();
+      setLocalLlmReport(rep);
+      setIsLlmDownloading(false);
+      setShowLlmDownloadModal(false);
+      setIsLocalMode(true);
+      localStorage.setItem('limen_ai_mode', 'local_only');
+      void aiIpc.localLlmServerStart().catch(() => {});
+    } catch (e: any) {
+      setIsLlmDownloading(false);
+      setError(`Download del modello locale fallito: ${e?.message || String(e)}`);
+    }
+  };
 
   const isArchived = Boolean(archivedConversation);
   const effectiveTurns = archivedConversation ? archivedConversation.turns : turns;
@@ -249,17 +315,21 @@ export function AiPanel({
       unlistenEndRef.current = null;
     }
 
-    // Check consent before running
-    const hasConsent = await aiIpc.getConsent(vaultPath).catch(() => false);
-    setConsentGranted(hasConsent);
+    // Check consent before running (necessario solo per OpenAI; la modalità Solo Locale non invia dati all'esterno)
+    if (!isLocalMode) {
+      const hasConsent = await aiIpc.getConsent(vaultPath).catch(() => false);
+      setConsentGranted(hasConsent);
 
-    if (!hasConsent) {
-      isRunningRef.current = false;
-      return;
+      if (!hasConsent) {
+        isRunningRef.current = false;
+        return;
+      }
     }
 
     setLoadingStep('Selezione passaggi pertinenti dal Vault…');
     const t0 = Date.now();
+    const answerModel = isLocalMode ? 'Ministral 3 8B Instruct Q5_K_M' : currentModel;
+    const answerProvider = isLocalMode ? 'Ministral (Locale Mac)' : 'OpenAI';
 
     // Contesto al modello: per ogni domanda di seguito si inviano, oltre alle fonti,
     // le ultime 3 coppie domanda-risposta della stessa conversazione come testo nella richiesta.
@@ -275,7 +345,8 @@ export function AiPanel({
       // Step 1: Preview / Select sources automaticamente
       const preview = await aiIpc.preview(vaultPath, {
         prompt: queryText,
-        model: currentModel,
+        model: isLocalMode ? 'Ministral 3 8B Instruct (Locale)' : currentModel,
+        mode: isLocalMode ? 'local_only' : 'hybrid',
         includeDrafts: drafts,
         sourceIds: [],
         conversationId: conversationId || undefined,
@@ -294,7 +365,7 @@ export function AiPanel({
         return;
       }
 
-      setLoadingStep('Avvio generazione in streaming con OpenAI…');
+      setLoadingStep(isLocalMode ? 'Generazione sul Mac con Ministral 3 8B…' : 'Avvio generazione in streaming con OpenAI…');
       setIsStreaming(true);
 
       // Step 2: Registra i listener Tauri per gli eventi di streaming
@@ -316,8 +387,8 @@ export function AiPanel({
             if (event.payload.cancelled && (event.payload.error?.includes('Un documento è cambiato') || event.payload.status === 'error')) {
               const errAns: AiAnswer = {
                 answer: event.payload.answer || 'Un documento è cambiato durante la generazione: la risposta è stata annullata, riprova',
-                provider: 'OpenAI',
-                model: currentModel,
+                provider: answerProvider,
+                model: answerModel,
                 citations: [],
                 status: 'error',
                 warning: event.payload.answer,
@@ -338,8 +409,8 @@ export function AiPanel({
             } else if (event.payload.incomplete || event.payload.cancelled) {
               const incAns: AiAnswer = {
                 answer: event.payload.answer,
-                provider: 'OpenAI',
-                model: currentModel,
+                provider: answerProvider,
+                model: answerModel,
                 citations: [],
                 incomplete: true,
                 incompleteReason: event.payload.incompleteReason || 'La generazione della risposta è stata interrotta.',
@@ -375,6 +446,10 @@ export function AiPanel({
 
       if (currentSeq !== seq.current) return;
       res.uiTotalMs = Math.round(Date.now() - t0);
+      if (isLocalMode) {
+        res.model = answerModel;
+        res.provider = answerProvider;
+      }
       setIsStreaming(false);
       setStreamingText('');
       setLoadingStep(null);
@@ -488,33 +563,80 @@ export function AiPanel({
               Conversazione archiviata
             </span>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label htmlFor="ai-model-select" style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
-                Modello:
-              </label>
-              <select
-                id="ai-model-select"
-                aria-label="Seleziona modello AI"
-                value={model}
-                onChange={e => void handleModelChange(e.target.value)}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {/* Toggle Verde Lime: SOLO LOCALE (Ministral 8B) vs IBRIDO (OpenAI) */}
+              <button
+                type="button"
+                onClick={handleToggleLocalMode}
                 style={{
-                  padding: '4px 8px',
-                  borderRadius: 6,
-                  border: '1px solid #cbd5e1',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '5px 12px',
+                  borderRadius: 20,
                   fontSize: 12,
-                  backgroundColor: '#ffffff',
-                  color: '#0f172a',
-                  outline: 'none',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  backgroundColor: isLocalMode ? 'var(--limen-lime)' : '#f8fafc',
+                  color: isLocalMode ? '#0f172a' : '#475569',
+                  border: isLocalMode ? '1px solid #52c41a' : '1px solid #cbd5e1',
+                  boxShadow: isLocalMode ? '0 0 10px rgba(119, 241, 23, 0.45)' : 'none',
                 }}
+                title={isLocalMode ? 'Modalità 100% Locale attiva (Ministral 8B + bge-m3). Clicca per passare a Ibrido (OpenAI).' : 'Passa alla modalità 100% Solo Locale (Ministral 8B su Mac a rete zero).'}
               >
-                {!model && <option value="">-- Seleziona --</option>}
-                {availableModels.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-                {model && !availableModels.includes(model) && (
-                  <option key={model} value={model}>{model}</option>
-                )}
-              </select>
+                <Sparkles size={13} color={isLocalMode ? '#0f172a' : '#64748b'} />
+                <span>{isLocalMode ? 'SOLO LOCALE (Mac)' : 'SOLO LOCALE'}</span>
+              </button>
+
+              {isLocalMode ? (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '3px 10px',
+                    borderRadius: 6,
+                    backgroundColor: 'rgba(119, 241, 23, 0.15)',
+                    border: '1px solid rgba(119, 241, 23, 0.5)',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: '#0f172a',
+                  }}
+                  title="Generazione testuale su Apple Silicon Metal GPU a rete zero"
+                >
+                  Ministral 3 8B Instruct (Offline)
+                </span>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <label htmlFor="ai-model-select" style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
+                    Modello:
+                  </label>
+                  <select
+                    id="ai-model-select"
+                    aria-label="Seleziona modello AI"
+                    value={model}
+                    onChange={e => void handleModelChange(e.target.value)}
+                    style={{
+                      padding: '4px 8px',
+                      borderRadius: 6,
+                      border: '1px solid #cbd5e1',
+                      fontSize: 12,
+                      backgroundColor: '#ffffff',
+                      color: '#0f172a',
+                      outline: 'none',
+                    }}
+                  >
+                    {!model && <option value="">-- Seleziona --</option>}
+                    {availableModels.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                    {model && !availableModels.includes(model) && (
+                      <option key={model} value={model}>{model}</option>
+                    )}
+                  </select>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -767,9 +889,29 @@ export function AiPanel({
                       )}
                     </div>
 
-                    <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>
-                      OpenAI · {turn.answer.model}
-                    </span>
+                    {turn.answer.provider === 'Ministral (Locale Mac)' || turn.answer.model?.toLowerCase().includes('ministral') ? (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          backgroundColor: 'var(--limen-lime-30)',
+                          color: '#0f172a',
+                          fontWeight: 600,
+                          padding: '2px 8px',
+                          borderRadius: 12,
+                          border: '1px solid var(--limen-lime)',
+                        }}
+                      >
+                        <Sparkles size={11} color="#0f172a" />
+                        Generato sul Mac · Ministral 3 8B Instruct Q5_K_M (Offline)
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>
+                        OpenAI · {turn.answer.model}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -978,11 +1120,48 @@ export function AiPanel({
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Indicatore visivo modalità sopra la barra di scrittura */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: isLocalMode ? 'var(--limen-lime)' : '#3b82f6',
+                    boxShadow: isLocalMode ? '0 0 6px rgba(119, 241, 23, 0.8)' : 'none',
+                  }}
+                />
+                <span style={{ fontSize: 11, fontWeight: 600, color: isLocalMode ? '#1e293b' : '#64748b' }}>
+                  {isLocalMode
+                    ? '100% Solo Locale: Ministral 3 8B Instruct · Rete zero & Riservatezza assoluta sul Mac'
+                    : `Modalità Ibrida: Ricerca semantica bge-m3 sul Mac + OpenAI (${model})`}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleLocalMode}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: isLocalMode ? '#15803d' : '#2563eb',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                {isLocalMode ? 'Passa a Ibrido (OpenAI)' : 'Passa a Solo Locale (Ministral 8B)'}
+              </button>
+            </div>
+
             <div style={{ position: 'relative' }}>
               <textarea
                 aria-label="Domanda al Vault"
                 placeholder={
-                  !model
+                  !isLocalMode && !model
                     ? 'Seleziona prima un modello per fare una domanda...'
                     : effectiveTurns.length === 0
                     ? 'Es. Cosa è il progetto BNXT e quali requisiti prevede?'
@@ -994,7 +1173,7 @@ export function AiPanel({
                 onKeyDown={e => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    if (!isBusy && prompt.trim() && model) void executeAsk(prompt.trim());
+                    if (!isBusy && prompt.trim() && (isLocalMode || model)) void executeAsk(prompt.trim());
                   }
                 }}
                 style={{
@@ -1014,11 +1193,11 @@ export function AiPanel({
                   right: 10,
                   bottom: 14,
                   padding: '8px 16px',
-                  opacity: (!model || !prompt.trim() || isBusy) ? 0.6 : 1,
+                  opacity: ((!isLocalMode && !model) || !prompt.trim() || isBusy) ? 0.6 : 1,
                 }}
-                disabled={isBusy || !prompt.trim() || !model}
-                onClick={() => !isBusy && prompt.trim() && model && void executeAsk(prompt.trim())}
-                title={!model ? "Seleziona un modello per abilitare l'invio" : isBusy ? "Generazione in corso..." : undefined}
+                disabled={isBusy || !prompt.trim() || (!isLocalMode && !model)}
+                onClick={() => !isBusy && prompt.trim() && (isLocalMode || model) && void executeAsk(prompt.trim())}
+                title={(!isLocalMode && !model) ? "Seleziona un modello per abilitare l'invio" : isBusy ? "Generazione in corso..." : undefined}
               >
                 Chiedi
               </button>
@@ -1038,6 +1217,175 @@ export function AiPanel({
           </div>
         )}
       </div>
+
+      {/* Modale Scaricamento Modello Ministral 3 8B Instruct */}
+      {showLlmDownloadModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 20,
+          }}
+        >
+          <div
+            className="limen-card"
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: 12,
+              padding: 24,
+              maxWidth: 520,
+              width: '100%',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  backgroundColor: 'var(--limen-lime-30)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Sparkles size={22} color="#0f172a" />
+              </div>
+              <div>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
+                  Modello Generativo Locale — Ministral 3 8B Instruct
+                </h3>
+                <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>
+                  Mistral AI · Quantizzazione ufficiale Q5_K_M (Massima fedeltà)
+                </p>
+              </div>
+            </div>
+
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: '#334155' }}>
+              Per utilizzare la modalità <strong>100% Solo Locale</strong> è necessario scaricare il modello generativo sul Mac. La ricerca semantica e la composizione delle risposte avverranno interamente offline, a rete zero e senza chiavi API.
+            </p>
+
+            <div
+              style={{
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: 8,
+                padding: '12px 16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                fontSize: 12,
+                color: '#475569',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontWeight: 600 }}>File modello:</span>
+                <span style={{ fontFamily: 'monospace' }}>Ministral-3-8B-Instruct-2512-Q5_K_M.gguf</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontWeight: 600 }}>Dimensione download:</span>
+                <span>~6,06 GB</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontWeight: 600 }}>Memoria Metal (RAM):</span>
+                <span>~6,2 GB (allocati solo a motore attivo)</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontWeight: 600 }}>Sicurezza:</span>
+                <span>Verifica crittografica SHA-256 automatica</span>
+              </div>
+            </div>
+
+            {isLlmDownloading && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: '#0f172a' }}>
+                  <span>Download e verifica crittografica in corso…</span>
+                  <span>{llmDownloadProgress ? `${llmDownloadProgress.percent.toFixed(1)}%` : '0%'}</span>
+                </div>
+                <div style={{ width: '100%', height: 8, backgroundColor: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${llmDownloadProgress?.percent || 0}%`,
+                      backgroundColor: 'var(--limen-lime)',
+                      transition: 'width 0.25s ease',
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#64748b' }}>
+                  <span>Hugging Face official repository</span>
+                  <span>
+                    {llmDownloadProgress
+                      ? `${((llmDownloadProgress.downloaded) / (1024 * 1024 * 1024)).toFixed(2)} GB / ${((llmDownloadProgress.total) / (1024 * 1024 * 1024)).toFixed(2)} GB`
+                      : '~6,06 GB'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
+              {!isLlmDownloading ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowLlmDownloadModal(false)}
+                    style={{
+                      ...fieldStyle,
+                      cursor: 'pointer',
+                      background: '#ffffff',
+                      color: '#475569',
+                      fontWeight: 600,
+                      width: 'auto',
+                      padding: '8px 16px',
+                    }}
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleStartLlmDownload}
+                    style={{
+                      ...fieldStyle,
+                      cursor: 'pointer',
+                      background: 'var(--limen-lime)',
+                      color: '#0f172a',
+                      fontWeight: 700,
+                      border: '1px solid #52c41a',
+                      width: 'auto',
+                      padding: '8px 18px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      boxShadow: '0 2px 6px rgba(119, 241, 23, 0.4)',
+                    }}
+                  >
+                    <Sparkles size={15} color="#0f172a" />
+                    SCARICA MINISTRAL 8B (6,06 GB)
+                  </button>
+                </>
+              ) : (
+                <span style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic' }}>
+                  Download in corso... Non chiudere l'applicazione.
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

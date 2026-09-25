@@ -42,6 +42,8 @@ pub struct Options {
     pub previous_turns: Vec<ConversationTurn>,
     #[serde(default)]
     pub previous_question: Option<String>,
+    #[serde(default)]
+    pub mode: Option<String>,
 }
 #[derive(Debug,Clone,Serialize,Deserialize)]
 #[serde(rename_all="camelCase")]
@@ -1811,6 +1813,48 @@ Regole fondamentali da seguire con la massima precisione:\n\
     })
 }
 
+pub fn request_body_chat_completions(o: &Options, sources: &[Source]) -> Value {
+    let system_instruction = "Sei l'assistente di intelligenza aziendale integrato in LIMEN Vault.\n\
+Il tuo compito è rispondere alla domanda dell'utente basandoti ESCLUSIVAMENTE sui documenti forniti.\n\
+Regole fondamentali:\n\
+1. Rispondi in italiano fluido e professionale senza inventare informazioni non presenti nelle fonti.\n\
+2. Sintetizza le informazioni da tutte le fonti pertinenti fornite.\n\
+3. Non inserire asterischi ('*') per formattazione, usa elenchi con trattino ('- ').";
+
+    let mut user_text = String::new();
+    user_text.push_str("DOCUMENTI DEL VAULT:\n\n");
+    for (idx, s) in sources.iter().enumerate() {
+        user_text.push_str(&format!(
+            "--- [Fonte {}] {} ({}) ---\n{}\n\n",
+            idx + 1,
+            s.title,
+            s.relative_path,
+            s.content
+        ));
+    }
+
+    if !o.previous_turns.is_empty() {
+        user_text.push_str("CONTESTO CONVERSAZIONE PRECEDENTE:\n");
+        let max_3: Vec<&ConversationTurn> = o.previous_turns.iter().rev().take(3).rev().collect();
+        for (i, t) in max_3.iter().enumerate() {
+            user_text.push_str(&format!("Turno {}:\nDomanda: {}\nRisposta: {}\n\n", i + 1, t.question, t.answer));
+        }
+    }
+
+    user_text.push_str(&format!("DOMANDA DELL'UTENTE:\n{}\n\nRisposta:", o.prompt));
+
+    json!({
+        "model": "Ministral-3-8B-Instruct-2512-Q5_K_M.gguf",
+        "messages": [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": user_text}
+        ],
+        "temperature": 0.2,
+        "max_tokens": 1500,
+        "stream": true
+    })
+}
+
 /// Pulisce la prosa della risposta generata dal modello prima di restituirla alla UI.
 /// Rimuove qualsiasi riferimento a identificativi di fonte come `[S1]`, `[S2]`,
 /// `[S1, S2]`, `[S1, S2, S5]`, `[S1; S2]`, `[S1][S2]`, `(S1)`, ecc.
@@ -2675,15 +2719,29 @@ pub async fn ask_stream(
     cancel: Arc<AtomicBool>,
     ui_elapsed_ms: Option<u64>,
 ) -> Result<Value, String> {
+    ask_stream_with_target(window, ticket, p, key, cancel, ui_elapsed_ms, None).await
+}
+
+pub async fn ask_stream_with_target(
+    window: Option<tauri::Window>,
+    ticket: String,
+    p: Pending,
+    key: String,
+    cancel: Arc<AtomicBool>,
+    ui_elapsed_ms: Option<u64>,
+    local_llm_port: Option<u16>,
+) -> Result<Value, String> {
     use tauri::Emitter;
 
     let t_handoff_ms = p.created_at.elapsed().as_millis() as u64;
     let t_ask_start = Instant::now();
 
-    if !get_openai_consent(&p.path) {
+    if local_llm_port.is_none() && !get_openai_consent(&p.path) {
         return Err("Consenso all'invio dei dati a OpenAI non concesso. Abilitalo nelle Impostazioni.".into());
     }
-    let effective_model = if p.options.model.trim().is_empty() {
+    let effective_model = if local_llm_port.is_some() {
+        "Ministral 3 8B Instruct (Locale)".to_string()
+    } else if p.options.model.trim().is_empty() {
         "gpt-4o".to_string()
     } else {
         p.options.model.clone()
@@ -2780,39 +2838,46 @@ pub async fn ask_stream(
     let t_payload_start = Instant::now();
     let mut mut_options = p.options.clone();
     mut_options.model = effective_model.clone();
-    let mut body = request_body(&mut_options, &p.sources);
-    body["stream"] = json!(true);
+
+    let (endpoint, https_only, body) = if let Some(port) = local_llm_port {
+        let ep = format!("http://127.0.0.1:{}/v1/chat/completions", port);
+        let b = request_body_chat_completions(&mut_options, &p.sources);
+        (ep, false, b)
+    } else {
+        #[cfg(test)]
+        let test_ep = TEST_OPENAI_ENDPOINT.with(|c| c.borrow().clone());
+        #[cfg(test)]
+        let (ep, https): (&str, bool) = match test_ep.as_deref() {
+            Some(url) => {
+                let is_https = url.starts_with("https://");
+                (url, is_https)
+            }
+            None => ("https://api.openai.com/v1/responses", true),
+        };
+        #[cfg(not(test))]
+        let (ep, https): (&str, bool) = ("https://api.openai.com/v1/responses", true);
+
+        let mut b = request_body(&mut_options, &p.sources);
+        b["stream"] = json!(true);
+        (ep.to_string(), https, b)
+    };
     let t_payload_ms = t_payload_start.elapsed().as_millis() as u64;
 
     // 3. Invio richiesta HTTP e ascolto stream SSE
     let t_openai_start = Instant::now();
-    #[cfg(test)]
-    let test_ep = TEST_OPENAI_ENDPOINT.with(|c| c.borrow().clone());
-    #[cfg(test)]
-    let (endpoint, https_only): (&str, bool) = match test_ep.as_deref() {
-        Some(url) => {
-            let is_https = url.starts_with("https://");
-            (url, is_https)
-        }
-        None => ("https://api.openai.com/v1/responses", true),
-    };
-    #[cfg(not(test))]
-    let (endpoint, https_only): (&str, bool) = ("https://api.openai.com/v1/responses", true);
-
     let client = reqwest::Client::builder()
         .https_only(https_only)
         .redirect(reqwest::redirect::Policy::none())
         .connect_timeout(Duration::from_secs(10))
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_secs(if local_llm_port.is_some() { 300 } else { 60 }))
         .build()
         .map_err(|_| "HTTP client unavailable")?;
 
-    let response_res = client
-        .post(endpoint)
-        .bearer_auth(key)
-        .json(&body)
-        .send()
-        .await;
+    let mut req_builder = client.post(&endpoint).json(&body);
+    if local_llm_port.is_none() {
+        req_builder = req_builder.bearer_auth(key);
+    }
+    let response_res = req_builder.send().await;
 
     let mut response = match response_res {
         Ok(r) => {
@@ -2944,11 +3009,22 @@ pub async fn ask_stream(
                             }
                         }
 
-                        // Responses API emette i delta in "delta" (rimosso choices[0].delta.content)
-                        let delta_opt = v.get("delta").and_then(|d| d.as_str());
+                        // Responses API emette in "delta", llama-server in choices[0].delta.content
+                        let delta_opt = v.get("delta").and_then(|d| d.as_str())
+                            .or_else(|| {
+                                v.get("choices")
+                                    .and_then(|c| c.get(0))
+                                    .and_then(|c0| c0.get("delta"))
+                                    .and_then(|d| d.get("content"))
+                                    .and_then(|s| s.as_str())
+                            });
 
                         if let Some(delta) = delta_opt {
-                            let prose = json_parser.feed(delta);
+                            let prose = if local_llm_port.is_some() {
+                                delta.to_string()
+                            } else {
+                                json_parser.feed(delta)
+                            };
                             if !prose.is_empty() {
                                 let clean_delta = sanitizer.feed(&prose);
                                 if !clean_delta.is_empty() {
@@ -2987,8 +3063,20 @@ pub async fn ask_stream(
                             final_response_val = Some(resp.clone());
                         }
                     }
-                    if let Some(delta) = v.get("delta").and_then(|d| d.as_str()) {
-                        let prose = json_parser.feed(delta);
+                    let delta_opt = v.get("delta").and_then(|d| d.as_str())
+                        .or_else(|| {
+                            v.get("choices")
+                                .and_then(|c| c.get(0))
+                                .and_then(|c0| c0.get("delta"))
+                                .and_then(|d| d.get("content"))
+                                .and_then(|s| s.as_str())
+                        });
+                    if let Some(delta) = delta_opt {
+                        let prose = if local_llm_port.is_some() {
+                            delta.to_string()
+                        } else {
+                            json_parser.feed(delta)
+                        };
                         if !prose.is_empty() {
                             let clean_delta = sanitizer.feed(&prose);
                             if !clean_delta.is_empty() {
@@ -3165,94 +3253,116 @@ pub async fn ask_stream(
 
     // 5. Decodifica e validazione risposta finale: nessun stato inventato
     // Se non è arrivato l'evento finale response.completed con il suo status ufficiale,
-    // la risposta va trattata come interrotta: testo parziale con avviso, zero citazioni.
+    // la risposta va trattata come interrotta per OpenAI, oppure come completata per llama-server locale.
     let response_to_parse = match final_response_val {
         Some(v) => v,
         None => {
-            let warning_msg = "La risposta è incompleta: lo streaming si è chiuso senza evento finale response.completed dal provider.".to_string();
-            let partial_answer = sanitizer.get_accumulated().to_string();
-            let end_payload = AiStreamEndPayload {
-                ticket: ticket.clone(),
-                answer: partial_answer,
-                citations: vec![],
-                cited_indices: vec![],
-                status: "incomplete".into(),
-                incomplete: true,
-                incomplete_reason: Some(warning_msg.clone()),
-                warning: Some(warning_msg.clone()),
-                error: None,
-                cancelled: true,
-                tokens_used: None,
-                tokens_prompt: None,
-                tokens_completion: None,
-                tokens_reasoning: None,
-                semantic_used: p.semantic_used,
-                semantic_fallback_reason: p.semantic_fallback_reason.clone(),
-                ..Default::default()
-            };
-            if let Some(ref w) = window {
-                let _ = w.emit("limen://ai-stream-end", end_payload.clone());
-            }
-
-            let t_ask_total_ms = t_ask_start.elapsed().as_millis() as u64;
-            let t_backend_total_ms = p.preview_timings.t_preview_total_ms + t_handoff_ms + t_ask_total_ms;
-            let t_ui_total_ms = ui_elapsed_ms.map(|prev_ms| prev_ms + t_ask_total_ms);
-            let audit_sources: Vec<SourceAuditEntry> = p.sources
-                .iter()
-                .enumerate()
-                .map(|(idx, s)| SourceAuditEntry {
-                    id: format!("S{}", idx + 1),
-                    relative_path: s.relative_path.clone(),
-                    bytes: s.content.len(),
-                    locator: s.locator.clone(),
-                    cited: false,
+            if local_llm_port.is_some() {
+                let acc_answer = sanitizer.get_accumulated().to_string();
+                let citations: Vec<Value> = p.sources.iter().map(|s| {
+                    json!({
+                        "documentId": s.document_id,
+                        "relativePath": s.relative_path,
+                        "locator": s.locator,
+                        "category": s.category,
+                        "title": s.title,
+                    })
+                }).collect();
+                let cited_indices: Vec<usize> = (0..p.sources.len()).collect();
+                json!({
+                    "status": "completed",
+                    "answer": acc_answer,
+                    "citations": citations,
+                    "citedIndices": cited_indices,
+                    "model": "Ministral 3 8B Instruct (Locale)",
+                    "incomplete": false,
                 })
-                .collect();
+            } else {
+                let warning_msg = "La risposta è incompleta: lo streaming si è chiuso senza evento finale response.completed dal provider.".to_string();
+                let partial_answer = sanitizer.get_accumulated().to_string();
+                let end_payload = AiStreamEndPayload {
+                    ticket: ticket.clone(),
+                    answer: partial_answer,
+                    citations: vec![],
+                    cited_indices: vec![],
+                    status: "incomplete".into(),
+                    incomplete: true,
+                    incomplete_reason: Some(warning_msg.clone()),
+                    warning: Some(warning_msg.clone()),
+                    error: None,
+                    cancelled: true,
+                    tokens_used: None,
+                    tokens_prompt: None,
+                    tokens_completion: None,
+                    tokens_reasoning: None,
+                    semantic_used: p.semantic_used,
+                    semantic_fallback_reason: p.semantic_fallback_reason.clone(),
+                    ..Default::default()
+                };
+                if let Some(ref w) = window {
+                    let _ = w.emit("limen://ai-stream-end", end_payload.clone());
+                }
 
-            log_ask_timing_detailed(&AskTimingLogEntry {
-                timestamp: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                model: effective_model.clone(),
-                status: "incomplete".to_string(),
-                incomplete_reason: Some(warning_msg.clone()),
-                tokens_used: None,
-                tokens_prompt: None,
-                tokens_completion: None,
-                tokens_reasoning: None,
-                t_first_chunk_ms,
-                t_ui_total_ms,
-                t_backend_total_ms,
-                preview: PreviewTimingBreakdown {
-                    total_ms: p.preview_timings.t_preview_total_ms,
-                    service_prep_ms: p.preview_timings.t_service_prep_ms,
-                    index_cache_ms: p.preview_timings.t_index_cache_ms,
-                    embed_ms: p.preview_timings.t_embed_ms,
-                    search_ms: p.preview_timings.t_search_ms,
-                    search_words_ms: p.preview_timings.t_search_words_ms,
-                    search_sem_ms: p.preview_timings.t_search_sem_ms,
-                    search_fuse_ms: p.preview_timings.t_search_fuse_ms,
-                    search_admit_ms: p.preview_timings.t_search_admit_ms,
-                    doc_read_ms: p.preview_timings.t_doc_read_ms,
-                    passage_extract_ms: p.preview_timings.t_passage_extract_ms,
-                },
-                t_handoff_ms,
-                ask: AskTimingBreakdown {
-                    total_ms: t_ask_total_ms,
-                    verify_pre_ms: t_verify_pre_ms,
-                    payload_ms: t_payload_ms,
-                    openai_ms: t_openai_ms,
+                let t_ask_total_ms = t_ask_start.elapsed().as_millis() as u64;
+                let t_backend_total_ms = p.preview_timings.t_preview_total_ms + t_handoff_ms + t_ask_total_ms;
+                let t_ui_total_ms = ui_elapsed_ms.map(|prev_ms| prev_ms + t_ask_total_ms);
+                let audit_sources: Vec<SourceAuditEntry> = p.sources
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, s)| SourceAuditEntry {
+                        id: format!("S{}", idx + 1),
+                        relative_path: s.relative_path.clone(),
+                        bytes: s.content.len(),
+                        locator: s.locator.clone(),
+                        cited: false,
+                    })
+                    .collect();
+
+                log_ask_timing_detailed(&AskTimingLogEntry {
+                    timestamp: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+                    model: effective_model.clone(),
+                    status: "incomplete".to_string(),
+                    incomplete_reason: Some(warning_msg.clone()),
+                    tokens_used: None,
+                    tokens_prompt: None,
+                    tokens_completion: None,
+                    tokens_reasoning: None,
                     t_first_chunk_ms,
-                    verify_post_ms: t_verify_post_ms,
-                    parse_ms: 0,
-                },
-                sources: audit_sources,
-                port: p.port,
-                pid: p.pid,
-                semantic_used: p.semantic_used,
-                semantic_fallback_reason: p.semantic_fallback_reason.clone(),
-            });
+                    t_ui_total_ms,
+                    t_backend_total_ms,
+                    preview: PreviewTimingBreakdown {
+                        total_ms: p.preview_timings.t_preview_total_ms,
+                        service_prep_ms: p.preview_timings.t_service_prep_ms,
+                        index_cache_ms: p.preview_timings.t_index_cache_ms,
+                        embed_ms: p.preview_timings.t_embed_ms,
+                        search_ms: p.preview_timings.t_search_ms,
+                        search_words_ms: p.preview_timings.t_search_words_ms,
+                        search_sem_ms: p.preview_timings.t_search_sem_ms,
+                        search_fuse_ms: p.preview_timings.t_search_fuse_ms,
+                        search_admit_ms: p.preview_timings.t_search_admit_ms,
+                        doc_read_ms: p.preview_timings.t_doc_read_ms,
+                        passage_extract_ms: p.preview_timings.t_passage_extract_ms,
+                    },
+                    t_handoff_ms,
+                    ask: AskTimingBreakdown {
+                        total_ms: t_ask_total_ms,
+                        verify_pre_ms: t_verify_pre_ms,
+                        payload_ms: t_payload_ms,
+                        openai_ms: t_openai_ms,
+                        t_first_chunk_ms,
+                        verify_post_ms: t_verify_post_ms,
+                        parse_ms: 0,
+                    },
+                    sources: audit_sources,
+                    port: p.port,
+                    pid: p.pid,
+                    semantic_used: p.semantic_used,
+                    semantic_fallback_reason: p.semantic_fallback_reason.clone(),
+                });
 
-            let res_val = serde_json::to_value(&end_payload).map_err(|_| "Failed to serialize end payload")?;
-            return Ok(res_val);
+                let res_val = serde_json::to_value(&end_payload).map_err(|_| "Failed to serialize end payload")?;
+                return Ok(res_val);
+            }
         }
     };
 

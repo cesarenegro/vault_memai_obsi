@@ -19,5 +19,6 @@ pub mod extraction;
 pub mod catalog;
 pub mod embeddings;
 pub mod llama;
+pub mod llama_llm;
 
 pub mod history;

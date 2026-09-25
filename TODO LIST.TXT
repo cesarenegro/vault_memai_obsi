@@ -1,3 +1,10 @@
+GUIDA UTENTE V5 — 25 settembre 2026
+Stato: completata e verificata in locale; nessuna pubblicazione su Google Drive effettuata.
+Consegna: output/guida_utente/ — PDF e Word A4 orizzontali, 42 pagine; 37 schede con Mermaid, Markdown e sorgenti .mmd.
+Verifiche: Inter incorporato, geometria del modello CRM mantenuta, numeri pagina e 37 diagrammi controllati, revisione visiva e controllo geometrico senza sovrapposizioni.
+Residuo della consegna locale: nessuno. Nota d’ambito: la vecchia attivazione automazione non è esposta nella UI corrente; configurazioni di account/client esterni da predisporre con referente. Nessuna procedura applicativa eseguita per provare pubblicazioni, chiavi o recuperi.
+Le voci applicative seguenti sono pregresse e non vengono dichiarate risolte da questa attività documentale.
+
 COORDINAMENTO — 19 settembre 2026
 - Documenti di 20_RAW_SOURCES non categorizzati nelle cartelle di Memoria: vedere analisi FASE 6b
 - AG: completata implementazione e verifica delle non conformità R1…R6 e requisiti del piano MA-01…MA-12.

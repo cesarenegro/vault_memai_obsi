@@ -5,47 +5,47 @@ Applicazione desktop per macOS (Apple Silicon, macOS 26.0+) per la gestione, ind
 
 ---
 
-## FILE CREATI O MODIFICATI IN QUESTA SESSIONE (FASE 7 Mac)
+## FILE CREATI O MODIFICATI IN QUESTA SESSIONE (FASE 7 Mac & FASE 8 Ministral)
 
-1. ISTRUZIONI_TESTER_MAC.md
+1. llama_llm.rs
+   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop/src-tauri/src/llama_llm.rs
+   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/apps/desktop/src-tauri/src/llama_llm.rs
+   Descrizione: Modulo di gestione lifecycle del modello generativo locale Ministral 3 8B Instruct Q5_K_M (~6,06 GB), downloader streaming SHA-256 e istanza dedicata di llama-server su Metal GPU.
+
+2. ai.rs
+   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop/src-tauri/src/ai.rs
+   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/apps/desktop/src-tauri/src/ai.rs
+   Descrizione: Router di generazione unificato: dispatch verso OpenAI Responses API o Chat Completions su llama-server locale, con eventi SSE unificati.
+
+3. main.rs
+   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop/src-tauri/src/main.rs
+   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/apps/desktop/src-tauri/src/main.rs
+   Descrizione: Inizializzazione LlamaLlmServerState, registrazione comandi Tauri local_llm_* e chiusura processi all'uscita.
+
+4. ai-ipc.ts
+   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop/src/ai-ipc.ts
+   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/apps/desktop/src/ai-ipc.ts
+   Descrizione: Interfaccia TypeScript e chiamate IPC per la gestione del modello e server locale Ministral 8B.
+
+5. AiPanel.tsx
+   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop/src/AiPanel.tsx
+   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/apps/desktop/src/AiPanel.tsx
+   Descrizione: Pulsante toggle Verde Lime ("SOLO LOCALE (Mac)"), modale interattiva di download per Ministral (~6,06 GB) e badge di generazione offline.
+
+6. SemanticEngineSettings.tsx
+   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop/src/SemanticEngineSettings.tsx
+   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/apps/desktop/src/SemanticEngineSettings.tsx
+   Descrizione: Sezione 4 dedicata al Modello Generativo Locale (stato GGUF, monitoraggio memoria GPU Metal, pulsanti download e avvio/arresto).
+
+7. ISTRUZIONI_TESTER_MAC.md
    Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/IMPLEMENTATION/ISTRUZIONI_TESTER_MAC.md
    Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/IMPLEMENTATION/ISTRUZIONI_TESTER_MAC.md
-   Descrizione: Guida collaudo tester per macOS con testi reali da apps/desktop/src, RAG locale, consenso OpenAI e FASE 6b.
+   Descrizione: Guida collaudo tester per macOS con la descrizione della doppia modalità Ibrida vs Solo Locale.
 
-2. manuale UI utente.txt
-   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/manuale UI utente.txt
-   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/manuale%20UI%20utente.txt
-   Descrizione: Manuale operativo completo dell'interfaccia LIMEN Vault V5 con workflow dettagliati e grafici Mermaid.
-
-3. MANUALE UTENTE.MD
+8. MANUALE UTENTE.MD
    Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/MANUALE UTENTE.MD
    Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/MANUALE%20UTENTE.MD
    Descrizione: Indice di sintesi e riferimento rapido per Obsidian e Markdown viewer.
-
-4. 03_HELP_SCHERMATE.md
-   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/HELP/03_HELP_SCHERMATE.md
-   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/HELP/03_HELP_SCHERMATE.md
-   Descrizione: Documentazione delle schermate con aggiornamento della sezione Chiedi al Vault alla FASE 6b.
-
-5. 04_WORKFLOW.md
-   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/HELP/04_WORKFLOW.md
-   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/HELP/04_WORKFLOW.md
-   Descrizione: Workflow con sequence diagram W5 allineato al flusso di messaggistica continua con citazione fonti e apertura documento.
-
-6. llama.rs
-   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop/src-tauri/src/llama.rs
-   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/apps/desktop/src-tauri/src/llama.rs
-   Descrizione: Fix rilevamento llama-server in Contents/Resources/native/llama-server nel pacchetto macOS e log in BACKGROUND_START_FAILED.
-
-7. main.rs
-   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/apps/desktop/src-tauri/src/main.rs
-   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/apps/desktop/src-tauri/src/main.rs
-   Descrizione: Hook di registrazione percorso risorse native runtime per il bundle desktop.
-
-8. LIMEN-Vault-V5-0.5.0-arm64.dmg
-   Percorso: /Users/cesare/Documents/MEMAI V_FALLBACK OBSIDIAN/.local/limen-v5-release/LIMEN-Vault-V5-0.5.0-arm64.dmg
-   Link: file:///Users/cesare/Documents/MEMAI%20V_FALLBACK%20OBSIDIAN/.local/limen-v5-release/LIMEN-Vault-V5-0.5.0-arm64.dmg
-   Descrizione: Pacchetto installatore macOS Developer ID notarizzato (51.430.042 byte, SHA-256: 0e46c09d45...).
 
 ---
 
@@ -201,9 +201,11 @@ sequenceDiagram
 ```
 
 ### Dettagli dell'Interfaccia Chat:
+- **Pulsante Toggle Verde Lime ("SOLO LOCALE (Mac)")**: Posto nella testata della chat e sopra la barra di scrittura. Quando attivo si illumina in verde lime (`var(--limen-lime)`) e commuta la generazione su **Ministral 3 8B Instruct (Offline)** a rete zero. Se il modello (~6,06 GB) non è ancora presente, apre una modale interattiva per avviare il download da Hugging Face con barra percentuale di avanzamento.
+- **Badge Risposta Offline**: Le risposte generate in modalità locale presentano in calce il badge distintivo in verde lime: `Generato sul Mac · Ministral 3 8B Instruct Q5_K_M (Offline)`.
 - **Domande Utente**: Allineate a destra con riquadro in **verde lime** (`var(--limen-lime-60)`).
 - **Risposte Assistente**: Allineate a sinistra in card **bianca** con bordo definito (`#e2e8f0`).
-- **Casella di Scrittura Fissa in Basso**: Sempre visibile durante lo scorrimento della chat, con contatore caratteri (max 2000), pulsante **"Chiedi"** e spunta **"Includi bozze e note non approvate"**.
+- **Casella di Scrittura Fissa in Basso**: Sempre visibile durante lo scorrimento della chat, con contatore caratteri (max 2000), pulsante **"Chiedi"**, indicatore visivo della modalità attiva e spunta **"Includi bozze e note non approvate"**.
 - **Pulsante Nuova Conversazione**: Presente in testa alla schermata e a fine pagina per azzerare il contesto e avviare una sessione pulita.
 - **Pulsante "N fonti citate"**: Posto in calce a ciascuna risposta; cliccandolo si evidenziano le fonti pertinenti nella barra laterale.
 - **Cassetto Laterale "Fonti"**: Elenca i documenti consultati e citati. Il pulsante **"Mostra tutte"** apre il pop-up modale completo.
