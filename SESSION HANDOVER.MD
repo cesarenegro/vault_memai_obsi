@@ -1,3 +1,16 @@
+# FASE 8 (MINISTRAL LOCALE) E RILASCIO v6Mini — 26 settembre 2026
+
+Completata e validata la **FASE 8** con le 4 integrazioni obbligatorie e le 2 precisazioni:
+- **Commit finale:** `4658a54819257fb3fe3d423442c7c0ac0d073395` con tag `fase8-ministral-fix` su base `efc42e7`. Pushed su `origin/windows-build`.
+- **DMG Rilascio:** `USER INSTALL/LIMEN-Vault-v6Mini.dmg` (50.896.220 byte, SHA-256 `170a20045ee7b2cf8ed5142b168de88245c7c57519e21233011c7aae704f4d68`), firmato Developer ID, notarizzato Apple e validato Gatekeeper (`source=Notarized Developer ID`).
+- **Prova reale 20 domande Solo Locale:** 20/20 completate, 0 errori, dimensione finale `llama-llm.log` = 20.921 byte.
+- **Gestione RAM 8 GB:** Adozione ufficiale di **Ministral 3 3B Instruct Q5_K_M** per Mac < 16 GB, offload fisso `-ngl 99`, KV cache 442 MiB (`-ctk q8_0 -ctv q8_0 -np 1`), memoria ~2.8 GB. Metriche reali: prompt eval 275.8 tok/s, TTFT medio 560 ms, velocità 24.9 tok/s.
+- **Errori Server Locale:** Status HTTP != 200, errore stream o 0 token impostano tassativamente `status: "error"` (mai "completed").
+- **Timeout avvio:** Costante unica `MINISTRAL_STARTUP_TIMEOUT_SECS = 90`. Avvio reale ~6 secondi.
+- **Dettagli completi:** Vedere `SESSION_HANDOVER_FASE_8.md`.
+
+---
+
 # Chiusura Audit e Consegna Notarizzata LIMEN Vault v3 — 19 settembre 2026
 
 Risolti e verificati tutti i rilievi dell'audit indipendente di Claude:
