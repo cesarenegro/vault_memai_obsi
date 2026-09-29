@@ -1,6 +1,12 @@
+INSTALLATORI E CREDENZIALI — 29 settembre 2026
+Stato: contenuti verificati in locale; commit e push autorizzati e in corso su origin/windows-build.
+USER INSTALL/ e USER INSTALL WINDOWS/ non sono più esclusi. La cartella Windows non è presente.
+SECRETS_NO_GIT/ creata e includibile in Git su richiesta esplicita dell’utente; contiene copie verificate di SECRETS.TXT e UTENTI PASSWORD.TXT. Originali mantenuti e ancora ignorati. Nessun file .env, .env.local o .env.production trovato nell’inventario del progetto.
+Dipendenza per altro computer: completare e verificare push su origin/windows-build per rendere disponibili installatori e copie delle credenziali. Sicurezza delle copie gestita dall’utente come richiesto.
+
 FASE 8 (MINISTRAL LOCALE) E RILASCIO v6Mini — 25 settembre 2026
 Stato: completato e validato in locale con 4 integrazioni obbligatorie.
-Consegna: commit unico su tag fase8-ministral-fix e DMG firmato e notarizzato LIMEN-Vault-v6Mini.dmg in USER INSTALL/ (escluso da git).
+Consegna: commit unico su tag fase8-ministral-fix e DMG firmato e notarizzato LIMEN-Vault-v6Mini.dmg in USER INSTALL/ (esclusione Git rimossa il 29 settembre 2026; non ancora aggiunto).
 Punti chiusi:
 1. Modalità Solo Locale isolata al 100% da qualsiasi rete esterna. Richiede motore di ricerca Locale (bge-m3), altrimenti arresto prima della rete. Se bge-m3 non pronto/spento: errore bloccante esplicito.
 2. Risolto blocco di llama-server per pipe buffer pieno tramite file di log dedicato troncato (llama-llm.log) e cattura ultima riga in last_error. 20 domande consecutive completate senza blocchi (20/20, 0 errori, log 20921 byte).
@@ -14,7 +20,7 @@ Punti chiusi:
 10. Script scripts/package-v6mini-macos.sh inserito in git.
 11. Documentazione e todo list allineate a FASE 8.
 12. Allineamento coerente di prodotto a "LIMEN Vault v6Mini" 0.6.0.
-13. Generazione DMG unico LIMEN-Vault-v6Mini.dmg in .local/limen-v6mini-release/ e copia in USER INSTALL/ (escluso da git alla riga 38 di .gitignore).
+13. Generazione DMG unico LIMEN-Vault-v6Mini.dmg in .local/limen-v6mini-release/ e copia in USER INSTALL/ (esclusione Git rimossa il 29 settembre 2026).
 
 GUIDA UTENTE V5 — 25 settembre 2026
 Stato: completata e verificata in locale; nessuna pubblicazione su Google Drive effettuata.

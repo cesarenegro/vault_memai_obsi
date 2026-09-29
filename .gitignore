@@ -16,6 +16,10 @@ build
 SECRETS.TXT
 UTENTI PASSWORD.TXT
 
+# Copie da trasferire tramite Git su richiesta esplicita
+!SECRETS_NO_GIT/
+!SECRETS_NO_GIT/**
+
 # System / OS
 .DS_Store
 *.log
@@ -35,5 +39,3 @@ apps/desktop/src-tauri/resources/native/*
 !apps/desktop/src-tauri/resources/native/.gitkeep
 !apps/desktop/src-tauri/resources/native/README-native.md
 tests/scratch/
-USER INSTALL/
-USER INSTALL WINDOWS/

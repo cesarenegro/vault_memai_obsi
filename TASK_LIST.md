@@ -1,9 +1,20 @@
-# TASK LIST — LIMEN Vault: FASE 8 Ministral locale e rilascio v6Mini
+# TASK LIST — LIMEN Vault: installatori Git, credenziali locali e rilascio v6Mini
+
+## Installatori e credenziali locali — 29 settembre 2026
+
+Stato: contenuti completati e verificati in locale; commit e push autorizzati dall’utente, in corso sul branch `windows-build` verso `origin`.
+
+- [x] Rimosse dal `.gitignore` le esclusioni `USER INSTALL/` e `USER INSTALL WINDOWS/`.
+- [x] Creata `/SECRETS_NO_GIT/`; su correzione esplicita dell’utente, cartella e contenuti includibili in Git tramite eccezioni alle regole dei segreti.
+- [x] Copiati i file presenti `SECRETS.TXT` e `UTENTI PASSWORD.TXT`, mantenendo gli originali e le loro esclusioni; copie verificate byte per byte, senza esporre contenuti.
+- [x] Verificato che copie in `SECRETS_NO_GIT/` e cartelle installatori non siano escluse; originali delle credenziali ancora ignorati.
+
+Residui: `.env`, `.env.local`, `.env.production` non trovati nell’inventario del progetto; `USER INSTALL WINDOWS` non presente. Installatori e copie delle credenziali inclusi nella pubblicazione richiesta sul branch `windows-build`; verifica del push ancora da completare. Sicurezza gestita dall’utente come richiesto.
 
 ## FASE 8 — Correzioni Ministral Locale e Rilascio LIMEN Vault v6Mini 0.6.0 (25 settembre 2026)
 
 Stato: completato e validato in locale con 4 integrazioni obbligatorie.
-Consegna: commit unico su tag `fase8-ministral-fix` e DMG firmato e notarizzato `LIMEN-Vault-v6Mini.dmg` in `USER INSTALL/` ed escluso da git.
+Consegna: commit unico su tag `fase8-ministral-fix` e DMG firmato e notarizzato `LIMEN-Vault-v6Mini.dmg` in `USER INSTALL/`; esclusione Git rimossa il 29 settembre 2026, file non ancora aggiunti.
 
 - [x] Punto 1 (Bloccante): Modalità Solo Locale isolata al 100% da qualsiasi rete esterna. Se il motore semantico non è Locale ("local"), la ricerca si ferma prima di chiamate di rete con messaggio: "La modalità Solo Locale richiede il motore di ricerca Locale. Impostalo in Impostazioni > Motore semantico.". Se bge-m3 non pronto/spento: errore bloccante esplicito. Controllo implementato in backend Rust (ai.rs, main.rs) e frontend (AiPanel.tsx). Nessuna richiesta verso indirizzi diversi da 127.0.0.1.
 - [x] Punto 2 (Integrazione 1): Risolto blocco di llama-server per pipe buffer pieno reindirizzando stderr su `llama-llm.log`. Eseguita prova obbligatoria di 20 domande consecutive in Solo Locale sul Mac di Cesare con il llama-server incluso nell'app: 20/20 completate, 0 errori, dimensione finale `llama-llm.log` = 20.921 byte.
@@ -16,7 +27,7 @@ Consegna: commit unico su tag `fase8-ministral-fix` e DMG firmato e notarizzato 
 - [x] Punto 10: Script di packaging `scripts/package-v6mini-macos.sh` tracciato nel repository git per piena riproducibilità.
 - [x] Punto 11: Documentazione e tracciamento task (`TASK_LIST.md` e `TODO LIST.TXT`) aggiornati con lo stato della FASE 8 e 4 integrazioni.
 - [x] Punto 12: Allineamento coerente a "LIMEN Vault v6Mini", versione `0.6.0`, identificativo `dev.arkai.limenvault` invariato su `tauri.conf.json`, `package.json`, `Cargo.toml`, codice interfaccia e manualistica.
-- [x] Punto 13 (Precisazione 13): Creazione DMG unico `LIMEN-Vault-v6Mini.dmg` in `.local/limen-v6mini-release/` e copia in `USER INSTALL/LIMEN-Vault-v6Mini.dmg` (escluso da git alla riga 38 di `.gitignore`). Firmato Developer ID, notarizzato Apple e validato con Gatekeeper (spctl e stapler).
+- [x] Punto 13 (Precisazione 13): Creazione DMG unico `LIMEN-Vault-v6Mini.dmg` in `.local/limen-v6mini-release/` e copia in `USER INSTALL/LIMEN-Vault-v6Mini.dmg` (esclusione Git rimossa il 29 settembre 2026). Firmato Developer ID, notarizzato Apple e validato con Gatekeeper (spctl e stapler).
 
 ---
 
