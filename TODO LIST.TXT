@@ -1,8 +1,8 @@
 INSTALLATORI E CREDENZIALI — 29 settembre 2026
-Stato: contenuti verificati in locale; commit e push autorizzati e in corso su origin/windows-build.
+Stato: completato e pubblicato su origin/windows-build; commit contenuti fcdbc10, push riuscito il 29 settembre 2026.
 USER INSTALL/ e USER INSTALL WINDOWS/ non sono più esclusi. La cartella Windows non è presente.
 SECRETS_NO_GIT/ creata e includibile in Git su richiesta esplicita dell’utente; contiene copie verificate di SECRETS.TXT e UTENTI PASSWORD.TXT. Originali mantenuti e ancora ignorati. Nessun file .env, .env.local o .env.production trovato nell’inventario del progetto.
-Dipendenza per altro computer: completare e verificare push su origin/windows-build per rendere disponibili installatori e copie delle credenziali. Sicurezza delle copie gestita dall’utente come richiesto.
+Dipendenza per altro computer: usare il branch windows-build per recuperare installatori e copie delle credenziali, ora pubblicati. Nessun residuo di pubblicazione dei contenuti. Sicurezza delle copie gestita dall’utente come richiesto.
 
 FASE 8 (MINISTRAL LOCALE) E RILASCIO v6Mini — 25 settembre 2026
 Stato: completato e validato in locale con 4 integrazioni obbligatorie.

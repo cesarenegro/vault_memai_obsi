@@ -2,14 +2,14 @@
 
 ## Installatori e credenziali locali — 29 settembre 2026
 
-Stato: contenuti completati e verificati in locale; commit e push autorizzati dall’utente, in corso sul branch `windows-build` verso `origin`.
+Stato: completato e pubblicato su `origin/windows-build`. Commit contenuti `fcdbc10`; push riuscito il 29 settembre 2026.
 
 - [x] Rimosse dal `.gitignore` le esclusioni `USER INSTALL/` e `USER INSTALL WINDOWS/`.
 - [x] Creata `/SECRETS_NO_GIT/`; su correzione esplicita dell’utente, cartella e contenuti includibili in Git tramite eccezioni alle regole dei segreti.
 - [x] Copiati i file presenti `SECRETS.TXT` e `UTENTI PASSWORD.TXT`, mantenendo gli originali e le loro esclusioni; copie verificate byte per byte, senza esporre contenuti.
 - [x] Verificato che copie in `SECRETS_NO_GIT/` e cartelle installatori non siano escluse; originali delle credenziali ancora ignorati.
 
-Residui: `.env`, `.env.local`, `.env.production` non trovati nell’inventario del progetto; `USER INSTALL WINDOWS` non presente. Installatori e copie delle credenziali inclusi nella pubblicazione richiesta sul branch `windows-build`; verifica del push ancora da completare. Sicurezza gestita dall’utente come richiesto.
+Residui: `.env`, `.env.local`, `.env.production` non trovati nell’inventario del progetto; `USER INSTALL WINDOWS` non presente. Installatori e copie delle credenziali pubblicati sul branch `windows-build`; push verificato. Sicurezza gestita dall’utente come richiesto.
 
 ## FASE 8 — Correzioni Ministral Locale e Rilascio LIMEN Vault v6Mini 0.6.0 (25 settembre 2026)
 
