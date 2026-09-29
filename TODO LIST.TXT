@@ -1,6 +1,6 @@
 ARCHIVIO CHAT CODEX — 29 settembre 2026
-Stato: completato locale, pubblicazione Git in corso. CHAT_CODEX contiene 7 chat e 565 messaggi verificati, indice, manifest e script di aggiornamento.
-Residuo: commit/push su origin/windows-build e verifica remota. Su Windows recuperare il branch e usare CHAT_CODEX/README.md come contesto; nessuna importazione automatica nella sidebar. Chat non presenti sui database locali, allegati binari e log strumenti non inclusi. Le conversazioni successive richiedono una nuova esportazione.
+Stato: completato e pubblicato su origin/windows-build; commit archivio 30d97ca, push confermato dal remoto. CHAT_CODEX contiene 7 chat e 565 messaggi verificati, indice, manifest e script di aggiornamento.
+Nessun residuo di pubblicazione dell’archivio. Su Windows recuperare il branch e usare CHAT_CODEX/README.md come contesto; nessuna importazione automatica nella sidebar. Chat non presenti sui database locali, allegati binari e log strumenti non inclusi. Le conversazioni successive richiedono una nuova esportazione.
 
 ISTRUZIONI CODER WINDOWS — 29 settembre 2026
 Documento pubblicato in USER INSTALL/ISTRUZIONI_CODER_BUILD_WINDOWS.md su origin/windows-build; commit contenuti 970f649, push riuscito il 29 settembre 2026.

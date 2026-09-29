@@ -2,13 +2,13 @@
 
 ## Archivio chat Codex per Windows — 29 settembre 2026
 
-Stato: completato e verificato in locale; pubblicazione Git in corso.
+Stato: completato, verificato e pubblicato su `origin/windows-build`; commit archivio `30d97ca`, push riuscito il 29 settembre 2026.
 
 - [x] Individuate 7 chat locali associate alla cartella/remoto Git del progetto.
 - [x] Esportati 565 messaggi utente/Codex in `CHAT_CODEX/`, con indice, manifest SHA-256 e script aggiornabile.
 - [x] Verificati conteggi, integrità dei file e lettura dei database in sola lettura; nessun codice applicativo modificato.
 - [x] Documentati limiti: fotografia temporale, allegati e log strumenti esclusi, nessuna importazione automatica nella sidebar Windows.
-- [ ] Pubblicare archivio su `origin/windows-build` e verificare il commit remoto.
+- [x] Pubblicato archivio su `origin/windows-build`; push confermato dal remoto (`603f8e6..30d97ca`).
 
 ## Istruzioni al coder per il rilascio Windows — 29 settembre 2026
 
