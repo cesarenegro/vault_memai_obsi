@@ -1,5 +1,15 @@
 # TASK LIST — LIMEN Vault: installatori Git, credenziali locali e rilascio v6Mini
 
+## Istruzioni al coder per il rilascio Windows — 29 settembre 2026
+
+Stato: documento completato e verificato in locale; commit e push autorizzati, pubblicazione in corso. Implementazione Windows e installer non eseguiti in questa attività.
+
+- [x] Verificati manifest Tauri, componenti Windows esistenti e handover storico.
+- [x] Individuati punti da collaudare/correggere: RAM fissa fuori da macOS, estrazione PDF/OCR nel ramo Mac, helper e packaging per piattaforma.
+- [x] Preparato `USER INSTALL/ISTRUZIONI_CODER_BUILD_WINDOWS.md` con fasi, comandi, vincoli, matrice di accettazione e consegna.
+- [x] Verificati riferimenti ufficiali Tauri per prerequisiti, NSIS, WebView2 e firma.
+- [ ] Implementazione, build e collaudo Windows da eseguire dal coder; non ereditare come verifiche della release corrente i risultati Windows storici.
+
 ## Installatori e credenziali locali — 29 settembre 2026
 
 Stato: completato e pubblicato su `origin/windows-build`. Commit contenuti `fcdbc10`; push riuscito il 29 settembre 2026.

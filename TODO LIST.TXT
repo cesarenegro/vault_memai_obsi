@@ -1,3 +1,8 @@
+ISTRUZIONI CODER WINDOWS — 29 settembre 2026
+Documento pronto in USER INSTALL/ISTRUZIONI_CODER_BUILD_WINDOWS.md; commit e push autorizzati, pubblicazione in corso.
+Lavoro residuo del coder: ambiente Windows isolato, helper e dipendenze native Windows, RAM reale, estrazione PDF/OCR, installer NSIS, prove installazione pulita e firma se disponibile. Nessuna build/prova Windows eseguita in questa attività documentale.
+Vincoli: nessuna chiamata OpenAI nel collaudo corrente; nessuna modifica ai Vault e modelli reali di Cesare; applicare .agents/AGENTS.md. I precedenti risultati Windows sono storici, non attestano la release attuale.
+
 INSTALLATORI E CREDENZIALI — 29 settembre 2026
 Stato: completato e pubblicato su origin/windows-build; commit contenuti fcdbc10, push riuscito il 29 settembre 2026.
 USER INSTALL/ e USER INSTALL WINDOWS/ non sono più esclusi. La cartella Windows non è presente.
