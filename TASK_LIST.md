@@ -2,7 +2,7 @@
 
 ## Istruzioni al coder per il rilascio Windows — 29 settembre 2026
 
-Stato: documento completato e verificato in locale; commit e push autorizzati, pubblicazione in corso. Implementazione Windows e installer non eseguiti in questa attività.
+Stato: documento completato e pubblicato su `origin/windows-build`; commit contenuti `970f649`, push riuscito il 29 settembre 2026. Implementazione Windows e installer non eseguiti in questa attività.
 
 - [x] Verificati manifest Tauri, componenti Windows esistenti e handover storico.
 - [x] Individuati punti da collaudare/correggere: RAM fissa fuori da macOS, estrazione PDF/OCR nel ramo Mac, helper e packaging per piattaforma.
