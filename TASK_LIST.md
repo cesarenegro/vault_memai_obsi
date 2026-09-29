@@ -1,4 +1,14 @@
-# TASK LIST — LIMEN Vault: installatori Git, credenziali locali e rilascio v6Mini
+# TASK LIST — LIMEN Vault: archivio chat Codex, installatori e rilascio v6Mini
+
+## Archivio chat Codex per Windows — 29 settembre 2026
+
+Stato: completato e verificato in locale; pubblicazione Git in corso.
+
+- [x] Individuate 7 chat locali associate alla cartella/remoto Git del progetto.
+- [x] Esportati 565 messaggi utente/Codex in `CHAT_CODEX/`, con indice, manifest SHA-256 e script aggiornabile.
+- [x] Verificati conteggi, integrità dei file e lettura dei database in sola lettura; nessun codice applicativo modificato.
+- [x] Documentati limiti: fotografia temporale, allegati e log strumenti esclusi, nessuna importazione automatica nella sidebar Windows.
+- [ ] Pubblicare archivio su `origin/windows-build` e verificare il commit remoto.
 
 ## Istruzioni al coder per il rilascio Windows — 29 settembre 2026
 

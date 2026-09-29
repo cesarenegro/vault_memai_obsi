@@ -1,0 +1,56 @@
+{
+  "exported_at_utc": "2026-09-29T00:53:42.225271+00:00",
+  "source": "Codex locale: state_5.sqlite + thread_history_1.sqlite, sola lettura",
+  "repository": "https://github.com/cesarenegro/vault_memai_obsi.git",
+  "threads": [
+    {
+      "id": "01a0906c-6826-7782-b4de-9f17c567c9b1",
+      "title": "Audit M2 Vault e Tauri",
+      "file": "01a0906c-6826-7782-b4de-9f17c567c9b1.md",
+      "messages": 19,
+      "sha256": "495efadadaeba80dd3d76b30200b9b70284351e6458115e57ac569afcba5490f"
+    },
+    {
+      "id": "01a0911e-5f1f-78c2-ba92-5b38529d97ab",
+      "title": "Completa task list delle fasi",
+      "file": "01a0911e-5f1f-78c2-ba92-5b38529d97ab.md",
+      "messages": 318,
+      "sha256": "9054cfdb251ddafd0f97bba8bd7e574bd7d8e7ab4f81196ff05d23e3e1439124"
+    },
+    {
+      "id": "01a09bfa-9101-7951-b375-138b729d8e0a",
+      "title": "Riprendi progetto LIMEN Vault",
+      "file": "01a09bfa-9101-7951-b375-138b729d8e0a.md",
+      "messages": 89,
+      "sha256": "b4a6bbf4fae43d4aafe1ec2ba41c6fec8d59e5eef2883ff1eb673feff553cb62"
+    },
+    {
+      "id": "01a0a35c-2fa6-78e3-b99b-aabfffbaf164",
+      "title": "Aggiungi alert fallimento backup DB",
+      "file": "01a0a35c-2fa6-78e3-b99b-aabfffbaf164.md",
+      "messages": 2,
+      "sha256": "fa812b06e8c1fae8887a5f2df974205a3b93021b4f89a54984ca9b5b12e66f3e"
+    },
+    {
+      "id": "01a0b0fc-6e0f-7730-8983-1ee17286f8bd",
+      "title": "Aggiungi LLM wiki a retrieval",
+      "file": "01a0b0fc-6e0f-7730-8983-1ee17286f8bd.md",
+      "messages": 93,
+      "sha256": "225ea429f3601918e7654327deee10dd95741b7516706c67cf1470eaa97fbd87"
+    },
+    {
+      "id": "01a0d667-fcf1-7bf3-b220-478cc840ec1b",
+      "title": "Crea guida utente con workflow",
+      "file": "01a0d667-fcf1-7bf3-b220-478cc840ec1b.md",
+      "messages": 36,
+      "sha256": "65058fd35cf15af012a9de11ffe0efc699d819cb0c9ae071aa0f10566a7c9d47"
+    },
+    {
+      "id": "01a0eaa1-224c-7130-81ab-ba09154a624a",
+      "title": "Valuta proposte codice AG",
+      "file": "01a0eaa1-224c-7130-81ab-ba09154a624a.md",
+      "messages": 8,
+      "sha256": "44f9412402c3eca448c7a771f39edc0cf35e740e2f61e4002123c2c3bef5e7c0"
+    }
+  ]
+}
